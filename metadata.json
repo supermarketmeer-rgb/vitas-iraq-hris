@@ -1,0 +1,6 @@
+{
+  "name": "VITAS IRAQ HRMS",
+  "description": "نظام إدارة الموارد البشرية المؤسسي لبوابة فيتاس العراق - VITAS IRAQ HRMS Enterprise Portal",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

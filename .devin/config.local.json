@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Exec(node)",
+      "Exec(npm run)",
+      "Exec(mkdir)",
+      "Exec(ls)",
+      "Exec(C:\\xampp\\mysql\\bin\\mysql.exe)",
+      "Exec(taskkill)",
+      "Exec(powershell)",
+      "Exec(Get-ChildItem)",
+      "Exec(mysql)"
+    ]
+  }
+}

@@ -1,0 +1,460 @@
+@import "tailwindcss";
+
+/* ================================================================
+   Tailwind v4: Class-based dark mode using html.dark
+   All dark: prefix classes activate when html has class="dark"
+   ================================================================ */
+@variant dark (&:where(.dark, .dark *));
+
+/* ================================================================
+   BASE STYLES
+   Default = Light Mode. html.dark overrides for dark.
+   ================================================================ */
+@layer base {
+  :root {
+    --font-cairo: 'Cairo', sans-serif;
+    --font-inter: 'Inter', sans-serif;
+  }
+
+  /* Light Mode is the default */
+  body {
+    font-family: 'Cairo', 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #f1f5f9;
+    color: #0f172a;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Dark Mode body */
+  html.dark body {
+    background-color: #0a0c10;
+    color: #e2e8f0;
+  }
+}
+
+/* ================================================================
+   INPUTS / SELECTS / TEXTAREAS
+   ================================================================ */
+input, select, textarea {
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: rgba(30, 41, 59, 0.95) !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
+}
+
+/* ================================================================
+   DARK BANNER (used by Tax Engine header and similar components)
+   Always shows a teal gradient with white text regardless of theme
+   ================================================================ */
+.dark-banner,
+html.light .dark-banner,
+html.dark .dark-banner {
+  background-image: linear-gradient(to right, #0f766e, #0d9488, #0f766e) !important;
+  color: #ffffff !important;
+}
+
+.dark-banner h1,
+.dark-banner h2,
+.dark-banner h3,
+.dark-banner p,
+.dark-banner span {
+  color: #ffffff !important;
+}
+
+/* ================================================================
+   GLASS PANEL EFFECT
+   ================================================================ */
+.glass-panel {
+  background: linear-gradient(135deg, rgba(30, 64, 120, 0.55) 0%, rgba(10, 50, 100, 0.45) 50%, rgba(10, 40, 90, 0.50) 100%);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid rgba(0, 0, 0, 0.25);
+  border-bottom: 4px solid rgba(147, 197, 253, 0.35);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html.light .glass-panel,
+html:not(.dark) .glass-panel {
+  background: linear-gradient(135deg, rgba(232, 235, 239, 0.95) 0%, rgba(240, 243, 246, 0.90) 50%, rgba(232, 235, 239, 0.92) 100%);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.9);
+  border-left: 1px solid rgba(255, 255, 255, 0.7);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 4px solid rgba(13, 148, 136, 0.35);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+.glass-panel:hover {
+  transform: translateY(-4px) scale(1.005);
+  border-bottom-width: 6px;
+}
+
+/* ================================================================
+   RECRUITMENT MODAL & WINDOWS
+   ================================================================ */
+.recruitment-modal,
+html.light .recruitment-modal,
+html:not(.dark) .recruitment-modal {
+  background-color: rgba(232, 235, 239, 0.98) !important;
+  backdrop-filter: blur(20px);
+}
+
+html.dark .recruitment-modal {
+  background-color: rgba(15, 23, 42, 0.98) !important;
+}
+
+/* ================================================================
+   MODAL OVERLAY
+   ================================================================ */
+.fixed .bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+html.dark .fixed .bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ================================================================
+   SURFACE CONTAINERS & CARDS (LIGHT MODE: #e8ebef Translucent Glass)
+   ================================================================ */
+.bg-surface-container,
+html.light .bg-surface-container,
+html:not(.dark) .bg-surface-container {
+  background-color: rgba(232, 235, 239, 0.98) !important;
+  backdrop-filter: blur(16px);
+}
+
+html.dark .bg-surface-container {
+  background-color: rgba(15, 23, 42, 0.98) !important;
+}
+
+.bg-surface-container-high,
+html.light .bg-surface-container-high,
+html:not(.dark) .bg-surface-container-high {
+  background-color: rgba(232, 235, 239, 0.95) !important;
+}
+
+html.dark .bg-surface-container-high {
+  background-color: rgba(30, 41, 59, 0.95) !important;
+}
+
+.bg-surface-container-low,
+html.light .bg-surface-container-low,
+html:not(.dark) .bg-surface-container-low {
+  background-color: rgba(240, 243, 246, 0.85) !important;
+}
+
+html.dark .bg-surface-container-low {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+}
+
+/* ================================================================
+   SCROLLBARS
+   ================================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.5);
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: #0a0c10;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ================================================================
+   MATERIAL SYMBOLS
+   ================================================================ */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ================================================================
+   LOGO ANIMATION
+   ================================================================ */
+@keyframes logoBreathe {
+  0%, 100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 20px rgba(20, 184, 166, 0.3), 0 0 40px rgba(20, 184, 166, 0.2);
+    border-color: rgba(20, 184, 166, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(13, 148, 136, 0.5), 0 0 60px rgba(13, 148, 136, 0.3);
+    border-color: rgba(13, 148, 136, 0.5);
+  }
+}
+
+/* ================================================================
+   LIGHT MODE: Override specific hardcoded dark colors used in 
+   components that were built with dark-first approach.
+   These only apply when html has class="light" (or no "dark").
+   The background matches the frosted off-white #e8ebef theme.
+   ================================================================ */
+
+/* Background overrides for hardcoded dark hex colors & white cards in Light Mode */
+html.light .bg-\[\#0a0c10\],
+html:not(.dark) .bg-\[\#0a0c10\] {
+  background-color: #e8ebef !important;
+}
+html.light .bg-\[\#111827\],
+html:not(.dark) .bg-\[\#111827\] {
+  background-color: #e8ebef !important;
+}
+html.light .bg-\[\#0c0f17\],
+html:not(.dark) .bg-\[\#0c0f17\] {
+  background-color: #e8ebef !important;
+}
+html.light .bg-\[\#0a0c10\]\/95,
+html:not(.dark) .bg-\[\#0a0c10\]\/95 {
+  background-color: rgba(232, 235, 239, 0.95) !important;
+}
+html.light .bg-\[\#0c0f17\]\/90,
+html:not(.dark) .bg-\[\#0c0f17\]\/90 {
+  background-color: rgba(232, 235, 239, 0.95) !important;
+}
+html.light .bg-\[\#0a0c10\]\/40,
+html.light .bg-\[\#0a0c10\]\/60,
+html.light .bg-\[\#0a0c10\]\/80 {
+  background-color: rgba(232, 235, 239, 0.88) !important;
+}
+
+/* Border overrides for dark hex borders in Light Mode */
+html.light .border-white\/10,
+html.light .border-white\/5 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Text overrides for white-on-transparent (sidebar/header nav text) */
+html.light .text-slate-200,
+html.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* ================================================================
+   LIGHT MODE: Cards, Panels, Windows, Sidebar Overrides (#e8ebef)
+   ================================================================ */
+html.light .bg-white,
+html:not(.dark) .bg-white {
+  background-color: #e8ebef !important;
+}
+html.light .bg-slate-900,
+html:not(.dark) .bg-slate-900 {
+  background-color: #e8ebef !important;
+}
+html.light .bg-slate-800,
+html:not(.dark) .bg-slate-800 {
+  background-color: #dbe0e6 !important;
+}
+html.light .bg-slate-800\/80,
+html:not(.dark) .bg-slate-800\/80 {
+  background-color: rgba(232, 235, 239, 0.92) !important;
+}
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/90 {
+  background-color: rgba(232, 235, 239, 0.95) !important;
+}
+
+/* Keep slate-50 and slate-100 as light grays (not white) */
+html.light .bg-slate-50 {
+  background-color: #f8fafc !important;
+}
+html.light .bg-slate-100 {
+  background-color: #f1f5f9 !important;
+}
+
+/* ================================================================
+   LIGHT MODE: Headings, Titles & White Text -> Teal (#0f766e)
+   ================================================================ */
+html.light h1:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
+html.light h2:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
+html.light h3:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
+html.light h4:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
+html.light h5:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
+html:not(.dark) h1:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
+html:not(.dark) h2:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
+html:not(.dark) h3:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
+html:not(.dark) h4:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
+html:not(.dark) h5:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]) {
+  color: #0f766e !important;
+}
+
+html.light .text-white:not(.dark-banner *):not(button *):not(.btn *):not(button span):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-indigo"]):not([class*="bg-blue"]),
+html:not(.dark) .text-white:not(.dark-banner *):not(button *):not(.btn *):not(button span):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-indigo"]):not([class*="bg-blue"]) {
+  color: #0f766e !important;
+}
+
+html.light .text-white-force:not(.dark-banner *),
+html:not(.dark) .text-white-force:not(.dark-banner *) {
+  color: #0f766e !important;
+}
+
+/* Preserve White text inside action buttons & active tab buttons */
+html.light button.bg-teal-600,
+html.light button.bg-teal-700,
+html.light button.bg-teal-800,
+html.light button.bg-emerald-600,
+html.light button.bg-rose-600,
+html:not(.dark) button.bg-teal-600,
+html:not(.dark) button.bg-teal-700,
+html:not(.dark) button.bg-teal-800 {
+  color: #ffffff !important;
+}
+
+html.light button.bg-teal-600 *,
+html.light button.bg-teal-700 *,
+html.light button.bg-teal-800 *,
+html.light button[class*="from-teal"] *,
+html.light button[class*="bg-teal"] *,
+html.light button[class*="to-teal"] *,
+html.light .bg-gradient-to-br[class*="teal"] *,
+html.light .bg-gradient-to-r[class*="teal"] *,
+html:not(.dark) button.bg-teal-600 *,
+html:not(.dark) button.bg-teal-700 *,
+html:not(.dark) button.bg-teal-800 *,
+html:not(.dark) button[class*="from-teal"] *,
+html:not(.dark) button[class*="bg-teal"] *,
+html:not(.dark) button[class*="to-teal"] *,
+html:not(.dark) .bg-gradient-to-br[class*="teal"] *,
+html:not(.dark) .bg-gradient-to-r[class*="teal"] * {
+  color: #ffffff !important;
+}
+
+/* Preserve number text color inside white circle of active stepper tab */
+html.light button span.bg-white,
+html.light button span.bg-white *,
+html:not(.dark) button span.bg-white,
+html:not(.dark) button span.bg-white * {
+  color: #0f766e !important;
+}
+
+/* Border overrides for dark cards */
+html.light .border-slate-800 {
+  border-color: #e2e8f0 !important;
+}
+html.light .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+html.light .border-slate-700\/80 {
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+/* Dark icon backgrounds → light icon backgrounds */
+html.light .bg-indigo-950,
+html.light .bg-indigo-950\/60 {
+  background-color: #eff6ff !important;
+}
+html.light .bg-emerald-950,
+html.light .bg-emerald-950\/60 {
+  background-color: #ecfdf5 !important;
+}
+html.light .bg-amber-950,
+html.light .bg-amber-950\/60 {
+  background-color: #fffbeb !important;
+}
+html.light .bg-red-950,
+html.light .bg-red-950\/60 {
+  background-color: #fff1f2 !important;
+}
+
+/* Text color fixes for dark-first text */
+html.light .text-slate-100 {
+  color: #0f172a !important;
+}
+
+/* ================================================================
+   PRINT MEDIA RULES (Official Payslip & Document Print Optimization)
+   ================================================================ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  /* Completely suppress header, sidebar, navigation, search, top controls */
+  header,
+  aside,
+  nav,
+  .print\:hidden,
+  .no-print,
+  button:not(.print-visible),
+  form,
+  input,
+  select,
+  textarea {
+    display: none !important;
+  }
+
+  body, html {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    font-family: 'Cairo', sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Reset application main wrapper bounds */
+  main, div:has(> main) {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  /* Outer card container formatting */
+  .max-w-4xl {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Batch print page break */
+  .page-break-after-always {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+}

@@ -1,0 +1,365 @@
+import React, { useState } from 'react';
+import { useApp } from '../context/AppContext';
+import { UserRole } from '../types';
+import { useNavigate } from 'react-router-dom';
+import vitasLogo from '../../assets/VitasLogo.jpeg';
+
+export const Header: React.FC = () => {
+  const navigate = useNavigate();
+  const {
+    theme,
+    toggleTheme,
+    language,
+    toggleLanguage,
+    t,
+    currentUser,
+    setCurrentUserRole,
+    setCurrentUser,
+    setAuthenticated,
+    setIsSidebarOpen,
+    isSidebarOpen,
+    setIsSearchOpen,
+    notifications,
+    resetToZeroData,
+    setActiveModuleId,
+    activeModuleId
+  } = useApp();
+
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifMenu, setShowNotifMenu] = useState(false);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const isDark = theme === 'dark';
+
+  // Handle null currentUser - show simplified header or redirect
+  if (!currentUser) {
+    return (
+      <header className={`sticky top-0 z-30 h-16 ${isDark ? 'bg-[#0a0c10]/95 border-white/10 text-white' : 'bg-[#e8ebef]/95 border-slate-300 text-slate-800 shadow-sm'} backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden`}>
+        <div className="flex items-center gap-3">
+          <img src={vitasLogo} alt="VITAS Iraq Logo" className="w-10 h-10 rounded-full object-cover border-2 border-teal-500/40 shadow-md bg-white" />
+          <span className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>VITAS Iraq HRMS</span>
+        </div>
+      </header>
+    );
+  }
+
+  const roles: UserRole[] = [
+    'Super Admin',
+    'HR Manager',
+    'Recruiter',
+    'Department Head',
+    'Employee',
+    'IT Admin',
+    'Compliance Officer'
+  ];
+
+  const currentUserName = language === 'en' && currentUser.name === 'مدير الموارد البشرية'
+    ? 'HR Manager'
+    : currentUser.name || 'User';
+
+  return (
+    <header className={`sticky top-0 z-30 h-16 ${isDark ? 'bg-[#0a0c10]/95 border-white/10 text-white' : 'bg-[#e8ebef]/95 border-slate-300 text-slate-800 shadow-sm'} backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden`}>
+      {/* Left / Start Section - Logo & Sidebar Toggle */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+          title={t('تبديل القائمة الجانبية', 'Toggle Sidebar')}
+        >
+          <span className="material-symbols-outlined text-2xl">
+            {isSidebarOpen ? 'menu_open' : 'menu'}
+          </span>
+        </button>
+
+        {/* System Brand Logo */}
+        <div 
+          onClick={() => setActiveModuleId('dash-overview')} 
+          className="flex items-center gap-2.5 cursor-pointer group select-none"
+        >
+          <img 
+            src={vitasLogo} 
+            alt="VITAS IRAQ Logo" 
+            className="w-10 h-10 rounded-full object-cover border-2 border-teal-500/40 shadow-lg shadow-teal-600/25 group-hover:scale-105 transition-transform bg-white shrink-0" 
+          />
+          <div className="hidden sm:block">
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold text-lg text-white tracking-tight font-['Inter',sans-serif]">
+                VITAS<span className="text-teal-400">IRAQ</span>
+              </span>
+              <span className="text-[10px] bg-teal-500/10 text-teal-400 border border-teal-500/20 px-1.5 py-0.5 rounded font-mono font-semibold">
+                HRMS
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 -mt-1 font-medium">
+              {t('بوابة الموارد البشرية المؤسسية', 'Enterprise HR Portal')}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Middle - Universal Search Bar */}
+      <div className="flex-1 max-w-xl mx-4 hidden md:block">
+        <button
+          onClick={() => setIsSearchOpen(true)}
+          className="w-full h-10 px-3.5 bg-white/5 border border-white/10 rounded-xl text-slate-400 hover:text-slate-200 hover:border-teal-500/50 flex items-center justify-between text-sm transition-all shadow-inner group"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-teal-400 group-hover:scale-110 transition-transform">
+              search
+            </span>
+            <span className="font-normal text-slate-400">
+              {t('بحث شامل في النظام (موظفين، أقسام، أصول، لوائح)...', 'Global search system (employees, departments, assets, rules)...')}
+            </span>
+          </div>
+          <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono text-slate-400 bg-white/5 border border-white/10 rounded shadow-sm">
+            ⌘K
+          </kbd>
+        </button>
+      </div>
+
+      {/* Right / End Section - Actions, Theme, Language, Role, User Menu */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Mobile Search Icon */}
+        <button
+          onClick={() => setIsSearchOpen(true)}
+          className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+          title={t('البحث', 'Search')}
+        >
+          <span className="material-symbols-outlined">search</span>
+        </button>
+
+        {/* Language Toggle Button */}
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-teal-600/10 text-teal-400 border border-teal-500/30 hover:bg-teal-600 hover:text-white transition-all font-bold text-xs"
+          title={t('Switch to English', 'التحويل إلى اللغة العربية')}
+        >
+          <span className="material-symbols-outlined text-lg">translate</span>
+          <span>{language === 'ar' ? 'English' : 'عربي'}</span>
+        </button>
+
+        {/* Role Switcher Selector */}
+        <div className="hidden lg:flex items-center gap-1.5 bg-white/5 p-1 rounded-xl border border-white/10">
+          <span className="material-symbols-outlined text-slate-400 text-sm ml-1">
+            admin_panel_settings
+          </span>
+          <select
+            value={currentUser.role}
+            onChange={(e) => setCurrentUserRole(e.target.value as UserRole)}
+            className="bg-transparent text-xs font-semibold text-slate-200 focus:outline-none cursor-pointer py-1"
+            title={t('تبديل دور المستخدم للأمان والصلاحيات', 'Switch user role for permissions')}
+          >
+            {roles.map(r => (
+              <option key={r} value={r} className="bg-[#111827] text-slate-100">
+                {r}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Company News Button */}
+        <button
+          onClick={() => setActiveModuleId('emp-news')}
+          className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
+            activeModuleId === 'emp-news'
+              ? 'bg-teal-600 text-white border-teal-500 shadow-lg shadow-teal-600/30'
+              : 'bg-white/5 text-slate-300 border-white/10 hover:text-teal-400 hover:border-teal-500/40'
+          }`}
+          title={t('أخبار وإعلانات المؤسسة', 'Company News & Announcements')}
+        >
+          <span className="material-symbols-outlined text-xl">newspaper</span>
+          <span className="hidden md:inline text-xs">{t('أخبار المؤسسة', 'Company News')}</span>
+        </button>
+
+        {/* Theme Toggle Button (Light/Dark) */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-xl bg-white/5 text-slate-300 border border-white/10 hover:text-teal-400 hover:border-teal-500/40 transition-all"
+          title={theme === 'dark' ? t('التحويل للوضع الفاتح', 'Switch to Light Mode') : t('التحويل للوضع الداكن', 'Switch to Dark Mode')}
+        >
+          <span className="material-symbols-outlined text-xl">
+            {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+          </span>
+        </button>
+
+        {/* Notifications Button */}
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifMenu(!showNotifMenu)}
+            className="p-2 rounded-xl bg-white/5 text-slate-300 border border-white/10 hover:text-teal-400 hover:border-teal-500/40 transition-all relative"
+            title={t('الإشعارات', 'Notifications')}
+          >
+            <span className="material-symbols-outlined text-xl">notifications</span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-teal-600 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Notifications Dropdown */}
+          {showNotifMenu && (
+            <div className={`absolute ${language === 'ar' ? 'left-0' : 'right-0'} mt-2 w-80 sm:w-96 bg-[#111827] border border-white/10 rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150`}>
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-teal-400">notifications_active</span>
+                  <h3 className="font-bold text-sm text-white">
+                    {t('مركز التنبيهات', 'Notification Center')}
+                  </h3>
+                </div>
+                <span className="text-xs bg-teal-500/10 text-teal-400 border border-teal-500/20 px-2 py-0.5 rounded-full font-medium">
+                  {notifications.length} {t('تنبيهات', 'notifications')}
+                </span>
+              </div>
+
+              <div className="py-2 max-h-64 overflow-y-auto space-y-2">
+                {notifications.length === 0 ? (
+                  <div className="text-center py-6 text-slate-500">
+                    <span className="material-symbols-outlined text-3xl mb-1 text-slate-600">
+                      notifications_off
+                    </span>
+                    <p className="text-xs">{t('لا توجد إشعارات جديدة حتى الآن', 'No new notifications yet')}</p>
+                  </div>
+                ) : (
+                  notifications.map(n => (
+                    <div
+                      key={n.id}
+                      className={`p-3 rounded-xl border text-xs transition-colors ${
+                        n.read
+                          ? 'bg-white/[0.02] border-white/5 text-slate-400'
+                          : 'bg-teal-500/5 border-teal-500/20 text-slate-200 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-bold mb-1">
+                        <span>{n.title}</span>
+                        <span className="text-[10px] text-slate-500">{n.timestamp}</span>
+                      </div>
+                      <p className="text-slate-400">{n.message}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-white/10 text-center">
+                <button
+                  onClick={() => {
+                    setActiveModuleId('supp-notif-center');
+                    setShowNotifMenu(false);
+                  }}
+                  className="text-xs font-bold text-teal-400 hover:text-teal-300 py-1 transition-colors"
+                >
+                  {t('عرض كافة الإشعارات والتحكم الإداري ←', 'View all notifications & settings →')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* User Profile Menu Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10"
+          >
+            <div className="w-9 h-9 rounded-xl bg-teal-600/20 border border-teal-500/30 flex items-center justify-center text-teal-400 font-bold text-sm shadow">
+              {currentUserName.slice(0, 2)}
+            </div>
+            <div className="hidden xl:block text-start">
+              <p className="text-xs font-bold text-white leading-tight">
+                {currentUserName}
+              </p>
+              <p className="text-[10px] text-teal-400 font-medium">{currentUser.role}</p>
+            </div>
+            <span className="material-symbols-outlined text-slate-400 text-lg hidden sm:block">
+              expand_more
+            </span>
+          </button>
+
+          {/* Profile Dropdown Menu */}
+          {showProfileMenu && (
+            <div className={`absolute ${language === 'ar' ? 'left-0' : 'right-0'} mt-2 w-64 bg-[#111827] border border-white/10 rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150`}>
+              <div className="p-2 border-b border-white/10 mb-2">
+                <p className="font-bold text-sm text-white">
+                  {currentUserName}
+                </p>
+                <p className="text-xs text-slate-400 font-mono">{currentUser.email}</p>
+                <div className="mt-2 inline-flex items-center gap-1 text-[10px] bg-teal-500/10 text-teal-400 border border-teal-500/20 px-2 py-0.5 rounded-md font-semibold">
+                  <span className="material-symbols-outlined text-[12px]">verified_user</span>
+                  {currentUser.role}
+                </div>
+              </div>
+
+              <div className="space-y-1 text-xs font-medium">
+                <button
+                  onClick={() => {
+                    setActiveModuleId('emp-profile');
+                    setShowProfileMenu(false);
+                  }}
+                  className="w-full text-start px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-teal-400 text-base">account_box</span>
+                  {t('ملفي الشخصي الوظيفي', 'My Employee Profile')}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveModuleId('supp-profile-settings');
+                    setShowProfileMenu(false);
+                  }}
+                  className="w-full text-start px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-teal-400 text-base">settings</span>
+                  {t('إعدادات وتفضيلات الحساب', 'Account Settings & Preferences')}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveModuleId('sec-roles-permissions');
+                    setShowProfileMenu(false);
+                  }}
+                  className="w-full text-start px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-teal-400 text-base">admin_panel_settings</span>
+                  {t('إدارة الصلاحيات والأدوار', 'Roles & Permissions Management')}
+                </button>
+
+                <div className="pt-2 border-t border-white/10 mt-2 space-y-1">
+                  <button
+                    onClick={() => {
+                      const confirmMsg = t(
+                        'هل أنت تأكد من تهيئة النظام وتفريغ كافة البيانات المدخلة لتكون صفراً تماماً؟',
+                        'Are you sure you want to reset and wipe all system data?'
+                      );
+                      if (confirm(confirmMsg)) {
+                        resetToZeroData();
+                        setShowProfileMenu(false);
+                      }
+                    }}
+                    className="w-full text-start px-3 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 font-bold"
+                  >
+                    <span className="material-symbols-outlined text-base">restart_alt</span>
+                    {t('إعادة ضبط البيانات لصفر (تفريغ الكلي)', 'Reset All System Data (Wipe)')}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setCurrentUser(null);
+                      setAuthenticated(false);
+                      setShowProfileMenu(false);
+                      navigate('/login');
+                    }}
+                    className="w-full text-start px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-base">logout</span>
+                    {t('تسجيل الخروج', 'Logout')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+};
