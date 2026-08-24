@@ -579,7 +579,7 @@ app.get('/api/employees/:id/photo', async (req, res) => {
 // Employees
 app.get('/api/employees', async (req, res) => {
   try {
-    const results = await query('SELECT * FROM employees ORDER BY created_at DESC');
+    const results = await query('SELECT * FROM employees ORDER BY id DESC');
     const formatDateStr = (val) => {
       if (!val) return '';
       if (val instanceof Date) {
