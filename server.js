@@ -361,17 +361,26 @@ const ensureSettingsSeededAndSynced = async () => {
       // Column might already exist, ignore error
     }
 
-    // 6. Sync unique Branches from employees table
+    await syncSettingsFromEmployees();
+    console.log('Successfully seeded & synchronized settings master tables.');
+  } catch (e) {
+    console.error('Error in ensureSettingsSeededAndSynced:', e.message);
+  }
+};
+
+const syncSettingsFromEmployees = async () => {
+  try {
+    // 1. Sync unique Branches from employees table
     const empLocations = await query(`
-      SELECT DISTINCT location_ar, location_en FROM employees 
-      WHERE (location_ar IS NOT NULL AND location_ar != '') OR (location_en IS NOT NULL AND location_en != '')
+      SELECT DISTINCT branch, branch_en FROM employees 
+      WHERE (branch IS NOT NULL AND branch != '') OR (branch_en IS NOT NULL AND branch_en != '')
     `).catch(() => []);
     const existingBranches = await query('SELECT * FROM branches').catch(() => []);
     
     if (Array.isArray(empLocations) && Array.isArray(existingBranches)) {
       for (const loc of empLocations) {
-        const nameAr = loc.location_ar || loc.location_en;
-        const nameEn = loc.location_en || loc.location_ar;
+        const nameAr = loc.branch || loc.branch_en;
+        const nameEn = loc.branch_en || loc.branch;
         if (nameAr && !existingBranches.some(b => b.name_ar === nameAr || b.name === nameAr || b.name_en === nameEn)) {
           await query(
             'INSERT INTO branches (id, name, name_ar, name_en, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
@@ -381,7 +390,7 @@ const ensureSettingsSeededAndSynced = async () => {
       }
     }
 
-    // 7. Sync unique Positions from employees table
+    // 2. Sync unique Positions from employees table
     const empPositions = await query(`
       SELECT DISTINCT position, position_ar, position_en FROM employees 
       WHERE (position_ar IS NOT NULL AND position_ar != '') OR (position_en IS NOT NULL AND position_en != '') OR (position IS NOT NULL AND position != '')
@@ -401,7 +410,7 @@ const ensureSettingsSeededAndSynced = async () => {
       }
     }
 
-    // 8. Sync unique Departments from employees table
+    // 3. Sync unique Departments from employees table
     const empDepts = await query(`
       SELECT DISTINCT department FROM employees 
       WHERE department IS NOT NULL AND department != ''
@@ -420,7 +429,7 @@ const ensureSettingsSeededAndSynced = async () => {
       }
     }
 
-    // 9. Sync unique Contract Terms from employees table
+    // 4. Sync unique Contract Terms from employees table
     const empContracts = await query(`
       SELECT DISTINCT term_of_contract FROM employees 
       WHERE term_of_contract IS NOT NULL AND term_of_contract != ''
@@ -438,9 +447,8 @@ const ensureSettingsSeededAndSynced = async () => {
         }
       }
     }
-    console.log('Successfully seeded & synchronized settings master tables.');
-  } catch (e) {
-    console.error('Error in ensureSettingsSeededAndSynced:', e.message);
+  } catch (err) {
+    console.warn('Error in syncSettingsFromEmployees:', err.message);
   }
 };
 
@@ -1567,66 +1575,11 @@ app.post('/api/notifications', async (req, res) => {
 });
 
 // Branches
-app.get('/api/branches', async (req, res) => {
+app.get(['/api/branches', '/api/settings/branches'], async (req, res) => {
   try {
-    const results = await query('SELECT * FROM branches ORDER BY name');
+    await syncSettingsFromEmployees().catch(() => {});
+    const results = await query('SELECT * FROM branches ORDER BY sort_order ASC, name_ar ASC, id DESC');
     res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Settings - Branches CRUD
-app.get('/api/settings/branches', async (req, res) => {
-  try {
-    const results = await query('SELECT * FROM branches ORDER BY name');
-    res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/settings/branches', async (req, res) => {
-  try {
-    const { name, name_ar, name_en, address, city, country, phone, email, manager_id, status } = req.body;
-    const id = `BR${Date.now()}`;
-    const branchAr = name_ar || name || '';
-    const branchEn = name_en || '';
-    
-    const sql = 'INSERT INTO branches (id, name, name_ar, name_en, address, city, country, phone, email, manager_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-    const params = [id, branchAr, branchAr, branchEn, address, city, country || 'Iraq', phone, email, manager_id, status || 'Active'];
-    
-    await query(sql, params);
-    const result = await query('SELECT * FROM branches WHERE id = ?', [id]);
-    res.json(result[0]);
-  } catch (err) {
-    console.error('Error in POST /api/settings/branches:', err);
-    res.status(500).json({ error: err.message, details: err.sqlMessage });
-  }
-});
-
-app.put('/api/settings/branches/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, name_ar, name_en, address, city, country, phone, email, manager_id, status } = req.body;
-    const branchAr = name_ar || name || '';
-    const branchEn = name_en || '';
-    await query(
-      'UPDATE branches SET name = ?, name_ar = ?, name_en = ?, address = ?, city = ?, country = ?, phone = ?, email = ?, manager_id = ?, status = ? WHERE id = ?',
-      [branchAr, branchAr, branchEn, address, city, country, phone, email, manager_id, status, id]
-    );
-    const result = await query('SELECT * FROM branches WHERE id = ?', [id]);
-    res.json(result[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.delete('/api/settings/branches/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    await query('DELETE FROM branches WHERE id = ?', [id]);
-    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1635,7 +1588,8 @@ app.delete('/api/settings/branches/:id', async (req, res) => {
 // Settings - Departments CRUD
 app.get(['/api/settings/departments', '/api/departments'], async (req, res) => {
   try {
-    const results = await query('SELECT * FROM departments ORDER BY sort_order ASC, id DESC');
+    await syncSettingsFromEmployees().catch(() => {});
+    const results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id DESC');
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1688,7 +1642,8 @@ app.delete('/api/settings/departments/:id', async (req, res) => {
 // Settings - Positions CRUD
 app.get(['/api/settings/positions', '/api/positions'], async (req, res) => {
   try {
-    const results = await query('SELECT * FROM positions ORDER BY sort_order ASC, id DESC');
+    await syncSettingsFromEmployees().catch(() => {});
+    const results = await query('SELECT * FROM positions ORDER BY sort_order ASC, name_ar ASC, id DESC');
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
