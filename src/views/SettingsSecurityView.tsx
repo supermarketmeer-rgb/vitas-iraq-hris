@@ -1158,11 +1158,44 @@ export const SettingsSecurityView: React.FC = () => {
               }
             }
 
-            const fullName = getVal(row, ['Full Name (Arabic)', 'fullName', 'full_name', 'full_name_ar', 'الاسم الكامل (عربي)', 'الاسم الكامل(عربي)', 'الاسم الكامل', 'اسم الموظف', 'الاسم العربي', 'الاسم', 'الاسم الثلاثي', 'اسم الموظف الثلاثي', 'اسم الموظف الكامل', 'Full Name', 'Name']);
+            const fullNameVal = getVal(row, [
+              'Full Name (Arabic)', 'fullName', 'full_name', 'full_name_ar', 'الاسم الكامل (عربي)', 'الاسم الكامل(عربي)', 
+              'الاسم الكامل', 'اسم الموظف', 'الاسم العربي', 'الاسم', 'الاسم الثلاثي', 'اسم الموظف الثلاثي', 
+              'اسم الموظف الكامل', 'Full Name', 'Name', 'Employee Name', 'Emp Name', 'Staff Name', 'اسم الموظف الرباعي', 
+              'الموظف', 'اسم الشخص', 'اسم الموارد', 'اسم الموظف واللقب', 'الاسم واللقب', 'الموظفين', 'الموظف/ة'
+            ]);
+
+            let fullName = fullNameVal;
+            if (!fullName && row && typeof row === 'object') {
+              const rowKeys = Object.keys(row);
+              for (const rk of rowKeys) {
+                const cleanK = normalizeHeaderKey(rk);
+                if (cleanK.includes('اسم') || cleanK.includes('name') || cleanK.includes('موظف') || cleanK.includes('كامل') || cleanK.includes('ثلاثي')) {
+                  const v = row[rk];
+                  if (v !== undefined && v !== null && String(v).trim() !== '') {
+                    fullName = String(v).trim();
+                    break;
+                  }
+                }
+              }
+            }
+
+            if (!fullName && row && typeof row === 'object') {
+              const vals = Object.values(row)
+                .map(v => String(v || '').trim())
+                .filter(v => v.length > 1 && isNaN(Number(v)) && !v.includes('http') && !v.includes('@') && !v.includes('/') && !v.includes('-'));
+              if (vals.length > 0) {
+                fullName = vals[0];
+              }
+            }
+
             if (!fullName) continue;
 
             const fullNameEn = getVal(row, ['Full Name (English)', 'fullNameEn', 'full_name_en', 'الاسم الكامل (إنجليزي)', 'الاسم الكامل (انجليزي)', 'الاسم الانكليزي', 'الاسم الإنجليزي', 'English Name', 'Full Name English']) || fullName;
-            const empCode = getVal(row, ['Employee Code', 'empCode', 'employeeId', 'employee_id', 'رمز الموظف', 'كود الموظف', 'رقم الموظف', 'الرمز الوظيفي', 'Code', 'ID']);
+            let empCode = getVal(row, ['Employee Code', 'empCode', 'employeeId', 'employee_id', 'رمز الموظف', 'كود الموظف', 'رقم الموظف', 'الرمز الوظيفي', 'Code', 'ID', 'ت', 'م', 'الرقم', 'رقم']);
+            if (!empCode) {
+              empCode = `VTS-${1000 + importedEmployees.length + 1}`;
+            }
             const badgeNo = getVal(row, ['Badge Number', 'badgeNo', 'badge_no', 'رقم البادج', 'البادج', 'رقم الهوية', 'Badge']);
             const dob = parseExcelDate(getVal(row, ['Date of Birth', 'dob', 'تاريخ الميلاد', 'تاريخ ولادة', 'DOB', 'Birth Date']));
             const email = getVal(row, ['Email', 'email', 'البريد الإلكتروني المؤسسي', 'البريد الإلكتروني', 'البريد الالكتروني', 'الإيميل', 'الايميل', 'البريد المؤسسي']);
