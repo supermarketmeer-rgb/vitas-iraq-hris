@@ -889,13 +889,19 @@ app.post('/api/employees', async (req, res) => {
         }
       } else {
         console.log('Inserting new employee...');
-        const insertCols = validColumns.filter(col => col !== 'id');
+        const generatedId = candidateData.id || `EMP-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+        candidateData.id = generatedId;
+
+        let insertCols = validColumns;
+        if (!insertCols.includes('id')) {
+          insertCols = ['id', ...insertCols];
+        }
         const insertVals = insertCols.map(col => candidateData[col]);
         const placeholders = insertCols.map(() => '?').join(', ');
-        
-        const insertResult = await query(`INSERT INTO employees (${insertCols.join(', ')}) VALUES (${placeholders})`, insertVals);
-        finalEmpDbId = insertResult.insertId;
-        console.log('Employee inserted successfully with generated ID:', finalEmpDbId);
+
+        await query(`INSERT INTO employees (${insertCols.join(', ')}) VALUES (${placeholders})`, insertVals);
+        finalEmpDbId = generatedId;
+        console.log('Employee inserted successfully with ID:', finalEmpDbId);
       }
 
       if (finalEmpDbId && Array.isArray(processedChildrenList)) {
