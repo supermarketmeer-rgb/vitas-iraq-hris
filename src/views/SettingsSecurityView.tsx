@@ -1015,27 +1015,32 @@ export const SettingsSecurityView: React.FC = () => {
 
         let rawRows = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-        // Header auto-detection if sheet has top title rows
-        const rawGrid = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-        if (rawGrid.length > 0) {
-          // Find header row index by searching for common keywords
-          const headerKeywords = ['الاسم', 'name', 'موظف', 'code', 'رمز', 'بادج', 'القسم', 'department', 'title', 'عنوان', 'رقم'];
-          const headerIndex = rawGrid.findIndex(row => 
-            Array.isArray(row) && row.some(cell => 
-              cell && headerKeywords.some(kw => normalizeHeaderKey(cell).includes(normalizeHeaderKey(kw)))
-            )
-          );
+        // Only search rawGrid for header row if rawRows is empty or contains empty rows
+        const hasValidObjects = rawRows && rawRows.length > 0 && rawRows.some(r => r && typeof r === 'object' && Object.values(r).some(v => v !== null && v !== undefined && String(v).trim() !== ''));
+        
+        if (!hasValidObjects) {
+          const rawGrid = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+          if (rawGrid.length > 0) {
+            const headerKeywords = ['الاسم', 'name', 'موظف', 'code', 'رمز', 'بادج', 'القسم', 'department', 'title', 'عنوان', 'رقم'];
+            const headerIndex = rawGrid.findIndex(row => 
+              Array.isArray(row) && row.some(cell => 
+                cell && headerKeywords.some(kw => normalizeHeaderKey(cell).includes(normalizeHeaderKey(kw)))
+              )
+            );
 
-          if (headerIndex >= 0 && headerIndex < rawGrid.length - 1) {
-            const headers = rawGrid[headerIndex].map(h => String(h || '').trim());
-            const dataRows = rawGrid.slice(headerIndex + 1);
-            rawRows = dataRows.map(rowArr => {
-              const obj: any = {};
-              headers.forEach((h, colIdx) => {
-                if (h) obj[h] = rowArr[colIdx];
+            if (headerIndex >= 0 && headerIndex < rawGrid.length - 1) {
+              const headers = rawGrid[headerIndex].map(h => String(h || '').trim());
+              const dataRows = rawGrid.slice(headerIndex + 1);
+              rawRows = dataRows.map(rowArr => {
+                const obj: any = {};
+                if (Array.isArray(rowArr)) {
+                  headers.forEach((h, colIdx) => {
+                    if (h && rowArr[colIdx] !== undefined) obj[h] = rowArr[colIdx];
+                  });
+                }
+                return obj;
               });
-              return obj;
-            });
+            }
           }
         }
 
@@ -1367,15 +1372,16 @@ export const SettingsSecurityView: React.FC = () => {
             ? `تم استيراد ${importedEmployees.length} موظف بنجاح وإعادة تحديث دليل الموظفين والإعدادات` 
             : `Successfully imported ${importedEmployees.length} employees and updated directory & settings`);
         } else {
+          const detail = errorsList.length > 0 ? `\n\nالتفاصيل: ${errorsList.slice(0, 3).join(', ')}` : '';
           alert(language === 'ar' 
-            ? `لم يتم استيراد أي موظف. يرجى التأكد من اختيار ملف يحتوي على بيانات الموظفين وعناوين الأعمدة الصحيحة.`
-            : `No employees imported. Please ensure the file contains valid employee rows and correct headers.`);
+            ? `لم يتم استيراد أي موظف. يرجى التأكد من اختيار ملف يحتوي على بيانات الموظفين وعناوين الأعمدة الصحيحة.${detail}`
+            : `No employees imported. Please ensure the file contains valid employee rows and correct headers.${detail}`);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error processing Employee Excel file:', error);
         alert(language === 'ar' 
-          ? 'حدث خطأ في معالجة ملف Excel للموظفين' 
-          : 'Error processing Employee Excel file');
+          ? `حدث خطأ في معالجة ملف Excel للموظفين: ${error?.message || String(error)}` 
+          : `Error processing Employee Excel file: ${error?.message || String(error)}`);
       }
     };
     reader.readAsArrayBuffer(file);
