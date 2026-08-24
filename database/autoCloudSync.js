@@ -18,10 +18,25 @@ export async function startAutoCloudSync(localPool) {
 }
 
 export async function syncLocalToCloud(localPool) {
-  const cloudHost = process.env.CLOUD_DB_HOST || process.env.RAILWAY_PUBLIC_DOMAIN;
-  if (!cloudHost) {
-    // If no cloud sync credentials specified, skip silently
-    return { success: false, reason: 'No CLOUD_DB_HOST configured' };
+  let cloudHost = process.env.CLOUD_DB_HOST;
+  let cloudPort = parseInt(process.env.CLOUD_DB_PORT || '3306');
+  let cloudUser = process.env.CLOUD_DB_USER || 'root';
+  let cloudPassword = process.env.CLOUD_DB_PASSWORD || '';
+  let cloudDatabase = process.env.CLOUD_DB_NAME || 'railway';
+
+  if (process.env.CLOUD_DB_URL) {
+    try {
+      const parsedUrl = new URL(process.env.CLOUD_DB_URL);
+      cloudHost = parsedUrl.hostname;
+      cloudPort = parseInt(parsedUrl.port || '3306');
+      cloudUser = parsedUrl.username || 'root';
+      cloudPassword = parsedUrl.password || '';
+      cloudDatabase = parsedUrl.pathname.replace('/', '') || 'railway';
+    } catch (e) {}
+  }
+
+  if (!cloudHost || cloudHost === 'proxy.rlwy.net' || cloudHost === 'mysql.railway.internal') {
+    return { success: false, reason: 'Invalid or placeholder CLOUD_DB_HOST. Please update .env with actual Railway Public TCP Proxy host and port.' };
   }
 
   if (isSyncing) return { success: false, reason: 'Sync already in progress' };
@@ -29,14 +44,14 @@ export async function syncLocalToCloud(localPool) {
 
   let cloudConn = null;
   try {
-    console.log('[AUTO CLOUD SYNC] Starting background sync to cloud database...');
+    console.log(`[AUTO CLOUD SYNC] Connecting to cloud database at ${cloudHost}:${cloudPort}...`);
     
     cloudConn = await mysql.createConnection({
       host: cloudHost,
-      port: parseInt(process.env.CLOUD_DB_PORT || '3306'),
-      user: process.env.CLOUD_DB_USER || 'root',
-      password: process.env.CLOUD_DB_PASSWORD || '',
-      database: process.env.CLOUD_DB_NAME || 'railway',
+      port: cloudPort,
+      user: cloudUser,
+      password: cloudPassword,
+      database: cloudDatabase,
       connectTimeout: 10000
     });
 
