@@ -76,6 +76,26 @@ const query = (sql, params) => {
   });
 };
 
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+app.get('/api/init-db', async (req, res) => {
+  try {
+    const force = req.query.force === 'true';
+    const result = await initDatabase(db, force);
+    await loadEmployeeColumns().catch(() => {});
+    await ensureCandidateColumns().catch(() => {});
+    await ensureJobVacancyColumns().catch(() => {});
+    await ensureEmployeeChildrenColumns().catch(() => {});
+    await ensureOnHoldColumn().catch(() => {});
+    await ensureSettingsSeededAndSynced().catch(() => {});
+    res.json({ status: 'success', result });
+  } catch (err) {
+    res.status(500).json({ status: 'error', error: err.message, stack: err.stack });
+  }
+});
+
 let employeeTableColumns = new Set();
 
 const ensureSettingsSeededAndSynced = async () => {
