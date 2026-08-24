@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import fs from 'fs';
 import config from './database/config.mjs';
+import { initDatabase } from './database/initDatabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,8 +52,12 @@ db.getConnection(async (err, connection) => {
     console.error('Database name:', config.database);
     return;
   }
-  console.log('Connected to MySQL database pool: vitasiraq_hris_db');
+  console.log('Connected to MySQL database pool:', config.database);
   connection.release();
+  
+  // Auto-initialize database tables and seed data if missing
+  await initDatabase(db);
+
   await loadEmployeeColumns();
   await ensureCandidateColumns();
   await ensureJobVacancyColumns();
@@ -2826,6 +2831,13 @@ import('./src/tax_module/server/taxRoutes.js').then(({ registerTaxModuleRoutes }
   registerTaxModuleRoutes(app, query);
 }).catch(err => {
   console.error('Error initializing tax module routes:', err);
+});
+
+// SPA React Router fallback route
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads')) {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  }
 });
 
 // Start server
