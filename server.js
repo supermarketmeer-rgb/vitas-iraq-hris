@@ -7,6 +7,7 @@ import multer from 'multer';
 import fs from 'fs';
 import config from './database/config.mjs';
 import { initDatabase } from './database/initDatabase.js';
+import { startAutoCloudSync, syncLocalToCloud } from './database/autoCloudSync.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,6 +58,9 @@ db.getConnection(async (err, connection) => {
   
   // Auto-initialize database tables and seed data if missing
   await initDatabase(db);
+  
+  // Launch non-blocking background auto-sync to Cloud
+  startAutoCloudSync(db);
 
   await loadEmployeeColumns();
   await ensureCandidateColumns();
@@ -77,7 +81,16 @@ const query = (sql, params) => {
 };
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
+  res.json({ status: 'ok', database: 'connected', time: new Date().toISOString() });
+});
+
+app.post('/api/sync-now', async (req, res) => {
+  try {
+    const result = await syncLocalToCloud(db);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/init-db', async (req, res) => {
