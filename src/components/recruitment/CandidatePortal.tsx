@@ -1,3 +1,8 @@
+import React, { useState, useEffect } from 'react';
+import { useApp } from '../../context/AppContext';
+import { JobVacancy, Candidate } from '../../types';
+import { api } from '../../api/client';
+
 const TITLE_MAP: Record<string, { ar: string; en: string }> = {
   'مسؤول قروض': { ar: 'مسؤول قروض', en: 'Loan Officer' },
   'Loan Officer': { ar: 'مسؤول قروض', en: 'Loan Officer' },
