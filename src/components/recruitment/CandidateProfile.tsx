@@ -264,7 +264,7 @@ export const CandidateProfile: React.FC = () => {
     <div className="space-y-6">
       {/* Top Header & Search Bar */}
       <div className={`p-6 rounded-2xl border transition-all ${
-        isDark ? 'bg-[#111827] border-white/10 shadow-lg' : 'bg-white border-slate-300 shadow-md'
+        isDark ? 'bg-[#111827] border-white/10 shadow-lg' : 'bg-[#e8ebef] border-slate-300 shadow-sm'
       }`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -277,7 +277,7 @@ export const CandidateProfile: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className={`px-4 py-2 rounded-xl border text-center ${isDark ? 'bg-[#0f172a] border-white/10' : 'bg-slate-50 border-slate-300'}`}>
+            <div className={`px-4 py-2 rounded-xl border text-center ${isDark ? 'bg-[#0f172a] border-white/10' : 'bg-white border-slate-300 shadow-sm'}`}>
               <div className="text-lg font-bold text-teal-600 dark:text-teal-400 font-mono">{filteredCandidates.length}</div>
               <div className="text-[10px] font-normal" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>{t('مرشح مسجل', 'Registered Candidates')}</div>
             </div>
@@ -295,7 +295,7 @@ export const CandidateProfile: React.FC = () => {
               onChange={e => setSearchTerm(e.target.value)}
               style={{ color: isDark ? '#ffffff' : '#0f172a' }}
               className={`w-full pr-10 pl-4 py-2 text-xs font-normal rounded-xl outline-none border transition-all ${
-                isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400 text-white' : 'bg-slate-50 border-slate-300 focus:border-teal-600 text-slate-900'
+                isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400 text-white' : 'bg-white border-slate-300 focus:border-teal-600 text-slate-900 shadow-sm'
               }`}
             />
           </div>
@@ -327,7 +327,7 @@ export const CandidateProfile: React.FC = () => {
       {/* 4-Columns Layout Grid (4 Candidate Profile Cards per row) */}
       {filteredCandidates.length === 0 ? (
         <div className={`p-12 rounded-2xl border text-center ${
-          isDark ? 'bg-[#111827] border-white/10 text-slate-400' : 'bg-white border-slate-300 text-slate-900 shadow-md'
+          isDark ? 'bg-[#111827] border-white/10 text-slate-400' : 'bg-[#e8ebef] border-slate-300 text-slate-900 shadow-sm'
         }`}>
           <span className="material-symbols-outlined text-6xl text-slate-500 mb-4">person_off</span>
           <p className="text-slate-900 dark:text-slate-300 font-bold">{t('لا يوجد مرشحين متاحين في البحث حالياً', 'No candidates available matching criteria')}</p>
@@ -349,14 +349,14 @@ export const CandidateProfile: React.FC = () => {
                 className={`p-4 rounded-2xl border flex flex-col justify-between transition-all duration-300 hover:shadow-lg ${
                   isDark 
                     ? 'bg-[#111827] border-white/10 text-white hover:border-teal-500/40' 
-                    : 'bg-white border-slate-300 text-slate-900 shadow-md hover:border-teal-500/40'
+                    : 'bg-[#e8ebef] border-slate-300 text-slate-900 shadow-sm hover:border-teal-500/40'
                 }`}
               >
                 <div>
                   {/* Candidate Header: Photo & Name & Stage */}
                   <div className="flex items-start gap-3 mb-3">
                     <div className={`w-12 h-12 rounded-xl border flex items-center justify-center overflow-hidden flex-shrink-0 ${
-                      isDark ? 'bg-[#1e293b] border-slate-700' : 'bg-slate-100 border-slate-300'
+                      isDark ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-300 shadow-sm'
                     }`}>
                       {candidate.photoUrl ? (
                         <img src={candidate.photoUrl} alt={candidate.fullName} className="w-full h-full object-cover" />
@@ -417,7 +417,7 @@ export const CandidateProfile: React.FC = () => {
                     className={`p-2.5 rounded-xl border cursor-pointer transition-all duration-200 mb-3 flex items-center justify-between group ${
                       isDark
                         ? 'bg-[#0a0c10] border-teal-500/30 hover:border-teal-400 hover:bg-teal-950/20'
-                        : 'bg-slate-50 border-teal-600/30 hover:border-teal-600 hover:bg-teal-50/50 shadow-sm'
+                        : 'bg-white/80 border-teal-600/30 hover:border-teal-600 hover:bg-white shadow-sm'
                     }`}
                     title={t('انقر لاستعراض وطباعة السيرة الذاتية (CV)', 'Click to view and print candidate CV')}
                   >
@@ -445,7 +445,7 @@ export const CandidateProfile: React.FC = () => {
                   {/* Candidate Notes */}
                   {candidate.notes && (
                     <div className={`p-2.5 rounded-xl text-xs mb-3 border ${
-                      isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-100 border-slate-300'
+                      isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-white/80 border-slate-300'
                     }`}>
                       <h4 className="text-[10px] font-bold mb-0.5" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
                         {t('ملاحظات:', 'Notes:')}
