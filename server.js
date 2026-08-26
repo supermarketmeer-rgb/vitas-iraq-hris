@@ -21,6 +21,9 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
+app.use('/assets', express.static(path.join(__dirname, 'dist', 'assets')));
+app.use('/apply/assets', express.static(path.join(__dirname, 'dist', 'assets')));
+app.use('/portal/assets', express.static(path.join(__dirname, 'dist', 'assets')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Configure multer for memory storage (for image and PDF upload as binary data)
