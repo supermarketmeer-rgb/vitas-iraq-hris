@@ -17,6 +17,7 @@ import { api } from '../api/client';
 
 interface AppContextType {
   theme: ThemeMode;
+  isDark: boolean;
   toggleTheme: () => void;
   setTheme: (theme: ThemeMode) => void;
   
@@ -107,9 +108,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     try {
-      return (localStorage.getItem('vitas_theme') as ThemeMode) || 'light';
+      return (localStorage.getItem('vitas_theme') as ThemeMode) || 'dark';
     } catch {
-      return 'light';
+      return 'dark';
     }
   });
 
@@ -993,6 +994,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         theme,
+        isDark: theme === 'dark',
         toggleTheme,
         setTheme,
         language,

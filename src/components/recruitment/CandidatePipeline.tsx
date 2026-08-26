@@ -1020,7 +1020,7 @@ export const CandidatePipeline: React.FC = () => {
             onClick={() => setShowFilledJobs(!showFilledJobs)}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
               showFilledJobs 
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' 
+                ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/25' 
                 : isDark 
                   ? 'bg-[#1e293b] border border-slate-700 text-slate-200 hover:bg-[#334155]'
                   : 'bg-white border border-slate-300 text-slate-900 hover:bg-slate-100 shadow-sm'
@@ -1104,7 +1104,7 @@ export const CandidatePipeline: React.FC = () => {
                   <div className="text-xs font-bold truncate" style={{ color: isPressed ? '#ffffff' : (isDark ? '#ffffff' : '#0f172a') }}>
                     {step.title}
                   </div>
-                  <div className={`text-[11px] font-bold mt-1 ${isPressed ? 'text-teal-300' : 'text-teal-600 dark:text-teal-400'}`}>
+                  <div className={`text-[11px] font-bold mt-1 ${isPressed ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`}>
                     {step.count} {t('مرشح', 'candidates')}
                   </div>
                 </div>
@@ -1233,7 +1233,7 @@ export const CandidatePipeline: React.FC = () => {
                         <div className="min-w-0">
                           <div className="text-xs font-bold truncate flex items-center gap-1" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
                             <span>السيرة الذاتية (CV)</span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-teal-500/20 text-teal-700 dark:text-teal-300 font-bold">PDF</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-teal-500/20 text-teal-700 dark:text-white font-bold">PDF</span>
                           </div>
                           <div className="text-[10px] font-normal text-slate-500 dark:text-slate-400 truncate">
                             انقر للعرض والطباعة 🖨️
@@ -1517,7 +1517,7 @@ export const CandidatePipeline: React.FC = () => {
               })()}
 
               {cvModalCandidate.committeeOpinion && (
-                <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-800 dark:text-teal-300 space-y-2">
+                <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-800 dark:text-white space-y-2">
                   <h4 className="text-sm font-bold flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-base">rate_review</span>
                     توصيات وتقييم لجنة التقييم
@@ -1612,7 +1612,7 @@ export const CandidatePipeline: React.FC = () => {
                 </button>
                 <button
                   onClick={handleSaveInterview}
-                  className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-md flex items-center justify-center gap-2"
+                  className="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-md flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-sm">chat</span>
                   حفظ وإرسال دعوة واتساب
@@ -2004,7 +2004,7 @@ export const CandidatePipeline: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-700 dark:text-teal-300 text-xs font-bold">
+              <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-700 dark:text-white text-xs font-bold">
                 <span className="material-symbols-outlined text-sm align-middle ml-1">info</span>
                 عند الضغط على حفظ وإدخال البيانات، سيتم تسجيل الموظف فوراً في **Employee Directory** بجميع تفاصيله الأساسية، وسيصبح جاهزاً للبدء بإصدار العقد المناسب في قسم الموارد البشرية.
               </div>
@@ -2052,7 +2052,7 @@ export const CandidatePipeline: React.FC = () => {
                   setDirectorySuccessInfo(null);
                   setActiveModuleId('emp-directory');
                 }}
-                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-sm">open_in_new</span>
                 الانتقال إلى دليل الموظفين / إدارة العقود فوراً
@@ -2274,7 +2274,7 @@ export const CandidatePipeline: React.FC = () => {
               })()}
 
               {cvModalCandidate.committeeOpinion && (
-                <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-800 dark:text-teal-300 space-y-2">
+                <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-800 dark:text-white space-y-2">
                   <h4 className="text-sm font-bold flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-base">rate_review</span>
                     توصيات وتقييم لجنة التقييم

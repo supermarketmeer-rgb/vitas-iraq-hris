@@ -177,7 +177,7 @@ export const SearchableComboBox: React.FC<SearchableComboBoxProps> = ({
                   onClick={() => handleSelect(option)}
                   className={`px-3.5 py-2.5 cursor-pointer transition-colors ${
                     highlightedIndex === index 
-                      ? 'bg-teal-500/20 text-teal-400' 
+                      ? 'bg-teal-600 text-white shadow-md' 
                       : 'hover:bg-white/5 text-slate-200'
                   }`}
                 >

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../api/client';
 import * as XLSX from 'xlsx';
+import { DesktopSyncSettings } from '../components/DesktopSyncSettings';
 
 interface TabConfig {
   id: string;
@@ -98,6 +99,7 @@ export const SettingsSecurityView: React.FC = () => {
     { id: 'trainings', icon: 'school', labelAr: 'التدريبات', labelEn: 'Trainings' },
     { id: 'allowances', icon: 'settings_suggest', labelAr: 'السياسات', labelEn: 'Policies' },
     { id: 'templates', icon: 'edit_document', labelAr: 'القوالب', labelEn: 'Templates' },
+    { id: 'desktop-sync', icon: 'desktop_windows', labelAr: 'إعدادات Desktop والمزامنة', labelEn: 'Desktop & Sync' },
     { id: 'maintenance', icon: 'warning', labelAr: 'الصيانة', labelEn: 'Maintenance' },
   ];
 
@@ -1422,7 +1424,7 @@ export const SettingsSecurityView: React.FC = () => {
               activeTab === tab.id
                 ? theme === 'dark'
                   ? 'bg-teal-500/20 border-teal-500/30 text-teal-400'
-                  : 'bg-teal-100 border-teal-300 text-teal-700'
+                  : 'bg-teal-600 text-white shadow-md'
                 : tab.id === 'maintenance'
                 ? theme === 'dark'
                   ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20'
@@ -1503,6 +1505,9 @@ export const SettingsSecurityView: React.FC = () => {
             fileInputRef={fileInputRef}
             activeTab={activeTab}
           />
+        )}
+        {activeTab === 'desktop-sync' && (
+          <DesktopSyncSettings />
         )}
         {activeTab === 'status-changes' && (
           <DataTable
@@ -1677,7 +1682,7 @@ const DataTable: React.FC<DataTableProps> = ({
         <div className="flex items-center gap-3">
           <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${
             theme === 'dark' 
-              ? 'bg-teal-500/10 text-teal-400' 
+              ? 'bg-teal-600 text-white shadow-md' 
               : 'bg-teal-100 text-teal-600'
           }`}>
             <span className="material-symbols-outlined">{icon}</span>
@@ -1707,7 +1712,7 @@ const DataTable: React.FC<DataTableProps> = ({
                     console.error('onGenerateTemplate is not defined');
                   }
                 }}
-                className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-blue-600 transition-all pointer-events-auto cursor-pointer"
+                className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-teal-600 transition-all pointer-events-auto cursor-pointer"
                 title={language === 'ar' ? 'إنشاء قالب Excel' : 'Generate Excel Template'}
               >
                 <span className="material-symbols-outlined text-xs">table_view</span>
@@ -2524,7 +2529,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
                 e.stopPropagation();
                 addClauseRow();
               }}
-              className="bg-teal-600/10 hover:bg-teal-600/20 border border-teal-600/30 text-teal-400 font-bold text-xs px-4 py-2.5 rounded-xl transition-all hover:scale-105 pointer-events-auto cursor-pointer"
+              className="bg-teal-600 text-white shadow-md hover:bg-teal-500 font-bold text-xs px-4 py-2.5 rounded-xl transition-all hover:scale-105 pointer-events-auto cursor-pointer"
             >
               + {language === 'ar' ? 'إضافة بند جديد / Add Clause' : 'Add New Clause'}
             </button>

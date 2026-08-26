@@ -555,7 +555,7 @@ export const DynamicReportBuilder: React.FC = () => {
       )}
 
       {/* Top Banner & Control Bar */}
-      <div className="p-6 rounded-3xl dark-banner bg-gradient-to-r from-teal-900 via-teal-800 to-teal-900 border border-white/10 shadow-xl space-y-4">
+      <div className="p-6 rounded-3xl dark-banner bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 border border-white/10 shadow-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -566,7 +566,7 @@ export const DynamicReportBuilder: React.FC = () => {
             </div>
             <h1 className="text-2xl font-black text-white text-white-force drop-shadow-sm flex items-center gap-3">
               {t(reportTitle, reportTitle === 'تقرير الموظفين الشامل مع الرواتب والبدلات' ? 'Comprehensive Employee Directory & Payroll Report' : reportTitle)}
-              <span className="text-xs font-normal px-2.5 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 font-mono">
+              <span className="text-xs font-normal px-2.5 py-1 rounded-full bg-teal-600 text-white shadow-md border border-teal-500/20 font-mono">
                 XAMPP MySQL Live Sync
               </span>
             </h1>
@@ -588,7 +588,7 @@ export const DynamicReportBuilder: React.FC = () => {
 
             <button
               onClick={handleExportCSV}
-              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2"
+              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2"
               title={t('تصدير الملف إلى إكسل', 'Export to Excel')}
             >
               <span className="material-symbols-outlined text-sm">download</span>
@@ -606,7 +606,7 @@ export const DynamicReportBuilder: React.FC = () => {
 
             <button
               onClick={() => setShowEmailModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2"
+              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2"
               title={t('إرسال عبر البريد الإلكتروني', 'Send via Email')}
             >
               <span className="material-symbols-outlined text-sm">mail</span>
@@ -615,7 +615,7 @@ export const DynamicReportBuilder: React.FC = () => {
 
             <button
               onClick={() => setShowSaveModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-600/20 transition-all flex items-center gap-2"
+              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2"
               title={t('حفظ النموذج للرجوع له مستقبلاً', 'Save Report Template')}
             >
               <span className="material-symbols-outlined text-sm">bookmark_add</span>
@@ -658,7 +658,7 @@ export const DynamicReportBuilder: React.FC = () => {
                 const found = savedReports.find(r => r.id === e.target.value);
                 if (found) applySavedReport(found);
               }}
-              className="bg-slate-900 border border-teal-500/40 text-teal-300 rounded-xl px-3 py-1.5 font-bold focus:outline-none cursor-pointer"
+              className="bg-slate-900 border border-teal-500/40 text-white rounded-xl px-3 py-1.5 font-bold focus:outline-none cursor-pointer"
             >
               <option value="">{t('-- اختر تقريراً محفوظاً --', '-- Select Saved Preset --')}</option>
               {savedReports.map(rep => (
@@ -676,7 +676,7 @@ export const DynamicReportBuilder: React.FC = () => {
         <div className="p-5 rounded-3xl bg-[#111827] border border-white/10 shadow-xl space-y-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center text-xs font-mono font-bold">1</span>
+              <span className="w-6 h-6 rounded-lg bg-teal-600 text-white shadow-md flex items-center justify-center text-xs font-mono font-bold">1</span>
               {t('اختيار الجداول (Query Source Tables)', 'Select Query Source Tables')}
             </h2>
             <span className="text-[11px] text-slate-400 font-mono">{DB_TABLES_CATALOG.length} Tables Catalog</span>
@@ -685,32 +685,38 @@ export const DynamicReportBuilder: React.FC = () => {
           {/* Primary Table Selector */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-teal-400 block">{t('الجدول الرئيسي (Primary Table):', 'Primary Table:')}</label>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-              {DB_TABLES_CATALOG.map(tab => (
-                <button
-                  key={tab.name}
-                  onClick={() => {
-                    setPrimaryTable(tab.name);
-                    setSelectedFields(tab.fields.map(f => f.key));
-                  }}
-                  className={`w-full text-right p-2.5 rounded-xl border text-xs flex items-center justify-between transition-all ${
-                    primaryTable === tab.name
-                      ? 'bg-teal-600/20 border-teal-500 text-white font-bold shadow-sm'
-                      : 'bg-slate-900/50 border-white/5 text-slate-300 hover:bg-white/5'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="material-symbols-outlined text-teal-400 text-base">{tab.icon}</span>
-                    <div>
-                      <p className="font-bold">{language === 'en' ? tab.labelEn : tab.labelAr}</p>
-                      <p className="text-[10px] text-slate-400">{tab.description}</p>
+            <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+              {DB_TABLES_CATALOG.map(tab => {
+                const isSelected = primaryTable === tab.name;
+                return (
+                  <label
+                    key={tab.name}
+                    onClick={() => {
+                      setPrimaryTable(tab.name);
+                      setSelectedFields(tab.fields.map(f => f.key));
+                    }}
+                    className={`w-full text-right flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer border transition-all query-primary-table-item ${
+                      isSelected
+                        ? 'bg-teal-500/40 border-teal-600'
+                        : 'bg-teal-500/20 border-teal-500/40 hover:bg-teal-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="primary_table_choice"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="rounded-full border-white/20 text-teal-500 focus:ring-0"
+                      />
+                      <span className="font-medium query-primary-table-label" style={{ color: '#000000' }}>{language === 'en' ? tab.labelEn : tab.labelAr}</span>
                     </div>
-                  </div>
-                  {primaryTable === tab.name && (
-                    <span className="material-symbols-outlined text-teal-400 text-sm">check_circle</span>
-                  )}
-                </button>
-              ))}
+                    {isSelected && (
+                      <span className="material-symbols-outlined text-teal-800 text-sm">check_circle</span>
+                    )}
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -724,7 +730,7 @@ export const DynamicReportBuilder: React.FC = () => {
                   <label
                     key={tab.name}
                     className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer border transition-all ${
-                      isJoined ? 'bg-slate-800 border-teal-500/50 text-teal-300' : 'bg-slate-900/30 border-white/5 text-slate-400 hover:bg-white/5'
+                      isJoined ? 'bg-teal-500/40 border-teal-600 text-slate-900' : 'bg-teal-500/20 border-teal-500/40 text-slate-900 hover:bg-teal-500/30'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -740,9 +746,9 @@ export const DynamicReportBuilder: React.FC = () => {
                         }}
                         className="rounded border-white/20 text-teal-500 focus:ring-0"
                       />
-                      <span className="font-medium">{language === 'en' ? tab.labelEn : tab.labelAr}</span>
+                      <span className="font-medium force-text-black text-black">{language === 'en' ? tab.labelEn : tab.labelAr}</span>
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">FK Link</span>
+                    <span className="text-[10px] query-table-label font-mono font-normal" style={{ color: "#000000" }}>FK Link</span>
                   </label>
                 );
               })}
@@ -754,7 +760,7 @@ export const DynamicReportBuilder: React.FC = () => {
         <div className="p-5 rounded-3xl bg-[#111827] border border-white/10 shadow-xl space-y-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center text-xs font-mono font-bold">2</span>
+              <span className="w-6 h-6 rounded-lg bg-teal-600 text-white shadow-md flex items-center justify-center text-xs font-mono font-bold">2</span>
               {t('تحديد الحقول المطلوبة (Columns)', 'Select Required Columns')}
             </h2>
             <div className="flex items-center gap-1">
@@ -786,7 +792,7 @@ export const DynamicReportBuilder: React.FC = () => {
           </div>
 
           {/* Fields Selection Checkbox Grid */}
-          <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+          <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
             {availableFields
               .filter(f => f.labelAr.includes(searchColumnTerm) || f.labelEn.toLowerCase().includes(searchColumnTerm.toLowerCase()) || f.key.includes(searchColumnTerm))
               .map(field => {
@@ -796,8 +802,8 @@ export const DynamicReportBuilder: React.FC = () => {
                     key={field.key}
                     className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer border transition-all ${
                       isSelected
-                        ? 'bg-teal-950/40 border-teal-500/60 text-white font-bold'
-                        : 'bg-slate-900/40 border-white/5 text-slate-400 hover:bg-white/5'
+                        ? 'bg-teal-500/40 border-teal-600 text-slate-900'
+                        : 'bg-teal-500/20 border-teal-500/40 text-slate-900 hover:bg-teal-500/30'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
@@ -807,9 +813,9 @@ export const DynamicReportBuilder: React.FC = () => {
                         onChange={() => toggleField(field.key)}
                         className="rounded border-white/20 text-teal-500 focus:ring-0"
                       />
-                      <span className="truncate">{language === 'en' ? field.labelEn : field.labelAr}</span>
+                      <span className="truncate font-medium query-table-label" style={{ color: "#000000" }}>{language === "en" ? field.labelEn : field.labelAr}</span>
                     </div>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-teal-400 font-mono border border-white/10">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-teal-500/30 query-table-label font-mono font-normal border border-teal-500/40" style={{ color: "#000000" }}>
                       {field.type}
                     </span>
                   </label>
@@ -822,12 +828,12 @@ export const DynamicReportBuilder: React.FC = () => {
         <div className="p-5 rounded-3xl bg-[#111827] border border-white/10 shadow-xl space-y-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center text-xs font-mono font-bold">3</span>
+              <span className="w-6 h-6 rounded-lg bg-teal-600 text-white shadow-md flex items-center justify-center text-xs font-mono font-bold">3</span>
               {t('شروط التصفية والفرز (Filters & Sorting)', 'Filter Rules & Sorting')}
             </h2>
             <button
               onClick={addFilterRule}
-              className="px-2 py-1 rounded-lg bg-teal-600/20 text-teal-400 hover:bg-teal-600/30 text-[11px] font-bold flex items-center gap-1"
+              className="px-2 py-1 rounded-lg bg-teal-600 text-white shadow-md hover:bg-teal-600/30 text-[11px] font-bold flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-xs">add</span>
               {t('إضافة شرط', 'Add Rule')}
@@ -865,7 +871,7 @@ export const DynamicReportBuilder: React.FC = () => {
                       <select
                         value={fRule.operator}
                         onChange={(e) => updateFilterRule(fRule.id, 'operator', e.target.value as any)}
-                        className="w-1/2 bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-teal-300 text-xs focus:outline-none"
+                        className="w-1/2 bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
                       >
                         <option value="equals">{t('يساوي (Equal)', 'Equal')}</option>
                         <option value="contains">{t('يحتوي (Contains)', 'Contains')}</option>
@@ -949,8 +955,8 @@ export const DynamicReportBuilder: React.FC = () => {
         <div className="overflow-x-auto rounded-2xl border border-white/10 shadow-inner bg-[#0a0c10]">
           <table className="w-full text-xs text-right border-collapse">
             <thead>
-              <tr className="bg-[#1e293b] text-slate-200 font-bold border-b border-white/10 select-none">
-                <th className="p-3 text-center border-l border-white/10 w-12 font-mono text-slate-400 bg-slate-900">#</th>
+              <tr className="bg-[#1e293b] text-white font-bold border-b border-white/10 select-none">
+                <th className="p-3 text-center border-l border-white/10 w-12 font-mono text-white bg-slate-900">#</th>
                 {selectedFields.map(fKey => {
                   const meta = availableFields.find(f => f.key === fKey)!;
                   const isSorted = sortBy === fKey;
@@ -964,7 +970,7 @@ export const DynamicReportBuilder: React.FC = () => {
                       className="p-3 border-l border-white/10 hover:bg-white/5 cursor-pointer whitespace-nowrap transition-colors"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span>{language === 'en' ? (meta?.labelEn || fKey) : (meta?.labelAr || fKey)}</span>
+                        <span className="text-white font-bold">{language === "en" ? (meta?.labelEn || fKey) : (meta?.labelAr || fKey)}</span>
                         {isSorted && (
                           <span className="material-symbols-outlined text-teal-400 text-xs">
                             {sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}
@@ -987,7 +993,7 @@ export const DynamicReportBuilder: React.FC = () => {
               ) : (
                 filteredData.map((row, idx) => (
                   <tr key={idx} className="hover:bg-teal-500/5 transition-colors font-sans">
-                    <td className="p-2.5 text-center border-l border-white/5 font-mono text-slate-500 bg-slate-900/50">
+                    <td className="p-2.5 text-center border-l border-slate-300 font-mono text-slate-900 font-bold bg-slate-100">
                       {idx + 1}
                     </td>
                     {selectedFields.map(fKey => {
@@ -995,19 +1001,19 @@ export const DynamicReportBuilder: React.FC = () => {
                       const val = (row as any)[fKey];
 
                       return (
-                        <td key={fKey} className="p-2.5 border-l border-white/5 whitespace-nowrap">
+                        <td key={fKey} className="p-2.5 border-l border-slate-200 whitespace-nowrap text-slate-900 font-bold">
                           {meta?.type === 'currency' ? (
                             <span className="font-mono font-bold text-teal-400">
                               {Number(val || 0).toLocaleString(language === 'en' ? 'en-US' : 'ar-IQ')} {t('د.ع', 'IQD')}
                             </span>
                           ) : meta?.type === 'badge' ? (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-500/10 text-white border border-teal-500/20">
                               {val || '-'}
                             </span>
                           ) : meta?.type === 'date' ? (
-                            <span className="font-mono text-slate-400">{val || '-'}</span>
+                            <span className="font-mono text-slate-900 font-bold">{val || '-'}</span>
                           ) : (
-                            <span>{val !== undefined && val !== null ? String(val) : '-'}</span>
+                            <span className="text-slate-900 font-bold">{val !== undefined && val !== null ? String(val) : "-"}</span>
                           )}
                         </td>
                       );
@@ -1026,7 +1032,7 @@ export const DynamicReportBuilder: React.FC = () => {
                     const meta = availableFields.find(f => f.key === fKey);
                     if (meta?.type === 'currency') {
                       return (
-                        <td key={fKey} className="p-3 border-l border-white/10 font-mono text-teal-300">
+                        <td key={fKey} className="p-3 border-l border-white/10 font-mono text-white">
                           {t('مجموع:', 'Total:')} {(columnTotals[fKey] || 0).toLocaleString(language === 'en' ? 'en-US' : 'ar-IQ')} {t('د.ع', 'IQD')}
                         </td>
                       );
@@ -1096,7 +1102,7 @@ export const DynamicReportBuilder: React.FC = () => {
               </button>
               <button
                 onClick={handleSaveReport}
-                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg"
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg"
               >
                 {t('حفظ واستخراج', 'Save Template')}
               </button>
@@ -1217,7 +1223,7 @@ export const DynamicReportBuilder: React.FC = () => {
                   setShowEmailModal(false);
                   triggerSuccessToast(`تم إرسال الإيميل مع مرفق إكسل التقرير إلى ${emailTo || 'المستلم'} بنجاح!`);
                 }}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg"
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg"
               >
                 {t('إرسال الإيميل', 'Send Email')}
               </button>

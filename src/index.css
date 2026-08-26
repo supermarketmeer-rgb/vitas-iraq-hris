@@ -1,4 +1,5 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "../src/**/*.{ts,tsx,html}";
 
 /* ================================================================
    Tailwind v4: Class-based dark mode using html.dark
@@ -24,10 +25,15 @@
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
+  /* Global Normal Font Weight Directive */
+  body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, label, input, select, textarea, th, td, kbd, option {
+    font-weight: 400 !important;
+  }
+
   /* Dark Mode body */
   html.dark body {
-    background-color: #0a0c10;
-    color: #e2e8f0;
+    background-color: #06080d !important;
+    color: #e2e8f0 !important;
   }
 }
 
@@ -43,24 +49,32 @@ input, select, textarea {
 html.dark input,
 html.dark select,
 html.dark textarea {
-  background-color: rgba(30, 41, 59, 0.95) !important;
-  color: #e2e8f0 !important;
-  border-color: #334155 !important;
+  background-color: #06080d !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 html.dark input::placeholder,
 html.dark textarea::placeholder {
-  color: #64748b;
+  color: #94a3b8 !important;
 }
 
 /* ================================================================
-   DARK BANNER (used by Tax Engine header and similar components)
-   Always shows a teal gradient with white text regardless of theme
+   DARK BANNER (Header banners across views)
+   Matches Category 1 Auth View top banner (#0a0c10 with teal border)
    ================================================================ */
 .dark-banner,
 html.light .dark-banner,
+html:not(.dark) .dark-banner {
+  background-image: linear-gradient(to right, #475569, #334155, #475569) !important;
+  background-color: #475569 !important;
+  color: #ffffff !important;
+}
+
 html.dark .dark-banner {
-  background-image: linear-gradient(to right, #0f766e, #0d9488, #0f766e) !important;
+  background-image: none !important;
+  background-color: #0a0c10 !important;
+  border: 1px solid rgba(20, 184, 166, 0.3) !important;
   color: #ffffff !important;
 }
 
@@ -76,13 +90,13 @@ html.dark .dark-banner {
    GLASS PANEL EFFECT
    ================================================================ */
 .glass-panel {
-  background: linear-gradient(135deg, rgba(30, 64, 120, 0.55) 0%, rgba(10, 50, 100, 0.45) 50%, rgba(10, 40, 90, 0.50) 100%);
+  background: linear-gradient(135deg, rgba(10, 12, 16, 0.95) 0%, rgba(6, 8, 13, 0.95) 100%);
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-left: 1px solid rgba(255, 255, 255, 0.05);
   border-right: 1px solid rgba(0, 0, 0, 0.25);
-  border-bottom: 4px solid rgba(147, 197, 253, 0.35);
+  border-bottom: 4px solid rgba(20, 184, 166, 0.35);
   box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -115,7 +129,8 @@ html:not(.dark) .recruitment-modal {
 }
 
 html.dark .recruitment-modal {
-  background-color: rgba(15, 23, 42, 0.98) !important;
+  background-color: #0a0c10 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 /* ================================================================
@@ -125,12 +140,13 @@ html.dark .recruitment-modal {
   background-color: rgba(0, 0, 0, 0.5);
 }
 
-html.dark .fixed .bg-black\/50 {
-  background-color: rgba(0, 0, 0, 0.7) !important;
+html.dark .fixed .bg-black\/50,
+html.dark .fixed .bg-black\/70 {
+  background-color: rgba(0, 0, 0, 0.85) !important;
 }
 
 /* ================================================================
-   SURFACE CONTAINERS & CARDS (LIGHT MODE: #e8ebef Translucent Glass)
+   SURFACE CONTAINERS & CARDS (#0a0c10 Cards, #06080d Sub-panels)
    ================================================================ */
 .bg-surface-container,
 html.light .bg-surface-container,
@@ -140,7 +156,7 @@ html:not(.dark) .bg-surface-container {
 }
 
 html.dark .bg-surface-container {
-  background-color: rgba(15, 23, 42, 0.98) !important;
+  background-color: #0a0c10 !important;
 }
 
 .bg-surface-container-high,
@@ -150,7 +166,7 @@ html:not(.dark) .bg-surface-container-high {
 }
 
 html.dark .bg-surface-container-high {
-  background-color: rgba(30, 41, 59, 0.95) !important;
+  background-color: #0a0c10 !important;
 }
 
 .bg-surface-container-low,
@@ -160,7 +176,57 @@ html:not(.dark) .bg-surface-container-low {
 }
 
 html.dark .bg-surface-container-low {
-  background-color: rgba(15, 23, 42, 0.8) !important;
+  background-color: #06080d !important;
+}
+
+/* ================================================================
+   GLOBAL DARK MODE OVERRIDES FOR ALL SCREENS, CARDS & MODALS
+   Forces #0a0c10 outer containers and #06080d inner panels & buttons
+   ================================================================ */
+html.dark [class*="bg-[#111827]"],
+html.dark [class*="bg-[#121b2d]"],
+html.dark [class*="bg-[#1e293b]"],
+html.dark [class*="bg-[#121c33]"],
+html.dark [class*="bg-[#0c1322]"],
+html.dark [class*="bg-[#172545]"],
+html.dark [class*="bg-[#172238]"],
+html.dark [class*="bg-[#1f2d4a]"],
+html.dark .bg-slate-900,
+html.dark .bg-slate-800,
+html.dark .bg-slate-950,
+html.dark .bg-gray-900,
+html.dark .bg-gray-800 {
+  background-color: #0a0c10 !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark [class*="bg-[#0a0c10]"] {
+  background-color: #0a0c10 !important;
+}
+
+html.dark [class*="bg-[#06080d]"] {
+  background-color: #06080d !important;
+}
+
+/* All Teal / Gradient Action Buttons in Dark Mode become Pure Dark with glowing Teal border */
+html.dark button.bg-teal-600,
+html.dark button.bg-teal-700,
+html.dark button[class*="bg-teal-600"],
+html.dark button[class*="from-teal-600"] {
+  background-color: #06080d !important;
+  background-image: none !important;
+  color: #2dd4bf !important;
+  border: 1px solid #14b8a6 !important;
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.15) !important;
+}
+
+html.dark button.bg-teal-600:hover,
+html.dark button.bg-teal-700:hover,
+html.dark button[class*="bg-teal-600"]:hover,
+html.dark button[class*="from-teal-600"]:hover {
+  background-color: #0a0c10 !important;
+  color: #34d399 !important;
+  border-color: #10b981 !important;
 }
 
 /* ================================================================
@@ -314,8 +380,8 @@ html:not(.dark) h5:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg
   color: #0f766e !important;
 }
 
-html.light .text-white:not(.dark-banner *):not(button *):not(.btn *):not(button span):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-indigo"]):not([class*="bg-blue"]),
-html:not(.dark) .text-white:not(.dark-banner *):not(button *):not(.btn *):not(button span):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-indigo"]):not([class*="bg-blue"]) {
+html.light .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(th):not(th *):not(thead *),
+html:not(.dark) .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(th):not(th *):not(thead *) {
   color: #0f766e !important;
 }
 
@@ -340,7 +406,7 @@ html.light button.bg-teal-600 *,
 html.light button.bg-teal-700 *,
 html.light button.bg-teal-800 *,
 html.light button[class*="from-teal"] *,
-html.light button[class*="bg-teal"] *,
+/* html.light button[class*="bg-teal"] *, */
 html.light button[class*="to-teal"] *,
 html.light .bg-gradient-to-br[class*="teal"] *,
 html.light .bg-gradient-to-r[class*="teal"] *,
@@ -348,7 +414,7 @@ html:not(.dark) button.bg-teal-600 *,
 html:not(.dark) button.bg-teal-700 *,
 html:not(.dark) button.bg-teal-800 *,
 html:not(.dark) button[class*="from-teal"] *,
-html:not(.dark) button[class*="bg-teal"] *,
+/* html:not(.dark) button[class*="bg-teal"] *, */
 html:not(.dark) button[class*="to-teal"] *,
 html:not(.dark) .bg-gradient-to-br[class*="teal"] *,
 html:not(.dark) .bg-gradient-to-r[class*="teal"] * {
@@ -457,4 +523,677 @@ html.light .text-slate-100 {
     page-break-after: always !important;
     break-after: page !important;
   }
+}
+
+
+ /* ================================================================
+   TEAL CUTTONS: PURE WHITE TEXT & ICONS ALWAYS IN ALL THEMES
+   ================================================================ */
+button[class*="bg-teal"],
+button[class*="from-teal"],
+button[class*="to-teal"],
+button.bg-teal-600,
+button.bg-teal-700,
+button.bg-teal-800,
+html.light button[class*="bg-teal"],
+html.light button[class*="from-teal"],
+html.light button.bg-teal-600,
+html.light button.bg-teal-700,
+html:not(.dark) button[class*="bg-teal"],
+html:not(.dark) button[class*="from-teal"],
+html:not(.dark) button.bg-teal-600,
+html:not(.dark) button.bg-teal-700 {
+  color: #ffffff !important;
+}
+
+button[class*="bg-teal"] *,
+button[class*="from-teal"] *,
+button[class*="to-teal"] *,
+button.bg-teal-600 *,
+button.bg-teal-700 *,
+button.bg-teal-800 *,
+/* html.light button[class*="bg-teal"] *, */
+html.light button[class*="from-teal"] *,
+html.light button.bg-teal-600 *,
+html.light button.bg-teal-700 *,
+/* html:not(.dark) button[class*="bg-teal"] *, */
+html:not(.dark) button[class*="from-teal"] *,
+html:not(.dark) button.bg-teal-600 *,
+html:not(.dark) button.bg-teal-700 * {
+  color: #ffffff !important;
+}
+
+
+/* LIGHT MODE: TABLE DATA & CELL TEXT MUST ALWAYS BE BLACK / DARK SLATE FOR MAXIMUM READABILITY */
+html.light table td,
+html.light table td *,
+html.light table td span,
+html:not(.dark) table td,
+html:not(.dark) table td *,
+html:not(.dark) table td span {
+  color: #0f172a !important;
+  font-weight: 400 !important;
+}
+
+html.light table td span.text-teal-400,
+html.light table td span.text-teal-500,
+html.light table td span.text-teal-600,
+html.light table td span.text-teal-700,
+html:not(.dark) table td span.text-teal-400,
+html:not(.dark) table td span.text-teal-500,
+html:not(.dark) table td span.text-teal-600,
+html:not(.dark) table td span.text-teal-700 {
+  color: #0f766e !important;
+  font-weight: 400 !important;
+}
+
+
+/* ================================================================
+   FORCE BLACK TEXT FOR TABLE SELECTOR LABELS
+   ================================================================ */
+.force-text-black,
+.force-text-black *,
+button .force-text-black,
+label .force-text-black {
+  color: #000000 !important;
+  font-weight: 400 !important;
+}
+
+/* ================================================================
+   TABLE HEADERS MUST ALWAYS HAVE PURE WHITE TEXT IN ALL THEMES
+   ================================================================ */
+table th,
+table th *,
+table th span,
+table thead th,
+table thead th *,
+table thead th span,
+html.light table th,
+html.light table th *,
+html.light table th span,
+html.light table thead th,
+html.light table thead th *,
+html.light table thead th span,
+html:not(.dark) table th,
+html:not(.dark) table th *,
+html:not(.dark) table th span,
+html:not(.dark) table thead th,
+html:not(.dark) table thead th *,
+html:not(.dark) table thead th span {
+  color: #ffffff !important;
+  font-weight: 400 !important;
+}
+
+
+/* ================================================================
+   QUERY TABLE LABELS MUST ALWAYS BE PURE BLACK (#000000)
+   ================================================================ */
+.query-table-label,
+.query-table-label *,
+.query-table-label span,
+.query-table-label p,
+label.query-table-label,
+label.query-table-label * {
+  color: #000000 !important;
+  font-weight: 400 !important;
+}
+
+/* ================================================================
+   TABLE COLUMNS (th) MUST ALWAYS BE PURE WHITE (#FFFFFF)
+   ================================================================ */
+table thead tr th,
+table thead tr th *,
+table thead tr th span,
+table thead tr th div,
+html.light table thead tr th,
+html.light table thead tr th *,
+html.light table thead tr th span,
+html.light table thead tr th div,
+html:not(.dark) table thead tr th,
+html:not(.dark) table thead tr th *,
+html:not(.dark) table thead tr th span,
+html:not(.dark) table thead tr th div {
+  color: #ffffff !important;
+  font-weight: 400 !important;
+}
+
+
+/* ================================================================
+   FINAL ABSOLUTE OVERRIDES FOR PRIMARY TABLE LABELS (BLACK) AND HEADERS (WHITE)
+   ================================================================ */
+.query-primary-table-item,
+.query-primary-table-item *,
+.query-primary-table-label,
+.query-primary-table-label * {
+  color: #000000 !important;
+  font-weight: 400 !important;
+}
+
+table th,
+table th *,
+table th span,
+table th div,
+table thead th,
+table thead th *,
+table thead th span,
+table thead th div,
+html.light table th,
+html.light table th *,
+html.light table th span,
+html.light table th div,
+html.light table thead th,
+html.light table thead th *,
+html.light table thead th span,
+html.light table thead th div,
+html:not(.dark) table th,
+html:not(.dark) table th *,
+html:not(.dark) table th span,
+html:not(.dark) table th div,
+html:not(.dark) table thead th,
+html:not(.dark) table thead th *,
+html:not(.dark) table thead th span,
+html:not(.dark) table thead th div {
+  color: #ffffff !important;
+  font-weight: 400 !important;
+}
+
+
+/* ================================================================
+   HEADER LANGUAGE TOGGLE & USER PROFILE TEXT COLOR -> PURE BLACK
+   ================================================================ */
+html.light header button,
+html.light header button *,
+html.light header button span,
+html.light header button p,
+html.light header select,
+html.light header select option,
+html:not(.dark) header button,
+html:not(.dark) header button *,
+html:not(.dark) header button span,
+html:not(.dark) header button p,
+html.light header select,
+html.light header select option,
+html:not(.dark) header select,
+html:not(.dark) header select option {
+  color: #000000 !important;
+}
+
+html.light header button.bg-teal-600,
+html.light header button.bg-teal-600 *,
+html:not(.dark) header button.bg-teal-600,
+html:not(.dark) header button.bg-teal-600 * {
+  color: #ffffff !important;
+}
+
+html.light header button:not(.bg-teal-600),
+html.light header button:not(.bg-teal-600) *,
+html.light header button:not(.bg-teal-600) span,
+html:not(.dark) header button:not(.bg-teal-600),
+html:not(.dark) header button:not(.bg-teal-600) *,
+html:not(.dark) header button:not(.bg-teal-600) span {
+  color: #000000 !important;
+}
+
+/* ================================================================
+   DARK MODE HEADER TEXT & BUTTONS -> PURE WHITE FORCE
+   ================================================================ */
+html.dark header,
+html.dark header *,
+html.dark header button,
+html.dark header button *,
+html.dark header span,
+html.dark header p,
+html.dark header select,
+html.dark header select option,
+html.dark .header-user-profile,
+html.dark .header-user-profile *,
+html.dark .header-user-profile p,
+html.dark .header-user-profile span {
+  color: #ffffff !important;
+}
+
+html.dark header select option {
+  background-color: #0a0c10 !important;
+  color: #ffffff !important;
+}
+
+
+/* ================================================================
+   GLOBAL SEARCH MODAL QUICK SUGGESTION PILLS -> PURE BLACK IN LIGHT MODE
+   ================================================================ */
+.global-search-pill,
+button.global-search-pill,
+html.light .global-search-pill,
+html.light button.global-search-pill,
+html:not(.dark) .global-search-pill,
+html:not(.dark) button.global-search-pill {
+  color: #0f172a !important;
+  font-weight: 400 !important;
+}
+
+html.light .global-search-pill:hover,
+html:not(.dark) .global-search-pill:hover {
+  color: #ffffff !important;
+  background-color: #0d9488 !important;
+}
+
+/* ================================================================
+   GLOBAL PURE DARK MODAL WINDOWS & DIALOG POPUPS (#0a0c10)
+   Fixes any modal window or popup across the entire application
+   ================================================================ */
+html.dark .fixed > div:not(.bg-transparent),
+html.dark .fixed > div > div,
+html.dark div[role="dialog"],
+html.dark div[role="dialog"] > div,
+html.dark [class*="modal"] > div,
+html.dark .fixed .bg-white,
+html.dark .fixed .bg-slate-50,
+html.dark .fixed .bg-slate-100,
+html.dark .fixed .bg-slate-800,
+html.dark .fixed .bg-slate-900,
+html.dark div[role="dialog"] .bg-white,
+html.dark div[role="dialog"] .bg-slate-50,
+html.dark div[role="dialog"] .bg-slate-100,
+html.dark div[role="dialog"] .bg-slate-800,
+html.dark div[role="dialog"] .bg-slate-900 {
+  background-color: #0a0c10 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Modal Inner Sub-panels, Inputs, Selects & Textareas */
+html.dark .fixed input,
+html.dark .fixed select,
+html.dark .fixed textarea,
+html.dark div[role="dialog"] input,
+html.dark div[role="dialog"] select,
+html.dark div[role="dialog"] textarea,
+html.dark .fixed .bg-slate-100,
+html.dark .fixed .bg-slate-50,
+html.dark div[role="dialog"] .bg-slate-100,
+html.dark div[role="dialog"] .bg-slate-50 {
+  background-color: #06080d !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Modal Typography & Labels in Dark Mode */
+html.dark .fixed label,
+html.dark .fixed p,
+html.dark .fixed span,
+html.dark .fixed h1,
+html.dark .fixed h2,
+html.dark .fixed h3,
+html.dark .fixed h4,
+html.dark div[role="dialog"] label,
+html.dark div[role="dialog"] p,
+html.dark div[role="dialog"] span,
+html.dark div[role="dialog"] h1,
+html.dark div[role="dialog"] h2,
+html.dark div[role="dialog"] h3 {
+  color: #f8fafc !important;
+}
+
+/* ================================================================
+   ALL TEAL / EMERALD / CYAN / BLUE ACTION BUTTONS IN DARK MODE
+   Background = Pure Dark #06080d, Border = 1px solid #14b8a6 (Teal-500), Text = #2dd4bf
+   ================================================================ */
+html.dark button[class*="bg-teal"],
+html.dark button[class*="from-teal"],
+html.dark button[class*="to-teal"],
+html.dark button[class*="bg-emerald"],
+html.dark button[class*="from-emerald"],
+html.dark button[class*="bg-cyan"],
+html.dark button.bg-teal-500,
+html.dark button.bg-teal-600,
+html.dark button.bg-teal-700,
+html.dark button.bg-teal-800,
+html.dark button.bg-emerald-500,
+html.dark button.bg-emerald-600,
+html.dark button.bg-emerald-700,
+html.dark button.bg-cyan-600,
+html.dark button.bg-blue-600 {
+  background-color: #06080d !important;
+  background-image: none !important;
+  color: #2dd4bf !important;
+  border: 1px solid #14b8a6 !important;
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.15) !important;
+}
+
+html.dark button[class*="bg-teal"] *,
+html.dark button[class*="from-teal"] *,
+html.dark button[class*="to-teal"] *,
+html.dark button[class*="bg-emerald"] *,
+html.dark button[class*="from-emerald"] *,
+html.dark button.bg-teal-500 *,
+html.dark button.bg-teal-600 *,
+html.dark button.bg-teal-700 *,
+html.dark button.bg-emerald-600 *,
+html.dark button.bg-blue-600 * {
+  color: #2dd4bf !important;
+}
+
+html.dark button[class*="bg-teal"]:hover,
+html.dark button[class*="from-teal"]:hover,
+html.dark button[class*="bg-emerald"]:hover,
+html.dark button.bg-teal-600:hover,
+html.dark button.bg-teal-700:hover,
+html.dark button.bg-emerald-600:hover,
+html.dark button.bg-blue-600:hover {
+  background-color: #0a0c10 !important;
+  color: #34d399 !important;
+  border-color: #10b981 !important;
+}
+
+html.dark button[class*="bg-teal"]:hover *,
+html.dark button[class*="from-teal"]:hover *,
+html.dark button.bg-teal-600:hover * {
+  color: #34d399 !important;
+}
+
+/* ================================================================
+   STRICTLY SCOPED DARK MODE DIRECTIVE (#06080d / #0a0c10)
+   Preserves Dark Mode 100% with pure dark cards, panels & buttons
+   ================================================================ */
+html.dark,
+html.dark body,
+html.dark #root,
+html.dark main {
+  background-color: #06080d !important;
+  color: #e2e8f0 !important;
+}
+
+/* Dark Mode Outer Card Containers */
+html.dark main div[class*="rounded-3xl"],
+html.dark main div[class*="rounded-2xl"],
+html.dark main div[class*="rounded-xl"],
+html.dark .bg-white:not(.print\:bg-white),
+html.dark [class*="bg-white"]:not(.print\:bg-white),
+html.dark div[class*="bg-white"]:not(.print\:bg-white) {
+  background-color: #0a0c10 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Dark Mode Inner Sub-cards, Boxes, Inputs, Selects & Textareas */
+html.dark main div[class*="rounded-3xl"] div[class*="rounded-2xl"],
+html.dark main div[class*="rounded-2xl"] div[class*="rounded-2xl"],
+html.dark main div[class*="rounded-xl"] div[class*="rounded-xl"],
+html.dark .bg-slate-50,
+html.dark [class*="bg-slate-50"],
+html.dark .bg-slate-100,
+html.dark [class*="bg-slate-100"],
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #0a0c10 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Dark Mode Table Rows & Headers */
+html.dark table thead th,
+html.dark table thead tr th {
+  background-color: #06080d !important;
+  color: #ffffff !important;
+}
+
+html.dark table tbody tr,
+html.dark table tbody tr.bg-white,
+html.dark table tbody tr[class*="bg-white"] {
+  background-color: #0a0c10 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Dark Mode Modal Windows & Dialog Popups */
+html.dark .fixed > div:not(.bg-transparent),
+html.dark .fixed > div > div,
+html.dark div[role="dialog"],
+html.dark div[role="dialog"] > div,
+html.dark [class*="modal"] > div,
+html.dark [class*="modal"] {
+  background-color: #0a0c10 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ================================================================
+   STRICTLY SCOPED LIGHT MODE DIRECTIVE (EXACT INVERSE OF DARK MODE)
+   Soft Slate background (#e8ebef), Light body (#f1f5f9), Dark font (#0f172a / #000000)
+   ================================================================ */
+html.light,
+html.light body,
+html.light #root,
+html.light main {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Light Mode Outer Cards - Soft Slate Gray (#e8ebef) instead of Solid White */
+html.light main div[class*="rounded-3xl"],
+html.light main div[class*="rounded-2xl"],
+html.light main div[class*="rounded-xl"],
+html.light .bg-white,
+html.light [class*="bg-white"] {
+  background-color: #e8ebef !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Light Mode Inner Sub-cards & Inputs */
+html.light main div[class*="rounded-3xl"] div[class*="rounded-2xl"],
+html.light main div[class*="rounded-2xl"] div[class*="rounded-2xl"],
+html.light main div[class*="rounded-xl"] div[class*="rounded-xl"],
+html.light .bg-slate-50,
+html.light [class*="bg-slate-50"],
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Light Mode Tables */
+html.light table thead th,
+html.light table thead tr th {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light table tbody tr,
+html.light table tbody tr.bg-white {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #f1f5f9 !important;
+}
+
+/* Light Mode Modals & Dialogs */
+html.light .fixed > div:not(.bg-transparent),
+html.light .fixed > div > div,
+html.light div[role="dialog"],
+html.light [class*="modal"] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* ================================================================
+   STRICT LIGHT MODE BUTTONS & CONTROLS DIRECTIVE (MATCHING ATTACHED CARD COLOR)
+   Background: Soft slate-blue card background (#e5ecf4 / #e2e8f0)
+   Text & Icons: Black (#000000)
+   ================================================================ */
+html.light button,
+html.light button[class*="bg-"],
+html.light aside button,
+html.light header button,
+html.light main button,
+html.light .fixed button,
+html.light [role="dialog"] button,
+html.light [class*="modal"] button {
+  background-color: #e5ecf4 !important;
+  background-image: none !important;
+  color: #000000 !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Force all text, icons, spans, divs inside buttons in Light Mode to Black */
+html.light button *,
+html.light button span,
+html.light button p,
+html.light button div,
+html.light button svg,
+html.light button i,
+html.light button .material-symbols-outlined,
+html.light aside button *,
+html.light header button *,
+html.light main button * {
+  color: #000000 !important;
+}
+
+/* EXEMPTION: Notification counter text inside red bubble must ALWAYS be PURE WHITE (#ffffff) */
+html.light button span.bg-rose-600,
+html.light button span.bg-rose-500,
+html.light button span.bg-red-600,
+html.light button span[class*="bg-rose"],
+html.light button span[class*="bg-red"],
+html.light header button span.bg-rose-600,
+html.light header button span[class*="bg-rose"],
+html.light header button span[class*="bg-red"],
+html.light header button [class*="bg-rose"],
+html.light header button [class*="bg-red"] {
+  color: #ffffff !important;
+}
+
+/* Hover state for buttons in Light Mode */
+html.light button:hover,
+html.light aside button:hover,
+html.light header button:hover,
+html.light main button:hover {
+  background-color: #d8e4f0 !important;
+  color: #000000 !important;
+  border-color: #94a3b8 !important;
+}
+
+html.light button:hover * {
+  color: #000000 !important;
+}
+
+/* Active Sidebar Item & Active Module buttons in Light Mode */
+html.light aside button[class*="bg-[#06080d]"],
+html.light aside button[class*="border-teal-500"],
+html.light aside .sidebar-active-item,
+html.light aside button.bg-teal-600,
+html.light button[class*="bg-[#06080d]"].text-teal-400 {
+  background-color: #d0e0f0 !important;
+  color: #000000 !important;
+  border: 1.5px solid #0d9488 !important;
+  font-weight: 600 !important;
+}
+
+html.light aside button[class*="bg-[#06080d]"] *,
+html.light aside button[class*="border-teal-500"] * {
+  color: #000000 !important;
+}
+
+/* Light Mode Badges & Metric Pills (e.g. Total Basic payroll badge) */
+html.light [class*="bg-[#06080d]"]:not(html.dark *):not(button):not(input):not(select),
+html.light [class*="bg-black"]:not(html.dark *):not(button):not(input):not(select) {
+  background-color: #e5ecf4 !important;
+  color: #000000 !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light [class*="bg-[#06080d]"]:not(html.dark *):not(button):not(input):not(select) *,
+html.light [class*="bg-black"]:not(html.dark *):not(button):not(input):not(select) * {
+  color: #000000 !important;
+}
+
+/* ================================================================
+   CATEGORY 1 AUTH & SECURITY LIGHT MODE EXCLUSIVE OVERRIDE
+   Replaces all card backgrounds in Category 1 Auth view ONLY
+   with EXACT sidebar background hex code (#e8ebef)
+   ================================================================ */
+html.light .auth-view-container,
+html.light .auth-view-container div[class*="rounded-3xl"],
+html.light .auth-view-container div[class*="rounded-2xl"],
+html.light .auth-view-container div[class*="rounded-xl"],
+html.light .auth-view-container .bg-white,
+html.light .auth-view-container [class*="bg-white"] {
+  background-color: #e8ebef !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light .auth-view-container div[class*="rounded-3xl"] div[class*="rounded-2xl"],
+html.light .auth-view-container div[class*="rounded-2xl"] div[class*="rounded-2xl"],
+html.light .auth-view-container div[class*="rounded-xl"] div[class*="rounded-xl"],
+html.light .auth-view-container input,
+html.light .auth-view-container select,
+html.light .auth-view-container textarea {
+  background-color: #d8e0e8 !important;
+  border-color: #cbd5e1 !important;
+  color: #000000 !important;
+}
+
+/* ================================================================
+   NOTIFICATION BADGE NUMBER & TEAL HEADINGS DIRECTIVE (LIGHT MODE ONLY)
+   - Notification Badge number inside red bubble: WHITE (#ffffff)
+   - Headings & titles with Teal text color: BLACK (#000000)
+   ================================================================ */
+html.light .bg-rose-600,
+html.light .bg-rose-500,
+html.light .bg-red-600,
+html.light span[class*="bg-rose"],
+html.light span[class*="bg-red"],
+html.light button span[class*="bg-rose"],
+html.light button span[class*="bg-red"] {
+  color: #ffffff !important;
+}
+
+html.light .bg-rose-600 *,
+html.light .bg-rose-500 *,
+html.light .bg-red-600 *,
+html.light span[class*="bg-rose"] *,
+html.light span[class*="bg-red"] * {
+  color: #ffffff !important;
+}
+
+/* Teal Titles & Headings become Black in Light Mode */
+html.light h1[class*="text-teal"],
+html.light h2[class*="text-teal"],
+html.light h3[class*="text-teal"],
+html.light h4[class*="text-teal"],
+html.light h5[class*="text-teal"],
+html.light h6[class*="text-teal"],
+html.light p[class*="text-teal"],
+html.light span[class*="text-teal"]:not(.material-symbols-outlined):not([class*="bg-"]),
+html.light .text-teal-400,
+html.light .text-teal-300,
+html.light .text-teal-500,
+html.light .text-teal-600 {
+  color: #000000 !important;
+}
+
+/* ABSOLUTE FORCE OVERRIDE: Notification Badge Count in Red Circle MUST ALWAYS BE PURE WHITE (#ffffff) */
+html.light button span.bg-rose-600,
+html.light button span.bg-rose-500,
+html.light button span.bg-red-600,
+html.light button span[class*="bg-rose"],
+html.light button span[class*="bg-red"],
+html.light button [class*="bg-rose"],
+html.light button [class*="bg-red"],
+html.light .bg-rose-600,
+html.light .bg-rose-500,
+html.light .bg-red-600,
+html.light [class*="bg-rose"],
+html.light [class*="bg-red"] {
+  color: #ffffff !important;
+}
+
+html.light button span.bg-rose-600 *,
+html.light button span[class*="bg-rose"] * {
+  color: #ffffff !important;
 }

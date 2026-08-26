@@ -33,7 +33,7 @@ const InnerTaxView: React.FC = () => {
       <div className={`p-6 rounded-3xl ${
         isDark
           ? 'bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 border-teal-500/20 text-white'
-          : 'bg-gradient-to-r from-teal-700 via-teal-800 to-emerald-800 border-teal-600 text-white shadow-xl'
+          : 'bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 border-teal-600 text-white shadow-xl'
       } border shadow-2xl relative overflow-hidden`}>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -47,7 +47,7 @@ const InnerTaxView: React.FC = () => {
                 <h1 className="text-2xl font-black text-white tracking-wide">
                   {isEn ? 'Social Security & Income Tax Engine' : 'محرك الضمان الاجتماعي وضريبة الدخل'}
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-teal-900/60 text-teal-200 border border-teal-400/30 text-[11px] font-mono font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-teal-900/60 text-white border border-teal-400/30 text-[11px] font-mono font-bold">
                   MySQL XAMPP Live
                 </span>
               </div>
@@ -78,7 +78,7 @@ const InnerTaxView: React.FC = () => {
                 className={`px-4 py-2.5 rounded-xl font-medium text-xs flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
                   isActive
                     ? 'bg-white text-teal-900 font-bold shadow-lg scale-[1.02]'
-                    : 'bg-teal-900/40 text-teal-100 hover:bg-teal-900/70 hover:text-white border border-teal-500/30'
+                    : 'bg-teal-600 text-white shadow-md hover:bg-teal-900/70 hover:text-white border border-teal-500/30'
                 }`}
               >
                 <span className="material-symbols-outlined text-sm">{tab.icon}</span>

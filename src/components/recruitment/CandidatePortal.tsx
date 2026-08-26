@@ -7,7 +7,7 @@ import { api } from '../../api/client';
 console.log('CandidatePortal component loaded');
 
 export const CandidatePortal: React.FC = () => {
-  const { jobVacancies, updateJobVacancy, addCandidate, candidates, t, language, theme } = useApp();
+  const { jobVacancies, updateJobVacancy, addCandidate, candidates, t, language, theme, toggleTheme, toggleLanguage } = useApp();
   const isDark = theme === 'dark';
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -489,6 +489,63 @@ export const CandidatePortal: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Public Top Navigation Bar - Brand + Theme & Language Switchers */}
+      <div className={`p-4 sm:p-5 px-6 rounded-2xl border transition-all flex flex-wrap items-center justify-between gap-4 shadow-xl ${
+        isDark ? 'bg-[#0a0c10]/95 border-white/10 backdrop-blur-md' : 'bg-white border-slate-200 shadow-md'
+      }`}>
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 shadow-sm shrink-0">
+            <span className="material-symbols-outlined text-2xl">work_history</span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-lg tracking-tight font-['Inter',sans-serif]" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                VITAS<span className="text-teal-400">IRAQ</span>
+              </span>
+              <span className="text-[10px] bg-teal-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">
+                {t('بوابة التوظيف', 'Careers Portal')}
+              </span>
+            </div>
+            <p className="text-[11px] font-medium" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
+              {t('منظومة استقطاب الكفاءات والتقديم على الوظائف الشاغرة', 'Talent Acquisition & Career Opportunities')}
+            </p>
+          </div>
+        </div>
+
+        {/* Action Controls: Language & Theme Toggles */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Language Switch Button */}
+          <button
+            onClick={toggleLanguage}
+            className={`px-3.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all shadow-sm ${
+              isDark 
+                ? 'bg-[#1e293b] border-slate-700 text-white hover:bg-slate-700 hover:border-teal-400' 
+                : 'bg-slate-100 border-slate-300 text-slate-900 hover:bg-slate-200'
+            }`}
+            title={language === 'ar' ? 'Switch to English' : 'التحويل إلى اللغة العربية'}
+          >
+            <span className="material-symbols-outlined text-base text-teal-400">translate</span>
+            <span>{language === 'ar' ? 'English (EN)' : 'العربية (AR)'}</span>
+          </button>
+
+          {/* Theme Switch Button */}
+          <button
+            onClick={toggleTheme}
+            className={`px-3.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all shadow-sm ${
+              isDark 
+                ? 'bg-[#1e293b] border-slate-700 text-amber-300 hover:bg-slate-700 hover:border-amber-400' 
+                : 'bg-slate-100 border-slate-300 text-indigo-700 hover:bg-slate-200'
+            }`}
+            title={isDark ? t('التحويل للوضع النهاري', 'Switch to Light Mode') : t('التحويل للوضع الليلي', 'Switch to Dark Mode')}
+          >
+            <span className="text-base">{isDark ? '☀️' : '🌙'}</span>
+            <span style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+              {isDark ? t('الوضع النهاري', 'Light Mode') : t('الوضع الليلي', 'Dark Mode')}
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* Top Banner / Header Bar */}
       <div className={`p-6 rounded-2xl border transition-all ${isDark ? 'bg-[#1e293b]/60 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -771,7 +828,7 @@ export const CandidatePortal: React.FC = () => {
                   </label>
                   <label className="cursor-pointer w-full p-2.5 rounded-xl border border-dashed border-teal-500 hover:border-teal-400 bg-teal-500/10 flex items-center justify-center gap-2 transition-all">
                     <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">description</span>
-                    <span className="font-bold text-teal-700 dark:text-teal-300">
+                    <span className="font-bold text-teal-700 dark:text-white">
                       {formData.resumeName || t('اختيار ملف السيرة الذاتية (PDF/DOC)', 'Select CV File (PDF/DOC)')}
                     </span>
                     <input type="file" accept=".pdf,.doc,.docx" onChange={handleResumeUpload} className="hidden" />

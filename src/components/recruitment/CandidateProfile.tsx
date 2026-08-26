@@ -428,7 +428,7 @@ export const CandidateProfile: React.FC = () => {
                       <div className="min-w-0">
                         <div className="text-xs font-bold truncate flex items-center gap-1" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
                           <span>السيرة الذاتية (CV)</span>
-                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-teal-500/20 text-teal-700 dark:text-teal-300 font-bold">PDF</span>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-teal-500/20 text-teal-700 dark:text-white font-bold">PDF</span>
                         </div>
                         <div className="text-[10px] font-normal text-slate-500 dark:text-slate-400 truncate">
                           انقر للعرض والطباعة 🖨️
@@ -458,7 +458,7 @@ export const CandidateProfile: React.FC = () => {
 
                   {/* Committee Opinion */}
                   {candidate.committeeOpinion && (
-                    <div className="p-2.5 rounded-xl text-xs mb-3 bg-teal-500/10 border border-teal-500/20 text-teal-800 dark:text-teal-300">
+                    <div className="p-2.5 rounded-xl text-xs mb-3 bg-teal-500/10 border border-teal-500/20 text-teal-800 dark:text-white">
                       <div className="text-[10px] font-bold">{t('رأي اللجنة:', 'Committee Opinion:')}</div>
                       <p className="text-[11px] font-normal line-clamp-2 mt-0.5">{candidate.committeeOpinion}</p>
                     </div>
@@ -473,7 +473,7 @@ export const CandidateProfile: React.FC = () => {
                       href={waUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="py-2 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-all"
+                      className="py-2 px-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-all"
                       title={t('تواصل عبر الواتساب', 'Contact via WhatsApp')}
                     >
                       <span className="material-symbols-outlined text-sm">chat</span>
@@ -489,7 +489,7 @@ export const CandidateProfile: React.FC = () => {
                   {candidate.email ? (
                     <a
                       href={mailtoUrl}
-                      className="py-2 px-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-all"
+                      className="py-2 px-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-all"
                       title={t('إرسال بريد إلكتروني', 'Send Email')}
                     >
                       <span className="material-symbols-outlined text-sm">mail</span>
@@ -609,7 +609,7 @@ export const CandidateProfile: React.FC = () => {
               })()}
 
               {cvModalCandidate.committeeOpinion && (
-                <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-800 dark:text-teal-300 space-y-2">
+                <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-800 dark:text-white space-y-2">
                   <h4 className="text-sm font-bold flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-base">rate_review</span>
                     توصيات وتقييم لجنة التقييم

@@ -8,6 +8,8 @@ export const Sidebar: React.FC = () => {
     setActiveModuleId,
     isSidebarOpen,
     language,
+    toggleLanguage,
+    toggleTheme,
     t,
     employees,
     leaveRequests,
@@ -104,9 +106,9 @@ export const Sidebar: React.FC = () => {
   }
 
   return (
-    <aside className={`w-80 ${isDark ? 'bg-[#111827] border-white/10 text-slate-300' : 'bg-[#e8ebef] border-slate-300 text-slate-800 shadow-sm'} border-x flex flex-col h-screen sticky top-0 z-20 shrink-0 select-none transition-all duration-200 print:hidden`}>
+    <aside className={`w-80 ${isDark ? 'bg-[#06080d] border-[#1e2a44] text-slate-300' : 'bg-[#e8ebef] border-slate-300 text-slate-800 shadow-sm'} border-x flex flex-col h-screen sticky top-0 z-20 shrink-0 select-none transition-all duration-200 print:hidden`}>
       {/* Sidebar Top Filter & Collapse Controls */}
-      <div className={`p-3 border-b ${isDark ? 'border-white/10' : 'border-slate-300'} space-y-2`}>
+      <div className={`p-3 border-b ${isDark ? 'border-[#1e2a44] bg-[#06080d]' : 'border-slate-300'} space-y-2`}>
         <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
           <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
             <span className="material-symbols-outlined text-sm text-teal-400">menu_open</span>
@@ -228,14 +230,14 @@ export const Sidebar: React.FC = () => {
                           onClick={() => setActiveModuleId(mod.id)}
                           className={`w-full text-center my-1.5 px-3 py-3 rounded-2xl text-xs flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-98 cursor-pointer ${
                             isActive
-                              ? 'bg-[#008f57] text-white font-black ring-2 ring-emerald-300 shadow-emerald-900/40'
-                              : 'bg-[#00a66c] text-white font-bold hover:bg-[#009661] shadow-emerald-950/30'
+                              ? 'bg-[#06080d] text-emerald-400 font-normal border-2 border-emerald-500 shadow-emerald-900/40'
+                              : 'bg-[#06080d] text-white font-normal border border-emerald-500/40 hover:border-emerald-400 shadow-emerald-950/30'
                           }`}
                         >
-                          <span className="material-symbols-outlined text-lg text-white">
+                          <span className="material-symbols-outlined text-lg text-emerald-400">
                             settings
                           </span>
-                          <span className="leading-snug max-w-[170px] text-center font-black">
+                          <span className="leading-snug max-w-[170px] text-center font-normal">
                             {displayModTitle}
                           </span>
                         </button>
@@ -248,15 +250,15 @@ export const Sidebar: React.FC = () => {
                         onClick={() => setActiveModuleId(mod.id)}
                         className={`w-full text-start px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all group ${
                           isActive
-                            ? 'bg-teal-600 text-white font-bold shadow-lg shadow-teal-600/25'
-                            : 'text-slate-300 hover:bg-white/5 hover:text-teal-400'
+                            ? 'bg-[#06080d] text-teal-400 font-normal border border-teal-500 shadow-md shadow-teal-500/10'
+                            : 'text-slate-300 hover:bg-white/5 hover:text-teal-400 border border-transparent'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <span
                             className={`material-symbols-outlined text-base ${
                               isActive
-                                ? 'text-white'
+                                ? 'text-teal-400'
                                 : 'text-slate-400 group-hover:text-teal-400'
                             }`}
                           >
@@ -271,16 +273,16 @@ export const Sidebar: React.FC = () => {
                         )}
 
                         {mod.id === 'leave-approvals' && (
-                          <span className="w-5 h-5 rounded-full bg-rose-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 ml-1 shadow-sm">
+                          <span className="w-5 h-5 rounded-full bg-rose-600 text-white font-normal text-[11px] flex items-center justify-center shrink-0 ml-1 shadow-sm">
                             3
                           </span>
                         )}
 
                         {mod.id !== 'leave-apply' && mod.id !== 'leave-approvals' && badgeCount !== null && (
                           <span
-                            className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-1 ${
+                            className={`text-[10px] px-1.5 py-0.2 rounded-full font-normal ml-1 ${
                               isActive
-                                ? 'bg-white text-teal-600'
+                                ? 'bg-[#06080d] text-teal-400 border border-teal-500'
                                 : 'bg-teal-600/10 text-teal-400 border border-teal-500/20'
                             }`}
                           >
@@ -297,33 +299,58 @@ export const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* Settings Button - Separate from other buttons */}
-      <div className="p-3 border-t border-white/10 bg-[#111827]">
+      {/* Settings & Bottom Controls (Settings & Security + Language Icon + Theme Icon on the SAME row) */}
+      <div className={`p-1.5 border-t ${isDark ? 'border-[#1e2a44] bg-[#06080d]' : 'border-slate-300 bg-[#e8ebef]'} flex items-center gap-1.5`}>
+        {/* Settings & Security Button */}
         <button
-          onClick={() => {
-            console.log('Settings button clicked, setting module ID to: sys-settings-security');
-            setActiveModuleId('sys-settings-security');
-          }}
-          className={`w-full px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${
+          onClick={() => setActiveModuleId('sys-settings-security')}
+          className={`flex-1 px-2.5 h-8 rounded-xl flex items-center gap-2 transition-all text-[11px] font-normal ${
             activeModuleId === 'sys-settings-security'
-              ? 'bg-teal-600 text-white font-bold shadow-lg shadow-teal-600/25'
-              : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
+              ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
+              : isDark
+                ? 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
+                : 'bg-white/80 text-slate-800 hover:bg-white border border-slate-300 shadow-sm'
           }`}
+          title={t('الإعدادات والأمان', 'Settings & Security')}
         >
-          <span className={`material-symbols-outlined text-lg ${
-            activeModuleId === 'sys-settings-security' ? 'text-white' : 'text-slate-400'
-          }`}>
-            settings
+          <span className="material-symbols-outlined text-base">settings</span>
+          <span className="truncate">{t('الإعدادات والأمان', 'Settings & Security')}</span>
+        </button>
+
+        {/* Language AR/EN Toggle Button */}
+        <button
+          onClick={toggleLanguage}
+          className={`h-8 px-3 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal ${
+            isDark
+              ? 'bg-[#06080d] border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50'
+              : 'bg-[#f1f5f9] border-slate-300 text-slate-900 hover:bg-white'
+          }`}
+          title={language === 'ar' ? 'Switch to English' : 'التحويل للعربية'}
+        >
+          <span className={`text-xs tracking-wider font-normal ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            {language === 'ar' ? 'EN' : 'AR'}
           </span>
-          <span className="text-sm font-medium">{t('الإعدادات والأمان', 'Settings & Security')}</span>
+        </button>
+
+        {/* Theme Day/Night Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          className={`h-8 px-2.5 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal ${
+            isDark
+              ? 'bg-[#06080d] border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50'
+              : 'bg-[#f1f5f9] border-slate-300 text-slate-900 hover:bg-white'
+          }`}
+          title={theme === 'dark' ? t('الوضع الفاتح', 'Light Mode') : t('الوضع الداكن', 'Dark Mode')}
+        >
+          <span className="text-sm">{isDark ? '☀️' : '🌙'}</span>
         </button>
       </div>
 
       {/* Sidebar Footer info */}
-      <div className="p-3 border-t border-white/10 bg-[#111827] text-center">
+      <div className="p-3 border-t border-[#1e2a44] bg-[#06080d] text-center">
         <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
-          <span>{t('حالة النظام:', 'System Status:')} <span className="text-emerald-400 font-bold">{t('متصل بـ API', 'Connected API')}</span></span>
-          <span className="text-[10px] font-mono bg-teal-500/10 text-teal-400 px-1.5 py-0.5 rounded border border-teal-500/20">
+          <span>{t('حالة النظام:', 'System Status:')} <span className="text-emerald-400 font-normal">{t('متصل بـ API', 'Connected API')}</span></span>
+          <span className="text-[10px] font-mono bg-[#06080d] text-teal-400 shadow-md px-1.5 py-0.5 rounded border border-teal-500">
             v2.5 Enterprise
           </span>
         </div>

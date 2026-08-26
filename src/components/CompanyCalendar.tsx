@@ -1201,7 +1201,7 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
                       setEditingEvent(selectedEvent);
                       setShowEventModal(true);
                     }}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-all"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-blue-500 transition-all"
                   >
                     <Edit size={18} />
                     {language === 'ar' ? 'تعديل' : 'Edit'}

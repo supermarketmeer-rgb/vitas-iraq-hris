@@ -52,15 +52,15 @@ export const Category9RiskComplianceView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Banner */}
-      <div className="dark-banner p-6 rounded-3xl bg-gradient-to-r from-teal-900 via-teal-800 to-teal-900 border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="material-symbols-outlined text-teal-400">gavel</span>
-            <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-bold">
+            <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-normal">
               RISK, COMPLIANCE & SECURITY GOVERNANCE
             </span>
           </div>
-          <h1 className="text-2xl font-black text-white text-white-force drop-shadow-sm">
+          <h1 className="text-2xl font-normal text-white drop-shadow-sm">
             {activeModuleId === 'risk-audit-reports' && t('مركز تقارير التدقيق والامتثال التنظيمي', 'Audit & Regulatory Compliance Reports Center')}
             {activeModuleId === 'risk-governance' && t('لوحة حوكمة الامتثال وسجلات الرقابة المصرفية', 'Compliance Governance & Banking Supervision Logs')}
             {activeModuleId === 'risk-tracker' && t('متتبع التوافق والتشريعات العفوية', 'Regulatory Compliance & Statutory Tracker')}

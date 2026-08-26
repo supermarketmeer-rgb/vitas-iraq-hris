@@ -40,16 +40,16 @@ export const Category6RecruitmentView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Banner */}
-      <div className="dark-banner p-6 rounded-3xl bg-gradient-to-r from-teal-900 via-teal-800 to-teal-900 border border-white/10 shadow-xl">
+      <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="material-symbols-outlined text-teal-400">work_history</span>
-              <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-bold">
+              <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-normal">
                 RECRUITMENT & ATS
               </span>
             </div>
-            <h1 className="text-2xl font-black text-white text-white-force drop-shadow-sm">
+            <h1 className="text-2xl font-normal text-white text-white-force drop-shadow-sm">
               {getModuleTitle()}
             </h1>
             <p className="text-xs text-slate-400 mt-1">
@@ -66,7 +66,7 @@ export const Category6RecruitmentView: React.FC = () => {
             </button>
             <button
               onClick={openEmployeePortal}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition-all"
+              className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-teal-600/20 transition-all"
             >
               <span className="material-symbols-outlined text-sm">person_pin</span>
               {t('فتح بوابة الموظفين', 'Open Employee Portal')}

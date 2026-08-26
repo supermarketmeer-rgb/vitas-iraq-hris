@@ -116,24 +116,24 @@ export const Category3EmployeeView: React.FC = () => {
   const getProfileThemeColors = () => {
     if (isDark) {
       return {
-        background: 'bg-[#111827]',
+        background: 'bg-[#0a0c10]',
         border: 'border-white/10',
         text: 'text-white',
         textSecondary: 'text-slate-400',
-        inputBg: 'bg-[#0a0c10]',
+        inputBg: 'bg-[#06080d]',
         inputBorder: 'border-white/10',
         inputText: 'text-white',
         inputPlaceholder: 'placeholder-slate-500',
-        cardBg: 'bg-[#111827]',
+        cardBg: 'bg-[#0a0c10]',
         cardBorder: 'border-white/10',
-        dropdownBg: 'bg-[#1a1f2e]',
+        dropdownBg: 'bg-[#06080d]',
         dropdownBorder: 'border-white/10',
         dropdownText: 'text-white',
         dropdownHover: 'hover:bg-white/10',
-        badgeBg: 'bg-blue-600/20',
-        badgeText: 'text-blue-400',
-        badgeBorder: 'border-blue-500/30',
-        accentBg: 'bg-teal-600/20',
+        badgeBg: 'bg-[#06080d]',
+        badgeText: 'text-teal-400',
+        badgeBorder: 'border-teal-500/30',
+        accentBg: 'bg-[#06080d]',
         accentText: 'text-teal-400',
         accentBorder: 'border-teal-500/30',
         divider: 'divide-white/10',
@@ -1193,7 +1193,7 @@ export const Category3EmployeeView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Top Banner */}
-      <div className="dark-banner p-6 rounded-3xl bg-gradient-to-r from-teal-900 via-teal-800 to-teal-900 border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
+      <div className="dark-banner p-6 rounded-3xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="material-symbols-outlined text-teal-400">group</span>
@@ -1232,7 +1232,7 @@ export const Category3EmployeeView: React.FC = () => {
 
             <button
               onClick={handleAddPosition}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/25 transition-all flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
             >
               <span className="material-symbols-outlined text-sm">work</span>
               {t('إضافة وظيفة جديدة', 'Add New Position')}
@@ -1240,7 +1240,7 @@ export const Category3EmployeeView: React.FC = () => {
 
             <button
               onClick={handleAddBranch}
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
             >
               <span className="material-symbols-outlined text-sm">add_location_alt</span>
               {t('إضافة Location جديد', 'Add New Location')}
@@ -1297,7 +1297,7 @@ export const Category3EmployeeView: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className={`w-11 h-11 rounded-xl font-black text-lg flex items-center justify-center shadow overflow-hidden shrink-0 ${
                           theme === 'dark'
-                            ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                            ? 'bg-teal-600/20 text-blue-400 border border-blue-500/30'
                             : 'bg-blue-50 text-blue-600 border border-blue-200'
                         }`}>
                           {emp.photoUrl ? (
@@ -2208,7 +2208,7 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-between font-mono">
+                <div className="p-3.5 rounded-2xl bg-teal-600/10 border border-blue-500/20 flex items-center justify-between font-mono">
                   <span className="text-slate-300 font-sans">{t('إجمالي الراتب الاستحقاقي الشهري (قبل الاستقطاعات):', 'Total Gross Monthly Salary:')}</span>
                   <span className="text-lg font-black text-emerald-400">{totalCalculatedSalary.toLocaleString()} د.ع</span>
                 </div>
@@ -2529,7 +2529,7 @@ export const Category3EmployeeView: React.FC = () => {
                         }
                         setNewStatusChange({ new_position: '', start_date: '', end_date: '' });
                       }}
-                      className="px-3 py-1.5 bg-teal-600/20 text-teal-400 rounded-lg text-xs font-bold hover:bg-teal-600/30 flex items-center gap-1"
+                      className="px-3 py-1.5 bg-teal-600 text-white shadow-md rounded-lg text-xs font-bold hover:bg-teal-600/30 flex items-center gap-1"
                     >
                       <span className="material-symbols-outlined text-sm">add</span>
                       {t('إضافة تغيير', 'Add Change')}
@@ -2619,7 +2619,7 @@ export const Category3EmployeeView: React.FC = () => {
                         setEmployeeTrainings([...employeeTrainings, trainingToAdd]);
                         setNewTraining({ course_name: '', start_date: '', end_date: '' });
                       }}
-                      className="px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-lg text-xs font-bold hover:bg-blue-600/30 flex items-center gap-1"
+                      className="px-3 py-1.5 bg-teal-600/20 text-blue-400 rounded-lg text-xs font-bold hover:bg-teal-600/30 flex items-center gap-1"
                     >
                       <span className="material-symbols-outlined text-sm">add</span>
                       {t('إضافة دورة', 'Add Course')}
@@ -2710,7 +2710,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setActiveTab(activeTab + 1)}
-                    className="px-5 py-2.5 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 font-bold hover:bg-blue-600/30 flex items-center gap-1"
+                    className="px-5 py-2.5 rounded-xl bg-teal-600/20 text-blue-400 border border-blue-500/30 font-bold hover:bg-teal-600/30 flex items-center gap-1"
                   >
                     {t('التبويب التالي', 'Next Tab')}
                     <span className="material-symbols-outlined text-sm">arrow_back</span>
@@ -2728,7 +2728,7 @@ export const Category3EmployeeView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-600/25 flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 flex items-center gap-2"
                 >
                   <span className="material-symbols-outlined text-sm">save</span>
                   {t('حفظ وتخزين الموظف (التبويبات الـ 7)', 'Save & Store Employee (All 7 Tabs)')}
@@ -2800,7 +2800,7 @@ export const Category3EmployeeView: React.FC = () => {
                               <span className={`block text-[10px] ${profileColors.textSecondary}`}>{getEmpJobTitle(emp)} • {getEmpBranch(emp)}</span>
                             </div>
                           </div>
-                          <span className={`text-[11px] font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'} font-bold ${isDark ? 'bg-blue-600/20' : 'bg-blue-50'} group-hover:${isDark ? 'bg-blue-600/30' : 'bg-blue-100'} px-2 py-0.5 rounded-full border ${profileColors.badgeBorder}`}>
+                          <span className={`text-[11px] font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'} font-bold ${isDark ? 'bg-teal-600/20' : 'bg-blue-50'} group-hover:${isDark ? 'bg-teal-600/30' : 'bg-blue-100'} px-2 py-0.5 rounded-full border ${profileColors.badgeBorder}`}>
                             {emp.employeeId || 'EMP'}
                           </span>
                         </button>
@@ -2884,7 +2884,7 @@ export const Category3EmployeeView: React.FC = () => {
                         handleLoadEmployeeData(selectedEmployee.id);
                         setActiveModuleId('emp-add');
                       }}
-                      className="absolute bottom-1 left-1 w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white border-2 border-white shadow-xl flex items-center justify-center z-20 transition-all hover:scale-110 active:scale-95 group/edit"
+                      className="absolute bottom-1 left-1 w-10 h-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white border-2 border-white shadow-xl flex items-center justify-center z-20 transition-all hover:scale-110 active:scale-95 group/edit"
                       title="تعديل بيانات وصورة الموظف / Edit Employee Profile"
                     >
                       <span className="material-symbols-outlined text-base">edit</span>
@@ -2904,7 +2904,7 @@ export const Category3EmployeeView: React.FC = () => {
                   )}
 
                   <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs">
-                    <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-blue-600/20 border-blue-500/30 text-blue-400' : 'bg-blue-50 border-blue-200/80 text-blue-700'} font-bold shadow-sm`}>
+                    <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-teal-600/20 border-blue-500/30 text-blue-400' : 'bg-blue-50 border-blue-200/80 text-blue-700'} font-bold shadow-sm`}>
                       {getEmpJobTitle(selectedEmployee)}
                     </span>
                     <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border-emerald-200/80 text-emerald-700'} font-mono font-bold shadow-sm flex items-center gap-1.5`}>
@@ -2944,7 +2944,7 @@ export const Category3EmployeeView: React.FC = () => {
                         onClick={() => setProfileViewTab(tab.id as any)}
                         className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
                           isActive
-                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-[1.02]'
+                            ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/30 scale-[1.02]'
                             : isDark
                             ? 'text-slate-400 hover:text-white hover:bg-white/10'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -3188,7 +3188,7 @@ export const Category3EmployeeView: React.FC = () => {
                                       <td className="px-3 py-2">
                                         <span className={`px-2 py-0.5 rounded-full font-bold ${
                                           child.relation === 'ولد' || child.relation === 'Son'
-                                            ? isDark ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+                                            ? isDark ? 'bg-teal-600/20 text-blue-400' : 'bg-blue-100 text-blue-700'
                                             : isDark ? 'bg-pink-600/20 text-pink-400' : 'bg-pink-100 text-pink-700'
                                         }`}>{child.relation && child.relation !== 'N/A' ? child.relation : '-'}</span>
                                       </td>
@@ -3257,7 +3257,7 @@ export const Category3EmployeeView: React.FC = () => {
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleEditBranch(branch)}
-                        className="p-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white transition-all"
+                        className="p-1.5 rounded-lg bg-teal-600/20 hover:bg-teal-600 text-blue-400 hover:text-white transition-all"
                         title={t('تعديل', 'Edit')}
                       >
                         <span className="material-symbols-outlined text-sm">edit</span>
@@ -3654,7 +3654,7 @@ export const Category3EmployeeView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-600/25 text-sm flex items-center gap-2"
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 text-sm flex items-center gap-2"
                 >
                   <span className="material-symbols-outlined text-sm">save</span>
                   {t('إضافة الوظيفة', 'Add Position')}

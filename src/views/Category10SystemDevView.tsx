@@ -84,15 +84,15 @@ export const Category10SystemDevView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Banner */}
-      <div className="dark-banner p-6 rounded-3xl bg-gradient-to-r from-teal-900 via-teal-800 to-teal-900 border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="material-symbols-outlined text-teal-400">developer_board</span>
-            <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-bold">
+            <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-normal">
               SYSTEM & DEVELOPER INFRASTRUCTURE
             </span>
           </div>
-          <h1 className="text-2xl font-black text-white text-white-force drop-shadow-sm">
+          <h1 className="text-2xl font-normal text-white drop-shadow-sm">
             {activeModuleId === 'sys-health-monitor' && t('مراقبة صحة وتوفر خوادم النظام (Health Monitor)', 'Server Health & Uptime Monitor')}
             {activeModuleId === 'sys-health-config' && t('تهيئة قواعد وفحوصات صحة السيرفرات', 'Server Health Rules & Check Config')}
             {activeModuleId === 'sys-endpoint-perf' && t('مراقب أداء نقاط النهاية وسرعة الاستجابة (APM)', 'Endpoint Performance & APM Monitor')}
@@ -188,7 +188,7 @@ export const Category10SystemDevView: React.FC = () => {
                   <span className="material-symbols-outlined text-teal-400">memory</span>
                   <h2 className="text-sm font-bold text-white">{t('مراقب استخدام الذاكرة (Memory Usage - RAM)', 'Memory Usage Monitor (RAM)')}</h2>
                 </div>
-                <span className="text-xs bg-teal-500/10 text-teal-400 border border-teal-500/20 px-2 py-0.5 rounded font-mono font-bold">
+                <span className="text-xs bg-teal-600 text-white shadow-md border border-teal-500/20 px-2 py-0.5 rounded font-mono font-bold">
                   Recharts Telemetry
                 </span>
               </div>

@@ -55,7 +55,7 @@ export const ArchiveModuleView: React.FC = () => {
   return (
     <div dir={isAr ? 'rtl' : 'ltr'} className={`min-h-screen font-sans antialiased transition-colors duration-200`}>
       {/* Module Header - matching HRMS design */}
-      <div className="mb-6 dark-banner p-6 rounded-3xl bg-gradient-to-r from-teal-900 via-teal-800 to-teal-900 border border-white/10 shadow-xl">
+      <div className="mb-6 dark-banner p-6 rounded-3xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 border border-white/10 shadow-xl">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-teal-600/20 border border-teal-500/30 flex items-center justify-center text-teal-400">
             <span className="material-symbols-outlined text-2xl">archive</span>

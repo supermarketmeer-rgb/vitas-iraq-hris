@@ -1,5 +1,17 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+
+const Router: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const isElectronDesktop = typeof window !== 'undefined' && (
+    window.location.protocol === 'file:' || 
+    navigator.userAgent.toLowerCase().includes('electron')
+  );
+  return isElectronDesktop ? (
+    <HashRouter>{children}</HashRouter>
+  ) : (
+    <BrowserRouter>{children}</BrowserRouter>
+  );
+};
 import { AppProvider } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -256,10 +268,16 @@ function AppContent() {
 
 // Public Candidate Portal (no sidebar, no header)
 function PublicCandidatePortal() {
+  const { theme, language } = useApp();
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white">
+    <div 
+      dir={language === 'ar' ? 'rtl' : 'ltr'} 
+      className={`min-h-screen transition-colors duration-300 ${
+        theme === 'dark' ? 'bg-gradient-to-br from-[#0a0c10] via-[#0f172a] to-[#1e293b] text-white' : 'bg-slate-100 text-slate-900'
+      }`}
+    >
       <ErrorBoundary>
-        <div className="container mx-auto p-4 py-8">
+        <div className="container mx-auto p-4 py-6 max-w-7xl">
           <CandidatePortal />
         </div>
       </ErrorBoundary>
@@ -269,10 +287,16 @@ function PublicCandidatePortal() {
 
 // Public Employee Portal (no sidebar, no header)
 function PublicEmployeePortal() {
+  const { theme, language } = useApp();
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white">
+    <div 
+      dir={language === 'ar' ? 'rtl' : 'ltr'} 
+      className={`min-h-screen transition-colors duration-300 ${
+        theme === 'dark' ? 'bg-gradient-to-br from-[#0a0c10] via-[#0f172a] to-[#1e293b] text-white' : 'bg-slate-100 text-slate-900'
+      }`}
+    >
       <ErrorBoundary>
-        <div className="container mx-auto p-4 py-8">
+        <div className="container mx-auto p-4 py-6 max-w-7xl">
           <EmployeePortal />
         </div>
       </ErrorBoundary>

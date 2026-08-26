@@ -94,7 +94,7 @@ export const PunchDetailsModal: React.FC<PunchDetailsModalProps> = ({
                 </li>
               )}
               {record.overtime_minutes > 0 && (
-                <li className="text-teal-800 dark:text-teal-300 font-semibold">
+                <li className="text-teal-800 dark:text-white font-semibold">
                   {lang === 'ar' ? `تم احتساب ${record.overtime_minutes} دقيقة وقت إضافي بعد نهاية الدوام المقرر.` : `Calculated ${record.overtime_minutes} mins overtime.`}
                 </li>
               )}
@@ -120,7 +120,7 @@ export const PunchDetailsModal: React.FC<PunchDetailsModalProps> = ({
                     className="p-3 rounded-xl bg-white dark:bg-[#0a0c10] border border-slate-200 dark:border-white/10 flex items-center justify-between text-xs"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 font-bold flex items-center justify-center text-[11px]">
+                      <div className="w-6 h-6 rounded-full bg-teal-600 text-white shadow-md font-bold flex items-center justify-center text-[11px]">
                         {idx + 1}
                       </div>
                       <div>
@@ -155,7 +155,7 @@ export const PunchDetailsModal: React.FC<PunchDetailsModalProps> = ({
               onClose();
               onOpenCorrection(record);
             }}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-teal-600 dark:text-teal-400 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-teal-600 dark:text-white bg-teal-600 hover:bg-teal-500/20 border border-teal-500/20 transition-colors cursor-pointer"
           >
             {t.request_correction}
           </button>

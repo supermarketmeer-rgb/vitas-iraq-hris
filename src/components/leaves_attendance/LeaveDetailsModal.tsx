@@ -138,7 +138,7 @@ export const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
             <div className="space-y-3">
               {/* Stage 1: Submission */}
               <div className="p-3.5 rounded-xl bg-white dark:bg-[#0a0c10] border border-slate-200 dark:border-white/10 flex items-start gap-3">
-                <div className="p-1.5 rounded-lg bg-teal-500/20 text-teal-400 shrink-0">
+                <div className="p-1.5 rounded-lg bg-teal-600 text-white shadow-md shrink-0">
                   <span className="material-symbols-outlined text-lg">person_check</span>
                 </div>
                 <div className="flex-1">

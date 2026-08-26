@@ -125,7 +125,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/20 text-white border border-teal-500/30 flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-sm">fingerprint</span>
                 <span>{lang === 'ar' ? 'سجل الحضور والدوام الموحد' : 'Biometric Attendance Registry'}</span>
               </span>

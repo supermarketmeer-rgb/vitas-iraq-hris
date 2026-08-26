@@ -214,7 +214,7 @@ export const CompanyNews: React.FC<CompanyNewsProps> = ({ language, isReadOnly }
         {!isEmployee && (
           <button
             onClick={() => { resetForm(); setShowAddModal(true); }}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm flex items-center gap-2 shadow-md shadow-blue-600/20"
+            className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-sm flex items-center gap-2 shadow-md shadow-teal-600/20"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             {language === 'ar' ? 'إضافة خبر' : 'Add News'}
@@ -477,7 +477,7 @@ export const CompanyNews: React.FC<CompanyNewsProps> = ({ language, isReadOnly }
               </button>
               <button
                 onClick={editingNews ? handleUpdateNews : handleAddNews}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm"
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-sm"
               >
                 {editingNews ? (language === 'ar' ? 'تحديث' : 'Update') : (language === 'ar' ? 'إضافة' : 'Add')}
               </button>

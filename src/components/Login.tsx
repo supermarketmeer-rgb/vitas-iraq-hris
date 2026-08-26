@@ -233,8 +233,8 @@ export const Login: React.FC = () => {
         {/* Login Card */}
         <div className={`backdrop-blur-xl border rounded-3xl p-6 shadow-2xl w-[calc(40vw-38px)] max-w-md ${
           isDark 
-            ? 'bg-slate-900/40 border-slate-700/50' 
-            : 'bg-white/90 border-slate-200'
+            ? 'bg-[#0a0c10] border-white/10 text-white' 
+            : 'bg-[#e8ebef] border-slate-300 text-slate-900'
         }`}>
           {/* Logo */}
           <div className="text-center mb-2">
@@ -247,53 +247,58 @@ export const Login: React.FC = () => {
                 />
               </div>
             </div>
-            <h1 className={`text-2xl font-bold mb-2 ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{t('مؤسسة فيتاس العراق', 'VITAS Iraq')}</h1>
-            <p className={`text-xs font-medium mb-1 ${isDark ? 'text-teal-300' : 'text-teal-500'}`}>{t('مؤسسة الاسكان التعاونية CHF', 'Cooperative Housing Foundation CHF')}</p>
-            <p className={`text-sm ${isDark ? 'text-teal-300' : 'text-teal-500'}`}>{t('نظام إدارة الموارد البشرية', 'HRMS System')}</p>
+            <h1 className={`text-2xl font-bold mb-2 ${isDark ? 'text-teal-400' : 'text-slate-900'}`}>{t('مؤسسة فيتاس العراق', 'VITAS Iraq')}</h1>
+            <p className={`text-xs font-medium mb-1 ${isDark ? 'text-white' : 'text-slate-700'}`}>{t('مؤسسة الاسكان التعاونية CHF', 'Cooperative Housing Foundation CHF')}</p>
+            <p className={`text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>{t('نظام إدارة الموارد البشرية', 'HRMS System')}</p>
           </div>
 
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-teal-300' : 'text-teal-600'}`}>
+              <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 {t('اسم المستخدم', 'Username')}
               </label>
               <div className="relative">
-                <span className={`material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-lg ${isDark ? 'text-teal-400' : 'text-teal-500'}`}>person</span>
+                <span className={`material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-lg ${isDark ? 'text-teal-400' : 'text-slate-700'}`}>person</span>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder={language === 'ar' ? 'أدخل اسم المستخدم' : 'Enter username'}
+                  style={{
+                    backgroundColor: isDark ? '#0a0c10' : '#d8e0e8',
+                    color: isDark ? '#ffffff' : '#000000',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'
+                  }}
                   className={`w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
                     isDark 
-                      ? 'bg-slate-800/50 border-slate-700 text-white placeholder-teal-500' 
-                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-teal-400'
+                      ? 'bg-[#0a0c10] border-white/15 text-white placeholder-slate-400' 
+                      : 'bg-[#d8e0e8] border-slate-300 text-slate-900 placeholder-slate-500'
                   }`}
                 />
               </div>
             </div>
 
             <div>
-              <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-teal-300' : 'text-teal-600'}`}>
+              <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 {t('كلمة المرور', 'Password')}
               </label>
               <div className="relative">
-                <span className={`material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-lg ${isDark ? 'text-teal-400' : 'text-teal-500'}`}>lock</span>
+                <span className={`material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-lg ${isDark ? 'text-teal-400' : 'text-slate-700'}`}>lock</span>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={language === 'ar' ? 'أدخل كلمة المرور' : 'Enter password'}
                   style={{
-                    backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-                    color: isDark ? '#ffffff' : '#0f172a',
-                    borderColor: isDark ? '#334155' : '#cbd5e1'
+                    backgroundColor: isDark ? '#0a0c10' : '#d8e0e8',
+                    color: isDark ? '#ffffff' : '#000000',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'
                   }}
                   className={`w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
                     isDark 
-                      ? 'bg-[#0f172a] border-slate-700 text-white placeholder-slate-500' 
-                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                      ? 'bg-[#0a0c10] border-white/15 text-white placeholder-slate-400' 
+                      : 'bg-[#d8e0e8] border-slate-300 text-slate-900 placeholder-slate-500'
                   }`}
                 />
               </div>

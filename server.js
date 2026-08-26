@@ -8,6 +8,8 @@ import fs from 'fs';
 import config from './database/config.mjs';
 import { initDatabase } from './database/initDatabase.js';
 import { startAutoCloudSync, syncLocalToCloud } from './database/autoCloudSync.js';
+import { initSyncEngineTables } from './database/initSyncEngine.js';
+import { startLocalDiscoveryServer } from './database/localDiscovery.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,6 +60,10 @@ db.getConnection(async (err, connection) => {
   
   // Auto-initialize database tables and seed data if missing
   await initDatabase(db);
+  await initSyncEngineTables(db);
+  
+  // Launch Local Server Discovery (UDP Beacon)
+  startLocalDiscoveryServer({ port: PORT, serverId: `VITAS-SERVER-LAN` });
   
   // Launch non-blocking background auto-sync to Cloud
   startAutoCloudSync(db);
@@ -90,6 +96,166 @@ app.post('/api/sync-now', async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Health & Server Discovery Endpoints
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    role: 'LOCAL_SERVER',
+    timestamp: Date.now(),
+    uptime: process.uptime()
+  });
+});
+
+app.get('/api/server-info', async (req, res) => {
+  try {
+    const devicesCount = await query('SELECT COUNT(*) as cnt FROM sync_devices WHERE is_active = 1').catch(() => [{ cnt: 0 }]);
+    res.json({
+      service: 'VITAS_IRAQ_HRMS',
+      role: 'LOCAL_SERVER',
+      port: PORT,
+      database: 'CONNECTED',
+      appVersion: '1.0.0',
+      activeDevices: devicesCount[0]?.cnt || 0,
+      timestamp: Date.now()
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Incremental Sync API Endpoints
+app.post('/api/sync/push', async (req, res) => {
+  try {
+    const { deviceId, user_id, changes } = req.body;
+    if (!Array.isArray(changes) || changes.length === 0) {
+      return res.json({ success: true, processedCount: 0, message: 'No changes provided' });
+    }
+
+    let processedCount = 0;
+    for (const change of changes) {
+      const { change_id, table_name, record_id, operation, payload, version = 1, timestamp = Date.now() } = change;
+      if (!change_id || !table_name || !operation) continue;
+
+      await query(
+        `INSERT IGNORE INTO sync_changes (change_id, device_id, user_id, table_name, record_id, operation, payload, version, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [change_id, deviceId || 'UNKNOWN', user_id || null, table_name, String(record_id || ''), operation, typeof payload === 'string' ? payload : JSON.stringify(payload), version, timestamp]
+      ).catch(() => {});
+
+      const dataObj = typeof payload === 'string' ? JSON.parse(payload || '{}') : (payload || {});
+      
+      if (operation === 'CREATE' || operation === 'UPDATE') {
+        const keys = Object.keys(dataObj);
+        if (keys.length > 0) {
+          const cols = keys.map(k => `\`${k}\``).join(', ');
+          const placeholders = keys.map(() => '?').join(', ');
+          const updateAssigns = keys.map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
+          const vals = keys.map(k => {
+            const v = dataObj[k];
+            if (typeof v === 'object' && v !== null) return JSON.stringify(v);
+            return v;
+          });
+          const sql = `INSERT INTO \`${table_name}\` (${cols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateAssigns}`;
+          await query(sql, vals).catch(err => {
+            console.warn(`[SYNC PUSH] Error applying change to ${table_name}:`, err.message);
+          });
+        }
+      } else if (operation === 'DELETE' && record_id) {
+        await query(`DELETE FROM \`${table_name}\` WHERE id = ?`, [record_id]).catch(() => {});
+      }
+
+      processedCount++;
+    }
+
+    if (deviceId) {
+      await query(
+        `INSERT INTO sync_devices (device_id, device_name, install_id, app_version, role, last_seen, last_sync)
+         VALUES (?, ?, ?, ?, 'CLIENT', NOW(), NOW())
+         ON DUPLICATE KEY UPDATE last_seen = NOW(), last_sync = NOW()`,
+        [deviceId, `Client-${deviceId.slice(0, 6)}`, deviceId, '1.0.0']
+      ).catch(() => {});
+    }
+
+    res.json({ success: true, processedCount, syncedAt: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/sync/pull', async (req, res) => {
+  try {
+    const sinceTimestamp = parseInt(req.query.sinceTimestamp || '0');
+    const deviceId = req.query.deviceId || '';
+
+    const changes = await query(
+      `SELECT * FROM sync_changes WHERE timestamp > ? AND device_id != ? ORDER BY timestamp ASC LIMIT 500`,
+      [sinceTimestamp, deviceId]
+    ).catch(() => []);
+
+    res.json({ success: true, changes, syncedAt: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/sync/devices/heartbeat', async (req, res) => {
+  try {
+    const { deviceId, deviceName, installId, appVersion, role, connectionMode, ipAddress } = req.body;
+    if (!deviceId) return res.status(400).json({ error: 'Device ID required' });
+
+    await query(
+      `INSERT INTO sync_devices (device_id, device_name, install_id, app_version, role, connection_mode, ip_address, last_seen)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE device_name = VALUES(device_name), app_version = VALUES(app_version), connection_mode = VALUES(connection_mode), ip_address = VALUES(ip_address), last_seen = NOW()`,
+      [deviceId, deviceName || 'Desktop Client', installId || deviceId, appVersion || '1.0.0', role || 'CLIENT', connectionMode || 'LOCAL', ipAddress || req.ip]
+    ).catch(() => {});
+
+    res.json({ success: true, serverTime: Date.now() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/sync/devices', async (req, res) => {
+  try {
+    const devices = await query(`SELECT * FROM sync_devices ORDER BY last_seen DESC`).catch(() => []);
+    res.json({ success: true, devices });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/sync/conflicts', async (req, res) => {
+  try {
+    const conflicts = await query(`SELECT * FROM sync_conflicts ORDER BY created_at DESC LIMIT 100`).catch(() => []);
+    res.json({ success: true, conflicts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/sync/conflicts/resolve', async (req, res) => {
+  try {
+    const { conflictId, resolutionStrategy, resolvedBy } = req.body;
+    await query(
+      `UPDATE sync_conflicts SET status = 'RESOLVED', resolution_strategy = ?, resolved_by = ?, resolved_at = NOW() WHERE id = ?`,
+      [resolutionStrategy || 'MANUAL', resolvedBy || 'Admin', conflictId]
+    ).catch(() => {});
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/sync/logs', async (req, res) => {
+  try {
+    const logs = await query(`SELECT * FROM sync_logs ORDER BY timestamp DESC LIMIT 200`).catch(() => []);
+    res.json({ success: true, logs });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -2835,6 +3001,14 @@ app.get('*', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT} (accessible via LAN/WiFi and localhost)`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.warn(`[SERVER NOTICE] Port ${PORT} is already in use (e.g. by Electron Desktop app or another server instance). An active instance is already serving requests on port ${PORT}.`);
+  } else {
+    console.error('[SERVER ERROR]', err);
+  }
 });

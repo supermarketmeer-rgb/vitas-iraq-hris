@@ -488,7 +488,7 @@ export const initialLeaveTypes: LeaveType[] = [
     include_weekends: false,
     include_holidays: false,
     active: true,
-    color_badge: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200',
+    color_badge: 'bg-teal-600 text-white shadow-md dark:bg-teal-900/40 dark:text-white border-teal-200',
   },
 ];
 

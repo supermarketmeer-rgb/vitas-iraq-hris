@@ -767,15 +767,15 @@ export const Category5PayrollView: React.FC = () => {
       )}
 
       {/* Top Banner & Control Bar */}
-      <div className="p-6 rounded-3xl dark-banner bg-gradient-to-r from-teal-900 via-teal-800 to-teal-900 border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4 print:hidden">
+      <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4 print:hidden">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="material-symbols-outlined text-teal-400">database</span>
-            <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-bold">
+            <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-normal">
               XAMPP MYSQL LIVE SYNC • VITASIRAQ_HRIS_DB PAYROLL ENGINE
             </span>
           </div>
-          <h1 className="text-2xl font-black text-white text-white-force drop-shadow-sm flex items-center gap-3">
+          <h1 className="text-2xl font-normal text-white drop-shadow-sm flex items-center gap-3">
             {activeModuleId === 'payroll-mgmt' && t('إدارة مسيرات الرواتب الشهرية والبدلات', 'Monthly Payroll & Allowances Management')}
             {activeModuleId === 'payroll-payslip' && t('مستخرج واستعراض كشف الراتب الشهري (Payslip)', 'Monthly Payslip Viewer & Exporter')}
             {activeModuleId === 'payroll-approvals' && t('مركز الاعتمادات والموافقات المالية', 'Financial Approvals Hub')}
@@ -994,7 +994,7 @@ export const Category5PayrollView: React.FC = () => {
 
                       {viewMode === 'detailed' && (
                         <>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-teal-300 font-bold bg-[#1e293b]">current_month_basic</th>
+                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-white font-bold bg-[#1e293b]">current_month_basic</th>
                           <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-300 font-bold">phone_allowance</th>
                           <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-300 font-bold">family_allowance</th>
                           <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-300 font-bold">cert_allowance</th>
@@ -1019,7 +1019,7 @@ export const Category5PayrollView: React.FC = () => {
                       )}
 
                       <th className="p-3 border-r border-white/10 whitespace-nowrap !text-rose-400 font-black">total_deductions</th>
-                      <th className="p-3 border-r border-white/10 whitespace-nowrap !text-teal-300 font-black bg-[#1e293b]">net_salary</th>
+                      <th className="p-3 border-r border-white/10 whitespace-nowrap !text-white font-black bg-[#1e293b]">net_salary</th>
                       <th className="p-3 text-center whitespace-nowrap !text-slate-200 font-bold">{t('إجراءات', 'Actions')}</th>
                     </tr>
                   </thead>
@@ -1105,7 +1105,7 @@ export const Category5PayrollView: React.FC = () => {
                         {viewMode === 'detailed' && (
                           <>
                             <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
-                              isDark ? 'border-white/5 text-teal-300 bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100'
+                              isDark ? 'border-white/5 text-white bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100'
                             }`}>
                               {(row.current_month_basic || 0).toLocaleString()}
                             </td>
@@ -1203,7 +1203,7 @@ export const Category5PayrollView: React.FC = () => {
                         </td>
 
                         <td className={`p-3 border-r whitespace-nowrap font-mono font-normal text-base ${
-                          isDark ? 'border-white/5 text-teal-300 bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100'
+                          isDark ? 'border-white/5 text-white bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100'
                         }`}>
                           {(row.net_salary || 0).toLocaleString(language === 'en' ? 'en-US' : 'ar-IQ')} {t('د.ع', 'IQD')}
                         </td>
@@ -1218,8 +1218,8 @@ export const Category5PayrollView: React.FC = () => {
                                 isPeriodLocked
                                   ? 'bg-white/5 text-slate-500 cursor-not-allowed'
                                   : isDark
-                                    ? 'bg-teal-600/20 text-teal-300 hover:bg-teal-600/40 border border-teal-500/30'
-                                    : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-300'
+                                    ? 'bg-teal-600 text-white shadow-md hover:bg-teal-600/40 border border-teal-500/30'
+                                    : 'bg-teal-600 text-white shadow-md hover:bg-teal-100 border border-teal-300'
                               }`}
                               title={t('تعديل الاستقطاعات والغيابات والأجر الإضافي', 'Edit Adjustments')}
                             >
@@ -1295,7 +1295,7 @@ export const Category5PayrollView: React.FC = () => {
 
                       {viewMode === 'detailed' && (
                         <>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-teal-300 bg-[#1e293b]' : 'border-slate-300 text-slate-900 bg-slate-200'}`}>{(totals.current_month_basic || 0).toLocaleString()}</td>
+                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-slate-900 bg-slate-200'}`}>{(totals.current_month_basic || 0).toLocaleString()}</td>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.phone_allowance || 0).toLocaleString()}</td>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.family_allowance || 0).toLocaleString()}</td>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.cert_allowance || 0).toLocaleString()}</td>
@@ -1325,7 +1325,7 @@ export const Category5PayrollView: React.FC = () => {
                         isDark ? 'border-white/10 text-rose-400' : 'border-slate-300 text-rose-800'
                       }`}>-{(totals.deductions || 0).toLocaleString()} {t('د.ع', 'IQD')}</td>
                       <td className={`p-3 border-r font-mono font-black text-base ${
-                        isDark ? 'border-white/10 text-teal-300 bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'
+                        isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'
                       }`}>{(totals.net || 0).toLocaleString()} {t('د.ع', 'IQD')}</td>
                       <td className="p-3 text-center">-</td>
                     </tr>
@@ -1437,7 +1437,7 @@ export const Category5PayrollView: React.FC = () => {
                       setIsBatchPrinting(false);
                     }, 250);
                   }}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-all"
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-all"
                 >
                   <span className="material-symbols-outlined text-sm">print_connect</span>
                   <span>
@@ -1780,7 +1780,7 @@ export const Category5PayrollView: React.FC = () => {
                 </p>
                 <button
                   onClick={() => setShowEmailModal(false)}
-                  className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+                  className="px-6 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs"
                 >
                   {t('إغلاق', 'Close')}
                 </button>
@@ -1859,7 +1859,7 @@ export const Category5PayrollView: React.FC = () => {
 
                 {/* Attachment Summary Badge */}
                 <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-2 text-teal-300 font-medium">
+                  <div className="flex items-center gap-2 text-white font-medium">
                     <span className="material-symbols-outlined text-base">attach_file</span>
                     <span>{t('مرفق التقرير:', 'Attachment:')} Payslips_Batch_{emailForm.officeName}.pdf</span>
                   </div>
@@ -1954,7 +1954,7 @@ export const Category5PayrollView: React.FC = () => {
 
             <button
               onClick={() => setActiveModuleId('payroll-claims')}
-              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-sm">fact_check</span>
               <span>{t('عرض تفاصيل المطالبات', 'Inspect Claim Details')}</span>
@@ -2010,7 +2010,7 @@ export const Category5PayrollView: React.FC = () => {
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleUpdateApprovalStatus(req.id, 'Approved')}
-                          className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow"
+                          className="px-3 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow"
                         >
                           {t('اعتماد', 'Approve')}
                         </button>
@@ -2074,10 +2074,10 @@ export const Category5PayrollView: React.FC = () => {
                     {t('خطوات ومراحل دورة اعتماد المطالبة المالية', 'Approval Workflow Timeline')}
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] text-center">
-                    <div className="p-2 rounded-xl bg-teal-600/20 border border-teal-500/40 text-teal-300 font-bold">
+                    <div className="p-2 rounded-xl bg-teal-600/20 border border-teal-500/40 text-white font-bold">
                       1. تقديم الموظف
                     </div>
-                    <div className="p-2 rounded-xl bg-teal-600/20 border border-teal-500/40 text-teal-300 font-bold">
+                    <div className="p-2 rounded-xl bg-teal-600/20 border border-teal-500/40 text-white font-bold">
                       2. تدقيق رئيس القسم
                     </div>
                     <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold">
@@ -2122,7 +2122,7 @@ export const Category5PayrollView: React.FC = () => {
                 </div>
 
                 {/* Decision Actions Bar */}
-                <div className="p-5 rounded-2xl bg-gradient-to-r from-teal-950 via-slate-900 to-teal-950 border border-teal-500/30 flex flex-wrap items-center justify-between gap-3">
+                <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 border border-teal-500/30 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <span className="font-bold text-white block">{t('اتخاذ قرار الاعتماد والتوقيع الإلكتروني', 'Take Approval Decision')}</span>
                     <span className="text-[11px] text-slate-400">{t('سيتم تحويل المطالبة تلقائياً لقسيمة مسير الشهر عند الموافقة', 'Approved claim will automatically attach to monthly payroll')}</span>
@@ -2131,7 +2131,7 @@ export const Category5PayrollView: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleUpdateApprovalStatus(currentClaimObject.id, 'Approved')}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg flex items-center gap-1.5"
+                      className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg flex items-center gap-1.5"
                     >
                       <span className="material-symbols-outlined text-sm">check_circle</span>
                       <span>{t('موافقة واعتماد المطالبة', 'Approve Claim')}</span>

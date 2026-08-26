@@ -54,11 +54,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Top Banner */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-teal-900 via-teal-800 to-teal-900 border border-white/20 shadow-xl flex flex-wrap items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-[#121c33] via-[#172545] to-[#121c33] border border-[#1e3054] shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-teal-300">space_dashboard</span>
-            <span className="text-xs font-mono text-teal-300 uppercase tracking-widest font-bold">
+            <span className="material-symbols-outlined text-white">space_dashboard</span>
+            <span className="text-xs font-mono text-white uppercase tracking-widest font-bold">
               VITAS IRAQ HRIS - LEAVES & ATTENDANCE
             </span>
           </div>
@@ -83,7 +83,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             onClick={onSyncNow}
             disabled={isSyncing}
-            className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/25 transition-all flex items-center gap-2 border border-blue-300/40 cursor-pointer disabled:opacity-50"
+            className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2 border border-teal-300/40 cursor-pointer disabled:opacity-50"
           >
             <span className={`material-symbols-outlined text-sm ${isSyncing ? 'animate-spin' : ''}`}>sync</span>
             <span>{isSyncing ? t.syncing : t.sync_now}</span>
@@ -94,7 +94,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* High Level Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {/* Present */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm transition-all hover:scale-[1.02]">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:scale-[1.02]">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.present}</span>
             <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -111,7 +111,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Late */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm transition-all hover:scale-[1.02]">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:scale-[1.02]">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.late}</span>
             <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
@@ -127,7 +127,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* On Leave */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm transition-all hover:scale-[1.02]">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:scale-[1.02]">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.on_leave}</span>
             <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
@@ -143,7 +143,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Early Leave */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm transition-all hover:scale-[1.02]">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:scale-[1.02]">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.early_leave}</span>
             <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
@@ -159,7 +159,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Missing Punch */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm transition-all hover:scale-[1.02]">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:scale-[1.02]">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.missing_punch}</span>
             <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
@@ -175,7 +175,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Absent */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm transition-all hover:scale-[1.02]">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:scale-[1.02]">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.absent}</span>
             <div className="p-1.5 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-400">
@@ -194,8 +194,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Main Grid: My Attendance + Balances + Manager Approvals */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Today's Personal Attendance Card */}
-        <div className="lg:col-span-6 rounded-3xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 p-6 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
+        <div className="lg:col-span-6 rounded-3xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] p-6 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1f2d4a] pb-3">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-teal-500">fingerprint</span>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -212,25 +212,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-white/10">
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0c1322] border border-slate-200 dark:border-[#1f2d4a]">
               <span className="text-slate-400 block mb-1">{t.scheduled_shift}</span>
               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
                 {stats.my_attendance_today.scheduled_start} - {stats.my_attendance_today.scheduled_end}
               </span>
             </div>
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-white/10">
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0c1322] border border-slate-200 dark:border-[#1f2d4a]">
               <span className="text-slate-400 block mb-1">{t.first_punch_time}</span>
               <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                 {stats.my_attendance_today.check_in || t.not_punched_yet}
               </span>
             </div>
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-white/10">
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0c1322] border border-slate-200 dark:border-[#1f2d4a]">
               <span className="text-slate-400 block mb-1">{t.last_punch_time}</span>
               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
                 {stats.my_attendance_today.check_out || t.not_punched_yet}
               </span>
             </div>
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-white/10">
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0c1322] border border-slate-200 dark:border-[#1f2d4a]">
               <span className="text-slate-400 block mb-1">{t.worked_hours_today}</span>
               <span className="font-bold text-teal-600 dark:text-teal-400">
                 {stats.my_attendance_today.worked_hours} {t.hours_unit}
@@ -239,7 +239,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Quick Simulation Buttons */}
-          <div className="pt-2 border-t border-slate-100 dark:border-white/10">
+          <div className="pt-2 border-t border-slate-100 dark:border-[#1f2d4a]">
             <span className="text-[11px] text-slate-400 block mb-2 font-medium">
               {t.quick_punch_title}:
             </span>
@@ -277,8 +277,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Leave Balances Card */}
-        <div className="lg:col-span-6 rounded-3xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 p-6 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
+        <div className="lg:col-span-6 rounded-3xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] p-6 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1f2d4a] pb-3">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-teal-500">account_balance_wallet</span>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -298,7 +298,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {stats.my_leave_balances.map((b) => (
               <div
                 key={b.id}
-                className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-white/10 space-y-2"
+                className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#0c1322] border border-slate-200 dark:border-[#1f2d4a] space-y-2"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
@@ -330,8 +330,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Manager Section (If Manager / HR Admin) */}
       {stats.manager_stats && (
-        <div className="rounded-3xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 p-6 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
+        <div className="rounded-3xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] p-6 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1f2d4a] pb-3">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-teal-500">fact_check</span>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">

@@ -5,11 +5,18 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+    },
+    build: {
+      sourcemap: false,
+      chunkSizeWarningLimit: 3000,
+      minify: 'esbuild',
+      cssMinify: 'esbuild',
     },
     server: {
       proxy: {
