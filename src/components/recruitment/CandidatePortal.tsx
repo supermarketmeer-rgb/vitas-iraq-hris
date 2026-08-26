@@ -1,10 +1,132 @@
-import React, { useState, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
-import { JobVacancy, Candidate } from '../../types';
-import { api } from '../../api/client';
+const TITLE_MAP: Record<string, { ar: string; en: string }> = {
+  'مسؤول قروض': { ar: 'مسؤول قروض', en: 'Loan Officer' },
+  'Loan Officer': { ar: 'مسؤول قروض', en: 'Loan Officer' },
+  'loan officer': { ar: 'مسؤول قروض', en: 'Loan Officer' },
+  'مدير فرع': { ar: 'مدير فرع', en: 'Branch Manager' },
+  'Branch Manager': { ar: 'مدير فرع', en: 'Branch Manager' },
+  'أخصائي موارد بشرية': { ar: 'أخصائي موارد بشرية', en: 'HR Specialist' },
+  'HR Specialist': { ar: 'أخصائي موارد بشرية', en: 'HR Specialist' },
+  'محاسب': { ar: 'محاسب', en: 'Accountant' },
+  'Accountant': { ar: 'محاسب', en: 'Accountant' },
+  'مدقق داخلي': { ar: 'مدقق داخلي', en: 'Internal Auditor' },
+  'Internal Auditor': { ar: 'مدقق داخلي', en: 'Internal Auditor' },
+  'مسؤول تكنولوجيا المعلومات': { ar: 'مسؤول تكنولوجيا المعلومات', en: 'IT Officer' },
+  'IT Officer': { ar: 'مسؤول تكنولوجيا المعلومات', en: 'IT Officer' },
+  'مسؤول امتثال ومخاطر': { ar: 'مسؤول امتثال ومخاطر', en: 'Risk & Compliance Officer' },
+  'Risk & Compliance Officer': { ar: 'مسؤول امتثال ومخاطر', en: 'Risk & Compliance Officer' },
+  'أمين صندوق': { ar: 'أمين صندوق', en: 'Cashier' },
+  'Cashier': { ar: 'أمين صندوق', en: 'Cashier' },
+  'مسؤول تحصيل': { ar: 'مسؤول تحصيل', en: 'Recovery Officer' },
+  'Recovery Officer': { ar: 'مسؤول تحصيل', en: 'Recovery Officer' },
+  'مشرف ائتمان': { ar: 'مشرف ائتمان', en: 'Credit Supervisor' },
+  'Credit Supervisor': { ar: 'مشرف ائتمان', en: 'Credit Supervisor' },
+  'مسؤول علاقات عامة': { ar: 'مسؤول علاقات عامة', en: 'Public Relations Officer' },
+  'PR Officer': { ar: 'مسؤول علاقات عامة', en: 'Public Relations Officer' },
+};
 
-// Console log at component mount
-console.log('CandidatePortal component loaded');
+const DEPT_MAP: Record<string, { ar: string; en: string }> = {
+  'قسم الائتمان': { ar: 'قسم الائتمان', en: 'Credit Department' },
+  'الائتمان': { ar: 'قسم الائتمان', en: 'Credit' },
+  'Credit': { ar: 'قسم الائتمان', en: 'Credit Department' },
+  'Credit Department': { ar: 'قسم الائتمان', en: 'Credit Department' },
+  'إدارة التمويل الأصغر والعمليات': { ar: 'إدارة التمويل الأصغر والعمليات', en: 'Microfinance & Operations' },
+  'Microfinance & Operations': { ar: 'إدارة التمويل الأصغر والعمليات', en: 'Microfinance & Operations' },
+  'القروض والائتمان': { ar: 'القروض والائتمان', en: 'Loans & Credit' },
+  'Loans & Credit': { ar: 'القروض والائتمان', en: 'Loans & Credit' },
+  'الاستحصال والتحصيل': { ar: 'الاستحصال والتحصيل', en: 'Collection & Recovery' },
+  'Collection & Recovery': { ar: 'الاستحصال والتحصيل', en: 'Collection & Recovery' },
+  'الموارد البشرية': { ar: 'الموارد البشرية', en: 'Human Resources' },
+  'Human Resources': { ar: 'الموارد البشرية', en: 'Human Resources' },
+  'HR': { ar: 'الموارد البشرية', en: 'Human Resources' },
+  'التقنية والأنظمة': { ar: 'التقنية والأنظمة', en: 'IT & Systems' },
+  'تكنولوجيا المعلومات': { ar: 'تكنولوجيا المعلومات', en: 'IT & Technology' },
+  'تكنولوجيا المعلوماات': { ar: 'تكنولوجيا المعلومات', en: 'IT & Technology' },
+  'IT': { ar: 'تكنولوجيا المعلومات', en: 'IT & Technology' },
+  'المالية والمحاسبة': { ar: 'المالية والمحاسبة', en: 'Finance & Accounting' },
+  'المالية': { ar: 'المالية', en: 'Finance' },
+  'Finance': { ar: 'المالية والمحاسبة', en: 'Finance & Accounting' },
+  'العمليات': { ar: 'العمليات', en: 'Operations' },
+  'Operations': { ar: 'العمليات', en: 'Operations' },
+  'التسويق والمبيعات': { ar: 'التسويق والمبيعات', en: 'Marketing & Sales' },
+  'Marketing & Sales': { ar: 'التسويق والمبيعات', en: 'Marketing & Sales' },
+  'التدقيق الداخلي': { ar: 'التدقيق الداخلي', en: 'Internal Audit' },
+  'Internal Audit': { ar: 'التدقيق الداخلي', en: 'Internal Audit' },
+  'الامتثال والمخاطر': { ar: 'الامتثال والمخاطر', en: 'Risk & Compliance' },
+  'Risk & Compliance': { ar: 'الامتثال والمخاطر', en: 'Risk & Compliance' },
+  'قسم الخزينة': { ar: 'قسم الخزينة', en: 'Treasury Department' },
+  'الخزينة': { ar: 'قسم الخزينة', en: 'Treasury' },
+  'Treasury': { ar: 'قسم الخزينة', en: 'Treasury Department' },
+  'الأمن': { ar: 'الأمن', en: 'Security' },
+  'Security': { ar: 'الأمن', en: 'Security' },
+  'المشتريات والتسهيلات': { ar: 'المشتريات والتسهيلات', en: 'Procurement & Facilities' },
+  'Procurement & Facilities': { ar: 'المشتريات والتسهيلات', en: 'Procurement & Facilities' },
+};
+
+const BRANCH_MAP: Record<string, { ar: string; en: string }> = {
+  'الكوت': { ar: 'الكوت', en: 'Kut' },
+  'Kut': { ar: 'الكوت', en: 'Kut' },
+  'واسط': { ar: 'واسط', en: 'Wasit' },
+  'Wasit': { ar: 'واسط', en: 'Wasit' },
+  'فرع واسط': { ar: 'فرع واسط', en: 'Wasit Branch' },
+  'بغداد_المنصور': { ar: 'بغداد - المنصور', en: 'Baghdad - Mansour' },
+  'بغداد_الكرادة': { ar: 'بغداد - الكرادة', en: 'Baghdad - Karrada' },
+  'المنصور': { ar: 'المنصور', en: 'Mansour' },
+  'Mansour': { ar: 'المنصور', en: 'Mansour' },
+  'الكرادة': { ar: 'الكرادة', en: 'Karrada' },
+  'Karrada': { ar: 'الكرادة', en: 'Karrada' },
+  'فرع بغداد - المنصور': { ar: 'فرع بغداد - المنصور', en: 'Baghdad - Mansour Branch' },
+  'فرع بغداد - الكرادة': { ar: 'فرع بغداد - الكرادة', en: 'Baghdad - Karrada Branch' },
+  'البصرة': { ar: 'البصرة', en: 'Basra' },
+  'Basra': { ar: 'البصرة', en: 'Basra' },
+  'Bassrah': { ar: 'البصرة', en: 'Basra' },
+  'فرع البصرة': { ar: 'فرع البصرة', en: 'Basra Branch' },
+  'فرع البصرة - الجمهورية': { ar: 'فرع البصرة - الجمهورية', en: 'Basra - Republic Branch' },
+  'اربيل': { ar: 'أربيل', en: 'Erbil' },
+  'أربيل': { ar: 'أربيل', en: 'Erbil' },
+  'Erbil': { ar: 'أربيل', en: 'Erbil' },
+  'النجف': { ar: 'النجف', en: 'Najaf' },
+  'Najaf': { ar: 'النجف', en: 'Najaf' },
+  'كربلاء': { ar: 'كربلاء', en: 'Karbala' },
+  'Karbala': { ar: 'كربلاء', en: 'Karbala' },
+  'بابل': { ar: 'بابل', en: 'Babil' },
+  'Babil': { ar: 'بابل', en: 'Babil' },
+  'فرع بابل': { ar: 'فرع بابل', en: 'Babil Branch' },
+  'ذي قار': { ar: 'ذي قار', en: 'Dhi Qar' },
+  'Dhi Qar': { ar: 'ذي قار', en: 'Dhi Qar' },
+  'ميسان': { ar: 'ميسان', en: 'Maysan' },
+  'Maysan': { ar: 'ميسان', en: 'Maysan' },
+  'المثنى': { ar: 'المثنى', en: 'Muthanna' },
+  'Muthanna': { ar: 'المثنى', en: 'Muthanna' },
+  'القادسية': { ar: 'القادسية', en: 'Qadisiyah' },
+  'Qadisiyah': { ar: 'القادسية', en: 'Qadisiyah' },
+  'ديالى': { ar: 'ديالى', en: 'Diyala' },
+  'Diyala': { ar: 'ديالى', en: 'Diyala' },
+  'صلاح الدين': { ar: 'صلاح الدين', en: 'Salahuddin' },
+  'Salahuddin': { ar: 'صلاح الدين', en: 'Salahuddin' },
+  'الأنبار': { ar: 'الأنبار', en: 'Anbar' },
+  'Anbar': { ar: 'الأنبار', en: 'Anbar' },
+  'كركوك': { ar: 'كركوك', en: 'Kirkuk' },
+  'Kirkuk': { ar: 'كركوك', en: 'Kirkuk' },
+  'نينوى': { ar: 'نينوى', en: 'Nineveh' },
+  'Nineveh': { ar: 'نينوى', en: 'Nineveh' },
+};
+
+const TYPE_MAP: Record<string, { ar: string; en: string }> = {
+  'دوام كامل': { ar: 'دوام كامل', en: 'Full-time' },
+  'Full-time': { ar: 'دوام كامل', en: 'Full-time' },
+  'Full Time': { ar: 'دوام كامل', en: 'Full-time' },
+  'full-time': { ar: 'دوام كامل', en: 'Full-time' },
+  'دوام جزئي': { ar: 'دوام جزئي', en: 'Part-time' },
+  'Part-time': { ar: 'دوام جزئي', en: 'Part-time' },
+  'Part Time': { ar: 'دوام جزئي', en: 'Part-time' },
+  'part-time': { ar: 'دوام جزئي', en: 'Part-time' },
+  'عقد': { ar: 'عقد', en: 'Contract' },
+  'Contract': { ar: 'عقد', en: 'Contract' },
+  'contract': { ar: 'عقد', en: 'Contract' },
+  'عقد مؤقت': { ar: 'عقد مؤقت', en: 'Temporary Contract' },
+  'تدريب': { ar: 'تدريب', en: 'Internship' },
+  'Internship': { ar: 'تدريب', en: 'Internship' }
+};
 
 export const CandidatePortal: React.FC = () => {
   const { jobVacancies, updateJobVacancy, addCandidate, candidates, t, language, theme, toggleTheme, toggleLanguage } = useApp();
@@ -74,31 +196,24 @@ export const CandidatePortal: React.FC = () => {
     // Load job vacancies directly from API for public portal
     const loadJobVacancies = async () => {
       try {
-        console.log('Starting to load job vacancies...');
         const [vacData, candData] = await Promise.all([
           api.getJobVacancies().catch(() => []),
           api.getCandidates().catch(() => [])
         ]);
 
-        console.log('API response - vacancies:', vacData, 'candidates:', candData);
-
         if (Array.isArray(vacData) && vacData.length > 0) {
           setLocalJobVacancies(vacData);
-          console.log('Set local job vacancies:', vacData.length);
         } else {
-          console.log('No vacancies from API, trying localStorage...');
           const saved = localStorage.getItem('vitas_job_vacancies');
           if (saved) {
             const localData = JSON.parse(saved);
             if (Array.isArray(localData)) {
               setLocalJobVacancies(localData);
-              console.log('Loaded from localStorage:', localData.length);
             }
           }
         }
         if (Array.isArray(candData)) {
           setLiveCandidates(candData);
-          console.log('Set live candidates:', candData.length);
         }
       } catch (error) {
         console.error('Error loading job vacancies for public portal:', error);
@@ -111,45 +226,67 @@ export const CandidatePortal: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Helper title & name resolver functions
+  // Helper title & name resolver functions with full EN / AR language support
   const getTitleName = (title: string) => {
     if (!title) return '';
+    const clean = title.trim();
     const match = positions.find(p =>
-      p.name_ar === title ||
-      p.name_en === title ||
-      p.name === title ||
-      String(p.id) === String(title) ||
-      `pos-${p.id}` === title ||
-      String(p.id) === String(title).replace('pos-', '')
+      p.name_ar === clean ||
+      p.name_en === clean ||
+      p.name === clean ||
+      String(p.id) === clean ||
+      `pos-${p.id}` === clean ||
+      String(p.id) === clean.replace('pos-', '')
     );
     if (match) {
-      return match.name_ar || match.name || match.name_en || title;
+      if (language === 'en') return match.name_en || match.name || match.name_ar || clean;
+      return match.name_ar || match.name || match.name_en || clean;
     }
-    return title;
+    if (TITLE_MAP[clean]) {
+      return TITLE_MAP[clean][language] || clean;
+    }
+    return clean;
   };
 
   const getDeptName = (dept: string) => {
     if (!dept) return '';
+    const clean = dept.trim();
     const match = departments.find(d =>
-      d.name_ar === dept || d.name_en === dept || d.name === dept || String(d.id) === String(dept)
+      d.name_ar === clean || d.name_en === clean || d.name === clean || String(d.id) === clean
     );
     if (match) {
-      if (language === 'en') return match.name_en || match.name_ar || match.name || dept;
-      return match.name_ar || match.name || match.name_en || dept;
+      if (language === 'en') return match.name_en || match.name_ar || match.name || clean;
+      return match.name_ar || match.name || match.name_en || clean;
     }
-    return dept;
+    if (DEPT_MAP[clean]) {
+      return DEPT_MAP[clean][language] || clean;
+    }
+    return clean;
   };
 
   const getBranchName = (loc: string) => {
     if (!loc) return '';
+    const clean = loc.trim();
     const match = branches.find(b =>
-      b.name_ar === loc || b.name_en === loc || b.name === loc || String(b.id) === String(loc)
+      b.name_ar === clean || b.name_en === clean || b.name === clean || String(b.id) === clean
     );
     if (match) {
-      if (language === 'en') return match.name_en || match.name_ar || match.name || loc;
-      return match.name_ar || match.name || match.name_en || loc;
+      if (language === 'en') return match.name_en || match.name_ar || match.name || clean;
+      return match.name_ar || match.name || match.name_en || clean;
     }
-    return loc;
+    if (BRANCH_MAP[clean]) {
+      return BRANCH_MAP[clean][language] || clean;
+    }
+    return clean;
+  };
+
+  const getTypeName = (type: string) => {
+    if (!type) return '';
+    const clean = type.trim();
+    if (TYPE_MAP[clean]) {
+      return TYPE_MAP[clean][language] || clean;
+    }
+    return clean;
   };
 
   // Form state
@@ -656,7 +793,7 @@ export const CandidatePortal: React.FC = () => {
             const titleDisplay = getTitleName(job.title) || job.title || t('وظيفة شاغرة', 'Job Opening');
             const deptDisplay = getDeptName(job.department) || job.department;
             const locDisplay = getBranchName(job.location) || job.location;
-            const typeDisplay = job.type || 'Full-time';
+            const typeDisplay = getTypeName(job.type) || (language === 'en' ? 'Full-time' : 'دوام كامل');
 
             return (
               <div
