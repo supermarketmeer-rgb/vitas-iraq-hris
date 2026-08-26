@@ -162,6 +162,7 @@ export interface JobVacancy {
 export interface Candidate {
   id: string;
   fullName: string;
+  fullNameAr?: string;
   email: string;
   phone: string;
   appliedJobId: string;

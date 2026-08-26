@@ -1339,6 +1339,7 @@ app.get('/api/candidates', async (req, res) => {
       return {
         id: c.id,
         fullName: c.full_name || 'متقدم جديد',
+        fullNameAr: c.full_name_ar || '',
         email: c.email || '',
         phone: c.phone || '',
         appliedJobId: c.applied_job_id || '',
@@ -1381,6 +1382,7 @@ app.post('/api/candidates', upload.fields([{ name: 'candidate_photo' }, { name: 
     
     // Support both JSON keys (fullName, phone, appliedJobId, resumeUrl) and FormData keys (name, mobile, job_id)
     const fullName = data.fullName || data.full_name || data.name || 'متقدم جديد';
+    const fullNameAr = data.fullNameAr || data.full_name_ar || '';
     const email = data.email || '';
     const phone = data.phone || data.mobile || '';
     const appliedJobId = data.appliedJobId || data.applied_job_id || data.job_id || '';
@@ -1483,13 +1485,14 @@ app.post('/api/candidates', upload.fields([{ name: 'candidate_photo' }, { name: 
     }
 
     await query(
-      `INSERT INTO candidates (id, full_name, email, phone, applied_job_id, job_title, stage, rating, experience_years, notes, photo_url, resume_url, applied_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [candidateId, fullName, email, phone, validAppliedJobId, jobTitle, stage, rating, experienceYears, notes, photoUrl, resumeUrl]
+      `INSERT INTO candidates (id, full_name, full_name_ar, email, phone, applied_job_id, job_title, stage, rating, experience_years, notes, photo_url, resume_url, applied_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [candidateId, fullName, fullNameAr, email, phone, validAppliedJobId, jobTitle, stage, rating, experienceYears, notes, photoUrl, resumeUrl]
     );
     
     const newCandidate = {
       id: candidateId,
       fullName,
+      fullNameAr,
       email,
       phone,
       appliedJobId: validAppliedJobId || appliedJobId,

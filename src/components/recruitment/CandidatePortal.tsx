@@ -297,6 +297,7 @@ export const CandidatePortal: React.FC = () => {
   // Form state
   const [formData, setFormData] = useState({
     fullName: '',
+    fullNameAr: '',
     dateOfBirth: '',
     gender: '',
     maritalStatus: '',
@@ -545,8 +546,10 @@ export const CandidatePortal: React.FC = () => {
       }
 
       // 1. Submit Candidate Info to ATS / Recruitment System
+      const primaryFullName = formData.fullNameAr || formData.fullName || 'متقدم جديد';
       await addCandidate({
-        fullName: formData.fullName,
+        fullName: primaryFullName,
+        fullNameAr: formData.fullNameAr || undefined,
         email: formData.email,
         phone: formData.phone,
         appliedJobId: selectedJob.id,
@@ -567,12 +570,12 @@ export const CandidatePortal: React.FC = () => {
       });
 
       setSubmissionDetails({
-        fullName: formData.fullName,
+        fullName: primaryFullName,
         jobTitle: resolvedJobTitle
       });
 
       setLastSubmissionInfo({
-        fullName: formData.fullName,
+        fullName: primaryFullName,
         phone: formData.phone,
         jobTitle: resolvedJobTitle
       });
@@ -881,11 +884,15 @@ export const CandidatePortal: React.FC = () => {
                 <div className="pt-3 border-t border-slate-300 dark:border-white/10">
                   <button
                     onClick={() => setSelectedJob(job)}
-                    style={{ color: '#ffffff' }}
-                    className="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center justify-center gap-2"
+                    style={{ color: isDark ? '#ffffff' : '#000000' }}
+                    className={`w-full py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 ${
+                      isDark 
+                        ? 'bg-teal-600 hover:bg-teal-500 text-white shadow-teal-600/20' 
+                        : 'bg-[#d8dce2] hover:bg-[#cbd5e1] text-black border border-slate-300 shadow-sm'
+                    }`}
                   >
-                    <span className="material-symbols-outlined text-sm">send</span>
-                    <span>{t('تقديم طلب الآن', 'Apply Now')}</span>
+                    <span className="material-symbols-outlined text-sm" style={{ color: isDark ? '#ffffff' : '#000000' }}>send</span>
+                    <span style={{ color: isDark ? '#ffffff' : '#000000' }}>{t('تقديم طلب الآن', 'Apply Now')}</span>
                   </button>
                 </div>
               </div>
@@ -982,12 +989,28 @@ export const CandidatePortal: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
-                    {t('الاسم الثلاثي الكامل', 'Full Name')}: *
+                    {t('الاسم باللغة العربية', 'Full Name in Arabic (الاسم بالعربي)')}: *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder={t('أدخل اسمك الكامل كما في الهوية...', 'Enter your full name...')}
+                    placeholder={t('أدخل اسمك الكامل باللغة العربية...', 'Enter your full name in Arabic...')}
+                    value={formData.fullNameAr}
+                    onChange={e => setFormData({ ...formData, fullNameAr: e.target.value })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-normal outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('الاسم باللغة الإنجليزية', 'English Full Name')}:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={t('أدخل اسمك باللغة الإنجليزية (اختياري)...', 'Enter your English name (optional)...')}
                     value={formData.fullName}
                     onChange={e => setFormData({ ...formData, fullName: e.target.value })}
                     style={{ color: isDark ? '#ffffff' : '#0f172a' }}

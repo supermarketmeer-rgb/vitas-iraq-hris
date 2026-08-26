@@ -122,7 +122,8 @@ export const CandidateProfile: React.FC = () => {
     <div style="font-size: 12px; color: #64748b; margin-top: 4px;">مؤسسة فيتاس العراق - قسم الموارد البشرية | تاريخ الطباعة: ${new Date().toLocaleDateString('ar-IQ')}</div>
   </div>
   <div class="info-grid">
-    <div><span class="info-label">الاسم الكامل: </span><span class="info-value">${targetCandidate.fullName}</span></div>
+    <div><span class="info-label">الاسم: </span><span class="info-value">${targetCandidate.fullName}</span></div>
+    ${targetCandidate.fullNameAr ? `<div><span class="info-label">الاسم بالعربية: </span><span class="info-value">${targetCandidate.fullNameAr}</span></div>` : ''}
     <div><span class="info-label">الوظيفة: </span><span class="info-value">${resolvedTitle}</span></div>
     <div><span class="info-label">البريد الإلكتروني: </span><span class="info-value">${targetCandidate.email || 'غير محدد'}</span></div>
     <div><span class="info-label">رقم الهاتف: </span><span class="info-value">${targetCandidate.phone || 'غير محدد'}</span></div>
@@ -578,7 +579,7 @@ export const CandidateProfile: React.FC = () => {
                     })()}
                   </h2>
                   <p className="text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
-                    المتقدم: {cvModalCandidate.fullName} | الوظيفة: {cvModalCandidate.jobTitle}
+                    المتقدم: {cvModalCandidate.fullName} {cvModalCandidate.fullNameAr ? `(${cvModalCandidate.fullNameAr})` : ''} | الوظيفة: {cvModalCandidate.jobTitle}
                   </p>
                 </div>
               </div>
