@@ -40,33 +40,43 @@ export const Category6RecruitmentView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Banner */}
-      <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl">
+      <div className={`p-6 rounded-3xl border transition-all ${
+        isDark ? 'bg-[#0a0c10] border-white/10 text-white shadow-xl' : 'bg-[#e8ebef] border-slate-300 shadow-sm text-slate-900'
+      }`}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="material-symbols-outlined text-teal-400">work_history</span>
-              <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-normal">
+              <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">work_history</span>
+              <span className="text-xs font-mono text-teal-600 dark:text-teal-400 uppercase tracking-widest font-normal">
                 RECRUITMENT & ATS
               </span>
             </div>
-            <h1 className="text-2xl font-normal text-white text-white-force drop-shadow-sm">
+            <h1 className={`text-2xl font-normal drop-shadow-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {getModuleTitle()}
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               {t('نظام استقطاب ذكي مرتبط بالبنية التحتية لمؤسسة فيتاس العراق', 'Smart recruitment system connected to VITAS Iraq HR infrastructure')}
             </p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={openCandidatePortal}
-              className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-teal-600/20 transition-all"
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${
+                isDark 
+                  ? 'bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-600/20 border-teal-500/30' 
+                  : 'bg-[#d8dce2] hover:bg-[#cbd5e1] text-slate-900 border-slate-300 shadow-sm'
+              }`}
             >
               <span className="material-symbols-outlined text-sm">open_in_new</span>
               {t('فتح بوابة المتقدمين', 'Open Candidate Portal')}
             </button>
             <button
               onClick={openEmployeePortal}
-              className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-teal-600/20 transition-all"
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${
+                isDark 
+                  ? 'bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-600/20 border-teal-500/30' 
+                  : 'bg-[#d8dce2] hover:bg-[#cbd5e1] text-slate-900 border-slate-300 shadow-sm'
+              }`}
             >
               <span className="material-symbols-outlined text-sm">person_pin</span>
               {t('فتح بوابة الموظفين', 'Open Employee Portal')}
@@ -76,7 +86,7 @@ export const Category6RecruitmentView: React.FC = () => {
       </div>
 
       {/* Content Area */}
-      <div className={`p-6 rounded-2xl ${isDark ? 'bg-[#111827] border border-white/10 shadow-lg text-white' : 'bg-white border border-slate-200 shadow-sm text-slate-900'}`}>
+      <div className={`p-6 rounded-2xl border transition-all ${isDark ? 'bg-[#111827] border-white/10 shadow-lg text-white' : 'bg-[#e8ebef] border-slate-300 shadow-sm text-slate-900'}`}>
         {activeModuleId === 'recruit-dash' && <JobOpenings />}
         {activeModuleId === 'recruit-ats' && <CandidatePipeline />}
         {activeModuleId === 'recruit-candidate-profile' && <CandidateProfile />}

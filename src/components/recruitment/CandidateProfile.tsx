@@ -277,7 +277,7 @@ export const CandidateProfile: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className={`px-4 py-2 rounded-xl border text-center ${isDark ? 'bg-[#0f172a] border-white/10' : 'bg-white border-slate-300 shadow-sm'}`}>
+            <div className={`px-4 py-2 rounded-xl border text-center ${isDark ? 'bg-[#0f172a] border-white/10' : 'bg-[#d8dce2] border-slate-300 shadow-sm'}`}>
               <div className="text-lg font-bold text-teal-600 dark:text-teal-400 font-mono">{filteredCandidates.length}</div>
               <div className="text-[10px] font-normal" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>{t('مرشح مسجل', 'Registered Candidates')}</div>
             </div>
@@ -295,7 +295,7 @@ export const CandidateProfile: React.FC = () => {
               onChange={e => setSearchTerm(e.target.value)}
               style={{ color: isDark ? '#ffffff' : '#0f172a' }}
               className={`w-full pr-10 pl-4 py-2 text-xs font-normal rounded-xl outline-none border transition-all ${
-                isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400 text-white' : 'bg-white border-slate-300 focus:border-teal-600 text-slate-900 shadow-sm'
+                isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400 text-white' : 'bg-[#d8dce2] border-slate-300 focus:border-teal-600 text-slate-900 shadow-sm placeholder:text-slate-500'
               }`}
             />
           </div>
@@ -307,7 +307,7 @@ export const CandidateProfile: React.FC = () => {
               onChange={e => setStageFilter(e.target.value)}
               style={{ color: isDark ? '#ffffff' : '#0f172a' }}
               className={`w-full px-3 py-2 text-xs font-bold rounded-xl outline-none border transition-all ${
-                isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-[#d8dce2] border-slate-300 focus:border-teal-600'
               }`}
             >
               <option value="all">{t('جميع مراحل التوظيف الـ 7', 'All 7 Recruitment Stages')}</option>
@@ -356,7 +356,7 @@ export const CandidateProfile: React.FC = () => {
                   {/* Candidate Header: Photo & Name & Stage */}
                   <div className="flex items-start gap-3 mb-3">
                     <div className={`w-12 h-12 rounded-xl border flex items-center justify-center overflow-hidden flex-shrink-0 ${
-                      isDark ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-300 shadow-sm'
+                      isDark ? 'bg-[#1e293b] border-slate-700' : 'bg-[#d8dce2] border-slate-300 shadow-sm'
                     }`}>
                       {candidate.photoUrl ? (
                         <img src={candidate.photoUrl} alt={candidate.fullName} className="w-full h-full object-cover" />
@@ -417,7 +417,7 @@ export const CandidateProfile: React.FC = () => {
                     className={`p-2.5 rounded-xl border cursor-pointer transition-all duration-200 mb-3 flex items-center justify-between group ${
                       isDark
                         ? 'bg-[#0a0c10] border-teal-500/30 hover:border-teal-400 hover:bg-teal-950/20'
-                        : 'bg-white/80 border-teal-600/30 hover:border-teal-600 hover:bg-white shadow-sm'
+                        : 'bg-[#d8dce2] border-teal-600/30 hover:border-teal-600 hover:bg-[#cbd5e1] shadow-sm'
                     }`}
                     title={t('انقر لاستعراض وطباعة السيرة الذاتية (CV)', 'Click to view and print candidate CV')}
                   >
@@ -445,7 +445,7 @@ export const CandidateProfile: React.FC = () => {
                   {/* Candidate Notes */}
                   {candidate.notes && (
                     <div className={`p-2.5 rounded-xl text-xs mb-3 border ${
-                      isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-white/80 border-slate-300'
+                      isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-[#d8dce2] border-slate-300'
                     }`}>
                       <h4 className="text-[10px] font-bold mb-0.5" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
                         {t('ملاحظات:', 'Notes:')}
