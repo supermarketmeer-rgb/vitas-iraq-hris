@@ -969,7 +969,7 @@ html.light main {
   color: #0f172a !important;
 }
 
-/* Light Mode Outer Cards - Soft Slate Gray (#e8ebef) instead of Solid White */
+/* Light Mode Outer & Inner Cards - Soft Slate Gray (#e8ebef) instead of Solid White */
 html.light main div[class*="rounded-3xl"],
 html.light main div[class*="rounded-2xl"],
 html.light main div[class*="rounded-xl"],
@@ -980,16 +980,11 @@ html.light [class*="bg-white"] {
   border-color: #cbd5e1 !important;
 }
 
-/* Light Mode Inner Sub-cards & Inputs */
-html.light main div[class*="rounded-3xl"] div[class*="rounded-2xl"],
-html.light main div[class*="rounded-2xl"] div[class*="rounded-2xl"],
-html.light main div[class*="rounded-xl"] div[class*="rounded-xl"],
-html.light .bg-slate-50,
-html.light [class*="bg-slate-50"],
+/* Light Mode Inputs, Selects & Textareas */
 html.light input,
 html.light select,
 html.light textarea {
-  background-color: #f8fafc !important;
+  background-color: #d8dce2 !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
 }
