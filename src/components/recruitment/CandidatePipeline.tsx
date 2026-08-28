@@ -1145,8 +1145,8 @@ export const CandidatePipeline: React.FC = () => {
               </div>
             </div>
 
-            {/* Applicant Cards Grid (4 Cards Per Row on Desktop Layout) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {/* Applicant Cards Grid (3 Cards Per Row on Desktop Layout) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {groupedCandidates[stage]?.map(candidate => {
                 // Always show all candidates in their respective workflow stages without hiding any applicants
                 const job = jobVacancies.find(j => j.id === candidate.appliedJobId);

@@ -343,7 +343,7 @@ export const CandidateProfile: React.FC = () => {
           <p className="text-slate-900 dark:text-slate-300 font-bold">{t('لا يوجد مرشحين متاحين في البحث حالياً', 'No candidates available matching criteria')}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredCandidates.map(candidate => {
             const appliedJob = jobVacancies.find(j => j.id === candidate.appliedJobId || j.id === `pos-${candidate.appliedJobId}`);
             const displayJobTitle = appliedJob?.title || candidate.jobTitle;
