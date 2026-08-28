@@ -120,7 +120,7 @@ export const api = {
           }
         }
       });
-      const response = await fetch('http://localhost:5000/api/candidates', {
+      const response = await fetch(`${getApiBaseUrl()}/candidates`, {
         method: 'POST',
         body: formData
       });

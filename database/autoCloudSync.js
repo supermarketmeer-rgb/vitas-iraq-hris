@@ -64,7 +64,26 @@ export async function syncLocalToCloud(localPool) {
       });
     };
 
-    const tablesToSync = ['employees', 'branches', 'departments', 'positions', 'leave_requests', 'users', 'job_vacancies', 'candidates', 'document_categories'];
+    const tablesToSync = [
+      'employees', 
+      'branches', 
+      'departments', 
+      'positions', 
+      'leave_requests', 
+      'users', 
+      'job_vacancies', 
+      'candidates', 
+      'trainings', 
+      'employee_trainings', 
+      'contract_types', 
+      'status_changes', 
+      'app_settings', 
+      'company_profile',
+      'company_holidays',
+      'company_events',
+      'company_news',
+      'document_categories'
+    ];
 
     let syncedTablesCount = 0;
 

@@ -638,6 +638,15 @@ const ensureCandidateColumns = async () => {
   try {
     await query("ALTER TABLE candidates MODIFY COLUMN stage VARCHAR(255) DEFAULT 'استلام الطلبات'").catch(() => {});
     await query("ALTER TABLE candidates MODIFY COLUMN resume_url LONGTEXT").catch(() => {});
+    await query("ALTER TABLE candidates MODIFY COLUMN photo_url LONGTEXT").catch(() => {});
+    await query("ALTER TABLE candidates MODIFY COLUMN email VARCHAR(255) NULL").catch(() => {});
+    await query("ALTER TABLE candidates MODIFY COLUMN full_name VARCHAR(255) NULL").catch(() => {});
+    await query("ALTER TABLE candidates ADD COLUMN full_name_ar VARCHAR(255)").catch(() => {});
+    await query("ALTER TABLE candidates ADD COLUMN date_of_birth DATE NULL").catch(() => {});
+    await query("ALTER TABLE candidates ADD COLUMN gender VARCHAR(50) NULL").catch(() => {});
+    await query("ALTER TABLE candidates ADD COLUMN marital_status VARCHAR(50) NULL").catch(() => {});
+    await query("ALTER TABLE candidates ADD COLUMN personal_email VARCHAR(255) NULL").catch(() => {});
+    await query("ALTER TABLE candidates ADD COLUMN national_id_number VARCHAR(100) NULL").catch(() => {});
     await query("ALTER TABLE candidates ADD COLUMN second_interview_date DATE").catch(() => {});
     await query("ALTER TABLE candidates ADD COLUMN second_interview_time TIME").catch(() => {});
     await query("ALTER TABLE candidates ADD COLUMN second_interview_location VARCHAR(255)").catch(() => {});
@@ -1365,6 +1374,11 @@ app.get('/api/candidates', async (req, res) => {
         secondInterviewNotes: c.second_interview_notes || '',
         addedToDirectory: Boolean(c.added_to_directory),
         employeeId: c.employee_id || '',
+        dateOfBirth: c.date_of_birth || '',
+        gender: c.gender || '',
+        maritalStatus: c.marital_status || '',
+        personalEmail: c.personal_email || '',
+        nationalIdNumber: c.national_id_number || '',
         appliedDate: c.applied_date
       };
     });
@@ -1447,7 +1461,8 @@ app.post('/api/candidates', upload.fields([{ name: 'candidate_photo' }, { name: 
         fs.mkdirSync(path.join(__dirname, 'uploads'), { recursive: true });
       }
       fs.writeFileSync(photoPath, photoFile.buffer);
-      photoUrl = `/uploads/${photoFileName}`;
+      const mime = photoFile.mimetype || 'image/jpeg';
+      photoUrl = `data:${mime};base64,${photoFile.buffer.toString('base64')}`;
     }
     
     // 2. Handle Resume Document File Upload
@@ -1487,9 +1502,15 @@ app.post('/api/candidates', upload.fields([{ name: 'candidate_photo' }, { name: 
       }
     }
 
+    const dateOfBirth = data.dateOfBirth || data.date_of_birth || null;
+    const gender = data.gender || null;
+    const maritalStatus = data.maritalStatus || data.marital_status || null;
+    const personalEmail = data.personalEmail || data.personal_email || null;
+    const nationalIdNumber = data.nationalIdNumber || data.national_id_number || null;
+
     await query(
-      `INSERT INTO candidates (id, full_name, full_name_ar, email, phone, applied_job_id, job_title, stage, rating, experience_years, notes, photo_url, resume_url, applied_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [candidateId, fullName, fullNameAr, email, phone, validAppliedJobId, jobTitle, stage, rating, experienceYears, notes, photoUrl, resumeUrl]
+      `INSERT INTO candidates (id, full_name, full_name_ar, email, phone, applied_job_id, job_title, stage, rating, experience_years, notes, photo_url, resume_url, date_of_birth, gender, marital_status, personal_email, national_id_number, applied_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [candidateId, fullName, fullNameAr, email, phone, validAppliedJobId, jobTitle, stage, rating, experienceYears, notes, photoUrl, resumeUrl, dateOfBirth, gender, maritalStatus, personalEmail, nationalIdNumber]
     );
     
     const newCandidate = {
@@ -1506,6 +1527,11 @@ app.post('/api/candidates', upload.fields([{ name: 'candidate_photo' }, { name: 
       notes,
       photoUrl,
       resumeUrl,
+      dateOfBirth,
+      gender,
+      maritalStatus,
+      personalEmail,
+      nationalIdNumber,
       appliedDate: new Date().toISOString()
     };
     res.json(newCandidate);

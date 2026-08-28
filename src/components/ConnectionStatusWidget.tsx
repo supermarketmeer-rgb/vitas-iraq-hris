@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { connectionManager, ConnectionState } from '../services/connectionManager';
 import { syncEngine } from '../services/syncEngine';
 import { useApp } from '../context/AppContext';
@@ -108,11 +109,18 @@ export const ConnectionStatusWidget: React.FC = () => {
         {renderBadge()}
       </div>
 
-      {/* Connection Diagnostic Modal Drawer */}
-      {isDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className={`w-full max-w-lg rounded-2xl p-6 shadow-2xl border ${isDark ? 'bg-[#0f172a] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'} relative transition-all`}>
-            
+      {/* Connection Diagnostic Modal rendered at document body via Portal */}
+      {isDrawerOpen && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+          onClick={() => setIsDrawerOpen(false)}
+        >
+          <div 
+            className={`w-full max-w-lg rounded-2xl p-6 shadow-2xl border ${
+              isDark ? 'bg-[#0f172a] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            } relative transition-all max-h-[90vh] overflow-y-auto`}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-700/50">
               <div className="flex items-center gap-3">
@@ -216,7 +224,8 @@ export const ConnectionStatusWidget: React.FC = () => {
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

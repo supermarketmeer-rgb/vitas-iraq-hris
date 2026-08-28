@@ -201,7 +201,7 @@ export const CandidateProfile: React.FC = () => {
     const norm = normalizeStage(stage);
     switch (norm) {
       case 'استلام الطلبات':
-        return 'bg-blue-500';
+        return 'bg-teal-600';
       case 'فرز المتقدمين':
         return 'bg-purple-500';
       case 'تقييم المتقدمين من قبل لجنة التقييم':
@@ -587,7 +587,7 @@ export const CandidateProfile: React.FC = () => {
               {/* Embedded Document Viewer / Preview Frame */}
               {(() => {
                 const rawUrl = cvModalCandidate.resumeUrl || '';
-                const resolvedPdfUrl = rawUrl.startsWith('/uploads/') ? `http://localhost:5000${rawUrl}` : rawUrl;
+                const resolvedPdfUrl = rawUrl.startsWith('/uploads/') ? (typeof window !== 'undefined' ? `${window.location.origin}${rawUrl}` : rawUrl) : rawUrl;
                 const hasValidDoc = resolvedPdfUrl && (
                   resolvedPdfUrl.startsWith('http') ||
                   resolvedPdfUrl.startsWith('blob:') ||

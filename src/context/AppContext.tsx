@@ -799,25 +799,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addCandidate = async (cand: Omit<Candidate, 'id' | 'appliedDate'>) => {
     try {
       const newCand = await api.addCandidate(cand);
-      setCandidates(prev => [newCand, ...prev]);
+      setCandidates(prev => [newCand, ...prev.filter(c => c.id !== newCand.id)]);
 
       // Update job candidate count
       setJobVacancies(prev =>
         prev.map(j =>
           j.id === cand.appliedJobId
-            ? { ...j, candidatesCount: j.candidatesCount + 1 }
+            ? { ...j, candidatesCount: (j.candidatesCount || 0) + 1 }
             : j
         )
       );
+      return newCand;
     } catch (error) {
       console.error('Error adding candidate:', error);
-      // Fallback to local state
-      const newCand: Candidate = {
-        ...cand,
-        id: `CND-${Date.now().toString().slice(-4)}`,
-        appliedDate: new Date().toISOString().split('T')[0]
-      };
-      setCandidates(prev => [newCand, ...prev]);
+      throw error;
     }
   };
 

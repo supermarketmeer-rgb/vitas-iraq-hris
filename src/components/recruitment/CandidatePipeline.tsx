@@ -270,7 +270,7 @@ export const CandidatePipeline: React.FC = () => {
     const norm = normalizeStage(stage);
     switch (norm) {
       case 'استلام الطلبات':
-        return 'bg-blue-500';
+        return 'bg-teal-600';
       case 'فرز المتقدمين':
         return 'bg-purple-500';
       case 'مقابلة اولى':
@@ -1084,7 +1084,9 @@ export const CandidatePipeline: React.FC = () => {
                 onClick={() => setActiveWorkflowFilter(isActive ? 'all' : step.id)}
                 className={`cursor-pointer p-3 rounded-xl transition-all flex flex-col justify-between select-none ${
                   isPressed
-                    ? 'bg-slate-900 border-2 border-teal-500 text-white shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)] translate-y-[2px] font-bold'
+                    ? isDark
+                      ? 'bg-slate-900 border-2 border-teal-500 text-white shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)] translate-y-[2px] font-bold'
+                      : 'bg-slate-50 border-2 border-teal-600 text-slate-900 shadow-md translate-y-[1px] font-bold'
                     : isDark 
                       ? 'bg-white/5 border border-white/10 hover:bg-white/10 text-slate-200' 
                       : 'bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-800 shadow-sm'
@@ -1096,15 +1098,19 @@ export const CandidatePipeline: React.FC = () => {
                   }`}>
                     {step.num}
                   </span>
-                  <span className={`material-symbols-outlined text-lg ${isPressed ? 'text-teal-400' : 'text-teal-600 dark:text-teal-400'}`}>
+                  <span className={`material-symbols-outlined text-lg ${
+                    isPressed ? (isDark ? 'text-teal-400' : 'text-slate-900') : (isDark ? 'text-teal-400' : 'text-teal-600')
+                  }`}>
                     {step.icon}
                   </span>
                 </div>
                 <div>
-                  <div className="text-xs font-bold truncate" style={{ color: isPressed ? '#ffffff' : (isDark ? '#ffffff' : '#0f172a') }}>
+                  <div className="text-xs font-bold truncate" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
                     {step.title}
                   </div>
-                  <div className={`text-[11px] font-bold mt-1 ${isPressed ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`}>
+                  <div className={`text-[11px] font-bold mt-1 ${
+                    isDark ? (isPressed ? 'text-teal-300' : 'text-teal-400') : (isPressed ? 'text-slate-800' : 'text-slate-600')
+                  }`}>
                     {step.count} {t('مرشح', 'candidates')}
                   </div>
                 </div>
@@ -1160,14 +1166,35 @@ export const CandidatePipeline: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-start justify-between mb-3 gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-bold truncate" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                          {candidate.fullName}
-                        </h4>
-                        <p className="text-xs font-bold text-teal-600 dark:text-teal-400 mt-0.5 flex items-center gap-1 truncate">
-                          <span className="material-symbols-outlined text-xs shrink-0">work</span>
-                          <span className="truncate">{displayJobTitle}</span>
-                        </p>
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        {/* Candidate Personal Photo / Avatar */}
+                        <div className={`w-10 h-10 rounded-xl border flex items-center justify-center overflow-hidden shrink-0 ${
+                          isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-slate-200 border-slate-300 shadow-sm'
+                        }`}>
+                          {candidate.photoUrl ? (
+                            <img
+                              src={candidate.photoUrl.startsWith('/uploads/') && typeof window !== 'undefined' ? `${window.location.origin}${candidate.photoUrl}` : candidate.photoUrl}
+                              alt={candidate.fullName}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                              }}
+                            />
+                          ) : (
+                            <span className="material-symbols-outlined text-2xl text-slate-400">person</span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-bold truncate" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                            {candidate.fullName}
+                          </h4>
+                          <p className="text-xs font-bold text-teal-600 dark:text-teal-400 mt-0.5 flex items-center gap-1 truncate">
+                            <span className="material-symbols-outlined text-xs shrink-0">work</span>
+                            <span className="truncate">{displayJobTitle}</span>
+                          </p>
+                        </div>
                       </div>
 
                       {/* Committee Evaluations Button & Score Circle Badge at Top Right (Solid Black Font, Normal Weight) */}
@@ -1481,7 +1508,7 @@ export const CandidatePipeline: React.FC = () => {
               {/* Embedded Document Viewer / Preview Frame */}
               {(() => {
                 const rawUrl = cvModalCandidate.resumeUrl || '';
-                const resolvedPdfUrl = rawUrl.startsWith('/uploads/') ? `http://localhost:5000${rawUrl}` : rawUrl;
+                const resolvedPdfUrl = rawUrl.startsWith('/uploads/') ? (typeof window !== 'undefined' ? `${window.location.origin}${rawUrl}` : rawUrl) : rawUrl;
                 const hasValidDoc = resolvedPdfUrl && (
                   resolvedPdfUrl.startsWith('http') ||
                   resolvedPdfUrl.startsWith('blob:') ||
@@ -2238,7 +2265,7 @@ export const CandidatePipeline: React.FC = () => {
               {/* Embedded Document Viewer / Preview Frame */}
               {(() => {
                 const rawUrl = cvModalCandidate.resumeUrl || '';
-                const resolvedPdfUrl = rawUrl.startsWith('/uploads/') ? `http://localhost:5000${rawUrl}` : rawUrl;
+                const resolvedPdfUrl = rawUrl.startsWith('/uploads/') ? (typeof window !== 'undefined' ? `${window.location.origin}${rawUrl}` : rawUrl) : rawUrl;
                 const hasValidDoc = resolvedPdfUrl && (
                   resolvedPdfUrl.startsWith('http') ||
                   resolvedPdfUrl.startsWith('blob:') ||
