@@ -626,23 +626,46 @@ export const JobOpenings: React.FC = () => {
 
       {/* Add Job Modal - Fully Theme Aware (Light vs Dark) */}
       {showAddJobModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className={`rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl ${
-            isDark ? 'bg-[#0f172a] border border-slate-700 text-white' : 'bg-white border border-gray-200 text-slate-900'
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className={`rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border ${
+            isDark ? 'bg-[#0f172a] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
           }`}>
-            <div className={`flex items-center justify-between mb-6 pb-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-              <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{t('إضافة وظيفة جديدة', 'Add New Job')}</h3>
-              <button
-                onClick={() => setShowAddJobModal(false)}
-                className={`p-1.5 rounded-lg transition-all ${
-                  isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
+            {/* Top Modal Header with Action Buttons */}
+            <div className={`p-4 sm:p-5 border-b flex items-center justify-between gap-3 sticky top-0 z-10 ${
+              isDark ? 'border-slate-800 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-2xl">work</span>
+                <h3 className="text-base sm:text-lg font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t('إضافة وظيفة جديدة', 'Add New Job')}
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddJobModal(false)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    isDark 
+                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' 
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-sm'
+                  }`}
+                >
+                  {t('إلغاء', 'Cancel')}
+                </button>
+
+                <button
+                  type="submit"
+                  form="add-job-modal-form"
+                  className="px-4 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-xs">check</span>
+                  <span>{t('إضافة الوظيفة', 'Add Job')}</span>
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleAddJob} className="space-y-4">
+            <form id="add-job-modal-form" onSubmit={handleAddJob} className="p-6 space-y-4">
               <div>
                 <label className={`block text-xs font-bold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t('المسمى الوظيفي (المسميات المعرفة بالإعدادات)', 'Job Title (Positions in Settings)')}</label>
                 <select
@@ -792,26 +815,6 @@ export const JobOpenings: React.FC = () => {
                   placeholder={t('اكتب المتطلبات والمؤهلات المطلوبة...', 'Write requirements...')}
                 />
               </div>
-
-              <div className={`flex gap-3 pt-4 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                <button
-                  type="button"
-                  onClick={() => setShowAddJobModal(false)}
-                  className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-xs transition-all border ${
-                    isDark 
-                      ? 'bg-[#1e293b] border-slate-700 text-slate-200 hover:bg-slate-700' 
-                      : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {t('إلغاء', 'Cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition-all shadow-lg shadow-teal-600/25"
-                >
-                  {t('إضافة الوظيفة', 'Add Job')}
-                </button>
-              </div>
             </form>
           </div>
         </div>
@@ -819,26 +822,49 @@ export const JobOpenings: React.FC = () => {
 
       {/* Edit Job Modal - Fully Theme Aware */}
       {showEditJobModal && editingJob && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className={`rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl ${
-            isDark ? 'bg-[#0f172a] border border-slate-700 text-white' : 'bg-white border border-gray-200 text-slate-900'
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className={`rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border ${
+            isDark ? 'bg-[#0f172a] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
           }`}>
-            <div className={`flex items-center justify-between mb-6 pb-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-              <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{t('تعديل الوظيفة', 'Edit Job')}</h3>
-              <button
-                onClick={() => {
-                  setShowEditJobModal(false);
-                  setEditingJob(null);
-                }}
-                className={`p-1.5 rounded-lg transition-all ${
-                  isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
+            {/* Top Modal Header with Action Buttons */}
+            <div className={`p-4 sm:p-5 border-b flex items-center justify-between gap-3 sticky top-0 z-10 ${
+              isDark ? 'border-slate-800 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-2xl">work</span>
+                <h3 className="text-base sm:text-lg font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t('تعديل الوظيفة', 'Edit Job')}
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditJobModal(false);
+                    setEditingJob(null);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    isDark 
+                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' 
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-sm'
+                  }`}
+                >
+                  {t('إلغاء', 'Cancel')}
+                </button>
+
+                <button
+                  type="submit"
+                  form="edit-job-modal-form"
+                  className="px-4 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-xs">check</span>
+                  <span>{t('حفظ التغييرات', 'Save Changes')}</span>
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleEditJob} className="space-y-4">
+            <form id="edit-job-modal-form" onSubmit={handleEditJob} className="p-6 space-y-4">
               <div>
                 <label className={`block text-xs font-bold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t('المسمى الوظيفي', 'Job Title')}</label>
                 <select
@@ -995,29 +1021,6 @@ export const JobOpenings: React.FC = () => {
                   rows={3}
                   placeholder={t('اكتب المتطلبات والمؤهلات المطلوبة...', 'Write requirements...')}
                 />
-              </div>
-
-              <div className={`flex gap-3 pt-4 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditJobModal(false);
-                    setEditingJob(null);
-                  }}
-                  className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-xs transition-all border ${
-                    isDark 
-                      ? 'bg-[#1e293b] border-slate-700 text-slate-200 hover:bg-slate-700' 
-                      : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {t('إلغاء', 'Cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition-all shadow-lg shadow-teal-600/25"
-                >
-                  {t('حفظ التغييرات', 'Save Changes')}
-                </button>
               </div>
             </form>
           </div>
