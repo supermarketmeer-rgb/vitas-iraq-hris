@@ -348,61 +348,129 @@ export const CompanyNews: React.FC<CompanyNewsProps> = ({ language, isReadOnly }
 
       {/* Add/Edit Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-white/10 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-white/10">
-              <h3 className="text-lg font-bold text-white">
-                {editingNews ? (language === 'ar' ? 'تعديل الخبر' : 'Edit News') : (language === 'ar' ? 'إضافة خبر جديد' : 'Add New News')}
-              </h3>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className={`border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
+            isDark ? 'bg-[#0f172a] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+          }`}>
+            {/* Top Modal Header with Add / Cancel Actions & Close */}
+            <div className={`p-4 sm:p-5 border-b flex items-center justify-between gap-3 sticky top-0 z-10 ${
+              isDark ? 'border-slate-800 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-2xl">newspaper</span>
+                <h3 className="text-base sm:text-lg font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {editingNews ? (language === 'ar' ? 'تعديل الخبر' : 'Edit News') : (language === 'ar' ? 'إضافة خبر جديد' : 'Add New News')}
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowAddModal(false); resetForm(); }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    isDark 
+                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' 
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-sm'
+                  }`}
+                >
+                  {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={editingNews ? handleUpdateNews : handleAddNews}
+                  className="px-4 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-xs">check</span>
+                  <span>{editingNews ? (language === 'ar' ? 'تحديث' : 'Update') : (language === 'ar' ? 'إضافة' : 'Add')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setShowAddModal(false); resetForm(); }}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
+              </div>
             </div>
+
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">{language === 'ar' ? 'العنوان (عربي)' : 'Title (Arabic)'}</label>
+                  <label className="block text-xs font-bold mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {language === 'ar' ? 'العنوان (عربي)' : 'Title (Arabic)'}
+                  </label>
                   <input
                     type="text"
                     value={formData.title_ar}
                     onChange={(e) => setFormData({ ...formData, title_ar: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">{language === 'ar' ? 'العنوان (إنجليزي)' : 'Title (English)'}</label>
+                  <label className="block text-xs font-bold mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {language === 'ar' ? 'العنوان (إنجليزي)' : 'Title (English)'}
+                  </label>
                   <input
                     type="text"
                     value={formData.title_en}
                     onChange={(e) => setFormData({ ...formData, title_en: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
                     required
                   />
                 </div>
               </div>
+
               <div>
-                <label className="block text-xs text-slate-400 mb-1">{language === 'ar' ? 'المحتوى (عربي)' : 'Content (Arabic)'}</label>
+                <label className="block text-xs font-bold mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                  {language === 'ar' ? 'المحتوى (عربي)' : 'Content (Arabic)'}
+                </label>
                 <textarea
                   value={formData.content_ar}
                   onChange={(e) => setFormData({ ...formData, content_ar: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm h-24"
+                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                  className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all h-24 ${
+                    isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                  }`}
                   required
                 />
               </div>
+
               <div>
-                <label className="block text-xs text-slate-400 mb-1">{language === 'ar' ? 'المحتوى (إنجليزي)' : 'Content (English)'}</label>
+                <label className="block text-xs font-bold mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                  {language === 'ar' ? 'المحتوى (إنجليزي)' : 'Content (English)'}
+                </label>
                 <textarea
                   value={formData.content_en}
                   onChange={(e) => setFormData({ ...formData, content_en: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm h-24"
+                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                  className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all h-24 ${
+                    isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                  }`}
                   required
                 />
               </div>
+
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">{language === 'ar' ? 'الفئة' : 'Category'}</label>
+                  <label className="block text-xs font-bold mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {language === 'ar' ? 'الفئة' : 'Category'}
+                  </label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
                   >
                     <option value="general">{language === 'ar' ? 'عام' : 'General'}</option>
                     <option value="policy">{language === 'ar' ? 'سياسات' : 'Policy'}</option>
@@ -412,11 +480,16 @@ export const CompanyNews: React.FC<CompanyNewsProps> = ({ language, isReadOnly }
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">{language === 'ar' ? 'الأولوية' : 'Priority'}</label>
+                  <label className="block text-xs font-bold mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {language === 'ar' ? 'الأولوية' : 'Priority'}
+                  </label>
                   <select
                     value={formData.priority}
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
                   >
                     <option value="low">{language === 'ar' ? 'منخفضة' : 'Low'}</option>
                     <option value="normal">{language === 'ar' ? 'عادية' : 'Normal'}</option>
@@ -425,11 +498,16 @@ export const CompanyNews: React.FC<CompanyNewsProps> = ({ language, isReadOnly }
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">{language === 'ar' ? 'الحالة' : 'Status'}</label>
+                  <label className="block text-xs font-bold mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {language === 'ar' ? 'الحالة' : 'Status'}
+                  </label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
                   >
                     <option value="draft">{language === 'ar' ? 'مسودة' : 'Draft'}</option>
                     <option value="published">{language === 'ar' ? 'منشور' : 'Published'}</option>
@@ -437,47 +515,70 @@ export const CompanyNews: React.FC<CompanyNewsProps> = ({ language, isReadOnly }
                   </select>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">{language === 'ar' ? 'تاريخ النشر' : 'Publish Date'}</label>
+                  <label className="block text-xs font-bold mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {language === 'ar' ? 'تاريخ النشر' : 'Publish Date'}
+                  </label>
                   <input
                     type="date"
                     value={formData.publish_date}
                     onChange={(e) => setFormData({ ...formData, publish_date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">{language === 'ar' ? 'تاريخ الانتهاء' : 'Expiry Date'}</label>
+                  <label className="block text-xs font-bold mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {language === 'ar' ? 'تاريخ الانتهاء' : 'Expiry Date'}
+                  </label>
                   <input
                     type="date"
                     value={formData.expiry_date}
                     onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
                   />
                 </div>
               </div>
+
               <div>
-                <label className="block text-xs text-slate-400 mb-1">{language === 'ar' ? 'رابط المرفق' : 'Attachment URL'}</label>
+                <label className="block text-xs font-bold mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                  {language === 'ar' ? 'رابط المرفق' : 'Attachment URL'}
+                </label>
                 <input
                   type="text"
                   value={formData.attachment_url}
                   onChange={(e) => setFormData({ ...formData, attachment_url: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                  className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all ${
+                    isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                  }`}
                   placeholder="https://..."
                 />
               </div>
             </div>
-            <div className="p-6 border-t border-white/10 flex items-center justify-end gap-3">
+
+            {/* Bottom Actions as Backup */}
+            <div className={`p-4 border-t flex items-center justify-end gap-3 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
               <button
+                type="button"
                 onClick={() => { setShowAddModal(false); resetForm(); }}
-                className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 font-bold hover:bg-white/10 border border-white/10 text-sm"
+                className={`px-4 py-2 rounded-xl text-xs font-bold border ${
+                  isDark ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                }`}
               >
                 {language === 'ar' ? 'إلغاء' : 'Cancel'}
               </button>
               <button
+                type="button"
                 onClick={editingNews ? handleUpdateNews : handleAddNews}
-                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-sm"
+                className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md"
               >
                 {editingNews ? (language === 'ar' ? 'تحديث' : 'Update') : (language === 'ar' ? 'إضافة' : 'Add')}
               </button>
