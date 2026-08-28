@@ -550,6 +550,18 @@ export const CandidatePortal: React.FC = () => {
       const resolvedArabicName = formData.fullNameAr?.trim() || transliterateEnglishNameToArabic(formData.fullName || '') || formData.fullName || 'متقدم جديد';
       const resolvedEnglishName = formData.fullName?.trim() || formData.fullNameAr || 'New Candidate';
       
+      let safeDobString = formData.dateOfBirth?.trim() || '';
+      if (safeDobString.includes('/')) {
+        const parts = safeDobString.split('/');
+        if (parts.length === 3) {
+          if (parts[2].length === 4) {
+            safeDobString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          } else if (parts[0].length === 4) {
+            safeDobString = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+          }
+        }
+      }
+
       await addCandidate({
         fullName: resolvedArabicName,
         fullNameAr: resolvedArabicName,
@@ -566,7 +578,7 @@ export const CandidatePortal: React.FC = () => {
         resumeUrl: formData.resumeUrl || formData.resumeName || undefined,
         resumeFile: formData.resumeFile || undefined,
         photoFile: formData.photoFile || undefined,
-        dateOfBirth: formData.dateOfBirth,
+        dateOfBirth: safeDobString || formData.dateOfBirth,
         gender: formData.gender,
         maritalStatus: formData.maritalStatus,
         personalEmail: formData.personalEmail,
@@ -907,32 +919,36 @@ export const CandidatePortal: React.FC = () => {
 
       {/* Application Form Modal */}
       {selectedJob && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className={`rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border ${
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className={`rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl border ${
             isDark ? 'bg-[#0f172a] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
           }`}>
-            <div className={`flex items-center justify-between mb-6 pb-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-300'}`}>
-              <div>
-                <h3 className="text-lg font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+            {/* Top Modal Header: Line 1 (Title) -> Line 2 (Job Title) -> Line 3 (Action Buttons) */}
+            <div className={`p-4 sm:p-5 border-b flex flex-col gap-2.5 sticky top-0 z-20 ${
+              isDark ? 'border-slate-800 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              {/* Line 1: Main Title in a single line */}
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-xl sm:text-2xl shrink-0">assignment</span>
+                <h3 className="text-base sm:text-lg font-extrabold whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
                   {t('استمارة التقديم على وظيفة', 'Apply for Position')}
                 </h3>
-                <p className="text-xs font-bold text-teal-600 dark:text-teal-400 mt-0.5">
-                  {getTitleName(selectedJob.title) || selectedJob.title}
-                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedJob(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-all"
-                >
-                  {t('إلغاء', 'Cancel')}
-                </button>
+
+              {/* Line 2: Job Title (e.g. عامل صيانة وسائق) */}
+              <div className="flex items-center">
+                <span className="text-xs sm:text-sm font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/40 px-3 py-1 rounded-lg border border-teal-200 dark:border-teal-700/50">
+                  {getTitleName(selectedJob.title) || selectedJob.title}
+                </span>
+              </div>
+
+              {/* Line 3: Action Buttons (Submit & Cancel) */}
+              <div className="flex items-center gap-2.5 pt-1">
                 <button
                   type="button"
                   onClick={handleSubmitApplication}
                   disabled={submitting}
-                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-lg shadow-teal-600/20 flex items-center gap-2 disabled:opacity-50"
+                  className="flex-1 sm:flex-initial px-6 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
                 >
                   {submitting ? (
                     <span>{t('جاري التقديم...', 'Submitting...')}</span>
@@ -943,16 +959,22 @@ export const CandidatePortal: React.FC = () => {
                     </>
                   )}
                 </button>
+
                 <button
+                  type="button"
                   onClick={() => setSelectedJob(null)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                  className={`flex-1 sm:flex-initial px-5 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                    isDark 
+                      ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' 
+                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm'
+                  }`}
                 >
-                  <span className="material-symbols-outlined">close</span>
+                  {t('إلغاء', 'Cancel')}
                 </button>
               </div>
             </div>
 
-            <form onSubmit={handleSubmitApplication} className="space-y-4 text-xs font-normal">
+            <form onSubmit={handleSubmitApplication} className="p-4 sm:p-6 space-y-4 text-xs font-normal">
               {/* Personal Photo & Resume Upload */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700">
                 <div>

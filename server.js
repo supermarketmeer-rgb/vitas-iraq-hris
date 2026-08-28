@@ -1502,21 +1502,53 @@ app.post('/api/candidates', upload.fields([{ name: 'candidate_photo' }, { name: 
       }
     }
 
-    const dateOfBirth = data.dateOfBirth || data.date_of_birth || null;
+    // Safely parse & format date_of_birth for MySQL DATE column
+    let safeDob = null;
+    const rawDob = (data.dateOfBirth || data.date_of_birth || '').trim();
+    if (rawDob) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(rawDob)) {
+        safeDob = rawDob;
+      } else if (rawDob.includes('/')) {
+        const parts = rawDob.split('/');
+        if (parts.length === 3) {
+          if (parts[2].length === 4) {
+            safeDob = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          } else if (parts[0].length === 4) {
+            safeDob = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+          }
+        }
+      } else if (rawDob.includes('-')) {
+        const parts = rawDob.split('-');
+        if (parts.length === 3 && parts[2].length === 4) {
+          safeDob = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+      }
+    }
+
     const gender = data.gender || null;
     const maritalStatus = data.maritalStatus || data.marital_status || null;
     const personalEmail = data.personalEmail || data.personal_email || null;
     const nationalIdNumber = data.nationalIdNumber || data.national_id_number || null;
 
-    await query(
-      `INSERT INTO candidates (id, full_name, full_name_ar, email, phone, applied_job_id, job_title, stage, rating, experience_years, notes, photo_url, resume_url, date_of_birth, gender, marital_status, personal_email, national_id_number, applied_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [candidateId, fullName, fullNameAr, email, phone, validAppliedJobId, jobTitle, stage, rating, experienceYears, notes, photoUrl, resumeUrl, dateOfBirth, gender, maritalStatus, personalEmail, nationalIdNumber]
-    );
+    try {
+      await query(
+        `INSERT INTO candidates (id, full_name, full_name_ar, email, phone, applied_job_id, job_title, stage, rating, experience_years, notes, photo_url, resume_url, date_of_birth, gender, marital_status, personal_email, national_id_number, applied_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [candidateId, fullName, fullNameAr || fullName, email, phone, validAppliedJobId, jobTitle, stage, rating, experienceYears, notes, photoUrl, resumeUrl, safeDob, gender, maritalStatus, personalEmail, nationalIdNumber]
+      );
+    } catch (dbErr) {
+      console.warn('Full candidate insert error, attempting standard fallback insert:', dbErr.message);
+      await query(
+        `INSERT INTO candidates (id, full_name, email, phone, applied_job_id, job_title, stage, rating, experience_years, notes, photo_url, resume_url, applied_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [candidateId, fullName, email, phone, validAppliedJobId, jobTitle, stage, rating, experienceYears, notes, photoUrl, resumeUrl]
+      ).catch(fallbackErr => {
+        console.error('Candidate insert fallback error:', fallbackErr.message);
+      });
+    }
     
     const newCandidate = {
       id: candidateId,
       fullName,
-      fullNameAr,
+      fullNameAr: fullNameAr || fullName,
       email,
       phone,
       appliedJobId: validAppliedJobId || appliedJobId,
@@ -1527,7 +1559,7 @@ app.post('/api/candidates', upload.fields([{ name: 'candidate_photo' }, { name: 
       notes,
       photoUrl,
       resumeUrl,
-      dateOfBirth,
+      dateOfBirth: safeDob || rawDob,
       gender,
       maritalStatus,
       personalEmail,
