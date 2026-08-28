@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Candidate, CommitteeScore } from '../../types';
+import { getCandidateDisplayName } from '../../utils/nameHelper';
 
 export const CandidateProfile: React.FC = () => {
   const { candidates, jobVacancies, updateCandidateStage, deleteCandidate, t, language, theme } = useApp();
@@ -346,11 +347,12 @@ export const CandidateProfile: React.FC = () => {
           {filteredCandidates.map(candidate => {
             const appliedJob = jobVacancies.find(j => j.id === candidate.appliedJobId || j.id === `pos-${candidate.appliedJobId}`);
             const displayJobTitle = appliedJob?.title || candidate.jobTitle;
+            const candidateDisplayName = getCandidateDisplayName(candidate, language);
 
             const cleanPhone = (candidate.phone || '').replace(/[^0-9]/g, '');
             const formattedPhone = cleanPhone.startsWith('0') ? '964' + cleanPhone.substring(1) : (cleanPhone.startsWith('964') ? cleanPhone : '964' + cleanPhone);
-            const waUrl = candidate.phone ? `https://wa.me/${formattedPhone}?text=${encodeURIComponent(`مرحباً ${candidate.fullName}، نود التواصل معك بخصوص طلب التقديم لدى مؤسسة فيتاس العراق.`)}` : '';
-            const mailtoUrl = candidate.email ? `mailto:${candidate.email}?subject=${encodeURIComponent(`مؤسسة فيتاس العراق - طلب التقديم على وظيفة ${displayJobTitle}`)}&body=${encodeURIComponent(`السيد/ة ${candidate.fullName}،\n\nتحية طيبة،\nنود التواصل معكم بخصوص طلب التقديم على وظيفة ${displayJobTitle}.\n\nمع التقدير،\nقسم الموارد البشرية - فيتاس العراق`)}` : '';
+            const waUrl = candidate.phone ? `https://wa.me/${formattedPhone}?text=${encodeURIComponent(`مرحباً ${candidateDisplayName}، نود التواصل معك بخصوص طلب التقديم لدى مؤسسة فيتاس العراق.`)}` : '';
+            const mailtoUrl = candidate.email ? `mailto:${candidate.email}?subject=${encodeURIComponent(`مؤسسة فيتاس العراق - طلب التقديم على وظيفة ${displayJobTitle}`)}&body=${encodeURIComponent(`السيد/ة ${candidateDisplayName}،\n\nتحية طيبة،\nنود التواصل معكم بخصوص طلب التقديم على وظيفة ${displayJobTitle}.\n\nمع التقدير،\nقسم الموارد البشرية - فيتاس العراق`)}` : '';
 
             return (
               <div
@@ -368,7 +370,7 @@ export const CandidateProfile: React.FC = () => {
                       isDark ? 'bg-[#1e293b] border-slate-700' : 'bg-slate-100 border-slate-200 shadow-xs'
                     }`}>
                       {candidate.photoUrl ? (
-                        <img src={candidate.photoUrl} alt={candidate.fullName} className="w-full h-full object-cover" />
+                        <img src={candidate.photoUrl} alt={candidateDisplayName} className="w-full h-full object-cover" />
                       ) : (
                         <span className="material-symbols-outlined text-3xl text-slate-500">account_circle</span>
                       )}
@@ -376,8 +378,8 @@ export const CandidateProfile: React.FC = () => {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1 mb-1">
-                        <h3 className="text-sm font-bold truncate" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                          {candidate.fullName}
+                        <h3 className="text-sm font-bold break-words" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                          {candidateDisplayName}
                         </h3>
                       </div>
                       <span className={`inline-block px-2 py-0.5 rounded-full ${getStageColor(candidate.stage)} text-white text-[10px] font-bold shadow-sm mb-1`}>

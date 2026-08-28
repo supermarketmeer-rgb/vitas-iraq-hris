@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Candidate, JobVacancy, CommitteeScore } from '../../types';
 import { api } from '../../api/client';
 import { SearchableComboBox } from '../SearchableComboBox';
+import { getCandidateDisplayName } from '../../utils/nameHelper';
 
 export const CandidatePipeline: React.FC = () => {
   const { 
@@ -530,8 +531,8 @@ export const CandidatePipeline: React.FC = () => {
       : `VTS-${Math.floor(1000 + Math.random() * 9000)}`;
 
     setDirectoryForm({
-      fullNameAr: candidate.fullName || '',
-      fullNameEn: '', // Clean blank unless edited by HR
+      fullNameAr: getCandidateDisplayName(candidate, 'ar') || '',
+      fullNameEn: getCandidateDisplayName(candidate, 'en') || '',
       email: candidate.email || candidate.personalEmail || '',
       personalEmail: candidate.personalEmail || candidate.email || '',
       phone: candidate.phone || '',
@@ -1174,7 +1175,7 @@ export const CandidatePipeline: React.FC = () => {
                           {candidate.photoUrl ? (
                             <img
                               src={candidate.photoUrl.startsWith('/uploads/') && typeof window !== 'undefined' ? `${window.location.origin}${candidate.photoUrl}` : candidate.photoUrl}
-                              alt={candidate.fullName}
+                              alt={getCandidateDisplayName(candidate, language)}
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
@@ -1187,8 +1188,8 @@ export const CandidatePipeline: React.FC = () => {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-bold truncate" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                            {candidate.fullName}
+                          <h4 className="text-sm font-bold break-words" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                            {getCandidateDisplayName(candidate, language)}
                           </h4>
                           <p className="text-xs font-bold text-teal-600 dark:text-teal-400 mt-0.5 flex items-center gap-1 truncate">
                             <span className="material-symbols-outlined text-xs shrink-0">work</span>

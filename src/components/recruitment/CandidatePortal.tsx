@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { JobVacancy, Candidate } from '../../types';
 import { api } from '../../api/client';
+import { getCandidateDisplayName, transliterateEnglishNameToArabic } from '../../utils/nameHelper';
 
 const TITLE_MAP: Record<string, { ar: string; en: string }> = {
   'مسؤول قروض': { ar: 'مسؤول قروض', en: 'Loan Officer' },
@@ -546,10 +547,13 @@ export const CandidatePortal: React.FC = () => {
       }
 
       // 1. Submit Candidate Info to ATS / Recruitment System
-      const primaryFullName = formData.fullNameAr || formData.fullName || 'متقدم جديد';
+      const resolvedArabicName = formData.fullNameAr?.trim() || transliterateEnglishNameToArabic(formData.fullName || '') || formData.fullName || 'متقدم جديد';
+      const resolvedEnglishName = formData.fullName?.trim() || formData.fullNameAr || 'New Candidate';
+      
       await addCandidate({
-        fullName: primaryFullName,
-        fullNameAr: formData.fullNameAr || undefined,
+        fullName: resolvedArabicName,
+        fullNameAr: resolvedArabicName,
+        fullNameEn: resolvedEnglishName,
         email: formData.email,
         phone: formData.phone,
         appliedJobId: selectedJob.id,
@@ -570,12 +574,12 @@ export const CandidatePortal: React.FC = () => {
       });
 
       setSubmissionDetails({
-        fullName: primaryFullName,
+        fullName: resolvedArabicName,
         jobTitle: resolvedJobTitle
       });
 
       setLastSubmissionInfo({
-        fullName: primaryFullName,
+        fullName: resolvedArabicName,
         phone: formData.phone,
         jobTitle: resolvedJobTitle
       });
