@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Candidate, JobVacancy, CommitteeScore } from '../../types';
 import { api } from '../../api/client';
 import { SearchableComboBox } from '../SearchableComboBox';
-import { getCandidateDisplayName } from '../../utils/nameHelper';
+import { getCandidateDisplayName, transliterateEnglishNameToArabic } from '../../utils/nameHelper';
 
 export const CandidatePipeline: React.FC = () => {
   const { 
@@ -94,17 +94,53 @@ export const CandidatePipeline: React.FC = () => {
     return title;
   };
 
-  // Form state for adding candidate
+  // Form state for adding candidate (matching CandidatePortal fields)
   const [newCandidate, setNewCandidate] = useState({
     fullName: '',
+    fullNameAr: '',
+    dateOfBirth: '',
+    gender: '',
+    maritalStatus: '',
     email: '',
+    personalEmail: '',
     phone: '',
+    nationalIdNumber: '',
     jobOpeningId: '',
     experience: 2,
     rating: 5,
     stage: 'استلام الطلبات' as Candidate['stage'],
-    notes: ''
+    notes: '',
+    photoFile: null as File | null,
+    resumeFile: null as File | null,
+    photoUrl: '',
+    resumeName: '',
+    resumeUrl: ''
   });
+
+  const handleCandidatePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const photoUrl = URL.createObjectURL(file);
+      setNewCandidate(prev => ({ ...prev, photoFile: file, photoUrl }));
+    }
+  };
+
+  const handleCandidateResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setNewCandidate(prev => ({
+          ...prev,
+          resumeFile: file,
+          resumeName: file.name,
+          resumeUrl: dataUrl
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Committee evaluation form state - Updated to match user requirements
   const [evalForm, setEvalForm] = useState({
@@ -897,33 +933,70 @@ export const CandidatePipeline: React.FC = () => {
     }
   };
 
-  const handleAddCandidateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddCandidateSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const selectedPos = allActivePositions.find(p => p.id === newCandidate.jobOpeningId);
     const jobTitleValue = selectedPos ? (language === 'en' ? selectedPos.titleEn : selectedPos.titleAr) : newCandidate.jobOpeningId;
     
-    addCandidate({
-      fullName: newCandidate.fullName,
+    const resolvedArabicName = newCandidate.fullNameAr?.trim() || transliterateEnglishNameToArabic(newCandidate.fullName || '') || newCandidate.fullName || 'مرشح جديد';
+    const resolvedEnglishName = newCandidate.fullName?.trim() || newCandidate.fullNameAr || 'New Candidate';
+    
+    let safeDobString = newCandidate.dateOfBirth?.trim() || '';
+    if (safeDobString.includes('/')) {
+      const parts = safeDobString.split('/');
+      if (parts.length === 3) {
+        if (parts[2].length === 4) {
+          safeDobString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        } else if (parts[0].length === 4) {
+          safeDobString = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        }
+      }
+    }
+
+    await addCandidate({
+      fullName: resolvedArabicName,
+      fullNameAr: resolvedArabicName,
+      fullNameEn: resolvedEnglishName,
       email: newCandidate.email,
+      personalEmail: newCandidate.personalEmail || newCandidate.email,
       phone: newCandidate.phone,
       appliedJobId: newCandidate.jobOpeningId,
       jobTitle: jobTitleValue,
       experienceYears: newCandidate.experience,
-      rating: newCandidate.rating,
-      stage: newCandidate.stage,
-      notes: newCandidate.notes
+      rating: newCandidate.rating || 5,
+      stage: newCandidate.stage || 'استلام الطلبات',
+      notes: newCandidate.notes,
+      photoUrl: newCandidate.photoUrl || undefined,
+      resumeUrl: newCandidate.resumeUrl || newCandidate.resumeName || undefined,
+      resumeFile: newCandidate.resumeFile || undefined,
+      photoFile: newCandidate.photoFile || undefined,
+      dateOfBirth: safeDobString || newCandidate.dateOfBirth,
+      gender: newCandidate.gender,
+      maritalStatus: newCandidate.maritalStatus,
+      nationalIdNumber: newCandidate.nationalIdNumber
     });
 
     setShowAddCandidateModal(false);
     setNewCandidate({
       fullName: '',
+      fullNameAr: '',
+      dateOfBirth: '',
+      gender: '',
+      maritalStatus: '',
       email: '',
+      personalEmail: '',
       phone: '',
+      nationalIdNumber: '',
       jobOpeningId: '',
       experience: 2,
       rating: 5,
       stage: 'استلام الطلبات',
-      notes: ''
+      notes: '',
+      photoFile: null,
+      resumeFile: null,
+      photoUrl: '',
+      resumeName: '',
+      resumeUrl: ''
     });
   };
 
@@ -2096,106 +2169,304 @@ export const CandidatePipeline: React.FC = () => {
         </div>
       )}
 
-      {/* Add Candidate Modal */}
+      {/* Add Candidate Modal - Fully Matching Candidate Portal */}
       {showAddCandidateModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className={`rounded-2xl p-6 w-full max-w-md shadow-2xl ${
-            isDark ? 'bg-[#0f172a] border border-slate-700 text-white' : 'bg-white border border-slate-300 text-slate-900'
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className={`rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl border ${
+            isDark ? 'bg-[#0f172a] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
           }`}>
-            <div className={`flex items-center justify-between mb-6 pb-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-300'}`}>
-              <h3 className="text-lg font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                {t('إضافة مرشح جديد', 'Add New Candidate')}
-              </h3>
-              <button
-                onClick={() => setShowAddCandidateModal(false)}
-                className="p-1.5 rounded-lg transition-all text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleAddCandidateSubmit} className="space-y-4 text-xs font-bold">
-              <div>
-                <label className="block mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>{t('الاسم الكامل', 'Full Name')}: *</label>
-                <input
-                  type="text"
-                  required
-                  value={newCandidate.fullName}
-                  onChange={(e) => setNewCandidate({ ...newCandidate, fullName: e.target.value })}
-                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border ${isDark ? 'bg-[#1e293b] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
-                />
+            {/* Top Modal Header: Action Buttons (Submit & Cancel), No X */}
+            <div className={`p-4 sm:p-5 border-b flex items-center justify-between gap-3 sticky top-0 z-20 ${
+              isDark ? 'border-slate-800 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-xl sm:text-2xl">person_add</span>
+                <h3 className="text-base sm:text-lg font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t('إضافة مرشح جديد (تقديم مباشر على وظيفة)', 'Add New Candidate (Direct Application)')}
+                </h3>
               </div>
 
-              <div>
-                <label className="block mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>{t('البريد الإلكتروني', 'Email')}: *</label>
-                <input
-                  type="email"
-                  required
-                  value={newCandidate.email}
-                  onChange={(e) => setNewCandidate({ ...newCandidate, email: e.target.value })}
-                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border ${isDark ? 'bg-[#1e293b] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>{t('رقم الهاتف', 'Phone')}:</label>
-                <input
-                  type="tel"
-                  value={newCandidate.phone}
-                  onChange={(e) => setNewCandidate({ ...newCandidate, phone: e.target.value })}
-                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border ${isDark ? 'bg-[#1e293b] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>{t('الوظيفة / المسمى الوظيفي', 'Applied Position')}: *</label>
-                <select
-                  required
-                  value={newCandidate.jobOpeningId}
-                  onChange={(e) => setNewCandidate({ ...newCandidate, jobOpeningId: e.target.value })}
-                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border ${isDark ? 'bg-[#1e293b] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
-                >
-                  <option value="">{t('اختر الوظيفة أو المسمى', 'Select Position')}</option>
-                  {allActivePositions.map(pos => (
-                    <option key={pos.id} value={pos.id}>
-                      {language === 'en' ? pos.titleEn : pos.titleAr}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-1" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>{t('المرحلة الأولية', 'Initial Stage')}:</label>
-                <select
-                  value={newCandidate.stage}
-                  onChange={(e) => setNewCandidate({ ...newCandidate, stage: e.target.value as Candidate['stage'] })}
-                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border ${isDark ? 'bg-[#1e293b] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
-                >
-                  {kanbanStages.map(stage => (
-                    <option key={stage} value={stage}>{getStageTitle(stage)}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t border-slate-700">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAddCandidateModal(false)}
-                  className="flex-1 py-2.5 rounded-xl border bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-200 font-bold"
+                  className={`px-4 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    isDark 
+                      ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' 
+                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm'
+                  }`}
                 >
                   {t('إلغاء', 'Cancel')}
                 </button>
+
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold"
+                  form="add-candidate-pipeline-form"
+                  className="px-5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
-                  {t('إضافة المرشح', 'Add Candidate')}
+                  <span className="material-symbols-outlined text-sm">check</span>
+                  <span>{t('إضافة المرشح', 'Add Candidate')}</span>
                 </button>
+              </div>
+            </div>
+
+            <form id="add-candidate-pipeline-form" onSubmit={handleAddCandidateSubmit} className="p-4 sm:p-6 space-y-4 text-xs font-normal">
+              {/* Personal Photo & Resume Upload (Matching Candidate Portal) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700">
+                <div>
+                  <label className="block font-bold mb-2" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('الصورة الشخصية', 'Personal Photo')}:
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-xl border flex items-center justify-center overflow-hidden bg-slate-200 dark:bg-slate-700 shrink-0">
+                      {newCandidate.photoUrl ? (
+                        <img src={newCandidate.photoUrl} alt="Photo" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="material-symbols-outlined text-2xl text-slate-400">person</span>
+                      )}
+                    </div>
+                    <label className="cursor-pointer py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">upload</span>
+                      <span>{t('رفع الصورة', 'Upload Photo')}</span>
+                      <input type="file" accept="image/*" onChange={handleCandidatePhotoUpload} className="hidden" />
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-2" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('السيرة الذاتية (CV)', 'Resume / CV')}:
+                  </label>
+                  <label className="cursor-pointer w-full p-2.5 rounded-xl border border-dashed border-teal-500 hover:border-teal-400 bg-teal-500/10 flex items-center justify-center gap-2 transition-all">
+                    <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">description</span>
+                    <span className="font-bold text-teal-700 dark:text-white">
+                      {newCandidate.resumeName || t('اختيار ملف السيرة الذاتية (PDF/DOC)', 'Select CV File (PDF/DOC)')}
+                    </span>
+                    <input type="file" accept=".pdf,.doc,.docx" onChange={handleCandidateResumeUpload} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              {/* Names Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('الاسم باللغة العربية', 'Full Name in Arabic (الاسم بالعربي)')}: *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={t('أدخل الاسم الكامل باللغة العربية...', 'Enter full name in Arabic...')}
+                    value={newCandidate.fullNameAr}
+                    onChange={e => setNewCandidate({ ...newCandidate, fullNameAr: e.target.value })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-normal outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('الاسم باللغة الإنجليزية', 'English Full Name')}:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={t('أدخل الاسم باللغة الإنجليزية...', 'Enter English name...')}
+                    value={newCandidate.fullName}
+                    onChange={e => setNewCandidate({ ...newCandidate, fullName: e.target.value })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-normal outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Personal Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('تاريخ الميلاد', 'Date of Birth')}:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="--/--/----"
+                    value={newCandidate.dateOfBirth}
+                    onChange={e => setNewCandidate({ ...newCandidate, dateOfBirth: e.target.value })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('الجنس', 'Gender')}:
+                  </label>
+                  <select
+                    value={newCandidate.gender}
+                    onChange={e => setNewCandidate({ ...newCandidate, gender: e.target.value })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  >
+                    <option value="">{t('اختر الجنس', 'Select Gender')}</option>
+                    <option value="ذكر">{t('ذكر', 'Male')}</option>
+                    <option value="أنثى">{t('أنثى', 'Female')}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('الحالة الاجتماعية', 'Marital Status')}:
+                  </label>
+                  <select
+                    value={newCandidate.maritalStatus}
+                    onChange={e => setNewCandidate({ ...newCandidate, maritalStatus: e.target.value })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  >
+                    <option value="">{t('اختر الحالة الاجتماعية', 'Select Status')}</option>
+                    <option value="أعزب/عزباء">{t('أعزب/عزباء', 'Single')}</option>
+                    <option value="متزوج/متزوجة">{t('متزوج/متزوجة', 'Married')}</option>
+                    <option value="مطلق/مطلقة">{t('مطلق/مطلقة', 'Divorced')}</option>
+                    <option value="أرمل/أرملة">{t('أرمل/أرملة', 'Widowed')}</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('رقم الهاتف / الواتساب', 'Phone / WhatsApp')}: *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="07XXXXXXXXX"
+                    value={newCandidate.phone}
+                    onChange={e => setNewCandidate({ ...newCandidate, phone: e.target.value })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('البريد الإلكتروني', 'Email')}: *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="applicant@example.com"
+                    value={newCandidate.email}
+                    onChange={e => setNewCandidate({ ...newCandidate, email: e.target.value })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('رقم الهوية الوطنية / الموحدة', 'National ID Number')}:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="19XXXXXXXXXX"
+                    value={newCandidate.nationalIdNumber}
+                    onChange={e => setNewCandidate({ ...newCandidate, nationalIdNumber: e.target.value })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Job, Stage & Experience */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('الوظيفة / المسمى الوظيفي', 'Applied Position')}: *
+                  </label>
+                  <select
+                    required
+                    value={newCandidate.jobOpeningId}
+                    onChange={e => setNewCandidate({ ...newCandidate, jobOpeningId: e.target.value })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  >
+                    <option value="">{t('اختر الوظيفة أو المسمى', 'Select Position')}</option>
+                    {allActivePositions.map(pos => (
+                      <option key={pos.id} value={pos.id}>
+                        {language === 'en' ? pos.titleEn : pos.titleAr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('المرحلة الأولية', 'Initial Stage')}:
+                  </label>
+                  <select
+                    value={newCandidate.stage}
+                    onChange={e => setNewCandidate({ ...newCandidate, stage: e.target.value as Candidate['stage'] })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  >
+                    {kanbanStages.map(stage => (
+                      <option key={stage} value={stage}>{getStageTitle(stage)}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('سنوات الخبرة العملية', 'Experience Years')}:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newCandidate.experience}
+                    onChange={e => setNewCandidate({ ...newCandidate, experience: parseInt(e.target.value) || 0 })}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition-all ${
+                      isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                  {t('ملاحظات أو نبذة مختصرة', 'Cover Letter / Additional Notes')}:
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder={t('اكتب نبذة مختصرة عن مؤهلات المرشح أو ملاحظات التقديم...', 'Write candidate notes or summary...')}
+                  value={newCandidate.notes}
+                  onChange={e => setNewCandidate({ ...newCandidate, notes: e.target.value })}
+                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition-all resize-none ${
+                    isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                  }`}
+                />
               </div>
             </form>
           </div>
