@@ -122,10 +122,10 @@ export const Category2DashboardView: React.FC = () => {
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
               isDark 
                 ? 'bg-[#06080d] hover:bg-[#0a0c10] text-teal-400 hover:text-emerald-400 border-teal-500 shadow-md shadow-teal-500/10' 
-                : 'bg-teal-50/60 hover:bg-teal-100/80 text-teal-800 border-teal-500/40 shadow-sm'
+                : 'bg-white hover:bg-teal-50 text-teal-700 border-teal-500/60 shadow-xs'
             }`}
           >
-            <span className="material-symbols-outlined text-base">table_chart</span>
+            <span className="material-symbols-outlined text-base text-teal-600">table_chart</span>
             <span>{t('منشئ التقارير الديناميكية', 'Dynamic Report Builder')}</span>
           </button>
 
@@ -134,10 +134,10 @@ export const Category2DashboardView: React.FC = () => {
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
               isDark 
                 ? 'bg-[#06080d] hover:bg-[#0a0c10] text-teal-400 hover:text-emerald-400 border-teal-500 shadow-md shadow-teal-500/10' 
-                : 'bg-teal-50/60 hover:bg-teal-100/80 text-teal-800 border-teal-500/40 shadow-sm'
+                : 'bg-white hover:bg-teal-50 text-teal-700 border-teal-500/60 shadow-xs'
             }`}
           >
-            <span className="material-symbols-outlined text-base">person_add</span>
+            <span className="material-symbols-outlined text-base text-teal-600">person_add</span>
             <span>{t('إضافة موظف جديد', 'Add New Employee')}</span>
           </button>
 
@@ -146,10 +146,10 @@ export const Category2DashboardView: React.FC = () => {
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
               isDark 
                 ? 'bg-[#06080d] hover:bg-[#0a0c10] text-teal-400 hover:text-emerald-400 border-teal-500 shadow-md' 
-                : 'bg-teal-50/60 hover:bg-teal-100/80 text-teal-800 border-teal-500/40 shadow-sm'
+                : 'bg-white hover:bg-teal-50 text-teal-700 border-teal-500/60 shadow-xs'
             }`}
           >
-            <span className="material-symbols-outlined text-base">edit_calendar</span>
+            <span className="material-symbols-outlined text-base text-teal-600">edit_calendar</span>
             <span>{t('تقديم إجازة', 'Apply for Leave')}</span>
           </button>
         </div>
