@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AttendanceRecord, Language } from './types';
 import { translations } from './translations';
+import { useApp } from '../../context/AppContext';
 
 interface AttendanceViewProps {
   records: AttendanceRecord[];
@@ -23,6 +24,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   onExportExcel,
   onExportPdf,
 }) => {
+  const { theme } = useApp();
+  const isDark = theme === 'dark';
   const t = translations[lang];
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,22 +124,30 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white shadow-xl relative overflow-hidden border border-slate-800">
+      <div className={`p-6 rounded-3xl border transition-all ${
+        isDark 
+          ? 'bg-[#0a0c10] border-white/10 text-white shadow-xl' 
+          : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+      }`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/20 text-white border border-teal-500/30 flex items-center gap-1.5">
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${
+                isDark ? 'bg-teal-500/20 text-white border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200'
+              }`}>
                 <span className="material-symbols-outlined text-sm">fingerprint</span>
                 <span>{lang === 'ar' ? 'سجل الحضور والدوام الموحد' : 'Biometric Attendance Registry'}</span>
               </span>
-              <span className="text-xs text-slate-400 font-mono bg-white/5 px-2.5 py-0.5 rounded-full">
+              <span className={`text-xs font-mono px-2.5 py-0.5 rounded-full ${
+                isDark ? 'text-slate-400 bg-white/5' : 'text-slate-600 bg-slate-100'
+              }`}>
                 {records.length} {lang === 'ar' ? 'سجل دوام' : 'Records'}
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {t.attendance_management}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
+            <p className={`text-xs sm:text-sm mt-1 max-w-xl ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
               {t.attendance_description}
             </p>
           </div>

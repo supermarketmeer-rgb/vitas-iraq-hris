@@ -2122,10 +2122,12 @@ export const Category5PayrollView: React.FC = () => {
                 </div>
 
                 {/* Decision Actions Bar */}
-                <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 border border-teal-500/30 flex flex-wrap items-center justify-between gap-3">
+                <div className={`p-5 rounded-2xl border flex flex-wrap items-center justify-between gap-3 ${
+                  isDark ? 'bg-[#0a0c10] border-teal-500/30 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+                }`}>
                   <div>
-                    <span className="font-bold text-white block">{t('اتخاذ قرار الاعتماد والتوقيع الإلكتروني', 'Take Approval Decision')}</span>
-                    <span className="text-[11px] text-slate-400">{t('سيتم تحويل المطالبة تلقائياً لقسيمة مسير الشهر عند الموافقة', 'Approved claim will automatically attach to monthly payroll')}</span>
+                    <span className={`font-bold block ${isDark ? 'text-white' : 'text-slate-900'}`}>{t('اتخاذ قرار الاعتماد والتوقيع الإلكتروني', 'Take Approval Decision')}</span>
+                    <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('سيتم تحويل المطالبة تلقائياً لقسيمة مسير الشهر عند الموافقة', 'Approved claim will automatically attach to monthly payroll')}</span>
                   </div>
 
                   <div className="flex items-center gap-2">

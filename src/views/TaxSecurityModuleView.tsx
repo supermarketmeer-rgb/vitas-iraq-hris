@@ -30,28 +30,30 @@ const InnerTaxView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header Banner matching VITAS HRMS Styling */}
-      <div className={`p-6 rounded-3xl ${
+      <div className={`p-6 rounded-3xl border transition-all ${
         isDark
-          ? 'bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 border-teal-500/20 text-white'
-          : 'bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 border-teal-600 text-white shadow-xl'
-      } border shadow-2xl relative overflow-hidden`}>
+          ? 'bg-[#0a0c10] border-white/10 text-white shadow-xl'
+          : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+      } relative overflow-hidden`}>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shrink-0 ${
-              isDark ? 'bg-gradient-to-br from-teal-500 to-emerald-600 shadow-teal-500/20' : 'bg-teal-600/80 border border-teal-400/30'
+              isDark ? 'bg-gradient-to-br from-teal-500 to-emerald-600 shadow-teal-500/20' : 'bg-teal-50 border border-teal-200 text-teal-700'
             }`}>
-              <span className="material-symbols-outlined text-white text-3xl">policy</span>
+              <span className={`material-symbols-outlined text-3xl ${isDark ? 'text-white' : 'text-teal-700'}`}>policy</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black text-white tracking-wide">
+                <h1 className={`text-2xl font-black tracking-wide ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {isEn ? 'Social Security & Income Tax Engine' : 'محرك الضمان الاجتماعي وضريبة الدخل'}
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-teal-900/60 text-white border border-teal-400/30 text-[11px] font-mono font-bold">
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold border ${
+                  isDark ? 'bg-teal-900/60 text-white border-teal-400/30' : 'bg-teal-50 text-teal-700 border-teal-200'
+                }`}>
                   MySQL XAMPP Live
                 </span>
               </div>
-              <p className="text-teal-100 text-xs mt-1">
+              <p className={`text-xs mt-1 ${isDark ? 'text-teal-100' : 'text-slate-600'}`}>
                 {isEn
                   ? 'Rules engine for Iraqi Social Security (Law 18 of 2023) and Progressive Income Tax (Law 113) fully integrated with HR & Payroll'
                   : 'نظام إدارة وقواعد الضمان الاجتماعي (قانون 18 لسنة 2023) وضريبة الدخل التصاعدية (قانون 113) المتكامل مع سجلات الموظفين والرواتب'}

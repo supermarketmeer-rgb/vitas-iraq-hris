@@ -61,14 +61,17 @@ html.dark textarea::placeholder {
 
 /* ================================================================
    DARK BANNER (Header banners across views)
-   Matches Category 1 Auth View top banner (#0a0c10 with teal border)
+   Light mode = Pure White Card (#ffffff), Dark text (#0f172a)
+   Dark mode = #0a0c10 with teal border
    ================================================================ */
 .dark-banner,
 html.light .dark-banner,
 html:not(.dark) .dark-banner {
-  background-image: linear-gradient(to right, #475569, #334155, #475569) !important;
-  background-color: #475569 !important;
-  color: #ffffff !important;
+  background-image: none !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  color: #0f172a !important;
 }
 
 html.dark .dark-banner {
@@ -78,11 +81,34 @@ html.dark .dark-banner {
   color: #ffffff !important;
 }
 
-.dark-banner h1,
-.dark-banner h2,
-.dark-banner h3,
-.dark-banner p,
-.dark-banner span {
+html.light .dark-banner h1,
+html.light .dark-banner h2,
+html.light .dark-banner h3,
+html.light .dark-banner h4,
+html:not(.dark) .dark-banner h1,
+html:not(.dark) .dark-banner h2,
+html:not(.dark) .dark-banner h3,
+html:not(.dark) .dark-banner h4 {
+  color: #0f172a !important;
+}
+
+html.light .dark-banner p,
+html:not(.dark) .dark-banner p {
+  color: #64748b !important;
+}
+
+html.light .dark-banner .text-white,
+html.light .dark-banner .text-white-force,
+html:not(.dark) .dark-banner .text-white,
+html:not(.dark) .dark-banner .text-white-force {
+  color: #0f172a !important;
+}
+
+html.dark .dark-banner h1,
+html.dark .dark-banner h2,
+html.dark .dark-banner h3,
+html.dark .dark-banner p,
+html.dark .dark-banner span {
   color: #ffffff !important;
 }
 

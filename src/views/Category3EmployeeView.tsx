@@ -1193,15 +1193,19 @@ export const Category3EmployeeView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Top Banner */}
-      <div className="dark-banner p-6 rounded-3xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
+      <div className={`p-6 rounded-3xl border transition-all flex flex-wrap items-center justify-between gap-4 ${
+        isDark 
+          ? 'bg-[#0a0c10] border-white/10 shadow-xl text-white' 
+          : 'bg-white border-slate-200 shadow-sm text-slate-900'
+      }`}>
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-teal-400">group</span>
-            <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-bold">
+            <span className={`material-symbols-outlined ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>group</span>
+            <span className={`text-xs font-mono uppercase tracking-widest font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
               EMPLOYEE MANAGEMENT SYSTEM
             </span>
           </div>
-          <h1 className="text-2xl font-black text-white text-white-force drop-shadow-sm">
+          <h1 className={`text-2xl font-black drop-shadow-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {activeModuleId === 'emp-directory' && t('دليل الموظفين المؤسسي', 'Corporate Employee Directory')}
             {activeModuleId === 'emp-hr-directory' && t('دليل الموظفين الشامل - إدارة الموارد البشرية', 'Comprehensive Employee Directory - HR')}
             {activeModuleId === 'emp-add' && t('تسجيل وإضافة موظف جديد (نموذج 7 تبويبات)', 'Register & Add New Employee (7-Tab Form)')}
@@ -1211,7 +1215,7 @@ export const Category3EmployeeView: React.FC = () => {
             {activeModuleId === 'emp-calendar' && t('تقويم الفعاليات والعطل الرسمية', 'Events & Official Holidays Calendar')}
             {activeModuleId === 'emp-news' && t('مركز الأخبار والتنويهات الداخلية', 'Internal News & Announcements Center')}
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className={`text-xs mt-1 font-normal ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {t('إدارة كاملة للبيانات الوظيفية وسجلات العاملين بفرص خالية من البيانات الافتراضية', 'Comprehensive management of employee records and workforce data')}
           </p>
         </div>

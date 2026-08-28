@@ -55,16 +55,18 @@ export const ArchiveModuleView: React.FC = () => {
   return (
     <div dir={isAr ? 'rtl' : 'ltr'} className={`min-h-screen font-sans antialiased transition-colors duration-200`}>
       {/* Module Header - matching HRMS design */}
-      <div className="mb-6 dark-banner p-6 rounded-3xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 border border-white/10 shadow-xl">
+      <div className={`mb-6 p-6 rounded-3xl border transition-all ${
+        isDark ? 'bg-[#0a0c10] border-white/10 shadow-xl text-white' : 'bg-white border-slate-200 shadow-sm text-slate-900'
+      }`}>
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-teal-600/20 border border-teal-500/30 flex items-center justify-center text-teal-400">
+          <div className="w-12 h-12 rounded-xl bg-teal-600/20 border border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400">
             <span className="material-symbols-outlined text-2xl">archive</span>
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white text-white-force">
+            <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {t('موديول الأرشفة الذكي', 'Smart Archive Module')}
             </h1>
-            <p className="text-sm text-slate-400">
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               {t('نظام إدارة الوثائق والمستندات المتقدم', 'Advanced Document Management System')}
             </p>
           </div>

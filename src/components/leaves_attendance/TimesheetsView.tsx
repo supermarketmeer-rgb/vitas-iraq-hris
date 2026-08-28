@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Language, TimesheetSummary } from './types';
 import { translations } from './translations';
+import { useApp } from '../../context/AppContext';
 
 interface TimesheetsViewProps {
   summaries: TimesheetSummary[];
@@ -19,6 +20,8 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
   onExportExcel,
   onExportPdf,
 }) => {
+  const { theme } = useApp();
+  const isDark = theme === 'dark';
   const t = translations[lang];
   const [filterText, setFilterText] = useState('');
 
@@ -40,25 +43,31 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white shadow-xl border border-slate-800">
+      <div className={`p-6 rounded-3xl border transition-all ${
+        isDark 
+          ? 'bg-[#0a0c10] border-white/10 text-white shadow-xl' 
+          : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+      }`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/20 text-white border border-teal-500/30 flex items-center gap-1.5">
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${
+                isDark ? 'bg-teal-500/20 text-white border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200'
+              }`}>
                 <span className="material-symbols-outlined text-sm">schedule</span>
                 <span>{lang === 'ar' ? 'سجلات التايم شيت والمصادقة للرواتب' : 'Timesheets & Payroll Certification'}</span>
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {t.timesheets_title}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
+            <p className={`text-xs sm:text-sm mt-1 max-w-xl ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
               {t.timesheets_subtitle}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1 p-1 rounded-2xl bg-white/10 border border-white/10">
+            <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-200/50 dark:bg-white/10 border border-slate-300 dark:border-white/10">
               <button
                 onClick={() => onPeriodChange('daily')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
