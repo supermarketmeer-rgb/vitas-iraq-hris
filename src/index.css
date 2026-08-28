@@ -958,33 +958,40 @@ html.dark [class*="modal"] {
 }
 
 /* ================================================================
-   STRICTLY SCOPED LIGHT MODE DIRECTIVE (EXACT INVERSE OF DARK MODE)
-   Soft Slate background (#e8ebef), Light body (#f1f5f9), Dark font (#0f172a / #000000)
+   STRICTLY SCOPED LIGHT MODE DIRECTIVE: PURE WHITE CARDS (#ffffff)
+   Soft neutral background (#eef2f6), Pure White cards (#ffffff)
    ================================================================ */
 html.light,
 html.light body,
 html.light #root,
 html.light main {
-  background-color: #f1f5f9 !important;
+  background-color: #eef2f6 !important;
   color: #0f172a !important;
 }
 
-/* Light Mode Outer & Inner Cards - Soft Slate Gray (#e8ebef) instead of Solid White */
+/* Light Mode Outer & Main Cards - Pure Solid White (#ffffff) */
 html.light main div[class*="rounded-3xl"],
-html.light main div[class*="rounded-2xl"],
-html.light main div[class*="rounded-xl"],
+html.light main div[class*="rounded-2xl"]:not(div[class*="rounded-3xl"] div[class*="rounded-2xl"]),
 html.light .bg-white,
 html.light [class*="bg-white"] {
-  background-color: #e8ebef !important;
+  background-color: #ffffff !important;
   color: #0f172a !important;
-  border-color: #cbd5e1 !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Light Mode Inner Sub-cards & List Items - Soft Light (#f8fafc) */
+html.light main div[class*="rounded-3xl"] div[class*="rounded-2xl"],
+html.light main div[class*="rounded-2xl"] div[class*="rounded-2xl"] {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
 }
 
 /* Light Mode Inputs, Selects & Textareas */
 html.light input,
 html.light select,
 html.light textarea {
-  background-color: #d8dce2 !important;
+  background-color: #ffffff !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
 }
@@ -992,7 +999,7 @@ html.light textarea {
 /* Light Mode Tables */
 html.light table thead th,
 html.light table thead tr th {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   color: #0f172a !important;
   border-color: #e2e8f0 !important;
 }
@@ -1015,18 +1022,9 @@ html.light [class*="modal"] {
 }
 
 /* ================================================================
-   STRICT LIGHT MODE BUTTONS & CONTROLS DIRECTIVE (MATCHING ATTACHED CARD COLOR)
-   Background: Soft slate-blue card background (#e5ecf4 / #e2e8f0)
-   Text & Icons: Black (#000000)
+   LIGHT MODE SIDEBAR BUTTONS & CONTROLS
    ================================================================ */
-html.light button,
-html.light button[class*="bg-"],
-html.light aside button,
-html.light header button,
-html.light main button,
-html.light .fixed button,
-html.light [role="dialog"] button,
-html.light [class*="modal"] button {
+html.light aside button {
   background-color: #e5ecf4 !important;
   background-image: none !important;
   color: #000000 !important;
@@ -1034,17 +1032,14 @@ html.light [class*="modal"] button {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
-/* Force all text, icons, spans, divs inside buttons in Light Mode to Black */
-html.light button *,
-html.light button span,
-html.light button p,
-html.light button div,
-html.light button svg,
-html.light button i,
-html.light button .material-symbols-outlined,
+/* Force all text, icons, spans inside sidebar buttons to Black */
 html.light aside button *,
-html.light header button *,
-html.light main button * {
+html.light aside button span,
+html.light aside button p,
+html.light aside button div,
+html.light aside button svg,
+html.light aside button i,
+html.light aside button .material-symbols-outlined {
   color: #000000 !important;
 }
 
@@ -1062,17 +1057,14 @@ html.light header button [class*="bg-red"] {
   color: #ffffff !important;
 }
 
-/* Hover state for buttons in Light Mode */
-html.light button:hover,
-html.light aside button:hover,
-html.light header button:hover,
-html.light main button:hover {
+/* Hover state for sidebar buttons in Light Mode */
+html.light aside button:hover {
   background-color: #d8e4f0 !important;
   color: #000000 !important;
   border-color: #94a3b8 !important;
 }
 
-html.light button:hover * {
+html.light aside button:hover * {
   color: #000000 !important;
 }
 
@@ -1080,8 +1072,7 @@ html.light button:hover * {
 html.light aside button[class*="bg-[#06080d]"],
 html.light aside button[class*="border-teal-500"],
 html.light aside .sidebar-active-item,
-html.light aside button.bg-teal-600,
-html.light button[class*="bg-[#06080d]"].text-teal-400 {
+html.light aside button.bg-teal-600 {
   background-color: #d0e0f0 !important;
   color: #000000 !important;
   border: 1.5px solid #0d9488 !important;
@@ -1090,19 +1081,6 @@ html.light button[class*="bg-[#06080d]"].text-teal-400 {
 
 html.light aside button[class*="bg-[#06080d]"] *,
 html.light aside button[class*="border-teal-500"] * {
-  color: #000000 !important;
-}
-
-/* Light Mode Badges & Metric Pills (e.g. Total Basic payroll badge) */
-html.light [class*="bg-[#06080d]"]:not(html.dark *):not(button):not(input):not(select),
-html.light [class*="bg-black"]:not(html.dark *):not(button):not(input):not(select) {
-  background-color: #e5ecf4 !important;
-  color: #000000 !important;
-  border-color: #cbd5e1 !important;
-}
-
-html.light [class*="bg-[#06080d]"]:not(html.dark *):not(button):not(input):not(select) *,
-html.light [class*="bg-black"]:not(html.dark *):not(button):not(input):not(select) * {
   color: #000000 !important;
 }
 
