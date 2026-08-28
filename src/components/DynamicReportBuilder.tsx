@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 
 // Database Schema Field Metadata definition
@@ -1020,11 +1021,11 @@ export const DynamicReportBuilder: React.FC = () => {
                       return (
                         <td key={fKey} className="p-2.5 border-l border-slate-200 whitespace-nowrap text-slate-900 font-bold">
                           {meta?.type === 'currency' ? (
-                            <span className="font-mono font-bold text-teal-400">
+                            <span className="font-mono font-bold text-teal-600 dark:text-teal-400">
                               {Number(val || 0).toLocaleString(language === 'en' ? 'en-US' : 'ar-IQ')} {t('د.ع', 'IQD')}
                             </span>
                           ) : meta?.type === 'badge' ? (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-500/10 text-white border border-teal-500/20">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-white border border-teal-200 dark:border-teal-500/20">
                               {val || '-'}
                             </span>
                           ) : meta?.type === 'date' ? (
@@ -1043,26 +1044,26 @@ export const DynamicReportBuilder: React.FC = () => {
             {/* Total Auto-Calculation Summary Footer Row */}
             {filteredData.length > 0 && (
               <tfoot>
-                <tr className="bg-[#1e293b] font-bold text-white border-t-2 border-teal-500/40">
-                  <td className="p-3 text-center border-l border-white/10 bg-slate-900 font-mono text-teal-400">∑</td>
+                <tr className="bg-slate-100 dark:bg-[#1e293b] font-bold text-slate-900 dark:text-white border-t-2 border-teal-500/40">
+                  <td className="p-3 text-center border-l border-slate-300 dark:border-white/10 bg-slate-200 dark:bg-slate-900 font-mono text-teal-600 dark:text-teal-400">∑</td>
                   {selectedFields.map(fKey => {
                     const meta = availableFields.find(f => f.key === fKey);
                     if (meta?.type === 'currency') {
                       return (
-                        <td key={fKey} className="p-3 border-l border-white/10 font-mono text-white">
+                        <td key={fKey} className="p-3 border-l border-slate-300 dark:border-white/10 font-mono text-slate-900 dark:text-white">
                           {t('مجموع:', 'Total:')} {(columnTotals[fKey] || 0).toLocaleString(language === 'en' ? 'en-US' : 'ar-IQ')} {t('د.ع', 'IQD')}
                         </td>
                       );
                     }
                     if (meta?.type === 'number') {
                       return (
-                        <td key={fKey} className="p-3 border-l border-white/10 font-mono text-amber-300">
+                        <td key={fKey} className="p-3 border-l border-slate-300 dark:border-white/10 font-mono text-amber-600 dark:text-amber-300">
                           {t('المجموع:', 'Sum:')} {columnTotals[fKey] || 0}
                         </td>
                       );
                     }
                     return (
-                      <td key={fKey} className="p-3 border-l border-white/10 text-slate-400 font-normal">
+                      <td key={fKey} className="p-3 border-l border-slate-300 dark:border-white/10 text-slate-500 dark:text-slate-400 font-normal">
                         -
                       </td>
                     );
@@ -1074,79 +1075,74 @@ export const DynamicReportBuilder: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL 1: Save Report Template Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-purple-400">bookmark_add</span>
-                {t('حفظ نموذج التقرير الاستعلامي', 'Save Report Template')}
+      {/* MODAL 1: Save Template Modal */}
+      {showSaveModal && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <h3 className="text-base font-bold flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">bookmark_add</span>
+                {t('حفظ نموذج التقرير الحالي', 'Save Current Report Template')}
               </h3>
-              <button onClick={() => setShowSaveModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowSaveModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">✕</button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('اسم التقرير:', 'Report Name:')}</label>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('اسم النموذج:', 'Template Name:')}</label>
                 <input
                   type="text"
-                  value={newReportName}
-                  onChange={(e) => setNewReportName(e.target.value)}
-                  placeholder={t('مثال: تقرير كادر البصرة للرواتب والتأخيرات', 'e.g., Basra Staff Payroll Report')}
-                  className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white focus:outline-none focus:border-teal-500"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder={t('مثال: تقرير رواتب فرع البصرة 2026', 'e.g. Basra Branch Payroll 2026')}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('وصف الاستعلام:', 'Description:')}</label>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('وصف النموذج:', 'Description:')}</label>
                 <textarea
-                  value={newReportDesc}
-                  onChange={(e) => setNewReportDesc(e.target.value)}
-                  rows={3}
-                  placeholder={t('توضيح الهدف والاستخدام للتقرير...', 'Brief usage notes...')}
-                  className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white focus:outline-none focus:border-teal-500"
+                  value={templateDesc}
+                  onChange={(e) => setTemplateDesc(e.target.value)}
+                  rows={2}
+                  placeholder={t('وصف موجز للغرض من هذا الاستعلام...', 'Brief description...')}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
-              <button
-                onClick={() => setShowSaveModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-bold"
-              >
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
+              <button onClick={() => setShowSaveModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold">
                 {t('إلغاء', 'Cancel')}
               </button>
-              <button
-                onClick={handleSaveReport}
-                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg"
-              >
-                {t('حفظ واستخراج', 'Save Template')}
+              <button onClick={handleSaveTemplate} className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg">
+                {t('حفظ في النماذج', 'Save Preset')}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* MODAL 2: Share In-App Notification Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-400">share</span>
-                {t('مشاركة التقرير عبر نظام الموارد البشرية', 'Share Report In-App')}
+      {/* MODAL 2: Share via In-App Notification Modal */}
+      {showShareModal && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <h3 className="text-base font-bold flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">share</span>
+                {t('مشاركة التقرير داخل النظام', 'Share Report In-App')}
               </h3>
-              <button onClick={() => setShowShareModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowShareModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">✕</button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('إرسال إلى دور/فريق المستلم:', 'Recipient Role:')}</label>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('مشاركة مع الدور الإداري:', 'Share with Role:')}</label>
                 <select
                   value={shareRecipientRole}
                   onChange={(e) => setShareRecipientRole(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white focus:outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                 >
                   <option value="HR Manager">مدير الموارد البشرية (HR Manager)</option>
                   <option value="Department Head">رئيس القسم الإداري (Department Head)</option>
@@ -1156,19 +1152,19 @@ export const DynamicReportBuilder: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('ملاحظات وإرشادات مرفقة:', 'Attached Notes:')}</label>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('ملاحظات وإرشادات مرفقة:', 'Attached Notes:')}</label>
                 <textarea
                   value={shareCustomNote}
                   onChange={(e) => setShareCustomNote(e.target.value)}
                   rows={3}
                   placeholder={t('يرجى الاطلاع على تقرير المسير المرفق للاعتماد...', 'Notes for recipient...')}
-                  className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white focus:outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
-              <button onClick={() => setShowShareModal(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
+              <button onClick={() => setShowShareModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold">
                 {t('إلغاء', 'Cancel')}
               </button>
               <button
@@ -1182,57 +1178,58 @@ export const DynamicReportBuilder: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 3: Send via Email Modal */}
-      {showEmailModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-blue-400">mail</span>
+      {showEmailModal && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <h3 className="text-base font-bold flex items-center gap-2">
+                <span className="material-symbols-outlined text-blue-500">mail</span>
                 {t('إرسال التقرير عبر البريد الإلكتروني (Email)', 'Send Report via Email')}
               </h3>
-              <button onClick={() => setShowEmailModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowEmailModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">✕</button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('البريد الإلكتروني للمستلم:', 'Recipient Email:')}</label>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('البريد الإلكتروني للمستلم:', 'Recipient Email:')}</label>
                 <input
                   type="email"
                   value={emailTo}
                   onChange={(e) => setEmailTo(e.target.value)}
                   placeholder="hr-executive@vitasiraq.org"
-                  className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white focus:outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('عنوان الرسالة (Subject):', 'Email Subject:')}</label>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('عنوان الرسالة (Subject):', 'Email Subject:')}</label>
                 <input
                   type="text"
                   value={emailSubject || `تقرير الموارد البشرية: ${reportTitle}`}
                   onChange={(e) => setEmailSubject(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white focus:outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('نص الرسالة:', 'Email Body:')}</label>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('نص الرسالة:', 'Email Body:')}</label>
                 <textarea
                   value={emailBody}
                   onChange={(e) => setEmailBody(e.target.value)}
                   rows={3}
                   placeholder={t('مرفق لكم التقرير الاستعلامي المحدث مع الملف الإكسل...', 'Email message...')}
-                  className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white focus:outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
-              <button onClick={() => setShowEmailModal(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
+              <button onClick={() => setShowEmailModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold">
                 {t('إلغاء', 'Cancel')}
               </button>
               <button
@@ -1246,50 +1243,61 @@ export const DynamicReportBuilder: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* MODAL 4: Formal Print / PDF View Modal */}
-      {showPrintPreviewModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white text-slate-900 rounded-3xl max-w-4xl w-full p-8 space-y-6 shadow-2xl my-8">
-            {/* Header & Logo */}
-            <div className="flex items-start justify-between border-b-2 border-slate-900 pb-4">
+      {/* MODAL 4: Formal Print / PDF View Modal (Portal + Smooth Scrollable) */}
+      {showPrintPreviewModal && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md overflow-y-auto overflow-x-hidden flex justify-center items-start p-3 sm:p-6 md:p-8 animate-in fade-in duration-200">
+          <div className="bg-white text-slate-900 rounded-3xl max-w-5xl w-full p-6 sm:p-8 space-y-6 shadow-2xl my-auto border border-slate-200 relative">
+            
+            {/* Top Close & Quick Action Floating Bar */}
+            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4">
               <div className="space-y-1">
                 <p className="text-xs font-bold text-slate-600">جمهورية العراق • مؤسسة فيتاس العراق للتمويل الأصغر</p>
-                <h1 className="text-2xl font-black text-slate-900">{reportTitle}</h1>
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900">{reportTitle}</h1>
                 <p className="text-xs text-slate-500 font-mono">
                   تاريخ الاستخراج: {new Date().toLocaleDateString('ar-IQ')} • بواسطة: {currentUser.name} ({currentUser.role})
                 </p>
               </div>
-              <div className="text-left font-mono text-xs text-slate-600">
-                <p className="font-bold text-teal-700">VITAS IRAQ HRMS</p>
-                <p>Doc Ref: VR-REP-{Math.floor(1000 + Math.random() * 9000)}</p>
-                <p>XAMPP MySQL Sync: Verified</p>
+              <div className="flex items-center gap-3">
+                <div className="text-left font-mono text-xs text-slate-600 hidden sm:block">
+                  <p className="font-bold text-teal-700">VITAS IRAQ HRMS</p>
+                  <p>Doc Ref: VR-REP-{Math.floor(1000 + Math.random() * 9000)}</p>
+                  <p>XAMPP MySQL Sync: Verified</p>
+                </div>
+                <button
+                  onClick={() => setShowPrintPreviewModal(false)}
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 transition-colors flex items-center justify-center border border-slate-200"
+                  title={t('إغلاق', 'Close')}
+                >
+                  <span className="material-symbols-outlined text-xl">close</span>
+                </button>
               </div>
             </div>
 
-            {/* Printable Formatted Data Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-right border-collapse border border-slate-300">
-                <thead>
+            {/* Printable Formatted Data Table with Internal Smooth Scrolling */}
+            <div className="overflow-x-auto overflow-y-auto max-h-[55vh] border border-slate-300 rounded-2xl shadow-inner scrollbar-thin">
+              <table className="w-full text-xs text-right border-collapse border border-slate-300 bg-white">
+                <thead className="sticky top-0 bg-slate-100 shadow-xs z-10">
                   <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-300">
-                    <th className="p-2 border border-slate-300 text-center w-8">#</th>
+                    <th className="p-2.5 border border-slate-300 text-center w-10 bg-slate-100">#</th>
                     {selectedFields.map(fKey => {
                       const meta = availableFields.find(f => f.key === fKey);
-                      return <th key={fKey} className="p-2 border border-slate-300">{language === 'en' ? (meta?.labelEn || fKey) : (meta?.labelAr || fKey)}</th>;
+                      return <th key={fKey} className="p-2.5 border border-slate-300 bg-slate-100 whitespace-nowrap">{language === 'en' ? (meta?.labelEn || fKey) : (meta?.labelAr || fKey)}</th>;
                     })}
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredData?.slice(0, 50).map((row, idx) => (
-                    <tr key={idx} className="border-b border-slate-200">
-                      <td className="p-2 border border-slate-300 text-center font-mono">{idx + 1}</td>
+                  {filteredData?.slice(0, 100).map((row, idx) => (
+                    <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                      <td className="p-2 border border-slate-300 text-center font-mono text-slate-600">{idx + 1}</td>
                       {selectedFields.map(fKey => {
                         const meta = availableFields.find(f => f.key === fKey);
                         const val = (row as any)[fKey];
                         return (
-                          <td key={fKey} className="p-2 border border-slate-300 font-sans">
+                          <td key={fKey} className="p-2 border border-slate-300 font-sans whitespace-nowrap">
                             {meta?.type === 'currency' ? `${Number(val || 0).toLocaleString(language === 'en' ? 'en-US' : 'ar-IQ')} ${t('د.ع', 'IQD')}` : String(val ?? '-')}
                           </td>
                         );
@@ -1301,38 +1309,45 @@ export const DynamicReportBuilder: React.FC = () => {
             </div>
 
             {/* Formal Signature Footer */}
-            <div className="grid grid-cols-3 gap-4 pt-8 text-center text-xs font-bold text-slate-700">
-              <div className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 text-center text-xs font-bold text-slate-700">
+              <div className="space-y-6 p-3 rounded-xl bg-slate-50 border border-slate-200">
                 <p>{t('إعداد مسؤول الموارد البشرية', 'Prepared by HR Officer')}</p>
                 <p className="font-mono text-slate-400">{t('التوقيع:', 'Signature:')} ....................</p>
               </div>
-              <div className="space-y-8">
+              <div className="space-y-6 p-3 rounded-xl bg-slate-50 border border-slate-200">
                 <p>{t('تدقيق رئيس قسم IT والأنظمة', 'Audited by IT Manager')}</p>
                 <p className="font-mono text-slate-400">{t('التوقيع:', 'Signature:')} ....................</p>
               </div>
-              <div className="space-y-8">
+              <div className="space-y-6 p-3 rounded-xl bg-slate-50 border border-slate-200">
                 <p>{t('مصادقة واعتماد المدير التنفيذي', 'Approved by Executive Director')}</p>
                 <p className="font-mono text-slate-400">{t('التوقيع:', 'Signature:')} ....................</p>
               </div>
             </div>
 
-            {/* Modal Controls */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 no-print">
-              <button
-                onClick={() => setShowPrintPreviewModal(false)}
-                className="px-5 py-2.5 rounded-xl bg-slate-200 text-slate-800 font-bold text-xs hover:bg-slate-300"
-              >
-                إغلاق
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="px-5 py-2.5 rounded-xl bg-teal-600 text-white font-bold text-xs hover:bg-teal-500 shadow-lg"
-              >
-                طباعة التقرير (Print / PDF)
-              </button>
+            {/* Modal Bottom Controls */}
+            <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-slate-200 no-print">
+              <div className="text-xs text-slate-500 font-mono">
+                {t('إجمالي الصفوف المستعرضة:', 'Total rows previewed:')} {Math.min(filteredData?.length || 0, 100)} {t('سجل', 'records')}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowPrintPreviewModal(false)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 transition-colors"
+                >
+                  {t('إغلاق', 'Close')}
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="px-5 py-2.5 rounded-xl bg-teal-600 text-white font-bold text-xs hover:bg-teal-500 shadow-lg transition-colors flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">print</span>
+                  <span>{t('طباعة التقرير (Print / PDF)', 'Print Report / PDF')}</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
