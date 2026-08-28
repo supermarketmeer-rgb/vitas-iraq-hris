@@ -288,40 +288,61 @@ html.dark ::-webkit-scrollbar-thumb {
    The background matches the frosted off-white #e8ebef theme.
    ================================================================ */
 
-/* Background overrides for hardcoded dark hex colors & white cards in Light Mode */
+/* ================================================================
+   LIGHT MODE: Comprehensive Dark Classes Override (Pure White & Clean Light)
+   ================================================================ */
 html.light .bg-\[\#0a0c10\],
-html:not(.dark) .bg-\[\#0a0c10\] {
-  background-color: #ffffff !important;
-}
+html.light [class*="bg-[#0a0c10]"],
 html.light .bg-\[\#111827\],
-html:not(.dark) .bg-\[\#111827\] {
-  background-color: #ffffff !important;
-}
+html.light [class*="bg-[#111827]"],
 html.light .bg-\[\#0c0f17\],
-html:not(.dark) .bg-\[\#0c0f17\] {
+html.light [class*="bg-[#0c0f17]"],
+html.light .bg-\[\#121b2d\],
+html.light [class*="bg-[#121b2d]"],
+html.light .bg-\[\#1e293b\],
+html.light [class*="bg-[#1e293b]"],
+html.light .bg-\[\#121c33\],
+html.light [class*="bg-[#121c33]"],
+html.light .bg-\[\#0c1322\],
+html.light [class*="bg-[#0c1322]"],
+html.light .bg-\[\#172545\],
+html.light [class*="bg-[#172545]"],
+html.light .bg-\[\#172238\],
+html.light [class*="bg-[#172238]"],
+html.light .bg-\[\#1f2d4a\],
+html.light [class*="bg-[#1f2d4a]"],
+html.light .bg-slate-900,
+html.light [class*="bg-slate-900"],
+html.light .bg-slate-950,
+html.light [class*="bg-slate-950"],
+html.light .bg-gray-900,
+html.light [class*="bg-gray-900"],
+html.light .bg-gray-950,
+html.light [class*="bg-gray-950"] {
   background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
 }
-html.light .bg-\[\#0a0c10\]\/95,
-html:not(.dark) .bg-\[\#0a0c10\]\/95 {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-}
-html.light .bg-\[\#0c0f17\]\/90,
-html:not(.dark) .bg-\[\#0c0f17\]\/90 {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-}
-html.light .bg-\[\#0a0c10\]\/40,
-html.light .bg-\[\#0a0c10\]\/60,
-html.light .bg-\[\#0a0c10\]\/80 {
-  background-color: rgba(255, 255, 255, 0.90) !important;
+
+/* Sub-panels, dark chips, and inner container boxes in Light Mode */
+html.light .bg-\[\#06080d\],
+html.light [class*="bg-[#06080d]"]:not(html.light aside):not(html.light header),
+html.light [class*="bg-[#030508]"],
+html.light [class*="bg-[#04060a]"] {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
 }
 
 /* Border overrides for dark hex borders in Light Mode */
 html.light .border-white\/10,
-html.light .border-white\/5 {
+html.light .border-white\/5,
+html.light .border-white\/20,
+html.light [class*="border-white"] {
   border-color: #e2e8f0 !important;
 }
 
-/* Text overrides for white-on-transparent (sidebar/header nav text) */
+/* Text overrides for white/slate text in Light Mode */
 html.light .text-slate-200,
 html.light .text-slate-300 {
   color: #334155 !important;
@@ -338,21 +359,12 @@ html.light .bg-white,
 html:not(.dark) .bg-white {
   background-color: #ffffff !important;
 }
-html.light .bg-slate-900,
-html:not(.dark) .bg-slate-900 {
-  background-color: #ffffff !important;
-}
 html.light .bg-slate-800,
 html:not(.dark) .bg-slate-800 {
   background-color: #f8fafc !important;
 }
 html.light .bg-slate-800\/80,
 html:not(.dark) .bg-slate-800\/80 {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-}
-html.light .bg-slate-900\/60,
-html.light .bg-slate-900\/80,
-html.light .bg-slate-900\/90 {
   background-color: rgba(255, 255, 255, 0.95) !important;
 }
 
