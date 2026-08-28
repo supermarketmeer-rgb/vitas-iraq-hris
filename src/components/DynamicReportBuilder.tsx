@@ -177,7 +177,8 @@ const DB_TABLES_CATALOG: TableMeta[] = [
 ];
 
 export const DynamicReportBuilder: React.FC = () => {
-  const { employees, leaveRequests, candidates, assetRecords, t, currentUser, language } = useApp();
+  const { employees, leaveRequests, candidates, assetRecords, t, currentUser, language, theme } = useApp();
+  const isDark = theme === 'dark';
 
   // Primary and Joined Tables Selection
   const [primaryTable, setPrimaryTable] = useState<string>('employees');
@@ -583,7 +584,11 @@ export const DynamicReportBuilder: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowPrintPreviewModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/10 shadow transition-all flex items-center gap-2"
+              className={`px-3.5 py-2 rounded-xl font-bold text-xs border transition-all flex items-center gap-2 ${
+                isDark 
+                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/10 shadow' 
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300 shadow-xs'
+              }`}
               title={t('طباعة أو معاينة PDF مع الهيدر والتوقيع', 'Print or PDF Preview')}
             >
               <span className="material-symbols-outlined text-sm">print</span>
@@ -600,7 +605,7 @@ export const DynamicReportBuilder: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setShowShareModal(true)}
+              onClick={setShowShareModal ? () => setShowShareModal(true) : undefined}
               className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2"
               title={t('إرسال التقرير عبر التطبيق', 'Share via App')}
             >
@@ -609,7 +614,7 @@ export const DynamicReportBuilder: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setShowEmailModal(true)}
+              onClick={setShowEmailModal ? () => setShowEmailModal(true) : undefined}
               className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2"
               title={t('إرسال عبر البريد الإلكتروني', 'Send via Email')}
             >
@@ -629,22 +634,28 @@ export const DynamicReportBuilder: React.FC = () => {
         </div>
 
         {/* Live Auto-Sync Status Bar & Preset Reports */}
-        <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/10">
-              <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
-              <span className="text-slate-300 font-medium">
+        <div className={`pt-3 border-t flex flex-wrap items-center justify-between gap-3 text-xs ${
+          isDark ? 'border-white/10' : 'border-slate-200'
+        }`}>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${
+              isDark ? 'bg-slate-900/80 border-white/10' : 'bg-slate-50 border-slate-200 shadow-xs'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-amber-400 animate-ping' : 'bg-emerald-500'}`}></span>
+              <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
                 {isSyncing ? t('جاري مزامنة قواعد XAMPP...', 'Syncing MySQL...') : t('متصل مع سيرفر MySQL (XAMPP)', 'Connected to XAMPP MySQL')}
               </span>
-              <span className="text-[10px] text-slate-400 font-mono">({lastSyncTime})</span>
+              <span className="text-[10px] text-slate-500 font-mono">({lastSyncTime})</span>
             </div>
 
-            <div className="flex items-center gap-2 text-slate-300">
-              <span className="text-slate-400">{t('التحديث التلقائي:', 'Auto Refresh:')}</span>
+            <div className={`flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              <span className="text-slate-500">{t('التحديث التلقائي:', 'Auto Refresh:')}</span>
               <select
                 value={autoRefreshInterval}
                 onChange={(e) => setAutoRefreshInterval(Number(e.target.value))}
-                className="bg-slate-900 border border-white/15 rounded-lg px-2 py-1 text-teal-400 font-bold focus:outline-none"
+                className={`border rounded-lg px-2 py-1 font-bold focus:outline-none ${
+                  isDark ? 'bg-slate-900 border-white/15 text-teal-400' : 'bg-slate-50 border-slate-300 text-teal-700'
+                }`}
               >
                 <option value={0}>{t('يدوي (إيقاف)', 'Manual (Off)')}</option>
                 <option value={10}>{t('كل 10 ثواني', 'Every 10s')}</option>
@@ -656,13 +667,15 @@ export const DynamicReportBuilder: React.FC = () => {
 
           {/* Preset Reports Quick Dropdown */}
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 font-medium">{t('نماذج التقارير الجاهزة:', 'Saved Presets:')}</span>
+            <span className="text-slate-500 font-medium">{t('نماذج التقارير الجاهزة:', 'Saved Presets:')}</span>
             <select
               onChange={(e) => {
                 const found = savedReports.find(r => r.id === e.target.value);
                 if (found) applySavedReport(found);
               }}
-              className="bg-slate-900 border border-teal-500/40 text-white rounded-xl px-3 py-1.5 font-bold focus:outline-none cursor-pointer"
+              className={`border rounded-xl px-3 py-1.5 font-bold focus:outline-none cursor-pointer ${
+                isDark ? 'bg-slate-900 border-teal-500/40 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 shadow-xs'
+              }`}
             >
               <option value="">{t('-- اختر تقريراً محفوظاً --', '-- Select Saved Preset --')}</option>
               {savedReports.map(rep => (
