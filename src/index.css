@@ -1084,32 +1084,7 @@ html.light aside button[class*="border-teal-500"] * {
   color: #000000 !important;
 }
 
-/* ================================================================
-   CATEGORY 1 AUTH & SECURITY LIGHT MODE EXCLUSIVE OVERRIDE
-   Replaces all card backgrounds in Category 1 Auth view ONLY
-   with EXACT sidebar background hex code (#e8ebef)
-   ================================================================ */
-html.light .auth-view-container,
-html.light .auth-view-container div[class*="rounded-3xl"],
-html.light .auth-view-container div[class*="rounded-2xl"],
-html.light .auth-view-container div[class*="rounded-xl"],
-html.light .auth-view-container .bg-white,
-html.light .auth-view-container [class*="bg-white"] {
-  background-color: #e8ebef !important;
-  border-color: #cbd5e1 !important;
-  color: #0f172a !important;
-}
 
-html.light .auth-view-container div[class*="rounded-3xl"] div[class*="rounded-2xl"],
-html.light .auth-view-container div[class*="rounded-2xl"] div[class*="rounded-2xl"],
-html.light .auth-view-container div[class*="rounded-xl"] div[class*="rounded-xl"],
-html.light .auth-view-container input,
-html.light .auth-view-container select,
-html.light .auth-view-container textarea {
-  background-color: #d8e0e8 !important;
-  border-color: #cbd5e1 !important;
-  color: #000000 !important;
-}
 
 /* ================================================================
    NOTIFICATION BADGE NUMBER & TEAL HEADINGS DIRECTIVE (LIGHT MODE ONLY)

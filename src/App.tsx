@@ -3,7 +3,7 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 
 
 const Router: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isElectronDesktop = typeof window !== 'undefined' && (
-    window.location.protocol === 'file:' || 
+    window.location.protocol === 'file:' ||
     navigator.userAgent.toLowerCase().includes('electron')
   );
   return isElectronDesktop ? (
@@ -199,7 +199,7 @@ function AppContent() {
       case 'supp-enterprise-nexus':
       case 'supp-nexus-mobile':
         return <Category11SupportHelpView />;
-      
+
       // Employee Portal (internal view)
       case 'supp-emp-portal':
         return <EmployeePortalView />;
@@ -249,7 +249,7 @@ function AppContent() {
 
   // Admin / Employee dashboard view
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-[#0a0c10] text-white' : 'bg-[#eef2f6] text-slate-900'} transition-colors duration-200`}>
+    <div className={`min-h-screen ${isDark ? 'bg-[#0a0c10] text-white' : 'bg-[#f4f7fb] text-slate-900'} transition-colors duration-200`}>
       <ErrorBoundary>
         <OfflineNotification />
         <Header />
@@ -270,11 +270,10 @@ function AppContent() {
 function PublicCandidatePortal() {
   const { theme, language } = useApp();
   return (
-    <div 
-      dir={language === 'ar' ? 'rtl' : 'ltr'} 
-      className={`min-h-screen transition-colors duration-300 ${
-        theme === 'dark' ? 'bg-gradient-to-br from-[#0a0c10] via-[#0f172a] to-[#1e293b] text-white' : 'bg-slate-100 text-slate-900'
-      }`}
+    <div
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+      className={`min-h-screen transition-colors duration-300 ${theme === 'dark' ? 'bg-gradient-to-br from-[#0a0c10] via-[#0f172a] to-[#1e293b] text-white' : 'bg-slate-100 text-slate-900'
+        }`}
     >
       <ErrorBoundary>
         <div className="container mx-auto p-4 py-6 max-w-7xl">
@@ -289,11 +288,10 @@ function PublicCandidatePortal() {
 function PublicEmployeePortal() {
   const { theme, language } = useApp();
   return (
-    <div 
-      dir={language === 'ar' ? 'rtl' : 'ltr'} 
-      className={`min-h-screen transition-colors duration-300 ${
-        theme === 'dark' ? 'bg-gradient-to-br from-[#0a0c10] via-[#0f172a] to-[#1e293b] text-white' : 'bg-slate-100 text-slate-900'
-      }`}
+    <div
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+      className={`min-h-screen transition-colors duration-300 ${theme === 'dark' ? 'bg-gradient-to-br from-[#0a0c10] via-[#0f172a] to-[#1e293b] text-white' : 'bg-slate-100 text-slate-900'
+        }`}
     >
       <ErrorBoundary>
         <div className="container mx-auto p-4 py-6 max-w-7xl">
@@ -316,11 +314,11 @@ function NewEmployeeApp() {
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useApp();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -331,16 +329,16 @@ export default function App() {
         <Routes>
           {/* Login Page */}
           <Route path="/login" element={<Login />} />
-          
+
           {/* Public Candidate Portal */}
           <Route path="/apply" element={<PublicCandidatePortal />} />
-          
+
           {/* Public Employee Portal */}
           <Route path="/portal" element={<PublicEmployeePortal />} />
-          
+
           {/* New Employee App (completely separate) */}
           <Route path="/employee-app/*" element={<NewEmployeeApp />} />
-          
+
           {/* Admin Dashboard (protected route) */}
           <Route
             path="*"

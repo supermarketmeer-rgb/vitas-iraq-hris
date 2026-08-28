@@ -265,9 +265,8 @@ export const CandidateProfile: React.FC = () => {
     <div className="space-y-6">
       {/* Top Header & Search Bar */}
       <div 
-        style={{ backgroundColor: isDark ? undefined : '#e8ebef' }}
         className={`p-6 rounded-2xl border transition-all ${
-          isDark ? 'bg-[#111827] border-white/10 shadow-lg' : 'bg-[#e8ebef] border-slate-300 shadow-sm'
+          isDark ? 'bg-[#111827] border-white/10 shadow-lg' : 'bg-white border-slate-200 shadow-sm'
         }`}
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -282,8 +281,7 @@ export const CandidateProfile: React.FC = () => {
 
           <div className="flex items-center gap-3">
             <div 
-              style={{ backgroundColor: isDark ? undefined : '#d8dce2' }}
-              className={`px-4 py-2 rounded-xl border text-center ${isDark ? 'bg-[#0f172a] border-white/10' : 'bg-[#d8dce2] border-slate-300 shadow-sm'}`}
+              className={`px-4 py-2 rounded-xl border text-center ${isDark ? 'bg-[#0f172a] border-white/10' : 'bg-slate-50 border-slate-200 shadow-xs'}`}
             >
               <div className="text-lg font-bold text-teal-600 dark:text-teal-400 font-mono">{filteredCandidates.length}</div>
               <div className="text-[10px] font-normal" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>{t('مرشح مسجل', 'Registered Candidates')}</div>
@@ -292,7 +290,7 @@ export const CandidateProfile: React.FC = () => {
         </div>
 
         {/* Filter Controls (Search Bar - Combobox Hidden as requested) */}
-        <div className="w-full mt-5 pt-4 border-t border-slate-300 dark:border-white/10">
+        <div className="w-full mt-5 pt-4 border-t border-slate-200 dark:border-white/10">
           <div className="relative w-full">
             <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-500 text-lg">search</span>
             <input
@@ -301,11 +299,10 @@ export const CandidateProfile: React.FC = () => {
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               style={{ 
-                color: isDark ? '#ffffff' : '#0f172a',
-                backgroundColor: isDark ? undefined : '#d8dce2'
+                color: isDark ? '#ffffff' : '#0f172a'
               }}
               className={`w-full pr-10 pl-4 py-2 text-xs font-normal rounded-xl outline-none border transition-all ${
-                isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400 text-white' : 'bg-[#d8dce2] border-slate-300 focus:border-teal-600 text-slate-900 shadow-sm placeholder:text-slate-500'
+                isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400 text-white' : 'bg-slate-50 border-slate-300 focus:border-teal-600 text-slate-900 shadow-xs placeholder:text-slate-500'
               }`}
             />
           </div>
@@ -317,7 +314,7 @@ export const CandidateProfile: React.FC = () => {
               onChange={e => setStageFilter(e.target.value)}
               style={{ color: isDark ? '#ffffff' : '#0f172a' }}
               className={`w-full px-3 py-2 text-xs font-bold rounded-xl outline-none border transition-all ${
-                isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-[#d8dce2] border-slate-300 focus:border-teal-600'
+                isDark ? 'bg-[#1e293b] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
               }`}
             >
               <option value="all">{t('جميع مراحل التوظيف الـ 7', 'All 7 Recruitment Stages')}</option>
@@ -337,9 +334,8 @@ export const CandidateProfile: React.FC = () => {
       {/* 4-Columns Layout Grid (4 Candidate Profile Cards per row) */}
       {filteredCandidates.length === 0 ? (
         <div 
-          style={{ backgroundColor: isDark ? undefined : '#e8ebef' }}
           className={`p-12 rounded-2xl border text-center ${
-            isDark ? 'bg-[#111827] border-white/10 text-slate-400' : 'bg-[#e8ebef] border-slate-300 text-slate-900 shadow-sm'
+            isDark ? 'bg-[#111827] border-white/10 text-slate-400' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
           }`}
         >
           <span className="material-symbols-outlined text-6xl text-slate-500 mb-4">person_off</span>
@@ -359,18 +355,17 @@ export const CandidateProfile: React.FC = () => {
             return (
               <div
                 key={candidate.id}
-                style={{ backgroundColor: isDark ? undefined : '#e8ebef' }}
                 className={`p-4 rounded-2xl border flex flex-col justify-between transition-all duration-300 hover:shadow-lg ${
                   isDark 
                     ? 'bg-[#111827] border-white/10 text-white hover:border-teal-500/40' 
-                    : 'bg-[#e8ebef] border-slate-300 text-slate-900 shadow-sm hover:border-teal-500/40'
+                    : 'bg-white border-slate-200 text-slate-900 shadow-sm hover:border-teal-500/40'
                 }`}
               >
                 <div>
                   {/* Candidate Header: Photo & Name & Stage */}
                   <div className="flex items-start gap-3 mb-3">
                     <div className={`w-12 h-12 rounded-xl border flex items-center justify-center overflow-hidden flex-shrink-0 ${
-                      isDark ? 'bg-[#1e293b] border-slate-700' : 'bg-[#d8dce2] border-slate-300 shadow-sm'
+                      isDark ? 'bg-[#1e293b] border-slate-700' : 'bg-slate-100 border-slate-200 shadow-xs'
                     }`}>
                       {candidate.photoUrl ? (
                         <img src={candidate.photoUrl} alt={candidate.fullName} className="w-full h-full object-cover" />

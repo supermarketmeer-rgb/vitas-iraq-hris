@@ -41,7 +41,7 @@ export const Category6RecruitmentView: React.FC = () => {
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Banner */}
       <div className={`p-6 rounded-3xl border transition-all ${
-        isDark ? 'bg-[#0a0c10] border-white/10 text-white shadow-xl' : 'bg-[#e8ebef] border-slate-300 shadow-sm text-slate-900'
+        isDark ? 'bg-[#0a0c10] border-white/10 text-white shadow-xl' : 'bg-white border-slate-200 shadow-sm text-slate-900'
       }`}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -64,7 +64,7 @@ export const Category6RecruitmentView: React.FC = () => {
               className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${
                 isDark 
                   ? 'bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-600/20 border-teal-500/30' 
-                  : 'bg-[#d8dce2] hover:bg-[#cbd5e1] text-slate-900 border-slate-300 shadow-sm'
+                  : 'bg-white hover:bg-teal-50 text-teal-700 border-teal-500/40 shadow-sm'
               }`}
             >
               <span className="material-symbols-outlined text-sm">open_in_new</span>
@@ -75,7 +75,7 @@ export const Category6RecruitmentView: React.FC = () => {
               className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${
                 isDark 
                   ? 'bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-600/20 border-teal-500/30' 
-                  : 'bg-[#d8dce2] hover:bg-[#cbd5e1] text-slate-900 border-slate-300 shadow-sm'
+                  : 'bg-white hover:bg-teal-50 text-teal-700 border-teal-500/40 shadow-sm'
               }`}
             >
               <span className="material-symbols-outlined text-sm">person_pin</span>
@@ -86,7 +86,7 @@ export const Category6RecruitmentView: React.FC = () => {
       </div>
 
       {/* Content Area */}
-      <div className={`p-6 rounded-2xl border transition-all ${isDark ? 'bg-[#111827] border-white/10 shadow-lg text-white' : 'bg-[#e8ebef] border-slate-300 shadow-sm text-slate-900'}`}>
+      <div className={`p-6 rounded-2xl border transition-all ${isDark ? 'bg-[#111827] border-white/10 shadow-lg text-white' : 'bg-white border-slate-200 shadow-sm text-slate-900'}`}>
         {activeModuleId === 'recruit-dash' && <JobOpenings />}
         {activeModuleId === 'recruit-ats' && <CandidatePipeline />}
         {activeModuleId === 'recruit-candidate-profile' && <CandidateProfile />}
