@@ -249,7 +249,7 @@ function AppContent() {
 
   // Admin / Employee dashboard view
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-[#0a0c10] text-white' : 'bg-slate-100 text-slate-900'} transition-colors duration-200`}>
+    <div className={`min-h-screen ${isDark ? 'bg-[#0a0c10] text-white' : 'bg-[#f4f7fb] text-slate-900'} transition-colors duration-200`}>
       <ErrorBoundary>
         <OfflineNotification />
         <Header />
