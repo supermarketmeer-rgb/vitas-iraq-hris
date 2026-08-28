@@ -713,10 +713,10 @@ export const DynamicReportBuilder: React.FC = () => {
                       setPrimaryTable(tab.name);
                       setSelectedFields(tab.fields.map(f => f.key));
                     }}
-                    className={`w-full text-right flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer border transition-all query-primary-table-item ${
+                    className={`w-full text-right flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer border transition-all ${
                       isSelected
-                        ? 'bg-teal-500/40 border-teal-600'
-                        : 'bg-teal-500/20 border-teal-500/40 hover:bg-teal-500/30'
+                        ? (isDark ? 'bg-teal-500/40 border-teal-500 text-white shadow-sm' : 'bg-teal-50 border-teal-500 text-slate-900 shadow-xs')
+                        : (isDark ? 'bg-teal-500/10 border-teal-500/20 text-slate-200 hover:bg-teal-500/20' : 'bg-slate-50 border-slate-200 text-slate-900 hover:bg-slate-100')
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -727,10 +727,10 @@ export const DynamicReportBuilder: React.FC = () => {
                         onChange={() => {}}
                         className="rounded-full border-white/20 text-teal-500 focus:ring-0"
                       />
-                      <span className="font-medium query-primary-table-label" style={{ color: '#000000' }}>{language === 'en' ? tab.labelEn : tab.labelAr}</span>
+                      <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{language === 'en' ? tab.labelEn : tab.labelAr}</span>
                     </div>
                     {isSelected && (
-                      <span className="material-symbols-outlined text-teal-800 text-sm">check_circle</span>
+                      <span className={`material-symbols-outlined text-sm ${isDark ? 'text-teal-300' : 'text-teal-700'}`}>check_circle</span>
                     )}
                   </label>
                 );
@@ -739,8 +739,8 @@ export const DynamicReportBuilder: React.FC = () => {
           </div>
 
           {/* Joined Tables Multiselect Checkboxes */}
-          <div className="space-y-2 pt-2 border-t border-white/10">
-            <label className="text-xs font-bold text-slate-300 block">{t('ربط جداول إضافية (Joined Tables / JOIN):', 'Join Secondary Tables:')}</label>
+          <div className={`space-y-2 pt-2 border-t ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+            <label className={`text-xs font-bold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t('ربط جداول إضافية (Joined Tables / JOIN):', 'Join Secondary Tables:')}</label>
             <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
               {DB_TABLES_CATALOG.filter(t => t.name !== primaryTable).map(tab => {
                 const isJoined = joinedTables.includes(tab.name);
@@ -748,7 +748,9 @@ export const DynamicReportBuilder: React.FC = () => {
                   <label
                     key={tab.name}
                     className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer border transition-all ${
-                      isJoined ? 'bg-teal-500/40 border-teal-600 text-slate-900' : 'bg-teal-500/20 border-teal-500/40 text-slate-900 hover:bg-teal-500/30'
+                      isJoined
+                        ? (isDark ? 'bg-teal-500/40 border-teal-500 text-white shadow-sm' : 'bg-teal-50 border-teal-500 text-slate-900 shadow-xs')
+                        : (isDark ? 'bg-teal-500/10 border-teal-500/20 text-slate-200 hover:bg-teal-500/20' : 'bg-slate-50 border-slate-200 text-slate-900 hover:bg-slate-100')
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -764,9 +766,9 @@ export const DynamicReportBuilder: React.FC = () => {
                         }}
                         className="rounded border-white/20 text-teal-500 focus:ring-0"
                       />
-                      <span className="font-medium force-text-black text-black">{language === 'en' ? tab.labelEn : tab.labelAr}</span>
+                      <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{language === 'en' ? tab.labelEn : tab.labelAr}</span>
                     </div>
-                    <span className="text-[10px] query-table-label font-mono font-normal" style={{ color: "#000000" }}>FK Link</span>
+                    <span className={`text-[10px] font-mono font-medium ${isDark ? 'text-teal-300' : 'text-teal-700'}`}>FK Link</span>
                   </label>
                 );
               })}
@@ -775,22 +777,22 @@ export const DynamicReportBuilder: React.FC = () => {
         </div>
 
         {/* Step 2: Choose Columns / Fields */}
-        <div className="p-5 rounded-3xl bg-[#111827] border border-white/10 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+        <div className={`p-5 rounded-3xl border shadow-xl space-y-4 ${isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <div className={`flex items-center justify-between border-b pb-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+            <h2 className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               <span className="w-6 h-6 rounded-lg bg-teal-600 text-white shadow-md flex items-center justify-center text-xs font-mono font-bold">2</span>
               {t('تحديد الحقول المطلوبة (Columns)', 'Select Required Columns')}
             </h2>
             <div className="flex items-center gap-1">
               <button
                 onClick={selectAllFields}
-                className="text-[10px] text-teal-400 hover:underline px-1.5 py-0.5 rounded bg-teal-500/10"
+                className="text-[10px] text-teal-600 dark:text-teal-400 hover:underline px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-500/10"
               >
                 {t('تحديد الكل', 'Select All')}
               </button>
               <button
                 onClick={clearAllFields}
-                className="text-[10px] text-slate-400 hover:underline px-1.5 py-0.5 rounded bg-white/5"
+                className="text-[10px] text-slate-500 dark:text-slate-400 hover:underline px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5"
               >
                 {t('إلغاء', 'Clear')}
               </button>
@@ -805,7 +807,9 @@ export const DynamicReportBuilder: React.FC = () => {
               value={searchColumnTerm}
               onChange={(e) => setSearchColumnTerm(e.target.value)}
               placeholder={t('بحث داخل الحقول...', 'Search fields...')}
-              className="w-full pr-8 pl-3 py-1.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-teal-500"
+              className={`w-full pr-8 pl-3 py-1.5 border rounded-xl text-xs focus:outline-none focus:border-teal-500 ${
+                isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+              }`}
             />
           </div>
 
@@ -820,8 +824,8 @@ export const DynamicReportBuilder: React.FC = () => {
                     key={field.key}
                     className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer border transition-all ${
                       isSelected
-                        ? 'bg-teal-500/40 border-teal-600 text-slate-900'
-                        : 'bg-teal-500/20 border-teal-500/40 text-slate-900 hover:bg-teal-500/30'
+                        ? (isDark ? 'bg-teal-500/40 border-teal-500 text-white shadow-sm' : 'bg-teal-50 border-teal-500 text-slate-900 shadow-xs')
+                        : (isDark ? 'bg-teal-500/10 border-teal-500/20 text-slate-200 hover:bg-teal-500/20' : 'bg-slate-50 border-slate-200 text-slate-900 hover:bg-slate-100')
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
@@ -831,9 +835,11 @@ export const DynamicReportBuilder: React.FC = () => {
                         onChange={() => toggleField(field.key)}
                         className="rounded border-white/20 text-teal-500 focus:ring-0"
                       />
-                      <span className="truncate font-medium query-table-label" style={{ color: "#000000" }}>{language === "en" ? field.labelEn : field.labelAr}</span>
+                      <span className={`truncate font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{language === "en" ? field.labelEn : field.labelAr}</span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-teal-500/30 query-table-label font-mono font-normal border border-teal-500/40" style={{ color: "#000000" }}>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono border ${
+                      isDark ? 'bg-teal-500/30 text-teal-200 border-teal-500/40' : 'bg-teal-50 text-teal-700 border-teal-200'
+                    }`}>
                       {field.type}
                     </span>
                   </label>

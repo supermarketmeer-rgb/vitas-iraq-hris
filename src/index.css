@@ -627,13 +627,44 @@ html:not(.dark) table td span.text-teal-700 {
 
 
 /* ================================================================
-   FORCE BLACK TEXT FOR TABLE SELECTOR LABELS
+   FORCE BLACK TEXT FOR TABLE SELECTOR LABELS (ONLY IN LIGHT MODE)
    ================================================================ */
-.force-text-black,
-.force-text-black *,
-button .force-text-black,
-label .force-text-black {
-  color: #000000 !important;
+html.light .force-text-black,
+html.light .force-text-black *,
+html.light button .force-text-black,
+html.light label .force-text-black,
+html.light .query-table-label,
+html.light .query-table-label *,
+html.light .query-table-label span,
+html.light .query-table-label p,
+html.light label.query-table-label,
+html.light label.query-table-label *,
+html.light .query-primary-table-item,
+html.light .query-primary-table-item *,
+html.light .query-primary-table-label,
+html.light .query-primary-table-label * {
+  color: #0f172a !important;
+  font-weight: 400 !important;
+}
+
+/* ================================================================
+   DARK MODE ONLY: TABLES, SECONDARY TABLES & COLUMNS MUST BE PURE WHITE (#FFFFFF)
+   ================================================================ */
+html.dark .force-text-black,
+html.dark .force-text-black *,
+html.dark button .force-text-black,
+html.dark label .force-text-black,
+html.dark .query-table-label,
+html.dark .query-table-label *,
+html.dark .query-table-label span,
+html.dark .query-table-label p,
+html.dark label.query-table-label,
+html.dark label.query-table-label *,
+html.dark .query-primary-table-item,
+html.dark .query-primary-table-item *,
+html.dark .query-primary-table-label,
+html.dark .query-primary-table-label * {
+  color: #ffffff !important;
   font-weight: 400 !important;
 }
 
@@ -659,51 +690,6 @@ html:not(.dark) table thead th,
 html:not(.dark) table thead th *,
 html:not(.dark) table thead th span {
   color: #ffffff !important;
-  font-weight: 400 !important;
-}
-
-
-/* ================================================================
-   QUERY TABLE LABELS MUST ALWAYS BE PURE BLACK (#000000)
-   ================================================================ */
-.query-table-label,
-.query-table-label *,
-.query-table-label span,
-.query-table-label p,
-label.query-table-label,
-label.query-table-label * {
-  color: #000000 !important;
-  font-weight: 400 !important;
-}
-
-/* ================================================================
-   TABLE COLUMNS (th) MUST ALWAYS BE PURE WHITE (#FFFFFF)
-   ================================================================ */
-table thead tr th,
-table thead tr th *,
-table thead tr th span,
-table thead tr th div,
-html.light table thead tr th,
-html.light table thead tr th *,
-html.light table thead tr th span,
-html.light table thead tr th div,
-html:not(.dark) table thead tr th,
-html:not(.dark) table thead tr th *,
-html:not(.dark) table thead tr th span,
-html:not(.dark) table thead tr th div {
-  color: #ffffff !important;
-  font-weight: 400 !important;
-}
-
-
-/* ================================================================
-   FINAL ABSOLUTE OVERRIDES FOR PRIMARY TABLE LABELS (BLACK) AND HEADERS (WHITE)
-   ================================================================ */
-.query-primary-table-item,
-.query-primary-table-item *,
-.query-primary-table-label,
-.query-primary-table-label * {
-  color: #000000 !important;
   font-weight: 400 !important;
 }
 
