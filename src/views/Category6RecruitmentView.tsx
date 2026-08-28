@@ -27,7 +27,7 @@ export const Category6RecruitmentView: React.FC = () => {
       case 'recruit-dash':
         return t('إدارة الوظائف الشاغرة', 'Job Openings Management');
       case 'recruit-ats':
-        return t('خط أنابيب المرشحين', 'Candidate Pipeline');
+        return t('خط سير توظيف المرشحين', 'Candidate Pipeline');
       case 'recruit-candidate-profile':
         return t('ملف المرشح', 'Candidate Profile');
       case 'recruit-candidate-portal':

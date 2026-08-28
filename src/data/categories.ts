@@ -277,7 +277,7 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
       },
       {
         id: 'recruit-ats',
-        title: 'خط أنابيب المرشحين (ATS Pipeline)',
+        title: 'خط سير توظيف المرشحين (ATS Pipeline)',
         titleEn: 'ATS Candidate Pipeline',
         icon: 'view_kanban',
         description: 'لوحة كانبان لمتابعة مراحل تتبع المتقدمين للوظائف'

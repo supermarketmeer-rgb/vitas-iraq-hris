@@ -934,7 +934,7 @@ export const CandidatePipeline: React.FC = () => {
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
             <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">alt_route</span>
-            {t('خط أنابيب تتبع المرشحين (Workflow ATS)', 'ATS Candidate Recruitment Pipeline')}
+            {t('خط سير توظيف المرشحين (Workflow ATS)', 'ATS Candidate Recruitment Pipeline')}
           </h2>
           <p className="text-sm font-normal mt-1" style={{ color: isDark ? '#cbd5e1' : '#334155' }}>
             {t('إدارة المرشحين عبر مراحل التوظيف الـ 7 المزامنة مع الإعدادات ودليل الموظفين', 'Manage candidates through the 7 recruitment workflow stages synced with Employee Directory')}
