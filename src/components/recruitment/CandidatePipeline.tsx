@@ -575,7 +575,7 @@ export const CandidatePipeline: React.FC = () => {
     });
 
     return candidatesForJob
-      .filter(c => normalizeStage(c.stage) !== 'مرفوض')
+      .filter(c => normalizeStage(c.stage) !== 'مرفوض' && getCandidateAverageScore(c) > 0)
       .sort((a, b) => getCandidateAverageScore(b) - getCandidateAverageScore(a))
       .slice(0, 3);
   };
@@ -1275,8 +1275,8 @@ export const CandidatePipeline: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Top 3 Evaluation Rank Badge */}
-                    {rank > 0 && (
+                    {/* Top 3 Evaluation Rank Badge (Only after evaluation when score > 0) */}
+                    {rank > 0 && getCandidateAverageScore(candidate) > 0 && (
                       <div className={`mb-2 p-2 rounded-lg border text-xs font-bold flex items-center justify-between shadow-sm ${
                         rank === 1 
                           ? 'bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-300'
