@@ -119,7 +119,7 @@ export const Category2DashboardView: React.FC = () => {
           <button
             onClick={() => setActiveModuleId('sys-dynamic-reports')}
             style={{ color: '#0d9488' }}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
+            className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
                 ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
                 : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
               }`}
@@ -131,7 +131,7 @@ export const Category2DashboardView: React.FC = () => {
           <button
             onClick={() => setActiveModuleId('emp-add')}
             style={{ color: '#0d9488' }}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
+            className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
                 ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
                 : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
               }`}
@@ -143,7 +143,7 @@ export const Category2DashboardView: React.FC = () => {
           <button
             onClick={() => setActiveModuleId('leave-apply')}
             style={{ color: '#0d9488' }}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
+            className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
                 ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md'
                 : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
               }`}

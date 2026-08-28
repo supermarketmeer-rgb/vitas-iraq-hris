@@ -1169,3 +1169,28 @@ html.light button span.bg-rose-600 *,
 html.light button span[class*="bg-rose"] * {
   color: #ffffff !important;
 }
+
+/* ================================================================
+   DASHBOARD TOP BANNER TEAL ACTION BUTTONS
+   ================================================================ */
+.dashboard-banner-teal-btn,
+.dashboard-banner-teal-btn *,
+.dashboard-banner-teal-btn span,
+.dashboard-banner-teal-btn .material-symbols-outlined,
+html.light .dashboard-banner-teal-btn,
+html.light .dashboard-banner-teal-btn *,
+html.light .dashboard-banner-teal-btn span,
+html.light .dashboard-banner-teal-btn .material-symbols-outlined,
+html:not(.dark) .dashboard-banner-teal-btn,
+html:not(.dark) .dashboard-banner-teal-btn *,
+html:not(.dark) .dashboard-banner-teal-btn span,
+html:not(.dark) .dashboard-banner-teal-btn .material-symbols-outlined {
+  color: #0d9488 !important;
+}
+
+html.dark .dashboard-banner-teal-btn,
+html.dark .dashboard-banner-teal-btn *,
+html.dark .dashboard-banner-teal-btn span,
+html.dark .dashboard-banner-teal-btn .material-symbols-outlined {
+  color: #2dd4bf !important;
+}
