@@ -118,35 +118,38 @@ export const Category2DashboardView: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setActiveModuleId('sys-dynamic-reports')}
+            style={{ color: '#0d9488' }}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                ? 'bg-[#06080d] hover:bg-[#0a0c10] text-teal-400 hover:text-emerald-400 border-teal-500 shadow-md shadow-teal-500/10'
-                : 'bg-teal-50/60 hover:bg-teal-100/80 text-teal-800 border-teal-500/40 shadow-sm'
+                ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
+                : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
               }`}
           >
-            <span className="material-symbols-outlined text-base">table_chart</span>
-            <span>{t('منشئ التقارير الديناميكية', 'Dynamic Report Builder')}</span>
+            <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>table_chart</span>
+            <span style={{ color: '#0d9488' }}>{t('منشئ التقارير الديناميكية', 'Dynamic Report Builder')}</span>
           </button>
 
           <button
             onClick={() => setActiveModuleId('emp-add')}
+            style={{ color: '#0d9488' }}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                ? 'bg-[#06080d] hover:bg-[#0a0c10] text-teal-400 hover:text-emerald-400 border-teal-500 shadow-md shadow-teal-500/10'
-                : 'bg-teal-50/60 hover:bg-teal-100/80 text-teal-800 border-teal-500/40 shadow-sm'
+                ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
+                : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
               }`}
           >
-            <span className="material-symbols-outlined text-base">person_add</span>
-            <span>{t('إضافة موظف جديد', 'Add New Employee')}</span>
+            <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>person_add</span>
+            <span style={{ color: '#0d9488' }}>{t('إضافة موظف جديد', 'Add New Employee')}</span>
           </button>
 
           <button
             onClick={() => setActiveModuleId('leave-apply')}
+            style={{ color: '#0d9488' }}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                ? 'bg-[#06080d] hover:bg-[#0a0c10] text-teal-400 hover:text-emerald-400 border-teal-500 shadow-md'
-                : 'bg-teal-50/60 hover:bg-teal-100/80 text-teal-800 border-teal-500/40 shadow-sm'
+                ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md'
+                : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
               }`}
           >
-            <span className="material-symbols-outlined text-base">edit_calendar</span>
-            <span>{t('تقديم إجازة', 'Apply for Leave')}</span>
+            <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>edit_calendar</span>
+            <span style={{ color: '#0d9488' }}>{t('تقديم إجازة', 'Apply for Leave')}</span>
           </button>
         </div>
       </div>
