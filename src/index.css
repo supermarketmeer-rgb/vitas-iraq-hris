@@ -38,6 +38,66 @@
 }
 
 /* ================================================================
+   GLOBAL SELECTION STYLES (Font color always Black on Selection)
+   ================================================================ */
+::selection {
+  background-color: #fde047 !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+::-moz-selection {
+  background-color: #fde047 !important;
+  color: #000000 !important;
+}
+
+*::selection {
+  background-color: #fde047 !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+*::-moz-selection {
+  background-color: #fde047 !important;
+  color: #000000 !important;
+}
+
+input::selection,
+textarea::selection,
+span::selection,
+p::selection,
+div::selection,
+td::selection,
+th::selection,
+button::selection,
+a::selection,
+code::selection,
+pre::selection,
+label::selection,
+h1::selection,
+h2::selection,
+h3::selection,
+h4::selection,
+h5::selection,
+h6::selection {
+  background-color: #fde047 !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+html.dark *::selection {
+  background-color: #fde047 !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+html.light *::selection {
+  background-color: #fde047 !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* ================================================================
    INPUTS / SELECTS / TEXTAREAS
    ================================================================ */
 input, select, textarea {

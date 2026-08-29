@@ -18,7 +18,7 @@ const MainContent: React.FC = () => {
   const { activeTab, loading, lang, activePeriod } = useApp();
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans overflow-hidden transition-colors selection:bg-indigo-500 selection:text-white">
+    <div className="h-screen w-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans overflow-hidden transition-colors selection:bg-amber-300 selection:text-black">
       {/* Top Header Navbar */}
       <Navbar />
 

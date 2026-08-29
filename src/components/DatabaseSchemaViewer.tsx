@@ -885,7 +885,7 @@ export const DatabaseSchemaViewer: React.FC = () => {
             <span>hrms_pro_db_schema.sql (UTF-8, InnoDB, MySQL 8.0+)</span>
             <span>{FULL_SQL_SCRIPT.split('\n').length} lines</span>
           </div>
-          <div className="p-4 rounded-2xl bg-[#07090e] border border-white/10 h-96 overflow-y-auto font-mono text-[11px] text-white custom-scrollbar leading-relaxed selection:bg-teal-600 selection:text-white">
+          <div className="p-4 rounded-2xl bg-[#07090e] border border-white/10 h-96 overflow-y-auto font-mono text-[11px] text-white custom-scrollbar leading-relaxed selection:bg-amber-300 selection:text-black">
             <pre className="whitespace-pre-wrap">{FULL_SQL_SCRIPT}</pre>
           </div>
         </div>
