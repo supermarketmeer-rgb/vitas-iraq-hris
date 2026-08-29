@@ -152,7 +152,9 @@ function AppContent() {
         return <Category7PerformanceView />;
 
       // Category 8: Assets & Documents
+      case 'cat-8-assets':
       case 'asset-inventory':
+      case 'asset-my-requests':
       case 'asset-allocation':
       case 'asset-maintenance':
       case 'asset-return':
@@ -162,16 +164,37 @@ function AppContent() {
       case 'doc-compliance':
         return <Category8AssetsDocumentsView />;
 
-      // Category 9: Risk & Compliance
-      case 'risk-dashboard':
-      case 'risk-assessment':
+      // Category 9: Risk, Compliance & Security
+      case 'cat-9-risk':
+      case 'risk-audit-reports':
+      case 'risk-governance':
+      case 'risk-tracker':
       case 'risk-policies':
+      case 'risk-assessment':
+      case 'risk-identify-new':
+      case 'risk-details-privacy':
+      case 'sec-general-settings':
+      case 'sec-audit-logs':
+      case 'sec-roles-permissions':
+      case 'sec-edit-role':
+      case 'sec-api-keys':
+      case 'risk-dashboard':
       case 'risk-audit':
       case 'risk-incident':
       case 'risk-training':
         return <Category9RiskComplianceView />;
 
-      // Category 10: System Development
+      // Category 10: System Development & Developer Tools
+      case 'cat-10-sys':
+      case 'sys-health-monitor':
+      case 'sys-health-config':
+      case 'sys-endpoint-perf':
+      case 'sys-n8n-automation':
+      case 'sys-api-gateway':
+      case 'sys-api-manager':
+      case 'sys-dev-docs':
+      case 'sys-db-schema':
+      case 'sys-it-handbook':
       case 'sys-develop':
       case 'sys-test':
       case 'sys-deploy':
@@ -181,6 +204,7 @@ function AppContent() {
         return <Category10SystemDevView />;
 
       // Category 11: Support & Help
+      case 'cat-11-support':
       case 'sup-faq':
       case 'sup-tickets':
       case 'sup-training':
