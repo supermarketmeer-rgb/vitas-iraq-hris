@@ -254,6 +254,9 @@ function AppContent() {
         return <DynamicReportBuilder />;
 
       default:
+        if (currentUser?.role === 'Recruiter') {
+          return <Category6RecruitmentView />;
+        }
         return <Category2DashboardView />;
     }
   };

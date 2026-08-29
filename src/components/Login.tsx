@@ -6,7 +6,7 @@ import vitasLogo from '../../assets/VitasLogo.jpeg';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { t, language, theme, setCurrentUserRole, setCurrentUser, employees } = useApp();
+  const { t, language, theme, setCurrentUserRole, setCurrentUser, setActiveModuleId, employees } = useApp();
   const isDark = theme === 'dark';
 
   const [username, setUsername] = useState('');
@@ -50,6 +50,7 @@ export const Login: React.FC = () => {
         localStorage.setItem('vitas_user_role', 'Super Admin');
         setCurrentUserRole('Super Admin');
         setCurrentUser(superAdmin);
+        setActiveModuleId('dash-overview');
         console.log('Login successful - Super Admin', superAdmin);
         setTimeout(() => navigate('/'), 100);
         return;
@@ -77,6 +78,7 @@ export const Login: React.FC = () => {
         localStorage.setItem('vitas_user_role', 'HR Manager');
         setCurrentUserRole('HR Manager');
         setCurrentUser(hrManager);
+        setActiveModuleId('emp-directory');
         console.log('Login successful - HR Manager', hrManager);
         setTimeout(() => navigate('/'), 100);
         return;
@@ -104,6 +106,7 @@ export const Login: React.FC = () => {
         localStorage.setItem('vitas_user_role', 'Department Head');
         setCurrentUserRole('Department Head');
         setCurrentUser(deptManager);
+        setActiveModuleId('leave-approvals');
         console.log('Login successful - Department Head', deptManager);
         setTimeout(() => navigate('/'), 100);
         return;
@@ -131,6 +134,7 @@ export const Login: React.FC = () => {
         localStorage.setItem('vitas_user_role', 'Recruiter');
         setCurrentUserRole('Recruiter');
         setCurrentUser(recruiterUser);
+        setActiveModuleId('recruit-dash');
         console.log('Login successful - Recruiter', recruiterUser);
         setTimeout(() => navigate('/'), 100);
         return;
@@ -158,6 +162,7 @@ export const Login: React.FC = () => {
         localStorage.setItem('vitas_user_role', 'IT Admin');
         setCurrentUserRole('IT Admin');
         setCurrentUser(itAdminUser);
+        setActiveModuleId('cat-9-risk');
         console.log('Login successful - IT Admin', itAdminUser);
         setTimeout(() => navigate('/'), 100);
         return;

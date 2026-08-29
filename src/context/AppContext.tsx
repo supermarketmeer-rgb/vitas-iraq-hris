@@ -469,6 +469,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser) {
       setCurrentUser(prev => ({ ...prev, role }));
     }
+    localStorage.setItem('vitas_user_role', role);
+    if (role === 'Recruiter') {
+      setActiveModuleId('recruit-dash');
+    } else if (role === 'IT Admin') {
+      setActiveModuleId('cat-9-risk');
+    }
   };
 
   const setCurrentUserHandler = (user: UserProfile | null) => {

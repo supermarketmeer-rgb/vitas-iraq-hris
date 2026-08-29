@@ -54,17 +54,10 @@ export const Sidebar: React.FC = () => {
   ]);
 
   const RECRUITER_ALLOWED_MODULE_IDS = new Set([
-    'dash-overview',
-    'dash-search',
     'recruit-dash',
     'recruit-ats',
     'recruit-candidate-profile',
-    'recruit-candidate-portal',
-    'emp-directory',
-    'emp-hr-directory',
-    'emp-company-profile',
-    'supp-knowledge-base',
-    'supp-guide-center'
+    'recruit-candidate-portal'
   ]);
 
   const DEPT_HEAD_ALLOWED_MODULE_IDS = new Set([
