@@ -109,6 +109,60 @@ export const Login: React.FC = () => {
         return;
       }
 
+      // 4. Check for Recruiter
+      if (cleanUser === 'recruiter' || cleanUser === 'recruit' || cleanUser === 'recruitment') {
+        const recruiterUser: UserProfile = {
+          id: '3',
+          name: 'مسؤول التوظيف والاستقطاب (Recruiter)',
+          email: 'recruitment@vitasiraq.iq',
+          role: 'Recruiter',
+          avatar: '',
+          department: 'قسم التوظيف والمواهب',
+          employeeId: 'REC-003',
+          branch: 'المقر الرئيسي - بغداد',
+          can_manage_employees: 1,
+          can_manage_finance: 0,
+          can_manage_recruitment: 1,
+          can_manage_settings: 0,
+          can_manage_users: 0
+        };
+        
+        localStorage.setItem('vitas_current_user', JSON.stringify(recruiterUser));
+        localStorage.setItem('vitas_user_role', 'Recruiter');
+        setCurrentUserRole('Recruiter');
+        setCurrentUser(recruiterUser);
+        console.log('Login successful - Recruiter', recruiterUser);
+        setTimeout(() => navigate('/'), 100);
+        return;
+      }
+
+      // 5. Check for IT Admin
+      if (cleanUser === 'itadmin' || cleanUser === 'it' || cleanUser === 'sysadmin') {
+        const itAdminUser: UserProfile = {
+          id: '4',
+          name: 'مسؤول النظم والتقنية (IT Admin)',
+          email: 'it@vitasiraq.iq',
+          role: 'IT Admin',
+          avatar: '',
+          department: 'قسم تكنولوجيا المعلومات',
+          employeeId: 'IT-004',
+          branch: 'المقر الرئيسي - بغداد',
+          can_manage_employees: 0,
+          can_manage_finance: 0,
+          can_manage_recruitment: 0,
+          can_manage_settings: 1,
+          can_manage_users: 1
+        };
+        
+        localStorage.setItem('vitas_current_user', JSON.stringify(itAdminUser));
+        localStorage.setItem('vitas_user_role', 'IT Admin');
+        setCurrentUserRole('IT Admin');
+        setCurrentUser(itAdminUser);
+        console.log('Login successful - IT Admin', itAdminUser);
+        setTimeout(() => navigate('/'), 100);
+        return;
+      }
+
       // 4. Employee Login (Matches any employee code like v1264, VTS-1264, 1264, or any employee ID)
       const matchedEmp = employees && employees.length > 0
         ? employees.find(emp => {

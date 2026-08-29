@@ -23,7 +23,7 @@ export const Sidebar: React.FC = () => {
     theme
   } = useApp();
 
-  const isEmployeeRole = currentUserRole === 'Employee' || currentUser?.role === 'Employee';
+  const currentRole = currentUserRole || currentUser?.role || 'Super Admin';
 
   const EMPLOYEE_ALLOWED_MODULE_IDS = new Set([
     'dash-ess',
@@ -42,11 +42,82 @@ export const Sidebar: React.FC = () => {
     'leave-directory',
     'leave-schedule',
     'cat-5-payroll',
-    'payroll-payslips',
+    'payroll-payslip',
     'cat-7-perf',
-    'perf-evaluations',
+    'perf-self-appraisal',
+    'train-my-learning',
+    'cat-8-assets',
+    'asset-my-requests',
+    'supp-emp-portal',
+    'supp-knowledge-base',
+    'supp-guide-center'
+  ]);
+
+  const RECRUITER_ALLOWED_MODULE_IDS = new Set([
+    'dash-overview',
+    'dash-search',
+    'recruit-dash',
+    'recruit-ats',
+    'recruit-candidate-profile',
+    'recruit-candidate-portal',
+    'emp-directory',
+    'emp-hr-directory',
+    'emp-company-profile',
+    'supp-knowledge-base',
+    'supp-guide-center'
+  ]);
+
+  const DEPT_HEAD_ALLOWED_MODULE_IDS = new Set([
+    'dash-overview',
+    'dash-search',
+    'dash-ess',
+    'emp-directory',
+    'emp-branches',
+    'emp-company-profile',
+    'emp-calendar',
+    'leave-dashboard',
+    'leave-approvals',
+    'leave-attendance',
+    'leave-apply',
+    'leave-timesheets',
+    'recruit-dash',
+    'recruit-ats',
+    'perf-mgmt',
+    'perf-review',
     'perf-goals',
-    'doc-mgmt',
+    'supp-knowledge-base',
+    'supp-guide-center'
+  ]);
+
+  const IT_ADMIN_ALLOWED_MODULE_IDS = new Set([
+    'dash-overview',
+    'dash-search',
+    'cat-9-risk',
+    'risk-audit-reports',
+    'risk-governance',
+    'risk-tracker',
+    'risk-policies',
+    'risk-assessment',
+    'risk-identify-new',
+    'risk-details-privacy',
+    'sec-general-settings',
+    'sec-audit-logs',
+    'sec-roles-permissions',
+    'sec-edit-role',
+    'sec-api-keys',
+    'cat-10-sys',
+    'sys-health-monitor',
+    'sys-health-config',
+    'sys-endpoint-perf',
+    'sys-n8n-automation',
+    'sys-api-gateway',
+    'sys-api-manager',
+    'sys-dev-docs',
+    'sys-db-schema',
+    'sys-it-handbook',
+    'sys-settings-security',
+    'supp-knowledge-base',
+    'supp-guide-center'
   ]);
 
   // Collapsed by default as requested
@@ -161,7 +232,10 @@ export const Sidebar: React.FC = () => {
           // Filter modules based on user role and quick sidebar filter
           const filteredModules = cat.modules.filter(m => {
             if (m.hidden) return false;
-            if (isEmployeeRole && !EMPLOYEE_ALLOWED_MODULE_IDS.has(m.id)) return false;
+            if (currentRole === 'Employee' && !EMPLOYEE_ALLOWED_MODULE_IDS.has(m.id)) return false;
+            if (currentRole === 'Recruiter' && !RECRUITER_ALLOWED_MODULE_IDS.has(m.id)) return false;
+            if (currentRole === 'Department Head' && !DEPT_HEAD_ALLOWED_MODULE_IDS.has(m.id)) return false;
+            if (currentRole === 'IT Admin' && !IT_ADMIN_ALLOWED_MODULE_IDS.has(m.id)) return false;
             if (sidebarFilter) {
               return m.title.includes(sidebarFilter) || m.titleEn.toLowerCase().includes(sidebarFilter.toLowerCase());
             }
