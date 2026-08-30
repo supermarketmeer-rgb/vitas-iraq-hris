@@ -174,10 +174,12 @@ export const CandidatePipeline: React.FC = () => {
     if (!c) return 0;
     if (c.committeeScores && Array.isArray(c.committeeScores) && c.committeeScores.length > 0) {
       const total = c.committeeScores.reduce((sum, item) => sum + (Number(item.score) || 0), 0);
-      return Math.round(total / c.committeeScores.length);
+      const rawAvg = total / c.committeeScores.length;
+      return Number.isInteger(rawAvg) ? rawAvg : Number(rawAvg.toFixed(1));
     }
     if (c.finalScore && Number(c.finalScore) > 0) {
-      return Number(c.finalScore);
+      const fs = Number(c.finalScore);
+      return Number.isInteger(fs) ? fs : Number(fs.toFixed(1));
     }
     return 0;
   };
@@ -214,7 +216,8 @@ export const CandidatePipeline: React.FC = () => {
   const handleSaveCommitteeScores = () => {
     if (!activeCandidateForCommitteeScores) return;
     const total = committeeScoresList.reduce((sum, item) => sum + (Number(item.score) || 0), 0);
-    const avgScore = committeeScoresList.length > 0 ? Math.round(total / committeeScoresList.length) : 0;
+    const rawAvg = committeeScoresList.length > 0 ? (total / committeeScoresList.length) : 0;
+    const avgScore = Number.isInteger(rawAvg) ? rawAvg : Number(rawAvg.toFixed(1));
 
     updateCandidate(activeCandidateForCommitteeScores.id, {
       committeeScores: committeeScoresList,
@@ -2650,7 +2653,7 @@ export const CandidatePipeline: React.FC = () => {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <div className="rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border bg-white border-slate-300 text-slate-900">
             {/* Modal Header */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-300">
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-300">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-600 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-xl">how_to_reg</span>
@@ -2669,24 +2672,49 @@ export const CandidatePipeline: React.FC = () => {
               </button>
             </div>
 
-            {/* Live Average Banner */}
-            <div className="p-4 rounded-xl mb-5 bg-amber-400/20 border border-amber-500/40 flex items-center justify-between">
-              <div>
-                <div className="text-xs font-normal" style={{ color: '#000000' }}>معدل التقييم الإجمالي للجنة:</div>
-                <div className="text-2xl font-normal flex items-baseline gap-1 mt-0.5" style={{ color: '#000000' }}>
-                  <span style={{ color: '#000000' }}>
-                    {committeeScoresList.length > 0
-                      ? Math.round(committeeScoresList.reduce((sum, item) => sum + (Number(item.score) || 0), 0) / committeeScoresList.length)
-                      : 0}
-                  </span>
-                  <span className="text-xs font-normal" style={{ color: '#000000' }}>/ 100</span>
-                </div>
-              </div>
-
-              <div className="px-3.5 py-1.5 rounded-lg bg-amber-500/30 text-black border border-amber-500/50 text-xs font-normal" style={{ color: '#000000' }}>
-                عدد المقيمين: {committeeScoresList.length} أعضاء
-              </div>
+            {/* Modal Top Actions (حفظ وإلغاء أعلى النافذة) */}
+            <div className="flex gap-3 mb-4 pb-3 border-b border-slate-200">
+              <button
+                type="button"
+                onClick={() => setActiveCandidateForCommitteeScores(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-950 font-normal text-xs transition-colors"
+                style={{ color: '#000000' }}
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCommitteeScores}
+                className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-normal text-xs shadow-md flex items-center justify-center gap-2 transition-all"
+              >
+                <span className="material-symbols-outlined text-base">save</span>
+                حفظ وتأكيد تقييمات اللجنة
+              </button>
             </div>
+
+            {/* Live Average Banner */}
+            {(() => {
+              const total = committeeScoresList.reduce((sum, item) => sum + (Number(item.score) || 0), 0);
+              const rawAvg = committeeScoresList.length > 0 ? (total / committeeScoresList.length) : 0;
+              const formattedAvg = Number.isInteger(rawAvg) ? rawAvg : Number(rawAvg.toFixed(1));
+              return (
+                <div className="p-4 rounded-xl mb-5 bg-amber-400/20 border border-amber-500/40 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-normal" style={{ color: '#000000' }}>معدل التقييم الإجمالي للجنة:</div>
+                    <div className="text-2xl font-normal flex items-baseline gap-1 mt-0.5" style={{ color: '#000000' }}>
+                      <span style={{ color: '#000000' }}>
+                        {formattedAvg}
+                      </span>
+                      <span className="text-xs font-normal" style={{ color: '#000000' }}>/ 100</span>
+                    </div>
+                  </div>
+
+                  <div className="px-3.5 py-1.5 rounded-lg bg-amber-500/30 text-black border border-amber-500/50 text-xs font-normal" style={{ color: '#000000' }}>
+                    عدد المقيمين: {committeeScoresList.length} أعضاء
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Add New Evaluator Form */}
             <div className="p-4 rounded-xl mb-5 border bg-slate-50 border-slate-300 space-y-3">
