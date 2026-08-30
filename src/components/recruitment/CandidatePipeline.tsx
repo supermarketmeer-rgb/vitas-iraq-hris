@@ -17,6 +17,7 @@ export const CandidatePipeline: React.FC = () => {
     updateJobVacancy, 
     addEmployee,
     deleteEmployee,
+    addDocumentRecord,
     setActiveModuleId,
     addNotification,
     t, 
@@ -898,10 +899,123 @@ export const CandidatePipeline: React.FC = () => {
         employeeId: finalEmpCode
       });
 
+      // Automatically archive Electronic CV & Committee Evaluation Report to Employee Documents
+      try {
+        const committeeScores = Array.isArray(activeCandidateForDirectory.committeeScores) ? activeCandidateForDirectory.committeeScores : [];
+        const totalScore = committeeScores.reduce((sum, item) => sum + (Number(item.score) || 0), 0);
+        const rawAvg = committeeScores.length > 0 ? (totalScore / committeeScores.length) : (activeCandidateForDirectory.finalScore || 0);
+        const avgScore = Number.isInteger(rawAvg) ? rawAvg : Number(rawAvg.toFixed(1));
+
+        const evaluatorsHtml = committeeScores.length > 0 ? `
+          <div style="margin-top: 15px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; background: #ffffff;">
+            <h4 style="margin: 0 0 10px 0; color: #0f172a; font-size: 13px; font-weight: bold;">تقييمات أعضاء لجنة التعيين (${committeeScores.length} أعضاء):</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: right;">
+              <thead>
+                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                  <th style="padding: 6px 8px;">#</th>
+                  <th style="padding: 6px 8px;">اسم المقيم</th>
+                  <th style="padding: 6px 8px;">المنصب / العنوان الوظيفي</th>
+                  <th style="padding: 6px 8px;">المكتب / القسم</th>
+                  <th style="padding: 6px 8px; text-align: center;">درجة التقييم</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${committeeScores.map((ev, i) => `
+                  <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 6px 8px;">${i + 1}</td>
+                    <td style="padding: 6px 8px; font-weight: bold;">${ev.fullName || 'مقيم'}</td>
+                    <td style="padding: 6px 8px;">${ev.jobTitle || '-'}</td>
+                    <td style="padding: 6px 8px;">${ev.officeName || '-'}</td>
+                    <td style="padding: 6px 8px; text-align: center; font-weight: bold; color: #0d9488;">${ev.score} / 100</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr style="background: #f1f5f9; font-weight: bold;">
+                  <td colspan="4" style="padding: 8px; text-align: right;">معدل التقييم الإجمالي للجنة:</td>
+                  <td style="padding: 8px; text-align: center; color: #0d9488; font-size: 14px;">${avgScore} / 100</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        ` : '<p style="font-size: 12px; color: #64748b;">لا توجد تقييمات لجنة مسجلة.</p>';
+
+        const electronicCvHtml = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <title>السيرة الذاتية الإلكترونية وتقرير تقييم التعيين - ${directoryForm.fullNameAr}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; direction: rtl; color: #0f172a; line-height: 1.6; padding: 20px; background: #ffffff; }
+    .header { border-bottom: 3px solid #0d9488; padding-bottom: 15px; margin-bottom: 20px; }
+    .title { font-size: 22px; font-weight: bold; color: #0f172a; margin: 0; }
+    .subtitle { font-size: 14px; font-weight: bold; color: #0d9488; margin-top: 4px; }
+    .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #cbd5e1; margin-bottom: 20px; font-size: 13px; }
+    .info-label { font-weight: bold; color: #475569; }
+    .info-value { font-weight: bold; color: #0f172a; }
+    .section { border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; margin-bottom: 16px; background: #ffffff; }
+    .section-title { font-size: 14px; font-weight: bold; color: #0d9488; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }
+    .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 class="title">السيرة الذاتية الإلكترونية وتقرير تقييم التعيين</h1>
+    <div class="subtitle">الموظف: ${directoryForm.fullNameAr} (${finalEmpCode}) | الوظيفة: ${directoryForm.jobTitle}</div>
+    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">مؤسسة فيتاس العراق - قسم الموارد البشرية والتوظيف | تاريخ التوثيق: ${new Date().toLocaleDateString('ar-IQ')}</div>
+  </div>
+  <div class="info-grid">
+    <div><span class="info-label">الاسم الكامل: </span><span class="info-value">${directoryForm.fullNameAr}</span></div>
+    <div><span class="info-label">المسمى الوظيفي: </span><span class="info-value">${directoryForm.jobTitle}</span></div>
+    <div><span class="info-label">القسم والفرع: </span><span class="info-value">${directoryForm.department} • ${directoryForm.branch}</span></div>
+    <div><span class="info-label">رمز الموظف (ID): </span><span class="info-value font-mono">${finalEmpCode}</span></div>
+    <div><span class="info-label">البريد الإلكتروني: </span><span class="info-value">${directoryForm.email || 'غير محدد'}</span></div>
+    <div><span class="info-label">رقم الهاتف: </span><span class="info-value">${directoryForm.phone || 'غير محدد'}</span></div>
+    <div><span class="info-label">سنوات الخبرة: </span><span class="info-value">${activeCandidateForDirectory.experienceYears || 0} سنوات</span></div>
+    <div><span class="info-label">تاريخ المباشرة: </span><span class="info-value">${directoryForm.joinDate}</span></div>
+    <div><span class="info-label">الراتب الأساسي: </span><span class="info-value">${Number(directoryForm.basicSalary).toLocaleString()} د.ع</span></div>
+    <div><span class="info-label">تاريخ الميلاد: </span><span class="info-value">${directoryForm.dob || 'غير محدد'}</span></div>
+  </div>
+  
+  <div class="section">
+    <div class="section-title">تقرير وتقييمات أعضاء لجنة التعيين</div>
+    ${evaluatorsHtml}
+  </div>
+
+  ${activeCandidateForDirectory.notes ? `
+    <div class="section">
+      <div class="section-title">ملاحظات التقديم والمقابلة</div>
+      <p style="font-size: 12px; margin: 0;">${activeCandidateForDirectory.notes}</p>
+    </div>
+  ` : ''}
+
+  <div class="footer">مؤسسة فيتاس العراق لتمويل المشاريع الصغرى والعمليات - أرشيف ملفات الموظفين الرسمية (Employee Documents)</div>
+</body>
+</html>`;
+
+        if (typeof addDocumentRecord === 'function') {
+          addDocumentRecord({
+            docNumber: `DOC-CV-${finalEmpCode}`,
+            title: `السيرة الذاتية الإلكترونية وتقرير تقييم اللجنة - ${directoryForm.fullNameAr}`,
+            type: 'شهادة',
+            department: directoryForm.department || 'الموارد البشرية',
+            uploadedBy: 'نظام الاستقطاب والتعيين (ATS Pipeline)',
+            fileSize: '320 KB',
+            category: 'وثائق التعيين والسير الذاتية',
+            employeeId: finalEmpCode,
+            employeeName: directoryForm.fullNameAr,
+            contentHtml: electronicCvHtml
+          });
+        }
+      } catch (docErr) {
+        console.warn('Error archiving candidate electronic CV document:', docErr);
+      }
+
       // Add notification for employee directory entry
       addNotification({
-        title: 'تم إضافة الموظف بنجاح',
-        message: `تم إضافة ${directoryForm.fullNameAr} إلى دليل الموظفين بنجاح`,
+        title: 'تم إضافة الموظف وأرشفة مستنداته بنجاح',
+        message: `تمت إضافة ${directoryForm.fullNameAr} إلى دليل الموظفين وحفظ السيرة الذاتية وتقرير اللجنة في مستندات الموظف (Documents).`,
         type: 'success'
       });
 

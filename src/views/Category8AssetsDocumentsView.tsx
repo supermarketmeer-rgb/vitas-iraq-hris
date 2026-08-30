@@ -25,6 +25,39 @@ export const Category8AssetsDocumentsView: React.FC = () => {
   const [docTitle, setDocTitle] = useState('');
   const [docType, setDocType] = useState<'عقد' | 'سياسة' | 'هوية' | 'شهادة' | 'تقرير'>('عقد');
   const [dept, setDept] = useState('الموارد البشرية');
+  const [viewingDoc, setViewingDoc] = useState<any>(null);
+
+  const handlePrintDoc = (doc: any) => {
+    if (doc.contentHtml) {
+      const existingFrame = document.getElementById('doc-print-universal-iframe');
+      if (existingFrame) existingFrame.remove();
+
+      const printFrame = document.createElement('iframe');
+      printFrame.id = 'doc-print-universal-iframe';
+      printFrame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;';
+      document.body.appendChild(printFrame);
+
+      const docObj = printFrame.contentDocument || printFrame.contentWindow?.document;
+      if (!docObj) return;
+
+      docObj.open();
+      docObj.write(doc.contentHtml);
+      docObj.close();
+
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow?.focus();
+          printFrame.contentWindow?.print();
+        } catch (e) {
+          console.warn('Print iframe execution failed:', e);
+        }
+      }, 300);
+    } else if (doc.fileUrl) {
+      window.open(doc.fileUrl, '_blank');
+    } else {
+      setViewingDoc(doc);
+    }
+  };
 
   const handleAddAsset = (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,24 +281,72 @@ export const Category8AssetsDocumentsView: React.FC = () => {
               ) : (
                 <div className="space-y-2 text-xs">
                   {documentRecords.map(doc => (
-                    <div key={doc.id} className="p-3.5 rounded-2xl bg-[#0a0c10] border border-white/10 flex items-center justify-between shadow-sm">
+                    <div key={doc.id} className="p-3.5 rounded-2xl bg-[#0a0c10] border border-white/10 flex items-center justify-between shadow-sm hover:border-teal-500/40 transition-all">
                       <div className="flex items-center gap-3">
                         <span className="material-symbols-outlined text-teal-400 text-2xl">
                           description
                         </span>
                         <div>
                           <p className="font-bold text-white">{doc.title}</p>
-                          <p className="text-[10px] text-slate-400">{doc.type} • {doc.department} • {t('بواسطة', 'by')} {doc.uploadedBy}</p>
+                          <p className="text-[10px] text-slate-400">
+                            {doc.type} • {doc.department} • {doc.employeeName ? `الموظف: ${doc.employeeName} • ` : ''}{t('بواسطة', 'by')} {doc.uploadedBy}
+                          </p>
                         </div>
                       </div>
-                      <div className="text-left font-mono text-[10px]">
-                        <span className="text-teal-400 font-bold block">{doc.docNumber}</span>
-                        <span className="text-slate-500">{doc.uploadDate}</span>
+                      <div className="flex items-center gap-3">
+                        {doc.contentHtml && (
+                          <button
+                            type="button"
+                            onClick={() => handlePrintDoc(doc)}
+                            className="px-2.5 py-1.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/30 text-teal-400 border border-teal-500/30 font-bold flex items-center gap-1.5 transition-all"
+                            title="عرض وطباعة الوثيقة والسيرة الذاتية الإلكترونية"
+                          >
+                            <span className="material-symbols-outlined text-sm">print</span>
+                            <span>عرض وطباعة</span>
+                          </button>
+                        )}
+                        <div className="text-left font-mono text-[10px]">
+                          <span className="text-teal-400 font-bold block">{doc.docNumber}</span>
+                          <span className="text-slate-500">{doc.uploadDate}</span>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document View Modal */}
+      {viewingDoc && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0f172a] border border-slate-700 rounded-2xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto space-y-4 text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-700">
+              <h3 className="font-bold text-base text-teal-400 flex items-center gap-2">
+                <span className="material-symbols-outlined">description</span>
+                {viewingDoc.title}
+              </h3>
+              <button onClick={() => setViewingDoc(null)} className="text-slate-400 hover:text-white">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="text-xs space-y-2 text-slate-300">
+              <p><strong className="text-white">رقم الوثيقة:</strong> {viewingDoc.docNumber}</p>
+              <p><strong className="text-white">النوع:</strong> {viewingDoc.type}</p>
+              <p><strong className="text-white">القسم:</strong> {viewingDoc.department}</p>
+              <p><strong className="text-white">تاريخ الأرشفة:</strong> {viewingDoc.uploadDate}</p>
+              <p><strong className="text-white">الجهة المؤرشفة:</strong> {viewingDoc.uploadedBy}</p>
+              {viewingDoc.description && <p><strong className="text-white">الوصف:</strong> {viewingDoc.description}</p>}
+            </div>
+            <div className="pt-3 border-t border-slate-700 flex justify-end gap-2">
+              <button
+                onClick={() => setViewingDoc(null)}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-bold"
+              >
+                إغلاق
+              </button>
             </div>
           </div>
         </div>

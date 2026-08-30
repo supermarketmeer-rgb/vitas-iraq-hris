@@ -245,12 +245,17 @@ export interface DocumentRecord {
   id: string;
   docNumber: string;
   title: string;
-  type: 'عقد' | 'سياسة' | 'هوية' | 'شهادة' | 'تقرير';
+  type: 'عقد' | 'سياسة' | 'هوية' | 'شهادة' | 'تقرير' | string;
   department: string;
   uploadedBy: string;
   uploadDate: string;
   fileSize: string;
   category: string;
+  employeeId?: string;
+  employeeName?: string;
+  contentHtml?: string;
+  fileUrl?: string;
+  description?: string;
 }
 
 export interface SystemNotification {
