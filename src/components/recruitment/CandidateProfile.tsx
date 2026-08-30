@@ -40,7 +40,9 @@ export const CandidateProfile: React.FC = () => {
       const rejectionMsg = `السيد/ة ${candidate.fullName}\n.\nنعتذر عن عدم اختيارك لوظيفة (${jobTitle}) بسبب عدم توفر متطلبات العمل لديك حالياً.\nنتمنى لك التوفيق والنجاح في مسيرتك المهنية.\nمؤسسة فيتاس العراق - قسم الموارد البشرية`;
 
       if (candidate.phone) {
-        const waAppUrl = `whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent(rejectionMsg)}`;
+        const encodedMsg = encodeURIComponent(rejectionMsg);
+        const waAppUrl = `whatsapp://send?phone=${formattedPhone}&text=${encodedMsg}`;
+        const waWebUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMsg}`;
         try {
           const link = document.createElement('a');
           link.href = waAppUrl;
@@ -50,6 +52,10 @@ export const CandidateProfile: React.FC = () => {
         } catch (e) {
           console.error('Error launching WhatsApp for rejection:', e);
         }
+
+        setTimeout(() => {
+          window.open(waWebUrl, '_blank');
+        }, 200);
       }
 
       fetch('/api/notify/rejection', {

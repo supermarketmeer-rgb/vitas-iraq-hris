@@ -459,7 +459,9 @@ export const CandidatePipeline: React.FC = () => {
     const rejectionMsg = `السيد/ة ${candidate.fullName}\n.\nنعتذر عن عدم اختيارك لوظيفة (${jobTitle}) بسبب عدم توفر متطلبات العمل لديك حالياً.\nنتمنى لك التوفيق والنجاح في مسيرتك المهنية.\nمؤسسة فيتاس العراق - قسم الموارد البشرية`;
 
     if (candidate.phone) {
-      const waAppUrl = `whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent(rejectionMsg)}`;
+      const encodedMsg = encodeURIComponent(rejectionMsg);
+      const waAppUrl = `whatsapp://send?phone=${formattedPhone}&text=${encodedMsg}`;
+      const waWebUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMsg}`;
       try {
         const link = document.createElement('a');
         link.href = waAppUrl;
@@ -469,6 +471,10 @@ export const CandidatePipeline: React.FC = () => {
       } catch (e) {
         console.error('Error launching WhatsApp for rejection:', e);
       }
+
+      setTimeout(() => {
+        window.open(waWebUrl, '_blank');
+      }, 200);
     }
 
     fetch('/api/notify/rejection', {
@@ -928,7 +934,58 @@ export const CandidatePipeline: React.FC = () => {
   };
 
   const handleDeleteCandidate = (candidateId: string) => {
-    if (confirm(t('هل أنت متأكد من حذف هذا المرشح؟', 'Are you sure you want to delete this candidate?'))) {
+    const candidate = candidates.find(c => c.id === candidateId);
+    const candidateName = candidate ? getCandidateDisplayName(candidate, language) : '';
+    const confirmPrompt = language === 'en'
+      ? `Are you sure you want to delete candidate (${candidateName})? An exclusion message will be sent to the applicant via WhatsApp.`
+      : `هل أنت متأكد من حذف هذا المرشح (${candidateName})؟ سيتم إرسال رسالة استبعاد واعتذار للمتقدم عبر الواتساب.`;
+
+    if (confirm(confirmPrompt)) {
+      if (candidate) {
+        const jobTitle = getTitleName(candidate.jobTitle) || candidate.jobTitle || 'الوظيفة';
+        const cleanPhone = (candidate.phone || '').replace(/[^0-9]/g, '');
+        const formattedPhone = cleanPhone.startsWith('0') ? '964' + cleanPhone.substring(1) : (cleanPhone.startsWith('964') ? cleanPhone : '964' + cleanPhone);
+
+        const rejectionMsg = `السيد/ة ${candidate.fullName || candidate.fullNameAr}\n.\nنعتذر عن عدم اختيارك لوظيفة (${jobTitle}) بسبب عدم توفر متطلبات العمل لديك حالياً.\nنتمنى لك التوفيق والنجاح في مسيرتك المهنية.\nمؤسسة فيتاس العراق - قسم الموارد البشرية`;
+
+        if (candidate.phone) {
+          const encodedMsg = encodeURIComponent(rejectionMsg);
+          const waAppUrl = `whatsapp://send?phone=${formattedPhone}&text=${encodedMsg}`;
+          const waWebUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMsg}`;
+          
+          try {
+            const link = document.createElement('a');
+            link.href = waAppUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          } catch (e) {
+            console.error('Error launching WhatsApp Desktop application:', e);
+          }
+
+          setTimeout(() => {
+            window.open(waWebUrl, '_blank');
+          }, 200);
+        }
+
+        fetch('/api/notify/rejection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: candidate.fullName || candidate.fullNameAr,
+            email: candidate.email,
+            phone: candidate.phone,
+            jobTitle
+          })
+        }).catch(err => console.log('Silent rejection dispatch processed:', err));
+
+        addNotification({
+          title: 'تم حذف المرشح وإرسال إشعار الاستبعاد',
+          message: `تم حذف المرشح ${candidate.fullName || candidate.fullNameAr} وإرسال رسالة اعتذار واستبعاد عبر الواتساب`,
+          type: 'alert'
+        });
+      }
+
       deleteCandidate(candidateId);
     }
   };
