@@ -2969,9 +2969,9 @@ export const Category3EmployeeView: React.FC = () => {
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-sm`}>
-                        <span className={`${profileColors.textSecondary} text-[11px] block`}>{t('صافي الراتب الإجمالي', 'Total Net Salary')}</span>
+                        <span className={`${profileColors.textSecondary} text-[11px] block`}>{t('الراتب الأساسي', 'Basic Salary')}</span>
                         <span className={`text-lg font-black ${isDark ? 'text-emerald-400' : 'text-emerald-600'} font-mono`}>
-                          {selectedEmployee.salary ? selectedEmployee.salary.toLocaleString() + ' د.ع' : '-'}
+                          {selectedEmployee.basicSalary || selectedEmployee.salary ? (selectedEmployee.basicSalary || selectedEmployee.salary).toLocaleString() + ' د.ع' : '-'}
                         </span>
                       </div>
                       <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-sm`}>

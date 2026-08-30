@@ -254,7 +254,8 @@ export const CandidatePipeline: React.FC = () => {
     certificateAllowance: 0,
     gender: '',
     maritalStatus: '',
-    dob: ''
+    dob: '',
+    photoUrl: ''
   });
 
   // The Exact 6 Workflow Stages + Rejected (Committee Evaluation merged into First Interview)
@@ -595,7 +596,8 @@ export const CandidatePipeline: React.FC = () => {
       certificateAllowance: 0,
       gender: candidate.gender || 'ذكر',
       maritalStatus: candidate.maritalStatus || 'أعزب',
-      dob: candidate.dateOfBirth || ''
+      dob: candidate.dateOfBirth || '',
+      photoUrl: candidate.photoUrl || ''
     });
     setActiveCandidateForDirectory(candidate);
   };
@@ -884,6 +886,9 @@ export const CandidatePipeline: React.FC = () => {
         dob: directoryForm.dob,
         gender: (directoryForm.gender === 'أنثى' || directoryForm.gender === 'female' ? 'أنثى' : 'ذكر') as any,
         maritalStatus: (directoryForm.maritalStatus || 'أعزب') as any,
+        photoUrl: directoryForm.photoUrl || activeCandidateForDirectory.photoUrl || '',
+        photo_url: directoryForm.photoUrl || activeCandidateForDirectory.photoUrl || '',
+        photo: directoryForm.photoUrl || activeCandidateForDirectory.photoUrl || '',
         status: 'Active'
       });
 
@@ -2023,6 +2028,33 @@ export const CandidatePipeline: React.FC = () => {
               <button onClick={() => setActiveCandidateForDirectory(null)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white">
                 <span className="material-symbols-outlined">close</span>
               </button>
+            </div>
+
+            {/* Candidate Photo & Sync Preview */}
+            <div className="flex items-center gap-3.5 p-3 mb-4 rounded-xl bg-teal-500/10 border border-teal-500/30">
+              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-teal-500 shadow-md shrink-0 bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                {activeCandidateForDirectory.photoUrl ? (
+                  <img
+                    src={activeCandidateForDirectory.photoUrl.startsWith('/uploads/') && typeof window !== 'undefined' ? `${window.location.origin}${activeCandidateForDirectory.photoUrl}` : activeCandidateForDirectory.photoUrl}
+                    alt={activeCandidateForDirectory.fullName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="material-symbols-outlined text-3xl text-teal-600 dark:text-teal-400">person</span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-bold truncate" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {activeCandidateForDirectory.fullName}
+                </h4>
+                <p className="text-xs text-teal-600 dark:text-teal-400 font-bold truncate">
+                  {activeCandidateForDirectory.jobTitle}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs text-emerald-500">check_circle</span>
+                  {activeCandidateForDirectory.photoUrl ? 'سيتم حفظ الصورة الشخصية ونقلها تلقائياً إلى سجل وملف الموظف' : 'لم يتم إرفاق صورة شخصية مسبقاً في طلب التقديم'}
+                </p>
+              </div>
             </div>
 
             <form onSubmit={handleSaveDirectoryEntry} className="space-y-4 text-xs font-bold">

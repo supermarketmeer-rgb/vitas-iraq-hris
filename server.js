@@ -704,6 +704,8 @@ const ensureOnHoldColumn = async () => {
 
 const loadEmployeeColumns = async () => {
   try {
+    await query("ALTER TABLE employees MODIFY COLUMN photo_url LONGTEXT").catch(() => {});
+    await query("ALTER TABLE employees MODIFY COLUMN photo LONGBLOB").catch(() => {});
     const cols = await query('SHOW COLUMNS FROM employees');
     employeeTableColumns = new Set(cols.map(c => c.Field));
     console.log('Detected employees table columns:', Array.from(employeeTableColumns));
