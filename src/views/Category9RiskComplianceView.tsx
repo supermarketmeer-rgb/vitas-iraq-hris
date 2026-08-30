@@ -58,7 +58,7 @@ export const Category9RiskComplianceView: React.FC = () => {
       category: riskCat,
       impact,
       probability: 'متوسط',
-      owner: currentUser.name,
+      owner: currentUser?.name || currentUser?.email || 'مدير المخاطر والامتثال',
       mitigationPlan: mitigation || 'سيتم إعداد خطة التعافي والتغطية فوراً',
       status: 'مفتوح'
     });
@@ -70,7 +70,7 @@ export const Category9RiskComplianceView: React.FC = () => {
   const handleGenerateApiKey = () => {
     const newK = {
       id: `KEY-${Date.now().toString().slice(-4)}`,
-      name: `مفتاح API جديد - ${currentUser.role}`,
+      name: `مفتاح API جديد - ${currentUser?.role || 'مسؤول'}`,
       key: `vts_live_sk_${Math.random().toString(36).substring(2, 18)}`,
       created: new Date().toISOString().split('T')[0],
       status: 'نشط'
@@ -747,7 +747,7 @@ export const Category9RiskComplianceView: React.FC = () => {
               <p className="text-slate-500 text-[11px] mt-0.5">{t('الأدوار القيادية والوظيفية في المؤسسة مع إمكانية اختبار التبديل السريع', 'Enterprise roles with instant role-switching for testing')}</p>
             </div>
             <span className="text-teal-600 dark:text-teal-400 font-bold bg-teal-500/10 px-3 py-1 rounded-xl">
-              {t(`دورك الحالي: ${currentUser.role}`, `Current Role: ${currentUser.role}`)}
+              {t(`دورك الحالي: ${currentUser?.role || 'Super Admin'}`, `Current Role: ${currentUser?.role || 'Super Admin'}`)}
             </span>
           </div>
 
@@ -766,7 +766,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <h3 className="font-bold text-sm" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{item.role}</h3>
                     <p className="text-teal-600 dark:text-teal-400 text-[11px] font-bold">{item.ar}</p>
                   </div>
-                  {currentUser.role === item.role && (
+                  {currentUser?.role === item.role && (
                     <span className="px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-700 dark:text-teal-300 text-[10px] font-bold">
                       {t('النشط الآن', 'Active')}
                     </span>

@@ -155,9 +155,13 @@ function AppContent() {
       case 'cat-8-assets':
       case 'asset-inventory':
       case 'asset-my-requests':
+      case 'asset-details':
       case 'asset-allocation':
       case 'asset-maintenance':
       case 'asset-return':
+      case 'doc-mgmt':
+      case 'doc-edms':
+      case 'doc-my-docs':
       case 'doc-repository':
       case 'doc-templates':
       case 'doc-signature':

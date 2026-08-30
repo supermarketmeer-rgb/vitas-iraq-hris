@@ -85,13 +85,16 @@ export const Category8AssetsDocumentsView: React.FC = () => {
       title: docTitle,
       type: docType,
       department: dept,
-      uploadedBy: currentUser.name,
+      uploadedBy: currentUser?.name || currentUser?.email || 'مدير الموارد البشرية',
       fileSize: '1.4 MB',
       category: 'وثائق رسمية'
     });
     setDocTitle('');
     setActiveModuleId('doc-mgmt');
   };
+
+  const isDocSection = activeModuleId === 'doc-mgmt' || activeModuleId === 'doc-edms' || activeModuleId === 'doc-my-docs';
+  const isAssetSection = activeModuleId === 'cat-8-assets' || activeModuleId === 'asset-inventory' || activeModuleId === 'asset-my-requests' || activeModuleId === 'asset-details';
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -105,7 +108,7 @@ export const Category8AssetsDocumentsView: React.FC = () => {
             </span>
           </div>
           <h1 className="text-2xl font-normal text-white drop-shadow-sm">
-            {activeModuleId === 'asset-inventory' && t('إدارة مخزون العهد والأصول الرقمية والمكتبية', 'Asset & Office Inventory Management')}
+            {(activeModuleId === 'cat-8-assets' || activeModuleId === 'asset-inventory') && t('إدارة مخزون العهد والأصول الرقمية والمكتبية', 'Asset & Office Inventory Management')}
             {activeModuleId === 'asset-my-requests' && t('طلبات العهد والأجهزة الخاصة بي', 'My Asset & Device Requests')}
             {activeModuleId === 'asset-details' && t('تفاصيل العهدة وحالة الصيانة والتخصيص', 'Asset Details, Maintenance & Allocation')}
             {activeModuleId === 'doc-mgmt' && t('نظام إدارة وأرشيف الوثائق والمستندات (DMS)', 'Document Management & Archiving System (DMS)')}
@@ -116,9 +119,60 @@ export const Category8AssetsDocumentsView: React.FC = () => {
             {t('تتبع دقيق وموثق لعهد ومستندات شركة فيتاس العراق', 'Accurate tracking & archiving for VITAS Iraq assets and documents')}
           </p>
         </div>
+
+        {/* Quick Navigation Tabs */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setActiveModuleId('asset-inventory')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              (activeModuleId === 'cat-8-assets' || activeModuleId === 'asset-inventory')
+                ? 'bg-teal-500 text-slate-900 shadow-md'
+                : 'bg-white/5 hover:bg-white/10 text-slate-300'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">inventory_2</span>
+            <span>{t('مخزون الأصول', 'Asset Inventory')}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveModuleId('asset-my-requests')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeModuleId === 'asset-my-requests'
+                ? 'bg-teal-500 text-slate-900 shadow-md'
+                : 'bg-white/5 hover:bg-white/10 text-slate-300'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">devices</span>
+            <span>{t('طلبات العهد', 'Asset Requests')}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveModuleId('doc-mgmt')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeModuleId === 'doc-mgmt'
+                ? 'bg-teal-500 text-slate-900 shadow-md'
+                : 'bg-white/5 hover:bg-white/10 text-slate-300'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">folder_shared</span>
+            <span>{t('إدارة المستندات (DMS)', 'Document Management')}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveModuleId('doc-my-docs')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeModuleId === 'doc-my-docs'
+                ? 'bg-teal-500 text-slate-900 shadow-md'
+                : 'bg-white/5 hover:bg-white/10 text-slate-300'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">folder_zip</span>
+            <span>{t('مستنداتي الشخصية', 'My Documents')}</span>
+          </button>
+        </div>
       </div>
 
-      {activeModuleId === 'asset-inventory' && (
+      {(activeModuleId === 'cat-8-assets' || activeModuleId === 'asset-inventory') && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-white">

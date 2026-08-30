@@ -178,7 +178,7 @@ export const Category7PerformanceView: React.FC = () => {
           <div className="border-b pb-3 border-white/10">
             <h2 className="text-base font-normal text-white flex items-center gap-2">
               <span className="material-symbols-outlined text-teal-400">rate_review</span>
-              {t(`نموذج التقييم الذاتي للعام 2026 - ${currentUser.name}`, `Self Appraisal Form 2026 - ${currentUser.name}`)}
+              {t(`نموذج التقييم الذاتي للعام 2026 - ${currentUser?.name || ''}`, `Self Appraisal Form 2026 - ${currentUser?.name || ''}`)}
             </h2>
             <p className="text-xs mt-1 font-normal text-slate-400">
               {t('قم بتقييم أدائك في تحقيق الأهداف والالتزام بقيم مؤسسة فيتاس العراق', 'Evaluate your performance against targets and core VITAS Iraq values')}

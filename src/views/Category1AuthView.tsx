@@ -7,7 +7,7 @@ export const Category1AuthView: React.FC = () => {
   // View 1: Secure Login States
   const [username, setUsername] = useState('VTS-1001');
   const [password, setPassword] = useState('••••••••••••');
-  const [selectedRole, setSelectedRole] = useState(currentUser.role || 'Super Admin');
+  const [selectedRole, setSelectedRole] = useState(currentUser?.role || 'Super Admin');
   const [otpCode, setOtpCode] = useState('');
   const [isMfaSent, setIsMfaSent] = useState(false);
   const [authResult, setAuthResult] = useState<any>(null);

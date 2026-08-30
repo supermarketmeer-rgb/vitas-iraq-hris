@@ -102,7 +102,7 @@ export const Category11SupportHelpView: React.FC = () => {
     e.preventDefault();
     if (!chatInput) return;
     const newM = {
-      sender: currentUser.name,
+      sender: currentUser?.name || 'مستخدم النظام',
       text: chatInput,
       time: new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })
     };
@@ -597,7 +597,7 @@ export const Category11SupportHelpView: React.FC = () => {
                   <span>{msg.time}</span>
                 </div>
                 <div className={`p-3 rounded-2xl text-xs max-w-[85%] ${
-                  msg.sender === currentUser.name
+                  msg.sender === (currentUser?.name || 'مستخدم النظام')
                     ? 'bg-teal-600 text-white mr-auto'
                     : isDark ? 'bg-slate-800 text-slate-200' : 'bg-white text-slate-800 shadow-sm'
                 }`}>
