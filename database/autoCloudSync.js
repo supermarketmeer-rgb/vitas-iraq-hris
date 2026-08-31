@@ -104,10 +104,15 @@ export async function syncLocalToCloud(localPool) {
         }
 
         // ─── Local -> Cloud Sync ──────────────────────────────
+        const [cloudCols] = await cloudConn.query(`DESCRIBE \`${table}\``).catch(() => [[]]);
+        const cloudColNames = (Array.isArray(cloudCols) ? cloudCols : []).map(c => c.Field);
+
         const localRows = await queryLocal(`SELECT * FROM \`${table}\``).catch(() => []);
-        if (Array.isArray(localRows) && localRows.length > 0) {
+        if (Array.isArray(localRows) && localRows.length > 0 && cloudColNames.length > 0) {
           for (const row of localRows) {
-            const keys = Object.keys(row);
+            const keys = Object.keys(row).filter(k => cloudColNames.includes(k));
+            if (keys.length === 0) continue;
+
             const cols = keys.map(k => `\`${k}\``).join(', ');
             const placeholders = keys.map(() => '?').join(', ');
             const updateAssigns = keys.map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
@@ -125,10 +130,15 @@ export async function syncLocalToCloud(localPool) {
         }
 
         // ─── Cloud -> Local Sync ──────────────────────────────
+        const [localCols] = await queryLocal(`DESCRIBE \`${table}\``).catch(() => []);
+        const localColNames = (Array.isArray(localCols) ? localCols : []).map(c => c.Field);
+
         const [cloudRows] = await cloudConn.query(`SELECT * FROM \`${table}\``).catch(() => [[]]);
-        if (Array.isArray(cloudRows) && cloudRows.length > 0) {
+        if (Array.isArray(cloudRows) && cloudRows.length > 0 && localColNames.length > 0) {
           for (const row of cloudRows) {
-            const keys = Object.keys(row);
+            const keys = Object.keys(row).filter(k => localColNames.includes(k));
+            if (keys.length === 0) continue;
+
             const cols = keys.map(k => `\`${k}\``).join(', ');
             const placeholders = keys.map(() => '?').join(', ');
             const updateAssigns = keys.map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
