@@ -222,9 +222,63 @@ export const Sidebar: React.FC = () => {
       {/* Navigation Categories Scrollable Container */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
         {CATEGORY_GROUPS.map((cat, groupIndex) => {
-          // Filter modules based on user role and quick sidebar filter
+          // Filter modules based on user role, custom delegations, and quick sidebar filter
           const filteredModules = cat.modules.filter(m => {
             if (m.hidden) return false;
+
+            // Check custom granted permissions for current employee
+            const customPermissionsRaw = typeof window !== 'undefined' ? localStorage.getItem('vitas_custom_employee_permissions') : null;
+            let customEmpPerms: Record<string, boolean> | null = null;
+            if (customPermissionsRaw && currentUser) {
+              try {
+                const parsed = JSON.parse(customPermissionsRaw);
+                const userKey = String(currentUser.id || currentUser.employeeId || '');
+                const match = parsed[userKey] || Object.entries(parsed).find(([k, v]: any) => {
+                  const empIdClean = String(currentUser.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const kClean = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const vEmpIdClean = String(v.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const nameClean = String(currentUser.name || '').toLowerCase();
+                  const vNameClean = String(v.employeeName || '').toLowerCase();
+                  const vNameEnClean = String(v.employeeNameEn || '').toLowerCase();
+
+                  return (
+                    k === userKey ||
+                    (kClean && empIdClean && (kClean === empIdClean || kClean.includes(empIdClean) || empIdClean.includes(kClean))) ||
+                    (vEmpIdClean && empIdClean && (vEmpIdClean === empIdClean || vEmpIdClean.includes(empIdClean) || empIdClean.includes(vEmpIdClean))) ||
+                    (nameClean && vNameClean && (nameClean.includes(vNameClean) || vNameClean.includes(nameClean) || nameClean.includes(vNameEnClean)))
+                  );
+                })?.[1];
+
+                if (match && match.modules) {
+                  customEmpPerms = match.modules;
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }
+
+            if (customEmpPerms) {
+              if (sidebarFilter) {
+                const matchesFilter = m.title.includes(sidebarFilter) || m.titleEn.toLowerCase().includes(sidebarFilter.toLowerCase());
+                if (!matchesFilter) return false;
+              }
+
+              if (cat.id === 'cat-3-emp') return Boolean(customEmpPerms['cat-3-emp'] ?? customEmpPerms.employees);
+              if (cat.id === 'cat-4-leave') return Boolean(customEmpPerms['cat-4-leave'] ?? customEmpPerms.attendance);
+              if (cat.id === 'cat-5-payroll') return Boolean(customEmpPerms['cat-5-payroll'] ?? customEmpPerms.payroll);
+              if (cat.id === 'cat-6-recruit') return Boolean(customEmpPerms['cat-6-recruit'] ?? customEmpPerms.recruitment);
+              if (cat.id === 'cat-7-perf') return Boolean(customEmpPerms['cat-7-perf'] ?? customEmpPerms.performance);
+              if (cat.id === 'cat-8-assets') return Boolean(customEmpPerms['cat-8-assets'] ?? customEmpPerms.assets);
+              if (cat.id === 'cat-9-archive') return Boolean(customEmpPerms['cat-9-archive'] ?? customEmpPerms.archive);
+              if (cat.id === 'cat-9-risk') return Boolean(customEmpPerms['cat-9-risk'] ?? customEmpPerms.risk);
+              if (cat.id === 'cat-10-sys') return Boolean(customEmpPerms['cat-10-sys'] ?? customEmpPerms.reports);
+              if (cat.id === 'cat-2-dash') return Boolean(customEmpPerms['cat-2-dash'] ?? customEmpPerms.dashboard);
+              if (cat.id === 'cat-12-support') return Boolean(customEmpPerms['cat-12-support'] ?? customEmpPerms.support);
+              
+              // Hide all other categories for custom delegated user
+              return false;
+            }
+
             if (currentRole === 'Employee' && !EMPLOYEE_ALLOWED_MODULE_IDS.has(m.id)) return false;
             if (currentRole === 'Recruiter' && !RECRUITER_ALLOWED_MODULE_IDS.has(m.id)) return false;
             if (currentRole === 'Department Head' && !DEPT_HEAD_ALLOWED_MODULE_IDS.has(m.id)) return false;

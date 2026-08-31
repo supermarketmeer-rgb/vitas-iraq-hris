@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { UserProfile } from '../types';
+import { UserProfile, UserRole } from '../types';
 import vitasLogo from '../../assets/VitasLogo.jpeg';
 
 export const Login: React.FC = () => {
@@ -166,6 +166,83 @@ export const Login: React.FC = () => {
         console.log('Login successful - IT Admin', itAdminUser);
         setTimeout(() => navigate('/'), 100);
         return;
+      }
+
+      // 3.5 Check custom created users in localStorage
+      try {
+        const customUsersRaw = localStorage.getItem('vitas_custom_users');
+        if (customUsersRaw) {
+          const customUsers = JSON.parse(customUsersRaw);
+          const cUser = customUsers[cleanUser] || Object.values(customUsers).find((u: any) => 
+            String(u.username || '').toLowerCase() === cleanUser || 
+            String(u.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '') === cleanUser.replace(/[^a-z0-9]/g, '')
+          );
+          if (cUser) {
+            // Read module permissions from the delegated permissions store
+            let modulePerms: Record<string, boolean> = {};
+            let userDeptFromPerms = 'الموارد البشرية والشؤون الإدارية';
+            let userJobTitleFromPerms = '';
+            try {
+              const permsRaw = localStorage.getItem('vitas_custom_employee_permissions');
+              if (permsRaw) {
+                const permsMap = JSON.parse(permsRaw);
+                const empCode = (cUser.employeeId || '').toUpperCase();
+                // Try to find by employeeId key
+                const matchedPerm = permsMap[empCode] || 
+                  Object.values(permsMap).find((p: any) =>
+                    String(p.employeeId || '').toUpperCase() === empCode ||
+                    String(p.employeeId || '').toLowerCase() === cleanUser
+                  );
+                if (matchedPerm) {
+                  modulePerms = (matchedPerm as any).modules || {};
+                  userDeptFromPerms = (matchedPerm as any).department || userDeptFromPerms;
+                  userJobTitleFromPerms = (matchedPerm as any).jobTitle || '';
+                }
+              }
+            } catch (err) {
+              console.error('Error reading custom permissions:', err);
+            }
+
+            // Map module permissions to UserProfile permission flags
+            const customUserProfile: UserProfile = {
+              id: cUser.employeeId || '1050',
+              name: cUser.name || `الموظف (${cleanUser})`,
+              email: `${cleanUser}@vitasiraq.iq`,
+              role: (cUser.role as UserRole) || 'Employee',
+              avatar: '',
+              department: userDeptFromPerms,
+              employeeId: cUser.employeeId || `VTS-${cleanUser.toUpperCase()}`,
+              branch: 'الإدارة العامة - بغداد',
+              can_manage_employees: modulePerms['employees'] ? 1 : 0,
+              can_manage_finance: modulePerms['payroll'] ? 1 : 0,
+              can_manage_recruitment: modulePerms['recruitment'] ? 1 : 0,
+              can_manage_settings: modulePerms['settings'] ? 1 : 0,
+              can_manage_users: 0,
+              // Store module permissions directly for runtime access
+              ...(Object.keys(modulePerms).length > 0 ? { modulePermissions: modulePerms } : {})
+            };
+
+            // Determine initial module based on allowed modules
+            let initialModule = 'dash-overview';
+            if (modulePerms['employees']) initialModule = 'emp-directory';
+            else if (modulePerms['attendance']) initialModule = 'leave-attendance';
+            else if (modulePerms['payroll']) initialModule = 'pay-dashboard';
+            else if (modulePerms['recruitment']) initialModule = 'recruit-dash';
+            else if (modulePerms['reports']) initialModule = 'sys-dynamic-reports';
+            else if (modulePerms['risk']) initialModule = 'risk-assessment';
+
+            localStorage.setItem('vitas_current_user', JSON.stringify(customUserProfile));
+            localStorage.setItem('vitas_user_role', 'Employee');
+            setCurrentUserRole('Employee');
+            setCurrentUser(customUserProfile);
+            setActiveModuleId(initialModule);
+            console.log('Login successful - Custom User', customUserProfile);
+            setTimeout(() => navigate('/'), 100);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error(err);
       }
 
       // 4. Employee Login (Matches any employee code like v1264, VTS-1264, 1264, or any employee ID)

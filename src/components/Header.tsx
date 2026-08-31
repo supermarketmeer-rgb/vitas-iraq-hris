@@ -28,6 +28,10 @@ export const Header: React.FC = () => {
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [showChangePwdModal, setShowChangePwdModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwdChangeMsg, setPwdChangeMsg] = useState<string | null>(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -338,6 +342,17 @@ export const Header: React.FC = () => {
                   {t('إدارة الصلاحيات والأدوار', 'Roles & Permissions Management')}
                 </button>
 
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    setShowChangePwdModal(true);
+                  }}
+                  className="w-full text-start px-3 py-2 rounded-lg text-teal-300 hover:bg-teal-500/10 flex items-center gap-2 font-bold"
+                >
+                  <span className="material-symbols-outlined text-teal-400 text-base">key</span>
+                  {t('تغيير كلمة المرور الخاصة بي', 'Change My Password')}
+                </button>
+
                 <div className="pt-2 border-t border-white/10 mt-2 space-y-1">
                   <button
                     onClick={() => {
@@ -374,6 +389,141 @@ export const Header: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Self-Service Change Password Modal */}
+      {showChangePwdModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`p-5 border-b flex items-center justify-between ${
+              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-500 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-lg">lock_reset</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                    {t('تغيير كلمة المرور الخاصة بك', 'Change Your Password')}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {t(`المستخدم: ${currentUser.name}`, `User: ${currentUser.name}`)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowChangePwdModal(false);
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setPwdChangeMsg(null);
+                }}
+                className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                if (!newPassword || newPassword.length < 4) {
+                  alert(t('يرجى إدخال كلمة مرور بطول 4 أحرف على الأقل', 'Password must be at least 4 characters'));
+                  return;
+                }
+                if (newPassword !== confirmPassword) {
+                  alert(t('كلمتا المرور غير متطابقتين', 'Passwords do not match'));
+                  return;
+                }
+
+                try {
+                  // Update in custom users list if exists
+                  const customUsersRaw = localStorage.getItem('vitas_custom_users') || '{}';
+                  const customUsers = JSON.parse(customUsersRaw);
+                  const userKey = (currentUser.employeeId || currentUser.name || '').toLowerCase();
+                  if (customUsers[userKey]) {
+                    customUsers[userKey].password = newPassword;
+                  }
+                  // Also match by username if stored
+                  Object.keys(customUsers).forEach(k => {
+                    if (customUsers[k].name === currentUser.name || customUsers[k].employeeId === currentUser.employeeId) {
+                      customUsers[k].password = newPassword;
+                    }
+                  });
+                  localStorage.setItem('vitas_custom_users', JSON.stringify(customUsers));
+                } catch (err) {
+                  console.error(err);
+                }
+
+                setPwdChangeMsg(t('تم تحديث كلمة المرور الخاصة بك بنجاح!', 'Your password has been updated successfully!'));
+                setTimeout(() => {
+                  setShowChangePwdModal(false);
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setPwdChangeMsg(null);
+                }, 2000);
+              }}
+              className="p-6 space-y-4 text-xs"
+            >
+              {pwdChangeMsg && (
+                <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-2 animate-in fade-in">
+                  <span className="material-symbols-outlined text-base">check_circle</span>
+                  <span>{pwdChangeMsg}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  {t('كلمة المرور الجديدة:', 'New Password:')}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder={t('أدخل كلمة المرور الجديدة', 'Enter new password')}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none font-mono ${
+                    isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  {t('تأكيد كلمة المرور الجديدة:', 'Confirm New Password:')}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder={t('أعد إدخال كلمة المرور', 'Re-enter new password')}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none font-mono ${
+                    isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowChangePwdModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-white/5 font-bold transition-all text-xs cursor-pointer"
+                >
+                  {t('إلغاء', 'Cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-md shadow-teal-600/20 text-xs cursor-pointer"
+                >
+                  {t('تحديث كلمة المرور', 'Update Password')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

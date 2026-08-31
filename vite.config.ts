@@ -16,7 +16,7 @@ export default defineConfig(() => {
       sourcemap: false,
       chunkSizeWarningLimit: 3000,
       minify: 'esbuild',
-      cssMinify: 'esbuild',
+      cssMinify: true,
     },
     server: {
       proxy: {

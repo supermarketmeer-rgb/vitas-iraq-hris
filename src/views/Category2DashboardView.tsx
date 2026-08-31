@@ -115,43 +115,101 @@ export const Category2DashboardView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setActiveModuleId('sys-dynamic-reports')}
-            style={{ color: '#0d9488' }}
-            className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
-                : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
-              }`}
-          >
-            <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>table_chart</span>
-            <span style={{ color: '#0d9488' }}>{t('منشئ التقارير الديناميكية', 'Dynamic Report Builder')}</span>
-          </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Dynamic Report Builder - Super Admin, HR Manager, or users with reports permission */}
+          {(currentUser.role === 'Super Admin' || currentUser.role === 'HR Manager' ||
+            currentUser.modulePermissions?.['reports']) && (
+            <button
+              onClick={() => setActiveModuleId('sys-dynamic-reports')}
+              style={{ color: '#0d9488' }}
+              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
+                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
+                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
+                }`}
+            >
+              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>table_chart</span>
+              <span style={{ color: '#0d9488' }}>{t('منشئ التقارير الديناميكية', 'Dynamic Report Builder')}</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveModuleId('emp-add')}
-            style={{ color: '#0d9488' }}
-            className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
-                : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
-              }`}
-          >
-            <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>person_add</span>
-            <span style={{ color: '#0d9488' }}>{t('إضافة موظف جديد', 'Add New Employee')}</span>
-          </button>
+          {/* Add New Employee - Super Admin, HR Manager, or users with employees permission */}
+          {(currentUser.role === 'Super Admin' || currentUser.role === 'HR Manager' ||
+            (currentUser.can_manage_employees === 1 && currentUser.role !== 'Recruiter')) && (
+            <button
+              onClick={() => setActiveModuleId('emp-add')}
+              style={{ color: '#0d9488' }}
+              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
+                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
+                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
+                }`}
+            >
+              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>person_add</span>
+              <span style={{ color: '#0d9488' }}>{t('إضافة موظف جديد', 'Add New Employee')}</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveModuleId('leave-apply')}
-            style={{ color: '#0d9488' }}
-            className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md'
-                : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
-              }`}
-          >
-            <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>edit_calendar</span>
-            <span style={{ color: '#0d9488' }}>{t('تقديم إجازة', 'Apply for Leave')}</span>
-          </button>
+          {/* Post Job Vacancy - Recruiter only */}
+          {currentUser.role === 'Recruiter' && (
+            <button
+              onClick={() => setActiveModuleId('recruit-dash')}
+              style={{ color: '#0d9488' }}
+              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
+                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
+                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
+                }`}
+            >
+              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>work</span>
+              <span style={{ color: '#0d9488' }}>{t('نشر وظيفة شاغرة', 'Post Job Vacancy')}</span>
+            </button>
+          )}
+
+          {/* Apply for Leave - Everyone except IT Admin */}
+          {currentUser.role !== 'IT Admin' && (
+            <button
+              onClick={() => setActiveModuleId('leave-apply')}
+              style={{ color: '#0d9488' }}
+              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
+                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md'
+                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
+                }`}
+            >
+              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>edit_calendar</span>
+              <span style={{ color: '#0d9488' }}>{t('تقديم إجازة', 'Apply for Leave')}</span>
+            </button>
+          )}
+
+          {/* System Health - IT Admin only */}
+          {currentUser.role === 'IT Admin' && (
+            <button
+              onClick={() => setActiveModuleId('sys-health-monitor')}
+              style={{ color: '#0d9488' }}
+              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
+                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md'
+                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
+                }`}
+            >
+              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>monitor_heart</span>
+              <span style={{ color: '#0d9488' }}>{t('مراقبة صحة النظام', 'System Health Monitor')}</span>
+            </button>
+          )}
+
+          {/* Add New User - Super Admin and users with settings/can_manage_users permission */}
+          {(currentUser.role === 'Super Admin' || currentUser.can_manage_users === 1 ||
+            currentUser.modulePermissions?.['settings']) && (
+            <button
+              onClick={() => setActiveModuleId('sec-roles-permissions')}
+              style={{ color: '#0d9488' }}
+              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
+                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
+                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
+                }`}
+            >
+              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>manage_accounts</span>
+              <span style={{ color: '#0d9488' }}>{t('إضافة مستخدم جديد', 'Add New User')}</span>
+            </button>
+          )}
         </div>
+
       </div>
 
       {/* Real Live KPI Stat Cards */}

@@ -43,7 +43,7 @@ import { EmployeeApp } from './employee-app/EmployeeApp';
 import { useApp } from './context/AppContext';
 
 function AppContent() {
-  const { activeModuleId, isSidebarOpen, theme } = useApp();
+  const { activeModuleId, isSidebarOpen, theme, currentUser } = useApp();
   const location = useLocation();
   const isPublicPortal = location.pathname === '/apply';
   const isDark = theme === 'dark';

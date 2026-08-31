@@ -331,41 +331,51 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
   }
 };
 
+const safeFetchJson = async (url: string, options?: RequestInit, timeoutMs = 400): Promise<any | null> => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+};
+
 export const api = {
   async getMe(): Promise<{ user: CurrentUser; all_roles: CurrentUser[] }> {
-    try {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/auth/me');
+    if (data && data.user) return data;
     return { user: mockActiveUser, all_roles: mockUsers };
   },
 
   async switchRole(userId: number): Promise<{ success: boolean; user: CurrentUser }> {
-    try {
-      const res = await fetch('/api/auth/switch-role', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId }),
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/auth/switch-role', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    if (data && data.user) return data;
+
     const found = mockUsers.find((u) => u.id === userId);
     if (found) mockActiveUser = found;
     return { success: true, user: mockActiveUser };
   },
 
   async getDashboardStats(): Promise<DashboardStats> {
-    try {
-      const res = await fetch('/api/dashboard/stats');
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/dashboard/stats');
+    if (data && data.today_attendance) return data;
 
     const pendingCount = mockLeaves.filter((r) => r.status === 'pending_approval').length;
     const myBalances = mockBalances.filter((b) => b.employee_id === mockActiveUser.employee_id);
 
     return {
       today_date: new Date().toISOString().split('T')[0],
-      total_employees: 49,
+      total_employees: mockAttendance.length > 0 ? mockAttendance.length : 49,
       today_attendance: {
         present: mockAttendance.filter((r) => r.status === 'present').length,
         absent: mockAttendance.filter((r) => r.status === 'absent').length,
@@ -400,16 +410,14 @@ export const api = {
   },
 
   async getAttendance(params?: any): Promise<{ records: AttendanceRecord[]; total: number }> {
-    try {
-      const query = new URLSearchParams();
-      if (params) {
-        Object.entries(params).forEach(([k, v]) => {
-          if (v !== undefined && v !== null && v !== '') query.append(k, String(v));
-        });
-      }
-      const res = await fetch(`/api/attendance?${query.toString()}`);
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') query.append(k, String(v));
+      });
+    }
+    const data = await safeFetchJson(`/api/attendance?${query.toString()}`);
+    if (data && Array.isArray(data.records)) return data;
 
     let filtered = [...mockAttendance];
     if (params?.status) {
@@ -432,10 +440,8 @@ export const api = {
   },
 
   async reprocessAttendance(): Promise<{ success: boolean; message_ar: string; message_en: string }> {
-    try {
-      const res = await fetch('/api/attendance/reprocess', { method: 'POST' });
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/attendance/reprocess', { method: 'POST' });
+    if (data && data.success) return data;
 
     return {
       success: true,
@@ -445,12 +451,10 @@ export const api = {
   },
 
   async getTimesheets(periodType: 'daily' | 'weekly' | 'monthly', employeeId?: number): Promise<{ period_type: string; summaries: TimesheetSummary[] }> {
-    try {
-      const query = new URLSearchParams({ period_type: periodType });
-      if (employeeId) query.append('employee_id', String(employeeId));
-      const res = await fetch(`/api/timesheets?${query.toString()}`);
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const query = new URLSearchParams({ period_type: periodType });
+    if (employeeId) query.append('employee_id', String(employeeId));
+    const data = await safeFetchJson(`/api/timesheets?${query.toString()}`);
+    if (data && Array.isArray(data.summaries)) return data;
 
     const mockSummaries: TimesheetSummary[] = mockAttendance.map((rec) => ({
       id: rec.id,
@@ -481,39 +485,33 @@ export const api = {
   },
 
   async getLeaveBalances(employeeId?: number): Promise<{ balances: LeaveBalance[] }> {
-    try {
-      const query = employeeId ? `?employee_id=${employeeId}` : '';
-      const res = await fetch(`/api/leaves/balances${query}`);
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const query = employeeId ? `?employee_id=${employeeId}` : '';
+    const data = await safeFetchJson(`/api/leaves/balances${query}`);
+    if (data && Array.isArray(data.balances)) return data;
 
     return { balances: mockBalances };
   },
 
   async getLeaveRequests(params?: any): Promise<{ requests: LeaveRequest[]; total: number }> {
-    try {
-      const query = new URLSearchParams();
-      if (params) {
-        Object.entries(params).forEach(([k, v]) => {
-          if (v !== undefined && v !== null && v !== '') query.append(k, String(v));
-        });
-      }
-      const res = await fetch(`/api/leaves/requests?${query.toString()}`);
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') query.append(k, String(v));
+      });
+    }
+    const data = await safeFetchJson(`/api/leaves/requests?${query.toString()}`);
+    if (data && Array.isArray(data.requests)) return data;
 
     return { requests: mockLeaves, total: mockLeaves.length };
   },
 
   async applyLeave(data: Partial<LeaveRequest>): Promise<any> {
-    try {
-      const res = await fetch('/api/leaves/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const resData = await safeFetchJson('/api/leaves/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (resData && resData.success) return resData;
 
     const newReq: LeaveRequest = {
       id: mockLeaves.length + 1,
@@ -569,24 +567,20 @@ export const api = {
   },
 
   async cancelLeave(requestId: number): Promise<{ success: boolean; message: string }> {
-    try {
-      const res = await fetch('/api/leaves/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request_id: requestId }),
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/leaves/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ request_id: requestId }),
+    });
+    if (data && data.success) return data;
 
     mockLeaves = mockLeaves.map((r) => (r.id === requestId ? { ...r, status: 'cancelled' as const } : r));
     return { success: true, message: 'تم إلغاء الطلب بنجاح' };
   },
 
   async getPendingApprovals(): Promise<{ pending_leaves: LeaveRequest[]; pending_corrections: AttendanceCorrectionRequest[] }> {
-    try {
-      const res = await fetch('/api/approvals/pending');
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/approvals/pending');
+    if (data && (data.pending_leaves || data.pending_corrections)) return data;
 
     return {
       pending_leaves: mockLeaves.filter((r) => r.status === 'pending_approval'),
@@ -601,14 +595,12 @@ export const api = {
     comments?: string;
     rejection_reason?: string;
   }): Promise<{ success: boolean; message_ar?: string; message_en?: string; message?: string }> {
-    try {
-      const res = await fetch('/api/approvals/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/approvals/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (data && data.success) return data;
 
     if (payload.request_type === 'leave') {
       const statusMap = { approve: 'approved', reject: 'rejected', return: 'returned' } as const;
@@ -630,14 +622,12 @@ export const api = {
   },
 
   async submitCorrection(data: any): Promise<{ success: boolean; message_ar: string; message_en: string }> {
-    try {
-      const res = await fetch('/api/attendance/correction/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const resData = await safeFetchJson('/api/attendance/correction/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (resData && resData.success) return resData;
 
     const newCorr: AttendanceCorrectionRequest = {
       id: mockCorrections.length + 1,
@@ -672,10 +662,8 @@ export const api = {
   },
 
   async getMySchedule(): Promise<{ employee: any; schedule: EmployeeSchedule; public_holidays: PublicHoliday[] }> {
-    try {
-      const res = await fetch('/api/schedules/my-schedule');
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/schedules/my-schedule');
+    if (data && data.schedule) return data;
 
     return {
       employee: mockActiveUser,
@@ -685,32 +673,26 @@ export const api = {
   },
 
   async getLeaveTypes(): Promise<{ leave_types: LeaveType[] }> {
-    try {
-      const res = await fetch('/api/leave-types');
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/leave-types');
+    if (data && Array.isArray(data.leave_types)) return data;
 
     return { leave_types: mockLeaveTypes };
   },
 
   async getBiometricSettings(): Promise<{ settings: BiometricServerSettings; rules: any }> {
-    try {
-      const res = await fetch('/api/biometric/settings');
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/biometric/settings');
+    if (data && data.settings) return data;
 
     return { settings: mockSettings, rules: {} };
   },
 
   async saveBiometricSettings(settings: Partial<BiometricServerSettings>): Promise<any> {
-    try {
-      const res = await fetch('/api/biometric/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/biometric/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+    if (data && data.success) return data;
 
     mockSettings = { ...mockSettings, ...settings };
     return {
@@ -722,14 +704,12 @@ export const api = {
   },
 
   async testBiometricConnection(params: any): Promise<BiometricTestResult> {
-    try {
-      const res = await fetch('/api/biometric/test-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params),
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/biometric/test-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (data && data.status) return data;
 
     return {
       success: true,
@@ -748,10 +728,8 @@ export const api = {
   },
 
   async syncBiometricNow(): Promise<any> {
-    try {
-      const res = await fetch('/api/biometric/sync-now', { method: 'POST' });
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/biometric/sync-now', { method: 'POST' });
+    if (data && data.success) return data;
 
     return {
       success: true,
@@ -763,27 +741,23 @@ export const api = {
   },
 
   async getRawLogs(): Promise<{ raw_logs: RawAttendanceLog[] }> {
-    try {
-      const res = await fetch('/api/biometric/raw-logs');
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/biometric/raw-logs');
+    if (data && Array.isArray(data.raw_logs)) return data;
 
     return { raw_logs: mockRawLogs };
   },
 
   async simulateLivePunch(employeeId: number, punchType: string, verifyMode: string): Promise<any> {
-    try {
-      const res = await fetch('/api/biometric/simulate-punch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employee_id: employeeId, punch_type: punchType, verify_mode: verifyMode }),
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {}
+    const data = await safeFetchJson('/api/biometric/simulate-punch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employee_id: employeeId, punch_type: punchType, verify_mode: verifyMode }),
+    });
+    if (data && data.success) return data;
 
     return {
       success: true,
-      message_ar: 'تمتسجيل البصمة التجريبية بنجاح.',
+      message_ar: 'تم تسجيل البصمة التجريبية بنجاح.',
       message_en: 'Punch simulated successfully.',
     };
   },

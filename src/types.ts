@@ -24,6 +24,8 @@ export interface UserProfile {
   can_manage_recruitment?: number;
   can_manage_settings?: number;
   can_manage_users?: number;
+  // Fine-grained module permissions (for custom users)
+  modulePermissions?: Record<string, boolean>;
 }
 
 export interface ModuleItem {

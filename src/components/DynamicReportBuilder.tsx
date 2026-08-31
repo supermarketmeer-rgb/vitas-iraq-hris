@@ -263,6 +263,29 @@ export const DynamicReportBuilder: React.FC = () => {
   const [emailBody, setEmailBody] = useState<string>('');
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
 
+  const handleSaveTemplate = () => {
+    if (!newReportName.trim()) return;
+    const newRep: SavedReport = {
+      id: `rep-${Date.now()}`,
+      name: newReportName.trim(),
+      description: newReportDesc.trim() || 'استعلام ديناميكي مخصص',
+      primaryTable,
+      joinedTables,
+      selectedFields,
+      filters,
+      sortBy,
+      sortOrder,
+      createdAt: new Date().toISOString().split('T')[0],
+      createdBy: currentUser?.name || 'مستخدم النظام'
+    };
+    setSavedReports(prev => [newRep, ...prev]);
+    setShowSaveModal(false);
+    setNewReportName('');
+    setNewReportDesc('');
+    setActionSuccessMsg(t('تم حفظ نموذج التقرير بنجاح!', 'Report template saved successfully!'));
+    setTimeout(() => setActionSuccessMsg(null), 3000);
+  };
+
   // Auto Refresh Interval Effect
   useEffect(() => {
     if (autoRefreshInterval === 0) return;
@@ -1098,8 +1121,8 @@ export const DynamicReportBuilder: React.FC = () => {
                 <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('اسم النموذج:', 'Template Name:')}</label>
                 <input
                   type="text"
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
+                  value={newReportName}
+                  onChange={(e) => setNewReportName(e.target.value)}
                   placeholder={t('مثال: تقرير رواتب فرع البصرة 2026', 'e.g. Basra Branch Payroll 2026')}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                 />
@@ -1108,8 +1131,8 @@ export const DynamicReportBuilder: React.FC = () => {
               <div>
                 <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('وصف النموذج:', 'Description:')}</label>
                 <textarea
-                  value={templateDesc}
-                  onChange={(e) => setTemplateDesc(e.target.value)}
+                  value={newReportDesc}
+                  onChange={(e) => setNewReportDesc(e.target.value)}
                   rows={2}
                   placeholder={t('وصف موجز للغرض من هذا الاستعلام...', 'Brief description...')}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
