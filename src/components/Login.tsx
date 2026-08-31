@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { UserProfile, UserRole } from '../types';
 import vitasLogo from '../../assets/VitasLogo.jpeg';
+import { api } from '../api/client';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +15,26 @@ export const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    // Pre-fetch latest custom permissions from database on login screen
+    api.getAppSettings()
+      .then((settings: any) => {
+        if (settings && typeof settings === 'object') {
+          if (settings.vitas_custom_users) {
+            try {
+              localStorage.setItem('vitas_custom_users', settings.vitas_custom_users);
+            } catch (e) {}
+          }
+          if (settings.vitas_custom_employee_permissions) {
+            try {
+              localStorage.setItem('vitas_custom_employee_permissions', settings.vitas_custom_employee_permissions);
+            } catch (e) {}
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Handle login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +42,16 @@ export const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Sync fresh permissions if needed
+      await api.getAppSettings()
+        .then((settings: any) => {
+          if (settings && typeof settings === 'object') {
+            if (settings.vitas_custom_users) localStorage.setItem('vitas_custom_users', settings.vitas_custom_users);
+            if (settings.vitas_custom_employee_permissions) localStorage.setItem('vitas_custom_employee_permissions', settings.vitas_custom_employee_permissions);
+          }
+        })
+        .catch(() => {});
+
       const cleanUser = username.trim().toLowerCase();
       if (!cleanUser) {
         setError(language === 'ar' ? 'يرجى إدخال اسم المستخدم' : 'Please enter username');
@@ -295,6 +326,38 @@ export const Login: React.FC = () => {
         can_manage_settings: 0,
         can_manage_users: 0,
       };
+
+      // Check if employee has delegated permissions in custom delegations map
+      try {
+        const permsRaw = localStorage.getItem('vitas_custom_employee_permissions');
+        if (permsRaw) {
+          const permsMap = JSON.parse(permsRaw);
+          const empCode = String(employeeUser.employeeId || cleanUser).toUpperCase();
+          const cleanEmpCode = empCode.replace(/[^a-z0-9]/g, '');
+          const matchedPerm = permsMap[empCode] || 
+            Object.entries(permsMap).find(([k, v]: any) => {
+              const kClean = String(k).toUpperCase().replace(/[^a-z0-9]/g, '');
+              const vEmpId = String(v.employeeId || '').toUpperCase().replace(/[^a-z0-9]/g, '');
+              const vNameClean = String(v.employeeName || '').toLowerCase();
+              const vNameEnClean = String(v.employeeNameEn || '').toLowerCase();
+              return (
+                kClean === cleanEmpCode || 
+                vEmpId === cleanEmpCode || 
+                k === empCode ||
+                (cleanUser && (vNameClean.includes(cleanUser) || vNameEnClean.includes(cleanUser)))
+              );
+            })?.[1];
+
+          if (matchedPerm && matchedPerm.modules) {
+            employeeUser.modulePermissions = matchedPerm.modules;
+            employeeUser.can_manage_employees = matchedPerm.modules['employees'] ? 1 : 0;
+            employeeUser.can_manage_finance = matchedPerm.modules['payroll'] ? 1 : 0;
+            employeeUser.can_manage_recruitment = matchedPerm.modules['recruitment'] ? 1 : 0;
+            employeeUser.can_manage_settings = matchedPerm.modules['settings'] ? 1 : 0;
+            if (matchedPerm.department) employeeUser.department = matchedPerm.department;
+          }
+        }
+      } catch (e) {}
 
       localStorage.setItem('vitas_current_user', JSON.stringify(employeeUser));
       localStorage.setItem('vitas_user_role', 'Employee');
