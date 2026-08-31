@@ -304,9 +304,9 @@ export const Sidebar: React.FC = () => {
                 return Boolean(customEmpPerms.settings || customEmpPerms['cat-10-sys']);
               }
 
-              // Support Category
+              // Support Category (only if explicitly granted)
               if (cat.id === 'cat-11-support' || cat.id === 'cat-12-support') {
-                return Boolean(customEmpPerms.support || true);
+                return Boolean(customEmpPerms.support || customEmpPerms['cat-11-support'] || customEmpPerms['cat-12-support']);
               }
               
               // Hide any ungranted category

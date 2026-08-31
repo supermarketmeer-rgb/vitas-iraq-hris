@@ -1573,6 +1573,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                     { key: 'reports', icon: 'assessment', nameAr: 'التقارير الديناميكية وتصدير البيانات', nameEn: 'Dynamic Reports & Export', descAr: 'استخراج وتصدير تقارير الموظفين والملفات', descEn: 'Custom reports & data export' },
                     { key: 'risk', icon: 'security', nameAr: 'المخاطر والامتثال والحوكمة', nameEn: 'Risk & Compliance', descAr: 'سجلات المخاطر وسياسات الامتثال', descEn: 'Risk registers and governance policies' },
                     { key: 'settings', icon: 'settings', nameAr: 'إعدادات النظام', nameEn: 'System Settings', descAr: 'إعدادات الأمان، المستخدمين، والنظام', descEn: 'Security, user and system settings' },
+                    { key: 'support', icon: 'support_agent', nameAr: 'الدعم والمساعدة (Help Desk)', nameEn: 'Support & Help Desk', descAr: 'لوحة التذاكر، الدليل والمساعدة الفنية', descEn: 'Support tickets & help center' },
                   ].map(mod => {
                     const isChecked = Boolean((newUserForm.modules as any)[mod.key]);
                     return (
