@@ -156,11 +156,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Load data from API on mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // First, load from localStorage for instant display
+  // Load data from API on mount and on sync refresh
+  const loadData = useCallback(async () => {
+    try {
+      // First, load from localStorage for instant display
         let localEmps: Employee[] = [];
         let localJobs: JobVacancy[] = [];
         let localCands: Candidate[] = [];
@@ -367,7 +366,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (error) {
         console.error('Error loading data from API:', error);
-        // Fallback to localStorage if API fails
         try {
           const savedEmp = localStorage.getItem('vitas_employees');
           if (savedEmp) setEmployees(JSON.parse(savedEmp));
@@ -379,8 +377,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } finally {
         isDataLoaded.current = true;
       }
-    };
+  }, []);
 
+  // Mount effect to load data and poll candidates/jobs
+  useEffect(() => {
     loadData();
     const interval = setInterval(async () => {
       try {
@@ -400,7 +400,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 4000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [loadData]);
 
   // Auto-generate live active system notifications if notifications list is empty
   useEffect(() => {
