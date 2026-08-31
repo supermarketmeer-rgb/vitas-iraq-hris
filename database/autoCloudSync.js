@@ -92,10 +92,18 @@ export async function syncLocalToCloud(localPool) {
 
     let syncedTablesCount = 0;
 
-function stripForeignKeys(createSql) {
-  return createSql
+function sanitizeCreateTableSql(createSql, targetEnv = 'any') {
+  let sql = createSql
     .replace(/,\s*CONSTRAINT\s+`[^`]+`\s+FOREIGN\s+KEY\s*\([^)]+\)\s*REFERENCES\s+`[^`]+`\s*\([^)]+\)(\s+ON\s+DELETE\s+[A-Z\s]+)?(\s+ON\s+UPDATE\s+[A-Z\s]+)?/gi, '')
     .replace(/,\s*FOREIGN\s+KEY\s*\([^)]+\)\s*REFERENCES\s+`[^`]+`\s*\([^)]+\)(\s+ON\s+DELETE\s+[A-Z\s]+)?(\s+ON\s+UPDATE\s+[A-Z\s]+)?/gi, '');
+  
+  if (targetEnv === 'local') {
+    // Replace MySQL 8+ collations incompatible with local MariaDB/MySQL
+    sql = sql
+      .replace(/utf8mb4_0900_ai_ci/gi, 'utf8mb4_unicode_ci')
+      .replace(/utf8mb4_uca1400_ai_ci/gi, 'utf8mb4_unicode_ci');
+  }
+  return sql;
 }
 
     for (const table of allTables) {
@@ -104,7 +112,7 @@ function stripForeignKeys(createSql) {
         if (!cloudTables.includes(table) && localTables.includes(table)) {
           const createResult = await queryLocal(`SHOW CREATE TABLE \`${table}\``).catch(() => []);
           if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
-            const cleanSql = stripForeignKeys(createResult[0]['Create Table']);
+            const cleanSql = sanitizeCreateTableSql(createResult[0]['Create Table'], 'cloud');
             await cloudConn.query(cleanSql).catch(() => {});
             console.log(`[AUTO CLOUD SYNC] Created missing table '${table}' on Cloud.`);
           }
@@ -114,7 +122,7 @@ function stripForeignKeys(createSql) {
         if (!localTables.includes(table) && cloudTables.includes(table)) {
           const [createResult] = await cloudConn.query(`SHOW CREATE TABLE \`${table}\``).catch(() => [[]]);
           if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
-            const cleanSql = stripForeignKeys(createResult[0]['Create Table']);
+            const cleanSql = sanitizeCreateTableSql(createResult[0]['Create Table'], 'local');
             await queryLocal(cleanSql).catch(() => {});
             console.log(`[AUTO CLOUD SYNC] Created missing table '${table}' on Local.`);
           }
