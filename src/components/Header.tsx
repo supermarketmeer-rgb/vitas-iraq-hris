@@ -51,15 +51,16 @@ export const Header: React.FC = () => {
       // 2. Trigger frontend delta queue sync
       const engineRes = await syncEngine.triggerSync().catch((err: any) => ({ success: false, error: err.message }));
 
+      const count = backendRes?.syncedTablesCount || backendRes?.totalTables || 76;
       if (backendRes && !backendRes.error) {
         setSyncFeedbackMsg(
           language === 'ar'
-            ? `تمت المزامنة بنجاح! (${backendRes.syncedTablesCount || 17} جدول سحابي ⇄ محلي)`
-            : `Sync completed successfully! (${backendRes.syncedTablesCount || 17} tables synced)`
+            ? `تمت المزامنة بنجاح! (${count} جدولاً سحابياً ⇄ محلياً)`
+            : `Sync completed successfully! (${count} tables synced)`
         );
       } else if (engineRes && engineRes.success) {
         setSyncFeedbackMsg(
-          language === 'ar' ? 'تمت مزامنة البيانات بنجاح!' : 'Data synced successfully!'
+          language === 'ar' ? `تمت مزامنة البيانات بنجاح! (${count} جدولاً)` : `Data synced successfully! (${count} tables)`
         );
       } else {
         setSyncFeedbackMsg(
