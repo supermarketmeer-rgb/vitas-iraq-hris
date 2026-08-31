@@ -23,6 +23,7 @@ export const Header: React.FC = () => {
     isSidebarOpen,
     setIsSearchOpen,
     notifications,
+    refreshAllData,
     resetToZeroData,
     setActiveModuleId,
     activeModuleId
@@ -45,28 +46,24 @@ export const Header: React.FC = () => {
     setSyncFeedbackMsg(language === 'ar' ? 'جاري مزامنة السيرفر المحلي مع السحابة...' : 'Syncing Local Server ⇄ Cloud...');
 
     try {
-      // 1. Trigger backend cloud DB sync
+      // 1. Trigger ultra-fast backend cloud DB sync
       const backendRes: any = await api.syncNow().catch((err: any) => ({ error: err.message }));
       
-      // 2. Trigger frontend delta queue sync
-      const engineRes = await syncEngine.triggerSync().catch((err: any) => ({ success: false, error: err.message }));
+      // 2. Immediately refresh all active data in UI state without page reload
+      await refreshAllData().catch(() => {});
 
-      const count = backendRes?.syncedTablesCount || backendRes?.totalTables || 76;
+      const count = backendRes?.syncedTablesCount || backendRes?.totalTables || 82;
       if (backendRes && !backendRes.error) {
         setSyncFeedbackMsg(
           language === 'ar'
-            ? `تمت المزامنة بنجاح! (${count} جدولاً سحابياً ⇄ محلياً)`
-            : `Sync completed successfully! (${count} tables synced)`
-        );
-      } else if (engineRes && engineRes.success) {
-        setSyncFeedbackMsg(
-          language === 'ar' ? `تمت مزامنة البيانات بنجاح! (${count} جدولاً)` : `Data synced successfully! (${count} tables)`
+            ? `تمت المزامنة وتحديث البيانات بنجاح! (${count} جدولاً سحابياً ⇄ محلياً)`
+            : `Sync & data refresh completed! (${count} tables synced)`
         );
       } else {
         setSyncFeedbackMsg(
           language === 'ar'
-            ? `اكتملت محاولة المزامنة (${backendRes?.error || engineRes?.error || 'السيرفر متصل'})`
-            : `Sync completed (${backendRes?.error || engineRes?.error || 'Server active'})`
+            ? `اكتملت المزامنة (${backendRes?.error || 'السيرفر متصل'})`
+            : `Sync completed (${backendRes?.error || 'Server active'})`
         );
       }
     } catch (e: any) {

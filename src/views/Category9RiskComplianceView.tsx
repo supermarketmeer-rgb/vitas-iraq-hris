@@ -16,6 +16,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     addEmployee,
     language,
     theme,
+    appSettings,
     t
   } = useApp();
 
@@ -153,7 +154,7 @@ export const Category9RiskComplianceView: React.FC = () => {
             try {
               const parsed = JSON.parse(settings.vitas_custom_employee_permissions);
               if (parsed && typeof parsed === 'object') {
-                setSavedEmpDelegations(prev => ({ ...prev, ...parsed }));
+                setSavedEmpDelegations(parsed);
                 localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(parsed));
               }
             } catch (e) {}
@@ -169,7 +170,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [appSettings]);
 
   // Compute all unique departments from Settings + Employees table
   const allUniqueDepartments = useMemo(() => {

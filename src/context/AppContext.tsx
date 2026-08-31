@@ -82,6 +82,7 @@ interface AppContextType {
   appSettings: Record<string, string>;
 
   // General App Actions
+  refreshAllData: () => Promise<void>;
   resetToZeroData: () => Promise<void>;
 }
 
@@ -1054,6 +1055,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markNotificationRead,
         addNotification,
         appSettings,
+        refreshAllData: loadData,
         resetToZeroData
       }}
     >

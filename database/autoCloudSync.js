@@ -106,84 +106,88 @@ function sanitizeCreateTableSql(createSql, targetEnv = 'any') {
   return sql;
 }
 
-    for (const table of allTables) {
-      try {
-        // Ensure table exists on Cloud
-        if (!cloudTables.includes(table) && localTables.includes(table)) {
-          const createResult = await queryLocal(`SHOW CREATE TABLE \`${table}\``).catch(() => []);
-          if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
-            const cleanSql = sanitizeCreateTableSql(createResult[0]['Create Table'], 'cloud');
-            await cloudConn.query(cleanSql).catch(() => {});
-            console.log(`[AUTO CLOUD SYNC] Created missing table '${table}' on Cloud.`);
+    const CHUNK_SIZE = 10;
+    for (let i = 0; i < allTables.length; i += CHUNK_SIZE) {
+      const chunk = allTables.slice(i, i + CHUNK_SIZE);
+      await Promise.all(chunk.map(async (table) => {
+        try {
+          // Ensure table exists on Cloud
+          if (!cloudTables.includes(table) && localTables.includes(table)) {
+            const createResult = await queryLocal(`SHOW CREATE TABLE \`${table}\``).catch(() => []);
+            if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
+              const cleanSql = sanitizeCreateTableSql(createResult[0]['Create Table'], 'cloud');
+              await cloudConn.query(cleanSql).catch(() => {});
+              console.log(`[AUTO CLOUD SYNC] Created missing table '${table}' on Cloud.`);
+            }
           }
-        }
 
-        // Ensure table exists on Local
-        if (!localTables.includes(table) && cloudTables.includes(table)) {
-          const [createResult] = await cloudConn.query(`SHOW CREATE TABLE \`${table}\``).catch(() => [[]]);
-          if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
-            const cleanSql = sanitizeCreateTableSql(createResult[0]['Create Table'], 'local');
-            await queryLocal(cleanSql).catch(() => {});
-            console.log(`[AUTO CLOUD SYNC] Created missing table '${table}' on Local.`);
+          // Ensure table exists on Local
+          if (!localTables.includes(table) && cloudTables.includes(table)) {
+            const [createResult] = await cloudConn.query(`SHOW CREATE TABLE \`${table}\``).catch(() => [[]]);
+            if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
+              const cleanSql = sanitizeCreateTableSql(createResult[0]['Create Table'], 'local');
+              await queryLocal(cleanSql).catch(() => {});
+              console.log(`[AUTO CLOUD SYNC] Created missing table '${table}' on Local.`);
+            }
           }
-        }
 
-        // ─── Local -> Cloud Sync ──────────────────────────────
-        const [cloudCols] = await cloudConn.query(`DESCRIBE \`${table}\``).catch(() => [[]]);
-        const cloudColNames = (Array.isArray(cloudCols) ? cloudCols : []).map(c => c.Field);
+          // ─── Local -> Cloud Sync ──────────────────────────────
+          const [cloudCols] = await cloudConn.query(`DESCRIBE \`${table}\``).catch(() => [[]]);
+          const cloudColNames = (Array.isArray(cloudCols) ? cloudCols : []).map(c => c.Field);
 
-        const localRows = await queryLocal(`SELECT * FROM \`${table}\``).catch(() => []);
-        if (Array.isArray(localRows) && localRows.length > 0 && cloudColNames.length > 0) {
-          for (const row of localRows) {
-            const keys = Object.keys(row).filter(k => cloudColNames.includes(k));
-            if (keys.length === 0) continue;
+          const localRows = await queryLocal(`SELECT * FROM \`${table}\``).catch(() => []);
+          if (Array.isArray(localRows) && localRows.length > 0 && cloudColNames.length > 0) {
+            for (const row of localRows) {
+              const keys = Object.keys(row).filter(k => cloudColNames.includes(k));
+              if (keys.length === 0) continue;
 
-            const cols = keys.map(k => `\`${k}\``).join(', ');
-            const placeholders = keys.map(() => '?').join(', ');
-            const updateAssigns = keys.map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
+              const cols = keys.map(k => `\`${k}\``).join(', ');
+              const placeholders = keys.map(() => '?').join(', ');
+              const updateAssigns = keys.map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
 
-            const vals = keys.map(k => {
-              const v = row[k];
-              if (v instanceof Date) return v.toISOString().slice(0, 19).replace('T', ' ');
-              if (typeof v === 'object' && v !== null) return JSON.stringify(v);
-              return v;
-            });
+              const vals = keys.map(k => {
+                const v = row[k];
+                if (v instanceof Date) return v.toISOString().slice(0, 19).replace('T', ' ');
+                if (typeof v === 'object' && v !== null) return JSON.stringify(v);
+                return v;
+              });
 
-            const sql = `INSERT INTO \`${table}\` (${cols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateAssigns}`;
-            await cloudConn.execute(sql, vals).catch(() => {});
+              const sql = `INSERT INTO \`${table}\` (${cols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateAssigns}`;
+              await cloudConn.execute(sql, vals).catch(() => {});
+            }
           }
-        }
 
-        // ─── Cloud -> Local Sync ──────────────────────────────
-        const localCols = await queryLocal(`DESCRIBE \`${table}\``).catch(() => []);
-        const localColNames = (Array.isArray(localCols) ? localCols : []).map(c => c.Field);
+          // ─── Cloud -> Local Sync ──────────────────────────────
+          const localCols = await queryLocal(`DESCRIBE \`${table}\``).catch(() => []);
+          const localColNames = (Array.isArray(localCols) ? localCols : []).map(c => c.Field);
 
-        const [cloudRows] = await cloudConn.query(`SELECT * FROM \`${table}\``).catch(() => [[]]);
-        if (Array.isArray(cloudRows) && cloudRows.length > 0 && localColNames.length > 0) {
-          for (const row of cloudRows) {
-            const keys = Object.keys(row).filter(k => localColNames.includes(k));
-            if (keys.length === 0) continue;
+          const [cloudRows] = await cloudConn.query(`SELECT * FROM \`${table}\``).catch(() => [[]]);
+          if (Array.isArray(cloudRows) && cloudRows.length > 0 && localColNames.length > 0) {
+            for (const row of cloudRows) {
+              const keys = Object.keys(row).filter(k => localColNames.includes(k));
+              if (keys.length === 0) continue;
 
-            const cols = keys.map(k => `\`${k}\``).join(', ');
-            const placeholders = keys.map(() => '?').join(', ');
-            const updateAssigns = keys.map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
+              const cols = keys.map(k => `\`${k}\``).join(', ');
+              const placeholders = keys.map(() => '?').join(', ');
+              const updateAssigns = keys.map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
 
-            const vals = keys.map(k => {
-              const v = row[k];
-              if (v instanceof Date) return v.toISOString().slice(0, 19).replace('T', ' ');
-              if (typeof v === 'object' && v !== null) return JSON.stringify(v);
-              return v;
-            });
+              const vals = keys.map(k => {
+                const v = row[k];
+                if (v instanceof Date) return v.toISOString().slice(0, 19).replace('T', ' ');
+                if (typeof v === 'object' && v !== null) return JSON.stringify(v);
+                return v;
+              });
 
-            const sql = `INSERT INTO \`${table}\` (${cols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateAssigns}`;
-            await queryLocal(sql, vals).catch(() => {});
+              const sql = `INSERT INTO \`${table}\` (${cols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateAssigns}`;
+              await queryLocal(sql, vals).catch(() => {});
+            }
           }
-        }
 
-        syncedTablesCount++;
-      } catch (err) {
-        console.warn(`[AUTO CLOUD SYNC] Notice syncing table ${table}:`, err.message);
-      }
+          syncedTablesCount++;
+        } catch (err) {
+          console.warn(`[AUTO CLOUD SYNC] Notice syncing table ${table}:`, err.message);
+        }
+      }));
     }
 
     await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
