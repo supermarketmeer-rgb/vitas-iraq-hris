@@ -92,13 +92,20 @@ export async function syncLocalToCloud(localPool) {
 
     let syncedTablesCount = 0;
 
+function stripForeignKeys(createSql) {
+  return createSql
+    .replace(/,\s*CONSTRAINT\s+`[^`]+`\s+FOREIGN\s+KEY\s*\([^)]+\)\s*REFERENCES\s+`[^`]+`\s*\([^)]+\)(\s+ON\s+DELETE\s+[A-Z\s]+)?(\s+ON\s+UPDATE\s+[A-Z\s]+)?/gi, '')
+    .replace(/,\s*FOREIGN\s+KEY\s*\([^)]+\)\s*REFERENCES\s+`[^`]+`\s*\([^)]+\)(\s+ON\s+DELETE\s+[A-Z\s]+)?(\s+ON\s+UPDATE\s+[A-Z\s]+)?/gi, '');
+}
+
     for (const table of allTables) {
       try {
         // Ensure table exists on Cloud
         if (!cloudTables.includes(table) && localTables.includes(table)) {
           const createResult = await queryLocal(`SHOW CREATE TABLE \`${table}\``).catch(() => []);
           if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
-            await cloudConn.execute(createResult[0]['Create Table']).catch(() => {});
+            const cleanSql = stripForeignKeys(createResult[0]['Create Table']);
+            await cloudConn.query(cleanSql).catch(() => {});
             console.log(`[AUTO CLOUD SYNC] Created missing table '${table}' on Cloud.`);
           }
         }
@@ -107,7 +114,8 @@ export async function syncLocalToCloud(localPool) {
         if (!localTables.includes(table) && cloudTables.includes(table)) {
           const [createResult] = await cloudConn.query(`SHOW CREATE TABLE \`${table}\``).catch(() => [[]]);
           if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
-            await queryLocal(createResult[0]['Create Table']).catch(() => {});
+            const cleanSql = stripForeignKeys(createResult[0]['Create Table']);
+            await queryLocal(cleanSql).catch(() => {});
             console.log(`[AUTO CLOUD SYNC] Created missing table '${table}' on Local.`);
           }
         }
