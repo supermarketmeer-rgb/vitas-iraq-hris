@@ -227,55 +227,102 @@ export const Sidebar: React.FC = () => {
             if (m.hidden) return false;
 
             // Check custom granted permissions for current employee
-            const customPermissionsRaw = typeof window !== 'undefined' ? localStorage.getItem('vitas_custom_employee_permissions') : null;
-            let customEmpPerms: Record<string, boolean> | null = null;
-            if (customPermissionsRaw && currentUser) {
-              try {
-                const parsed = JSON.parse(customPermissionsRaw);
-                const userKey = String(currentUser.id || currentUser.employeeId || '');
-                const match = parsed[userKey] || Object.entries(parsed).find(([k, v]: any) => {
-                  const empIdClean = String(currentUser.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                  const kClean = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
-                  const vEmpIdClean = String(v.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                  const nameClean = String(currentUser.name || '').toLowerCase();
-                  const vNameClean = String(v.employeeName || '').toLowerCase();
-                  const vNameEnClean = String(v.employeeNameEn || '').toLowerCase();
+            let customEmpPerms: Record<string, boolean> | null = currentUser?.modulePermissions || null;
 
-                  return (
-                    k === userKey ||
-                    (kClean && empIdClean && (kClean === empIdClean || kClean.includes(empIdClean) || empIdClean.includes(kClean))) ||
-                    (vEmpIdClean && empIdClean && (vEmpIdClean === empIdClean || vEmpIdClean.includes(empIdClean) || empIdClean.includes(vEmpIdClean))) ||
-                    (nameClean && vNameClean && (nameClean.includes(vNameClean) || vNameClean.includes(nameClean) || nameClean.includes(vNameEnClean)))
-                  );
-                })?.[1];
+            if (!customEmpPerms && typeof window !== 'undefined') {
+              const customPermissionsRaw = localStorage.getItem('vitas_custom_employee_permissions');
+              if (customPermissionsRaw && currentUser) {
+                try {
+                  const parsed = JSON.parse(customPermissionsRaw);
+                  const userKey = String(currentUser.id || currentUser.employeeId || '');
+                  const match = parsed[userKey] || Object.entries(parsed).find(([k, v]: any) => {
+                    const empIdClean = String(currentUser.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const kClean = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const vEmpIdClean = String(v.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const nameClean = String(currentUser.name || '').toLowerCase();
+                    const vNameClean = String(v.employeeName || '').toLowerCase();
+                    const vNameEnClean = String(v.employeeNameEn || '').toLowerCase();
 
-                if (match && match.modules) {
-                  customEmpPerms = match.modules;
+                    return (
+                      k === userKey ||
+                      (kClean && empIdClean && (kClean === empIdClean || kClean.includes(empIdClean) || empIdClean.includes(kClean))) ||
+                      (vEmpIdClean && empIdClean && (vEmpIdClean === empIdClean || vEmpIdClean.includes(empIdClean) || empIdClean.includes(vEmpIdClean))) ||
+                      (nameClean && vNameClean && (nameClean.includes(vNameClean) || vNameClean.includes(nameClean) || nameClean.includes(vNameEnClean)))
+                    );
+                  })?.[1];
+
+                  if (match && match.modules) {
+                    customEmpPerms = match.modules;
+                  }
+                } catch (e) {
+                  console.error(e);
                 }
-              } catch (e) {
-                console.error(e);
               }
             }
 
-            if (customEmpPerms) {
+            if (customEmpPerms && currentUser?.role === 'Employee') {
               if (sidebarFilter) {
                 const matchesFilter = m.title.includes(sidebarFilter) || m.titleEn.toLowerCase().includes(sidebarFilter.toLowerCase());
                 if (!matchesFilter) return false;
               }
 
-              if (cat.id === 'cat-3-emp') return Boolean(customEmpPerms['cat-3-emp'] ?? customEmpPerms.employees);
-              if (cat.id === 'cat-4-leave') return Boolean(customEmpPerms['cat-4-leave'] ?? customEmpPerms.attendance);
-              if (cat.id === 'cat-5-payroll') return Boolean(customEmpPerms['cat-5-payroll'] ?? customEmpPerms.payroll);
-              if (cat.id === 'cat-6-recruit') return Boolean(customEmpPerms['cat-6-recruit'] ?? customEmpPerms.recruitment);
-              if (cat.id === 'cat-7-perf') return Boolean(customEmpPerms['cat-7-perf'] ?? customEmpPerms.performance);
-              if (cat.id === 'cat-8-assets') return Boolean(customEmpPerms['cat-8-assets'] ?? customEmpPerms.assets);
-              if (cat.id === 'cat-9-archive') return Boolean(customEmpPerms['cat-9-archive'] ?? customEmpPerms.archive);
-              if (cat.id === 'cat-9-risk') return Boolean(customEmpPerms['cat-9-risk'] ?? customEmpPerms.risk);
-              if (cat.id === 'cat-10-sys') return Boolean(customEmpPerms['cat-10-sys'] ?? customEmpPerms.reports);
-              if (cat.id === 'cat-2-dash') return Boolean(customEmpPerms['cat-2-dash'] ?? customEmpPerms.dashboard);
-              if (cat.id === 'cat-12-support') return Boolean(customEmpPerms['cat-12-support'] ?? customEmpPerms.support);
+              // Dashboard Category
+              if (cat.id === 'cat-2-dash') {
+                if (m.id === 'sys-dynamic-reports') return Boolean(customEmpPerms.reports);
+                return m.id === 'dash-overview' || m.id === 'dash-ess';
+              }
+
+              // Employees Category
+              if (cat.id === 'cat-3-emp') {
+                return Boolean(customEmpPerms.employees || customEmpPerms['cat-3-emp']);
+              }
+
+              // Leaves & Attendance Category
+              if (cat.id === 'cat-4-leave') {
+                return Boolean(customEmpPerms.attendance || customEmpPerms['cat-4-leave']);
+              }
+
+              // Payroll Category
+              if (cat.id === 'cat-5-payroll') {
+                return Boolean(customEmpPerms.payroll || customEmpPerms['cat-5-payroll']);
+              }
+
+              // Recruitment & ATS Category
+              if (cat.id === 'cat-6-recruit') {
+                return Boolean(customEmpPerms.recruitment || customEmpPerms['cat-6-recruit']);
+              }
+
+              // Performance & Training Category
+              if (cat.id === 'cat-7-perf') {
+                return Boolean(customEmpPerms.performance || customEmpPerms.recruitment || customEmpPerms['cat-7-perf']);
+              }
+
+              // Assets & Documents Category
+              if (cat.id === 'cat-8-assets') {
+                return Boolean(customEmpPerms.assets || customEmpPerms['cat-8-assets']);
+              }
+
+              // Smart Archive Category
+              if (cat.id === 'cat-12-archive' || cat.id === 'cat-9-archive') {
+                return Boolean(customEmpPerms.archive || customEmpPerms.employees || customEmpPerms['cat-12-archive']);
+              }
+
+              // Risk & Governance Category
+              if (cat.id === 'cat-9-risk') {
+                return Boolean(customEmpPerms.risk || customEmpPerms['cat-9-risk']);
+              }
+
+              // System & Developer Tools Category (Settings)
+              if (cat.id === 'cat-10-sys') {
+                return Boolean(customEmpPerms.settings || customEmpPerms['cat-10-sys']);
+              }
+
+              // Support Category
+              if (cat.id === 'cat-11-support' || cat.id === 'cat-12-support') {
+                return Boolean(customEmpPerms.support || true);
+              }
               
-              // Hide all other categories for custom delegated user
+              // Hide any ungranted category
               return false;
             }
 
