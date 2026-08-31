@@ -3,16 +3,20 @@ import mysql from 'mysql2/promise';
 let isSyncing = false;
 
 export async function startAutoCloudSync(localPool) {
-  // Sync every 30 seconds in background
+  // Sync every 15 minutes (900,000 ms) in background between Local and Cloud
+  const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
+  
   setInterval(async () => {
     if (isSyncing) return;
+    console.log('[AUTO CLOUD SYNC] Starting scheduled 15-minute sync cycle (Local ⇄ Cloud)...');
     await syncLocalToCloud(localPool).catch(err => {
       console.warn('[AUTO CLOUD SYNC] Notice:', err.message);
     });
-  }, 30000);
+  }, FIFTEEN_MINUTES_MS);
 
-  // Initial sync after 5 seconds
+  // Initial sync after 5 seconds on startup
   setTimeout(() => {
+    console.log('[AUTO CLOUD SYNC] Triggering initial startup sync...');
     syncLocalToCloud(localPool).catch(() => {});
   }, 5000);
 }

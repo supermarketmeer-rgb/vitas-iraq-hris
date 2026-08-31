@@ -302,5 +302,8 @@ export const api = {
   // Attendance Settings
   getAttendanceSettings: () => apiClient.get('/attendance-settings'),
   updateAttendanceSettings: (settings: Record<string, string>) => apiClient.post('/attendance-settings/bulk', settings),
+
+  // Cloud & Database Synchronization
+  syncNow: () => apiClient.post('/sync-now', {}, 45000),
 };
 

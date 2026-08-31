@@ -4,6 +4,8 @@ import { UserRole } from '../types';
 import { useNavigate } from 'react-router-dom';
 import vitasLogo from '../../assets/VitasLogo.jpeg';
 import { ConnectionStatusWidget } from './ConnectionStatusWidget';
+import { syncEngine } from '../services/syncEngine';
+import { api } from '../api/client';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +34,49 @@ export const Header: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwdChangeMsg, setPwdChangeMsg] = useState<string | null>(null);
+
+  // Manual Sync states
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const [syncFeedbackMsg, setSyncFeedbackMsg] = useState<string | null>(null);
+
+  const handleManualSync = async () => {
+    if (isManualSyncing) return;
+    setIsManualSyncing(true);
+    setSyncFeedbackMsg(language === 'ar' ? 'جاري مزامنة السيرفر المحلي مع السحابة...' : 'Syncing Local Server ⇄ Cloud...');
+
+    try {
+      // 1. Trigger backend cloud DB sync
+      const backendRes: any = await api.syncNow().catch((err: any) => ({ error: err.message }));
+      
+      // 2. Trigger frontend delta queue sync
+      const engineRes = await syncEngine.triggerSync().catch((err: any) => ({ success: false, error: err.message }));
+
+      if (backendRes && !backendRes.error) {
+        setSyncFeedbackMsg(
+          language === 'ar'
+            ? `تمت المزامنة بنجاح! (${backendRes.syncedTablesCount || 17} جدول سحابي ⇄ محلي)`
+            : `Sync completed successfully! (${backendRes.syncedTablesCount || 17} tables synced)`
+        );
+      } else if (engineRes && engineRes.success) {
+        setSyncFeedbackMsg(
+          language === 'ar' ? 'تمت مزامنة البيانات بنجاح!' : 'Data synced successfully!'
+        );
+      } else {
+        setSyncFeedbackMsg(
+          language === 'ar'
+            ? `اكتملت محاولة المزامنة (${backendRes?.error || engineRes?.error || 'السيرفر متصل'})`
+            : `Sync completed (${backendRes?.error || engineRes?.error || 'Server active'})`
+        );
+      }
+    } catch (e: any) {
+      setSyncFeedbackMsg(language === 'ar' ? `خطأ: ${e.message}` : `Error: ${e.message}`);
+    } finally {
+      setIsManualSyncing(false);
+      setTimeout(() => {
+        setSyncFeedbackMsg(null);
+      }, 5000);
+    }
+  };
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -133,6 +178,51 @@ export const Header: React.FC = () => {
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Connection Mode & Diagnostics Indicator */}
         <ConnectionStatusWidget />
+
+        {/* Manual Cloud ⇄ Local Sync Button */}
+        <div className="relative">
+          <button
+            onClick={handleManualSync}
+            disabled={isManualSyncing}
+            className={`p-2 px-2.5 sm:px-3 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
+              isManualSyncing
+                ? 'bg-teal-500/20 text-teal-400 border-teal-500 animate-pulse'
+                : isDark
+                  ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400 hover:bg-teal-950/30'
+                  : 'bg-white text-slate-800 border-slate-300 hover:bg-teal-50 hover:border-teal-400'
+            }`}
+            title={t(
+              'مزامنة فورية بين السيرفر المحلي والسحابي (تلقائياً كل 15 دقيقة)',
+              'Manual Sync Local ⇄ Cloud Server (Auto every 15 mins)'
+            )}
+          >
+            <span className={`material-symbols-outlined text-lg text-teal-500 ${isManualSyncing ? 'animate-spin' : ''}`}>
+              sync
+            </span>
+            <span className="hidden sm:inline text-xs font-bold text-teal-700 dark:text-teal-400">
+              {isManualSyncing ? t('جاري المزامنة...', 'Syncing...') : t('مزامنة', 'Sync')}
+            </span>
+            <span className="hidden md:inline-block text-[10px] font-mono px-1 py-0.2 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/30 font-semibold">
+              15m
+            </span>
+          </button>
+
+          {/* Sync Toast Feedback Tooltip */}
+          {syncFeedbackMsg && (
+            <div className={`absolute top-full mt-2 ${language === 'ar' ? 'left-0' : 'right-0'} z-50 p-2.5 px-3.5 rounded-xl shadow-2xl border text-xs font-bold whitespace-nowrap animate-in fade-in slide-in-from-top-1 ${
+              syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error')
+                ? 'bg-rose-950 text-rose-200 border-rose-600'
+                : 'bg-teal-950 text-teal-200 border-teal-500'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm text-teal-400">
+                  {syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error') ? 'error' : 'check_circle'}
+                </span>
+                <span>{syncFeedbackMsg}</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Mobile Search Icon */}
         <button

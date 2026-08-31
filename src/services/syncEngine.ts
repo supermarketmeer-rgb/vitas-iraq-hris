@@ -10,10 +10,10 @@ const LAST_PULL_TIMESTAMP_KEY = 'vitas_hris_last_pull_timestamp';
 class SyncEngineService {
   private syncTimer: any = null;
   private isSyncing: boolean = false;
-  private schedule: SyncScheduleOption = '5min';
+  private schedule: SyncScheduleOption = '15min';
 
   constructor() {
-    this.schedule = (localStorage.getItem(SCHEDULE_KEY) as SyncScheduleOption) || '5min';
+    this.schedule = (localStorage.getItem(SCHEDULE_KEY) as SyncScheduleOption) || '15min';
     this.restartScheduleTimer();
   }
 
@@ -111,6 +111,21 @@ class SyncEngineService {
           }
           localStorage.setItem(LAST_PULL_TIMESTAMP_KEY, String(Date.now()));
         }
+      }
+
+      // 3. Trigger Full Local ⇄ Cloud Database Table Sync
+      let cloudSyncSuccess = true;
+      try {
+        const cloudSyncRes = await fetch(`${activeUrl}/api/sync-now`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (cloudSyncRes.ok) {
+          const cloudData = await cloudSyncRes.json();
+          logger.info('SYNC_ENGINE', `Cloud Database Sync completed: ${JSON.stringify(cloudData)}`);
+        }
+      } catch (cloudErr: any) {
+        logger.warn('SYNC_ENGINE', `Cloud database sync notice: ${cloudErr.message}`);
       }
 
       // Update sync timestamps and status
