@@ -2740,8 +2740,8 @@ app.get('/api/news', async (req, res) => {
   }
 });
 
-// Get all app settings
-app.get(['/api/app-settings', '/api/settings/app'], async (req, res) => {
+// Get all app settings & attendance settings
+app.get(['/api/app-settings', '/api/settings/app', '/api/attendance-settings'], async (req, res) => {
   try {
     const results = await query('SELECT setting_key, setting_value FROM app_settings');
     const settingsMap = {};
@@ -2755,8 +2755,8 @@ app.get(['/api/app-settings', '/api/settings/app'], async (req, res) => {
   }
 });
 
-// Bulk update app settings
-app.post(['/api/app-settings/bulk', '/api/settings/app/bulk'], async (req, res) => {
+// Bulk update app settings & attendance settings
+app.post(['/api/app-settings/bulk', '/api/settings/app/bulk', '/api/attendance-settings/bulk', '/api/attendance-settings'], async (req, res) => {
   try {
     const settings = req.body;
     if (settings && typeof settings === 'object') {

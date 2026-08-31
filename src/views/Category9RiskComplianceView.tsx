@@ -276,9 +276,11 @@ export const Category9RiskComplianceView: React.FC = () => {
       localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(updatedDelegations));
 
       // 3.5 Persist to Database (app_settings) so it automatically synchronizes to Cloud & all devices
-      api.updateAttendanceSettings({
+      api.updateAppSettingsBulk({
         vitas_custom_employee_permissions: JSON.stringify(updatedDelegations),
         vitas_custom_users: JSON.stringify(existingUsers)
+      }).then(() => {
+        api.syncNow().catch(() => {});
       }).catch(err => {
         console.warn('Notice saving custom users to DB:', err.message);
       });
@@ -1279,9 +1281,11 @@ export const Category9RiskComplianceView: React.FC = () => {
                                   }
 
                                   // Persist deletion to Database (app_settings)
-                                  api.updateAttendanceSettings({
+                                  api.updateAppSettingsBulk({
                                     vitas_custom_employee_permissions: JSON.stringify(updated),
                                     vitas_custom_users: JSON.stringify(cUsers)
+                                  }).then(() => {
+                                    api.syncNow().catch(() => {});
                                   }).catch(() => {});
 
                                   setCustomEmpSavedToast(
