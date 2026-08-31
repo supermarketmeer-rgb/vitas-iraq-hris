@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import mysql from 'mysql2/promise';
 
 let isSyncing = false;
@@ -138,7 +139,7 @@ export async function syncLocalToCloud(localPool) {
         }
 
         // ─── Cloud -> Local Sync ──────────────────────────────
-        const [localCols] = await queryLocal(`DESCRIBE \`${table}\``).catch(() => []);
+        const localCols = await queryLocal(`DESCRIBE \`${table}\``).catch(() => []);
         const localColNames = (Array.isArray(localCols) ? localCols : []).map(c => c.Field);
 
         const [cloudRows] = await cloudConn.query(`SELECT * FROM \`${table}\``).catch(() => [[]]);
