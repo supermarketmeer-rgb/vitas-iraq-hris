@@ -96,7 +96,8 @@ app.get('/api/health', (req, res) => {
 
 app.post('/api/sync-now', async (req, res) => {
   try {
-    const result = await syncLocalToCloud(db);
+    const force = req.body?.force === true || req.query?.force === 'true';
+    const result = await syncLocalToCloud(db, force);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

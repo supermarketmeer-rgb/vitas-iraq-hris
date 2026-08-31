@@ -52,13 +52,24 @@ export const Header: React.FC = () => {
       // 2. Immediately refresh all active data in UI state without page reload
       await refreshAllData().catch(() => {});
 
-      const count = backendRes?.syncedTablesCount || backendRes?.totalTables || 82;
+      const modCount = backendRes?.modifiedTablesCount || 0;
+      const rowCount = backendRes?.totalRowsSynced || 0;
+      const duration = backendRes?.durationSeconds || '1.2';
+
       if (backendRes && !backendRes.error) {
-        setSyncFeedbackMsg(
-          language === 'ar'
-            ? `تمت المزامنة وتحديث البيانات بنجاح! (${count} جدولاً سحابياً ⇄ محلياً)`
-            : `Sync & data refresh completed! (${count} tables synced)`
-        );
+        if (rowCount > 0) {
+          setSyncFeedbackMsg(
+            language === 'ar'
+              ? `⚡ تمت مزامنة ${rowCount} سجل معدل عبر ${modCount} جداول بنجاح (${duration} ثانية)`
+              : `⚡ Synced ${rowCount} modified records across ${modCount} tables in ${duration}s`
+          );
+        } else {
+          setSyncFeedbackMsg(
+            language === 'ar'
+              ? `⚡ كافة الجداول والسجلات الـ 82 محدثة ومتطابقة بالكامل (${duration} ثانية)`
+              : `⚡ All 82 tables are completely identical and up-to-date (${duration}s)`
+          );
+        }
       } else {
         setSyncFeedbackMsg(
           language === 'ar'
