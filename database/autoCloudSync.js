@@ -68,66 +68,49 @@ export async function syncLocalToCloud(localPool) {
       });
     };
 
-    const tablesToSync = [
-      'employees', 
-      'branches', 
-      'departments', 
-      'positions', 
-      'leave_requests', 
-      'users', 
-      'job_vacancies', 
-      'candidates', 
-      'trainings', 
-      'employee_trainings', 
-      'contract_types', 
-      'status_changes', 
-      'app_settings', 
-      'company_profile',
-      'company_holidays',
-      'company_events',
-      'company_news',
-      'document_categories'
-    ];
+    // ─── 1. Discover all tables dynamically from Local and Cloud ─────
+    const localTableRows = await queryLocal('SHOW TABLES').catch(() => []);
+    const localTables = localTableRows.map(r => Object.values(r)[0]).filter(Boolean);
+
+    const [cloudTableRows] = await cloudConn.query('SHOW TABLES').catch(() => [[]]);
+    const cloudTables = (Array.isArray(cloudTableRows) ? cloudTableRows : []).map(r => Object.values(r)[0]).filter(Boolean);
+
+    const allTables = Array.from(new Set([...localTables, ...cloudTables])).sort();
+    console.log(`[AUTO CLOUD SYNC] Discovered ${allTables.length} total database tables to sync.`);
+
+    await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+    await queryLocal('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
 
     let syncedTablesCount = 0;
 
-    for (const table of tablesToSync) {
+    for (const table of allTables) {
       try {
-        // ─── 1. Local -> Cloud Sync ──────────────────────────────
-        const localRows = await queryLocal(`SELECT * FROM ${table}`).catch(() => []);
-        if (Array.isArray(localRows) && localRows.length > 0) {
-          await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
-
-          for (const row of localRows) {
-            const keys = Object.keys(row);
-            const cols = keys.join(', ');
-            const placeholders = keys.map(() => '?').join(', ');
-            const updateAssigns = keys.map(k => `${k} = VALUES(${k})`).join(', ');
-
-            const vals = keys.map(k => {
-              const v = row[k];
-              if (v instanceof Date) return v.toISOString().slice(0, 19).replace('T', ' ');
-              if (typeof v === 'object' && v !== null) return JSON.stringify(v);
-              return v;
-            });
-
-            const sql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateAssigns}`;
-            await cloudConn.execute(sql, vals).catch(() => {});
+        // Ensure table exists on Cloud
+        if (!cloudTables.includes(table) && localTables.includes(table)) {
+          const createResult = await queryLocal(`SHOW CREATE TABLE \`${table}\``).catch(() => []);
+          if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
+            await cloudConn.execute(createResult[0]['Create Table']).catch(() => {});
+            console.log(`[AUTO CLOUD SYNC] Created missing table '${table}' on Cloud.`);
           }
-
-          await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
         }
 
-        // ─── 2. Cloud -> Local Sync (Pull online submissions & updates) ─────
-        const [cloudRows] = await cloudConn.query(`SELECT * FROM ${table}`).catch(() => [[]]);
-        if (Array.isArray(cloudRows) && cloudRows.length > 0) {
-          await queryLocal('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+        // Ensure table exists on Local
+        if (!localTables.includes(table) && cloudTables.includes(table)) {
+          const [createResult] = await cloudConn.query(`SHOW CREATE TABLE \`${table}\``).catch(() => [[]]);
+          if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
+            await queryLocal(createResult[0]['Create Table']).catch(() => {});
+            console.log(`[AUTO CLOUD SYNC] Created missing table '${table}' on Local.`);
+          }
+        }
 
-          for (const row of cloudRows) {
+        // ─── Local -> Cloud Sync ──────────────────────────────
+        const localRows = await queryLocal(`SELECT * FROM \`${table}\``).catch(() => []);
+        if (Array.isArray(localRows) && localRows.length > 0) {
+          for (const row of localRows) {
             const keys = Object.keys(row);
-            const cols = keys.join(', ');
+            const cols = keys.map(k => `\`${k}\``).join(', ');
             const placeholders = keys.map(() => '?').join(', ');
-            const updateAssigns = keys.map(k => `${k} = VALUES(${k})`).join(', ');
+            const updateAssigns = keys.map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
 
             const vals = keys.map(k => {
               const v = row[k];
@@ -136,11 +119,30 @@ export async function syncLocalToCloud(localPool) {
               return v;
             });
 
-            const sql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateAssigns}`;
+            const sql = `INSERT INTO \`${table}\` (${cols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateAssigns}`;
+            await cloudConn.execute(sql, vals).catch(() => {});
+          }
+        }
+
+        // ─── Cloud -> Local Sync ──────────────────────────────
+        const [cloudRows] = await cloudConn.query(`SELECT * FROM \`${table}\``).catch(() => [[]]);
+        if (Array.isArray(cloudRows) && cloudRows.length > 0) {
+          for (const row of cloudRows) {
+            const keys = Object.keys(row);
+            const cols = keys.map(k => `\`${k}\``).join(', ');
+            const placeholders = keys.map(() => '?').join(', ');
+            const updateAssigns = keys.map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
+
+            const vals = keys.map(k => {
+              const v = row[k];
+              if (v instanceof Date) return v.toISOString().slice(0, 19).replace('T', ' ');
+              if (typeof v === 'object' && v !== null) return JSON.stringify(v);
+              return v;
+            });
+
+            const sql = `INSERT INTO \`${table}\` (${cols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateAssigns}`;
             await queryLocal(sql, vals).catch(() => {});
           }
-
-          await queryLocal('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
         }
 
         syncedTablesCount++;
@@ -149,9 +151,12 @@ export async function syncLocalToCloud(localPool) {
       }
     }
 
-    console.log(`[AUTO CLOUD SYNC] Successfully synced ${syncedTablesCount} tables bidirectionally (Local ⇄ Cloud)!`);
+    await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+    await queryLocal('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+
+    console.log(`[AUTO CLOUD SYNC] Successfully synced all ${syncedTablesCount} database tables (Local ⇄ Cloud)!`);
     isSyncing = false;
-    return { success: true, syncedTablesCount };
+    return { success: true, syncedTablesCount, totalTables: allTables.length };
   } catch (err) {
     isSyncing = false;
     console.warn('[AUTO CLOUD SYNC] Background sync skipped:', err.message);

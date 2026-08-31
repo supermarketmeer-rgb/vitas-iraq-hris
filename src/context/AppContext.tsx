@@ -340,17 +340,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setDocumentRecords(docData || localDocs);
         setNotifications(notifData || localNotifs);
 
-        // Process app settings
+        // Process app settings (handles both array and object responses)
+        let settingsObj: Record<string, string> = {};
         if (Array.isArray(settingsData)) {
-          const settingsObj: Record<string, string> = {};
           settingsData.forEach((setting: any) => {
             if (setting && setting.setting_key) {
               settingsObj[setting.setting_key] = setting.setting_value;
             }
           });
+        } else if (settingsData && typeof settingsData === 'object') {
+          settingsObj = { ...settingsData };
+        }
+
+        if (Object.keys(settingsObj).length > 0) {
           setAppSettings(settingsObj);
           try {
             localStorage.setItem('vitas_app_settings', JSON.stringify(settingsObj));
+            if (settingsObj.vitas_custom_employee_permissions) {
+              localStorage.setItem('vitas_custom_employee_permissions', settingsObj.vitas_custom_employee_permissions);
+            }
+            if (settingsObj.vitas_custom_users) {
+              localStorage.setItem('vitas_custom_users', settingsObj.vitas_custom_users);
+            }
           } catch (e) {}
         }
       } catch (error) {

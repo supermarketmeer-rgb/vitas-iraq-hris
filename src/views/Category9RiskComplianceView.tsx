@@ -144,6 +144,31 @@ export const Category9RiskComplianceView: React.FC = () => {
         }
       })
       .catch(() => {});
+
+    // Load custom user permissions directly from Database (app_settings)
+    api.getAppSettings()
+      .then((settings: any) => {
+        if (settings && typeof settings === 'object') {
+          if (settings.vitas_custom_employee_permissions) {
+            try {
+              const parsed = JSON.parse(settings.vitas_custom_employee_permissions);
+              if (parsed && typeof parsed === 'object') {
+                setSavedEmpDelegations(prev => ({ ...prev, ...parsed }));
+                localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(parsed));
+              }
+            } catch (e) {}
+          }
+          if (settings.vitas_custom_users) {
+            try {
+              const parsedUsers = JSON.parse(settings.vitas_custom_users);
+              if (parsedUsers && typeof parsedUsers === 'object') {
+                localStorage.setItem('vitas_custom_users', JSON.stringify(parsedUsers));
+              }
+            } catch (e) {}
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Compute all unique departments from Settings + Employees table
@@ -214,9 +239,10 @@ export const Category9RiskComplianceView: React.FC = () => {
       });
 
       // 2. Save credentials for login
+      let existingUsers: any = {};
       try {
         const existingUsersRaw = localStorage.getItem('vitas_custom_users') || '{}';
-        const existingUsers = JSON.parse(existingUsersRaw);
+        existingUsers = JSON.parse(existingUsersRaw);
         existingUsers[cleanUsername.toLowerCase()] = {
           username: cleanUsername,
           password: newUserForm.password,
@@ -248,13 +274,21 @@ export const Category9RiskComplianceView: React.FC = () => {
       setSavedEmpDelegations(updatedDelegations);
       localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(updatedDelegations));
 
+      // 3.5 Persist to Database (app_settings) so it automatically synchronizes to Cloud & all devices
+      api.updateAttendanceSettings({
+        vitas_custom_employee_permissions: JSON.stringify(updatedDelegations),
+        vitas_custom_users: JSON.stringify(existingUsers)
+      }).catch(err => {
+        console.warn('Notice saving custom users to DB:', err.message);
+      });
+
       // 4. Select this user and feedback
       setSelectedEmpId(empCode);
       setIsAddUserModalOpen(false);
       setCustomEmpSavedToast(
         language === 'ar'
-          ? `تم إنشاء حساب المستخدم (${newUserForm.fullNameAr}) وتفويض صلاحياته بنجاح!`
-          : `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}) created with assigned permissions!`
+          ? `تم إنشاء حساب المستخدم (${newUserForm.fullNameAr}) وتفويض صلاحياته وحفظها في قاعدة البيانات بنجاح!`
+          : `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}) created and saved to database!`
       );
       setTimeout(() => setCustomEmpSavedToast(null), 5000);
 
@@ -1230,10 +1264,11 @@ export const Category9RiskComplianceView: React.FC = () => {
                                   setSavedEmpDelegations(updated);
                                   localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(updated));
 
+                                  let cUsers: any = {};
                                   try {
                                     const cUsersRaw = localStorage.getItem('vitas_custom_users');
                                     if (cUsersRaw) {
-                                      const cUsers = JSON.parse(cUsersRaw);
+                                      cUsers = JSON.parse(cUsersRaw);
                                       delete cUsers[empKey.toLowerCase()];
                                       delete cUsers[d.employeeId.toLowerCase()];
                                       localStorage.setItem('vitas_custom_users', JSON.stringify(cUsers));
@@ -1241,6 +1276,12 @@ export const Category9RiskComplianceView: React.FC = () => {
                                   } catch (e) {
                                     console.error(e);
                                   }
+
+                                  // Persist deletion to Database (app_settings)
+                                  api.updateAttendanceSettings({
+                                    vitas_custom_employee_permissions: JSON.stringify(updated),
+                                    vitas_custom_users: JSON.stringify(cUsers)
+                                  }).catch(() => {});
 
                                   setCustomEmpSavedToast(
                                     language === 'ar' ? `تم حذف حساب المستخدم (${d.employeeName}) بنجاح.` : `User account (${d.employeeName}) deleted.`
