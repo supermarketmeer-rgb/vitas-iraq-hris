@@ -2650,14 +2650,14 @@ export const Category5PayrollView: React.FC = () => {
                           <td className={`p-3 font-mono font-bold ${isDark ? 'text-cyan-300' : 'text-teal-800 text-sm'}`}>{emp.basic_salary.toLocaleString()} IQD</td>
                           <td className="p-3">
                             {emp.has_exit_date ? (
-                              <span className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30 flex items-center gap-1 w-fit">
-                                <span className="material-symbols-outlined text-xs">event_busy</span>
-                                <span>{t('تلقائي: تاريخ مغادرة', 'Auto: Exit Date')} ({emp.exit_date_val || 'مستقيل'})</span>
+                              <span className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold text-black dark:text-rose-200 bg-rose-100 border border-rose-300 dark:bg-rose-500/20 dark:border-rose-500/40 flex items-center gap-1 w-fit shadow-sm">
+                                <span className="material-symbols-outlined text-xs text-rose-700 dark:text-rose-400">event_busy</span>
+                                <span className="text-black dark:text-rose-200 font-bold">{t('تلقائي: تاريخ مغادرة', 'Auto: Exit Date')} ({emp.exit_date_val || 'مستقيل'})</span>
                               </span>
                             ) : (
-                              <span className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30 flex items-center gap-1 w-fit">
-                                <span className="material-symbols-outlined text-xs">front_hand</span>
-                                <span>{t('يدوي: إيقاف مؤقت', 'Manual On Hold')}</span>
+                              <span className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold text-black dark:text-amber-200 bg-amber-100 border border-amber-300 dark:bg-amber-500/20 dark:border-amber-500/40 flex items-center gap-1 w-fit shadow-sm">
+                                <span className="material-symbols-outlined text-xs text-amber-700 dark:text-amber-400">front_hand</span>
+                                <span className="text-black dark:text-amber-200 font-bold">{t('يدوي: إيقاف مؤقت', 'Manual On Hold')}</span>
                               </span>
                             )}
                           </td>
