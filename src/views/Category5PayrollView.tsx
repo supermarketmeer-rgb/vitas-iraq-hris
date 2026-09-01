@@ -3,14 +3,19 @@ import { useApp } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
 
 interface EmployeeAdjustment {
-  absenceDays: number;
-  overtimeHours: number;
-  overtimeAmount: number;
-  loanPayment: number;
-  otherDeductions: number;
-  bonusExtra: number;
-  incentives: number;
-  earnedLeave: number;
+  absenceDays?: number;
+  incentives?: number;
+  transportation?: number;
+  bonus?: number;
+  overtime?: number;
+  overtimeHours?: number;
+  overtimeAmount?: number;
+  earnedLeave?: number;
+  socialSecurity?: number;
+  incomeTax?: number;
+  loanPayment?: number;
+  otherDeductions?: number;
+  bonusExtra?: number;
 }
 
 interface FinalizedPeriod {
@@ -99,13 +104,18 @@ export const Category5PayrollView: React.FC = () => {
   const [editingEmpId, setEditingEmpId] = useState<string | null>(null);
   const [adjForm, setAdjForm] = useState<EmployeeAdjustment>({
     absenceDays: 0,
-    overtimeHours: 0,
-    overtimeAmount: 0,
+    incentives: 0,
+    transportation: 0,
+    bonus: 0,
+    overtime: 0,
+    earnedLeave: 0,
+    socialSecurity: 0,
+    incomeTax: 0,
     loanPayment: 0,
     otherDeductions: 0,
-    bonusExtra: 0,
-    incentives: 0,
-    earnedLeave: 0
+    overtimeHours: 0,
+    overtimeAmount: 0,
+    bonusExtra: 0
   });
 
   // Finalized Periods Archive state (pre-populated with historical archived sample)
@@ -263,24 +273,15 @@ export const Category5PayrollView: React.FC = () => {
     }
     
     return uniqueEmployees.map(emp => {
-      const adj = adjustments[emp.id] || {
-        absenceDays: 0,
-        overtimeHours: 0,
-        overtimeAmount: 0,
-        loanPayment: 0,
-        otherDeductions: 0,
-        bonusExtra: 0,
-        incentives: 0,
-        earnedLeave: 0
-      };
+      const adj = adjustments[emp.id] || {};
 
       // XAMPP Field: basic_salary
       const basic_salary = Number(emp.basicSalary ?? emp.basic_salary ?? emp.salary ?? 1250000);
       // SS/Tax exemption flag (from DB column is_ss_tax_exempt)
       const isExemptFromSsTax = Number(emp.isSsTaxExempt ?? emp.is_ss_tax_exempt ?? 0) === 1;
       
-      // XAMPP Field: absence_days
-      const absence_days = adj.absenceDays || 0;
+      // XAMPP Field: absence_days (1. absence)
+      const absence_days = adj.absenceDays !== undefined ? adj.absenceDays : 0;
       const absenceDeduction = (absence_days * (basic_salary / 30));
       
       // XAMPP Field: current_month_basic
@@ -289,10 +290,14 @@ export const Category5PayrollView: React.FC = () => {
       // XAMPP Allowances Fields (supporting camelCase & snake_case)
       const phone_allowance = Number(emp.phoneAllowance ?? emp.phone_allowance ?? 0);
       const cert_allowance = Number(emp.certificateAllowance ?? emp.certificate_allowance ?? 0);
-      const transportation = Number(emp.transportationFixed ?? emp.transportation_fixed ?? 0);
-      const bonus = Number(emp.fixedBonus ?? emp.fixed_bonus ?? 0) + (adj.bonusExtra || 0);
-      const incentives = adj.incentives || 0;
-      const earned_leave = adj.earnedLeave || 0;
+      // 2. transportation
+      const transportation = adj.transportation !== undefined ? adj.transportation : Number(emp.transportationFixed ?? emp.transportation_fixed ?? 0);
+      // 3. bonus
+      const bonus = adj.bonus !== undefined ? adj.bonus : (Number(emp.fixedBonus ?? emp.fixed_bonus ?? 0) + (adj.bonusExtra || 0));
+      // 4. incentives
+      const incentives = adj.incentives !== undefined ? adj.incentives : Number(emp.incentives ?? 0);
+      // 5. earned_leave
+      const earned_leave = adj.earnedLeave !== undefined ? adj.earnedLeave : Number(emp.earnedLeave ?? emp.earned_leave ?? 0);
 
       // Family allowance calculation (spouse + children under 18) -> family_allowance
       // Values are fetched directly from Policies settings in appSettings (or defaults)
@@ -359,8 +364,10 @@ export const Category5PayrollView: React.FC = () => {
       // Total Family Allowance = Spouse Allowance + (Children under 18 * Child Allowance)
       const family_allowance = spouseAllow + childAllow;
 
-      // XAMPP Field: overtime
-      const overtime = adj.overtimeAmount > 0 ? adj.overtimeAmount : (adj.overtimeHours * (basic_salary / 240) * 1.5);
+      // XAMPP Field: overtime (6. overtime)
+      const overtime = adj.overtime !== undefined
+        ? adj.overtime
+        : (adj.overtimeAmount > 0 ? adj.overtimeAmount : ((adj.overtimeHours || 0) * (basic_salary / 240) * 1.5));
       
       // XAMPP Field: allowances_total
       const allowances_total = phone_allowance + cert_allowance + transportation + bonus + family_allowance + overtime + incentives + earned_leave;
@@ -369,9 +376,10 @@ export const Category5PayrollView: React.FC = () => {
       const gross_salary = current_month_basic + allowances_total;
 
       // Deductions Fields: social_security, income_tax, insurance
-      // If employee is exempt: all statutory deductions = 0
+      // 7. social_security
       const socialSecurityRate = parseFloat(appSettings['social_security_rate_default'] || '5') / 100;
-      const social_security = isExemptFromSsTax ? 0 : Math.round(basic_salary * socialSecurityRate);
+      const auto_social_security = isExemptFromSsTax ? 0 : Math.round(basic_salary * socialSecurityRate);
+      const social_security = adj.socialSecurity !== undefined ? adj.socialSecurity : auto_social_security;
 
       // Health and Life Insurance deduction
       const insuranceSetting = parseFloat(appSettings['insurance_deduction_default'] || '25000');
@@ -379,12 +387,12 @@ export const Category5PayrollView: React.FC = () => {
         ? insuranceSetting
         : Math.round(basic_salary * 0.01));
 
-      // Income tax calculation
+      // 8. income_tax calculation
       const customTaxRate = parseFloat(appSettings['income_tax_rate_default'] || '');
-      let income_tax = 0;
+      let auto_income_tax = 0;
       if (!isExemptFromSsTax) {
         if (!isNaN(customTaxRate) && customTaxRate > 0) {
-          income_tax = Math.round(basic_salary * (customTaxRate / 100));
+          auto_income_tax = Math.round(basic_salary * (customTaxRate / 100));
         } else {
           const monthlyExemption = isMarried ? (375000 + childCount * 16667) : 208333;
           const taxableBase = Math.max(0, gross_salary - social_security - monthlyExemption);
@@ -393,16 +401,17 @@ export const Category5PayrollView: React.FC = () => {
             let b2 = taxableBase > 250000 ? Math.min(taxableBase - 250000, 250000) * 0.05 : 0;
             let b3 = taxableBase > 500000 ? Math.min(taxableBase - 500000, 500000) * 0.10 : 0;
             let b4 = taxableBase > 1000000 ? (taxableBase - 1000000) * 0.15 : 0;
-            income_tax = Math.round(b1 + b2 + b3 + b4);
+            auto_income_tax = Math.round(b1 + b2 + b3 + b4);
           }
         }
       }
+      const income_tax = adj.incomeTax !== undefined ? adj.incomeTax : auto_income_tax;
 
       const deductions_calc = social_security + income_tax + insurance;
       
-      // XAMPP Fields: loan_payment, other_deductions
-      const loan_payment = adj.loanPayment || 0;
-      const other_deductions = adj.otherDeductions || 0;
+      // XAMPP Fields: loan_payment, other_deductions (9. loan_payment, 10. other_deductions)
+      const loan_payment = adj.loanPayment !== undefined ? adj.loanPayment : Number(emp.loanPayment ?? emp.loan_payment ?? 0);
+      const other_deductions = adj.otherDeductions !== undefined ? adj.otherDeductions : Number(emp.otherDeductions ?? emp.other_deductions ?? 0);
       
       // Total Deductions
       const total_deductions = deductions_calc + loan_payment + other_deductions;
@@ -419,18 +428,24 @@ export const Category5PayrollView: React.FC = () => {
         empStatusStr.includes('مستقيل') || empStatusStr.includes('منتهي')
       );
 
-      const manualOverride = onHoldOverrides[emp.id];
-      const isManualOnHold = manualOverride !== undefined
-        ? manualOverride
-        : Boolean(emp.onHold || emp.on_hold === 1);
+      const manualOverride = onHoldOverrides[emp.id] !== undefined
+        ? onHoldOverrides[emp.id]
+        : onHoldOverrides[String(emp.id)];
 
-      const isOnHold = hasExitDate || isManualOnHold;
+      // Manual override takes absolute precedence when toggled by user
+      const isOnHold = manualOverride !== undefined
+        ? manualOverride
+        : (hasExitDate || Boolean(emp.onHold || emp.on_hold === 1));
 
       let onHoldReason: string | null = null;
-      if (hasExitDate) {
-        onHoldReason = `تاريخ مغادرة / استقالة (${exitDateVal || 'مستقيل'})`;
-      } else if (isManualOnHold) {
-        onHoldReason = 'إيقاف يدوي بواسطة إدارة الرواتب';
+      if (isOnHold) {
+        if (manualOverride === true) {
+          onHoldReason = 'إيقاف يدوي بواسطة إدارة الرواتب';
+        } else if (hasExitDate) {
+          onHoldReason = `تاريخ مغادرة / استقالة (${exitDateVal || 'مستقيل'})`;
+        } else {
+          onHoldReason = 'إيقاف مسجل في النظام';
+        }
       }
 
       return {
@@ -481,7 +496,7 @@ export const Category5PayrollView: React.FC = () => {
         on_hold_reason: onHoldReason,
         has_exit_date: hasExitDate,
         exit_date_val: exitDateVal,
-        is_manual_on_hold: isManualOnHold
+        is_manual_on_hold: manualOverride !== undefined ? manualOverride : Boolean(emp.onHold || emp.on_hold === 1)
       };
     });
   }, [employees, adjustments, onHoldOverrides]);
@@ -502,8 +517,9 @@ export const Category5PayrollView: React.FC = () => {
   }, [computedPayrollRows, selectedPayslipOffice]);
 
   // Toggle On-Hold Action Handler
-  const handleToggleOnHold = (empId: string) => {
-    const row = computedPayrollRows.find(r => String(r.id) === String(empId));
+  const handleToggleOnHold = (empId: string | number) => {
+    const strId = String(empId);
+    const row = computedPayrollRows.find(r => String(r.id) === strId);
     if (!row) return;
 
     const currentOnHold = row.is_on_hold;
@@ -511,11 +527,12 @@ export const Category5PayrollView: React.FC = () => {
 
     setOnHoldOverrides(prev => ({
       ...prev,
-      [empId]: nextVal
+      [empId]: nextVal,
+      [strId]: nextVal
     }));
 
     // Sync with backend API
-    fetch(`/api/employees/${empId}`, {
+    fetch(`/api/employees/${strId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ on_hold: nextVal ? 1 : 0 })
@@ -523,11 +540,11 @@ export const Category5PayrollView: React.FC = () => {
 
     setActionMessage(t(
       nextVal
-        ? `تم إيقاف راتب الموظف (${row.employee_name_ar}) واستبعاده من كشوف وقسائم الرواتب بنجاح`
-        : `تم فك إيقاف راتب الموظف (${row.employee_name_ar}) واستعادته لكشوف وقسائم الرواتب بنجاح`,
+        ? `تم إيقاف راتب الموظف (${row.employee_name_ar}) واستبعاده من كشوف وقسائم الرواتب بنجاح (On Hold)`
+        : `تم إطلاق وتفعيل راتب الموظف (${row.employee_name_ar}) وإعادته لكشوف وقسائم الرواتب بنجاح (Release)`,
       nextVal
         ? `Payroll for ${row.employee_name_en} placed On Hold`
-        : `Payroll for ${row.employee_name_en} resumed`
+        : `Payroll for ${row.employee_name_en} released`
     ));
     setTimeout(() => setActionMessage(null), 3500);
   };
@@ -674,17 +691,22 @@ export const Category5PayrollView: React.FC = () => {
   const handleOpenEditAdjustment = (row: any) => {
     if (isPeriodLocked) return;
     setEditingEmpId(row.id);
-    const existing = adjustments[row.id] || {
-      absenceDays: row.absence_days || 0,
-      overtimeHours: row.overtime_hours || 0,
-      overtimeAmount: row.overtime || 0,
-      loanPayment: row.loan_payment || 0,
-      otherDeductions: row.other_deductions || 0,
-      bonusExtra: row.bonus || 0,
-      incentives: row.incentives || 0,
-      earnedLeave: row.earned_leave || 0
-    };
-    setAdjForm(existing);
+    const existing = adjustments[row.id];
+    setAdjForm({
+      absenceDays: existing?.absenceDays !== undefined ? existing.absenceDays : (row.absence_days || 0),
+      incentives: existing?.incentives !== undefined ? existing.incentives : (row.incentives || 0),
+      transportation: existing?.transportation !== undefined ? existing.transportation : (row.transportation || 0),
+      bonus: existing?.bonus !== undefined ? existing.bonus : (row.bonus || 0),
+      overtime: existing?.overtime !== undefined ? existing.overtime : (row.overtime || 0),
+      earnedLeave: existing?.earnedLeave !== undefined ? existing.earnedLeave : (row.earned_leave || 0),
+      socialSecurity: existing?.socialSecurity !== undefined ? existing.socialSecurity : (row.social_security || 0),
+      incomeTax: existing?.incomeTax !== undefined ? existing.incomeTax : (row.income_tax || 0),
+      loanPayment: existing?.loanPayment !== undefined ? existing.loanPayment : (row.loan_payment || 0),
+      otherDeductions: existing?.otherDeductions !== undefined ? existing.otherDeductions : (row.other_deductions || 0),
+      overtimeHours: existing?.overtimeHours || 0,
+      overtimeAmount: existing?.overtimeAmount || 0,
+      bonusExtra: existing?.bonusExtra || 0
+    });
   };
 
   // Save adjustment
@@ -972,55 +994,55 @@ export const Category5PayrollView: React.FC = () => {
                 isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-300 bg-white'
               }`}>
                 <table className="w-full text-left text-xs sm:text-sm border-collapse" dir="ltr">
-                  <thead>
-                    <tr className="bg-[#1e293b] font-mono font-extrabold text-xs sm:text-sm border-b border-white/20 select-none">
-                      <th className="p-3 text-center border-r border-white/10 w-10 !text-slate-300 bg-slate-900 font-bold">#</th>
-                      <th className="p-3 border-r border-white/10 whitespace-nowrap !text-amber-300 font-bold">badge_no</th>
-                      <th className="p-3 border-r border-white/10 whitespace-nowrap !text-sky-300 font-bold">location</th>
-                      <th className="p-3 border-r border-white/10 whitespace-nowrap !text-white font-bold bg-[#1e293b]">employee_name</th>
-                      <th className="p-3 border-r border-white/10 whitespace-nowrap !text-purple-300 font-bold">position</th>
-                      <th className="p-3 border-r border-white/10 whitespace-nowrap !text-cyan-300 font-bold bg-[#1e293b]">
+                  <thead className="bg-[#0f172a] text-white sticky top-0 z-10 shadow-md">
+                    <tr className="bg-[#0f172a] text-white font-mono font-extrabold text-xs sm:text-sm border-b-2 border-teal-500/50 select-none">
+                      <th className="p-3.5 text-center border-r border-slate-700/70 w-10 text-slate-300 bg-[#0a0c10] font-black">#</th>
+                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-amber-300 bg-[#0f172a] font-black tracking-wide">badge_no</th>
+                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-sky-300 bg-[#0f172a] font-black tracking-wide">location</th>
+                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-white font-black bg-[#1e293b] tracking-wide">employee_name</th>
+                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-purple-300 bg-[#0f172a] font-black tracking-wide">position</th>
+                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-cyan-300 font-black bg-[#1e293b] tracking-wide">
                         {viewMode === 'summary' ? 'current_month_basic' : 'basic_salary'}
                       </th>
 
                       {viewMode === 'summary' && (
                         <>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-300 font-bold">incentives</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-400 font-bold">overtime</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-400 font-bold">earned_leave</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-400 font-black">allowances_total</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">incentives</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-400 bg-[#0f172a] font-black tracking-wide">overtime</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-400 bg-[#0f172a] font-black tracking-wide">earned_leave</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#1e293b] font-black tracking-wide">allowances_total</th>
                         </>
                       )}
 
                       {viewMode === 'detailed' && (
                         <>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-white font-bold bg-[#1e293b]">current_month_basic</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-300 font-bold">phone_allowance</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-300 font-bold">family_allowance</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-300 font-bold">cert_allowance</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-300 font-bold">incentives</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-300 font-bold">transportation</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-300 font-bold">bonus</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-400 font-bold">overtime</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-emerald-400 font-bold">earned_leave</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-cyan-200 bg-[#1e293b] font-black tracking-wide">current_month_basic</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">phone_allowance</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">family_allowance</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">cert_allowance</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">incentives</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">transportation</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">bonus</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-400 bg-[#0f172a] font-black tracking-wide">overtime</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-400 bg-[#0f172a] font-black tracking-wide">earned_leave</th>
                         </>
                       )}
 
-                      <th className="p-3 border-r border-white/10 whitespace-nowrap !text-cyan-200 font-black bg-[#1e293b]">gross_salary</th>
+                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-cyan-200 font-black bg-[#1e293b] tracking-wide">gross_salary</th>
 
                       {viewMode === 'detailed' && (
                         <>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-rose-300 font-bold">social_security</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-rose-300 font-bold">income_tax</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-rose-300 font-bold">insurance</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-rose-300 font-bold">loan_payment</th>
-                          <th className="p-3 border-r border-white/10 whitespace-nowrap !text-rose-300 font-bold">other_deductions</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-300 bg-[#0f172a] font-black tracking-wide">social_security</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-300 bg-[#0f172a] font-black tracking-wide">income_tax</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-300 bg-[#0f172a] font-black tracking-wide">insurance</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-300 bg-[#0f172a] font-black tracking-wide">loan_payment</th>
+                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-300 bg-[#0f172a] font-black tracking-wide">other_deductions</th>
                         </>
                       )}
 
-                      <th className="p-3 border-r border-white/10 whitespace-nowrap !text-rose-400 font-black">total_deductions</th>
-                      <th className="p-3 border-r border-white/10 whitespace-nowrap !text-white font-black bg-[#1e293b]">net_salary</th>
-                      <th className="p-3 text-center whitespace-nowrap !text-slate-200 font-bold">{t('إجراءات', 'Actions')}</th>
+                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-400 font-black bg-[#1e293b] tracking-wide">total_deductions</th>
+                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 font-black bg-[#1e293b] tracking-wide">net_salary</th>
+                      <th className="p-3.5 text-center whitespace-nowrap text-slate-100 font-black bg-[#0f172a]">{t('إجراءات', 'Actions')}</th>
                     </tr>
                   </thead>
 
@@ -1054,6 +1076,12 @@ export const Category5PayrollView: React.FC = () => {
                         }`}>
                           <div className="flex items-center gap-1.5">
                             <span>{language === 'en' ? row.employee_name_en : row.employee_name_ar}</span>
+                            {row.is_on_hold && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30 flex items-center gap-0.5">
+                                <span className="material-symbols-outlined text-[10px]">front_hand</span>
+                                <span>{language === 'en' ? 'On Hold' : 'موقوف'}</span>
+                              </span>
+                            )}
                             {Number(row.is_ss_tax_exempt) === 1 && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30">
                                 {language === 'en' ? 'Exempt' : 'معفى'}
@@ -1227,23 +1255,23 @@ export const Category5PayrollView: React.FC = () => {
                               <span>{t('تعديل', 'Edit')}</span>
                             </button>
 
-                            {/* On Hold Action Button */}
+                            {/* Release / On Hold Toggle Button */}
                             <button
                               disabled={isPeriodLocked}
                               onClick={() => handleToggleOnHold(row.id)}
-                              className={`px-2 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
+                              className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                                 isPeriodLocked
                                   ? 'bg-white/5 text-slate-500 cursor-not-allowed'
                                   : row.is_on_hold
                                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 shadow-sm'
                                     : isDark
-                                      ? 'bg-slate-800 text-slate-300 hover:bg-amber-500/20 hover:text-amber-300 border border-slate-700'
-                                      : 'bg-slate-100 text-slate-700 hover:bg-amber-100 hover:text-amber-800 border border-slate-300'
+                                      ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20'
+                                      : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
                               }`}
-                              title={row.is_on_hold ? t(`رواتب موقوفة (${row.on_hold_reason}) - انقر لفك الإيقاف`, 'On Hold - Click to Resume') : t('إيقاف راتب الموظف يدوياً', 'Put Payroll On Hold')}
+                              title={row.is_on_hold ? t(`الراتب موقوف (${row.on_hold_reason}) - انقر للإطلاق (Release)`, 'Payroll On Hold - Click to Release') : t('الراتب مطلق ونشط - انقر للإيقاف (Hold)', 'Payroll Released - Click to put On Hold')}
                             >
-                              <span className="material-symbols-outlined text-sm">{row.is_on_hold ? 'front_hand' : 'pause_circle'}</span>
-                              <span>{row.is_on_hold ? t('موقوف', 'On Hold') : t('إيقاف', 'Hold')}</span>
+                              <span className="material-symbols-outlined text-sm">{row.is_on_hold ? 'front_hand' : 'check_circle'}</span>
+                              <span>{row.is_on_hold ? t('موقوف (On Hold)', 'On Hold') : t('مطلق (Release)', 'Release')}</span>
                             </button>
                           </div>
                         </td>
@@ -2154,89 +2182,354 @@ export const Category5PayrollView: React.FC = () => {
       )}
 
       {/* MODAL: Edit Adjustments Modal */}
-      {editingEmpId && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-400">edit_note</span>
-                {t('تعديل الاستقطاعات والأجر الإضافي للموظف (XAMPP Schema)', 'Edit Employee Payroll Adjustments')}
-              </h3>
-              <button onClick={() => setEditingEmpId(null)} className="text-slate-400 hover:text-white">✕</button>
-            </div>
+      {editingEmpId && (() => {
+        const targetRow = computedPayrollRows.find(r => String(r.id) === String(editingEmpId));
+        const basicSalary = targetRow?.basic_salary || 0;
+        const absenceDeduction = (Number(adjForm.absenceDays || 0) * (basicSalary / 30));
+        const currentMonthBasic = Math.max(0, basicSalary - absenceDeduction);
+        const phoneAllow = targetRow?.phone_allowance || 0;
+        const certAllow = targetRow?.cert_allowance || 0;
+        const familyAllow = targetRow?.family_allowance || 0;
+        const transAllow = Number(adjForm.transportation ?? targetRow?.transportation ?? 0);
+        const bonusAllow = Number(adjForm.bonus ?? targetRow?.bonus ?? 0);
+        const incAllow = Number(adjForm.incentives ?? targetRow?.incentives ?? 0);
+        const elAllow = Number(adjForm.earnedLeave ?? targetRow?.earned_leave ?? 0);
+        const otAllow = Number(adjForm.overtime ?? targetRow?.overtime ?? 0);
+        const totalAllowances = phoneAllow + certAllow + familyAllow + transAllow + bonusAllow + incAllow + elAllow + otAllow;
+        const grossEst = currentMonthBasic + totalAllowances;
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('أيام الغياب خلال الشهر (absence_days):', 'Absence Days (absence_days):')}</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="30"
-                  value={adjForm.absenceDays}
-                  onChange={e => setAdjForm({ ...adjForm, absenceDays: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-[#0a0c10] border border-white/15 rounded-xl text-white font-mono focus:outline-none focus:border-teal-500"
-                />
+        const ssDed = Number(adjForm.socialSecurity ?? targetRow?.social_security ?? 0);
+        const taxDed = Number(adjForm.incomeTax ?? targetRow?.income_tax ?? 0);
+        const insDed = targetRow?.insurance || 0;
+        const loanDed = Number(adjForm.loanPayment ?? targetRow?.loan_payment ?? 0);
+        const otherDed = Number(adjForm.otherDeductions ?? targetRow?.other_deductions ?? 0);
+        const totalDeductionsEst = ssDed + taxDed + insDed + loanDed + otherDed;
+        const netEst = grossEst - totalDeductionsEst;
+
+        const handleResetDefaults = () => {
+          if (!targetRow) return;
+          const defaultEmp = employees.find(e => String(e.id) === String(editingEmpId));
+          const isExempt = Number(defaultEmp?.isSsTaxExempt ?? defaultEmp?.is_ss_tax_exempt ?? 0) === 1;
+          const ssRate = parseFloat(appSettings['social_security_rate_default'] || '5') / 100;
+          const autoSS = isExempt ? 0 : Math.round(basicSalary * ssRate);
+
+          setAdjForm({
+            absenceDays: 0,
+            incentives: Number(defaultEmp?.incentives || 0),
+            transportation: Number(defaultEmp?.transportationFixed ?? defaultEmp?.transportation_fixed ?? 0),
+            bonus: Number(defaultEmp?.fixedBonus ?? defaultEmp?.fixed_bonus ?? 0),
+            overtime: 0,
+            earnedLeave: Number(defaultEmp?.earnedLeave ?? defaultEmp?.earned_leave ?? 0),
+            socialSecurity: autoSS,
+            incomeTax: 0,
+            loanPayment: Number(defaultEmp?.loanPayment ?? defaultEmp?.loan_payment ?? 0),
+            otherDeductions: Number(defaultEmp?.otherDeductions ?? defaultEmp?.other_deductions ?? 0),
+            overtimeHours: 0,
+            overtimeAmount: 0,
+            bonusExtra: 0
+          });
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className={`w-full max-w-2xl rounded-3xl border shadow-2xl overflow-hidden my-6 transition-all ${
+              isDark ? 'bg-[#111827] border-white/15 text-white' : 'bg-white border-slate-300 text-slate-900'
+            }`}>
+              {/* Modal Header */}
+              <div className={`p-5 flex items-center justify-between border-b ${
+                isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-teal-400 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-2xl">edit_note</span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black flex items-center gap-2">
+                      <span>{t('تعديل الاستحقاقات والاستقطاعات اليدوية', 'Edit Employee Payroll Adjustments')}</span>
+                    </h3>
+                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      {language === 'en' ? targetRow?.employee_name_en : targetRow?.employee_name_ar} • VTS-{targetRow?.badge_no || targetRow?.employee_id} • {targetRow?.location_ar} • {t('الراتب الاسمي:', 'Basic:')} {basicSalary.toLocaleString()} IQD
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditingEmpId(null)}
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${
+                    isDark ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                  }`}
+                >
+                  ✕
+                </button>
               </div>
 
-              <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('ساعات العمل الإضافي (overtime):', 'Overtime Hours (overtime):')}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={adjForm.overtimeHours}
-                  onChange={e => setAdjForm({ ...adjForm, overtimeHours: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-[#0a0c10] border border-white/15 rounded-xl text-white font-mono focus:outline-none focus:border-teal-500"
-                />
+              {/* Modal Body: 2 Columns (Allowances vs Deductions) */}
+              <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {/* Column 1: Allowances & Additions */}
+                  <div className={`p-4 rounded-2xl border space-y-3.5 ${
+                    isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="flex items-center gap-2 pb-2 border-b border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                      <span className="material-symbols-outlined text-lg">add_circle</span>
+                      <h4 className="font-bold text-xs uppercase tracking-wider">{t('البدلات والمستحقات المضافة (Allowances)', 'Allowances & Earnings')}</h4>
+                    </div>
+
+                    {/* 1. Incentives */}
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-slate-700 dark:text-slate-300">
+                        {t('المحفزات والمكافآت (incentives):', 'Incentives (incentives):')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        value={adjForm.incentives ?? ''}
+                        onChange={e => setAdjForm({ ...adjForm, incentives: Number(e.target.value) })}
+                        placeholder="0"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:outline-none border ${
+                          isDark ? 'bg-[#0a0c10] border-white/15 text-emerald-300 focus:border-teal-500' : 'bg-white border-slate-300 text-slate-900 focus:border-teal-600 shadow-sm'
+                        }`}
+                      />
+                    </div>
+
+                    {/* 2. Transportation */}
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-slate-700 dark:text-slate-300">
+                        {t('بدل النقل والمواصلات (transportation):', 'Transportation (transportation):')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        value={adjForm.transportation ?? ''}
+                        onChange={e => setAdjForm({ ...adjForm, transportation: Number(e.target.value) })}
+                        placeholder="0"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:outline-none border ${
+                          isDark ? 'bg-[#0a0c10] border-white/15 text-emerald-300 focus:border-teal-500' : 'bg-white border-slate-300 text-slate-900 focus:border-teal-600 shadow-sm'
+                        }`}
+                      />
+                    </div>
+
+                    {/* 3. Bonus */}
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-slate-700 dark:text-slate-300">
+                        {t('المكافآت والمنح (bonus):', 'Bonus (bonus):')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        value={adjForm.bonus ?? ''}
+                        onChange={e => setAdjForm({ ...adjForm, bonus: Number(e.target.value) })}
+                        placeholder="0"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:outline-none border ${
+                          isDark ? 'bg-[#0a0c10] border-white/15 text-emerald-300 focus:border-teal-500' : 'bg-white border-slate-300 text-slate-900 focus:border-teal-600 shadow-sm'
+                        }`}
+                      />
+                    </div>
+
+                    {/* 4. Overtime Pay */}
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-slate-700 dark:text-slate-300">
+                        {t('أجر العمل الإضافي (overtime):', 'Overtime Pay (overtime):')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        value={adjForm.overtime ?? ''}
+                        onChange={e => setAdjForm({ ...adjForm, overtime: Number(e.target.value) })}
+                        placeholder="0"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:outline-none border ${
+                          isDark ? 'bg-[#0a0c10] border-white/15 text-emerald-300 focus:border-teal-500' : 'bg-white border-slate-300 text-slate-900 focus:border-teal-600 shadow-sm'
+                        }`}
+                      />
+                    </div>
+
+                    {/* 5. Earned Leave */}
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-slate-700 dark:text-slate-300">
+                        {t('بدل الإجازات المستحقة (earned leave):', 'Earned Leave (earned_leave):')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        value={adjForm.earnedLeave ?? ''}
+                        onChange={e => setAdjForm({ ...adjForm, earnedLeave: Number(e.target.value) })}
+                        placeholder="0"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:outline-none border ${
+                          isDark ? 'bg-[#0a0c10] border-white/15 text-emerald-300 focus:border-teal-500' : 'bg-white border-slate-300 text-slate-900 focus:border-teal-600 shadow-sm'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Column 2: Deductions & Absences */}
+                  <div className={`p-4 rounded-2xl border space-y-3.5 ${
+                    isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="flex items-center gap-2 pb-2 border-b border-rose-500/20 text-rose-600 dark:text-rose-400">
+                      <span className="material-symbols-outlined text-lg">remove_circle</span>
+                      <h4 className="font-bold text-xs uppercase tracking-wider">{t('الاستقطاعات والغيابات (Deductions)', 'Deductions & Statutory')}</h4>
+                    </div>
+
+                    {/* 6. Absence Days */}
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-slate-700 dark:text-slate-300">
+                        {t('أيام الغياب (absence / absence_days):', 'Absence Days (absence):')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          max="30"
+                          value={adjForm.absenceDays ?? 0}
+                          onChange={e => setAdjForm({ ...adjForm, absenceDays: Number(e.target.value) })}
+                          className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:outline-none border ${
+                            isDark ? 'bg-[#0a0c10] border-white/15 text-rose-300 focus:border-rose-500' : 'bg-white border-slate-300 text-slate-900 focus:border-rose-600 shadow-sm'
+                          }`}
+                        />
+                        <span className="absolute left-3 top-2 text-[10px] text-slate-400 font-mono">
+                          {absenceDeduction > 0 ? `-${Math.round(absenceDeduction).toLocaleString()} IQD` : '0 IQD'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 7. Social Security */}
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-slate-700 dark:text-slate-300">
+                        {t('الضمان الاجتماعي (social security):', 'Social Security (social_security):')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="500"
+                        value={adjForm.socialSecurity ?? ''}
+                        onChange={e => setAdjForm({ ...adjForm, socialSecurity: Number(e.target.value) })}
+                        placeholder="0"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:outline-none border ${
+                          isDark ? 'bg-[#0a0c10] border-white/15 text-rose-300 focus:border-rose-500' : 'bg-white border-slate-300 text-slate-900 focus:border-rose-600 shadow-sm'
+                        }`}
+                      />
+                    </div>
+
+                    {/* 8. Income Tax */}
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-slate-700 dark:text-slate-300">
+                        {t('ضريبة الدخل (income tax):', 'Income Tax (income_tax):')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="500"
+                        value={adjForm.incomeTax ?? ''}
+                        onChange={e => setAdjForm({ ...adjForm, incomeTax: Number(e.target.value) })}
+                        placeholder="0"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:outline-none border ${
+                          isDark ? 'bg-[#0a0c10] border-white/15 text-rose-300 focus:border-rose-500' : 'bg-white border-slate-300 text-slate-900 focus:border-rose-600 shadow-sm'
+                        }`}
+                      />
+                    </div>
+
+                    {/* 9. Loan Payment */}
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-slate-700 dark:text-slate-300">
+                        {t('استقطاع السلف والقروض (loan payment):', 'Loan Payment (loan_payment):')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        value={adjForm.loanPayment ?? ''}
+                        onChange={e => setAdjForm({ ...adjForm, loanPayment: Number(e.target.value) })}
+                        placeholder="0"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:outline-none border ${
+                          isDark ? 'bg-[#0a0c10] border-white/15 text-rose-300 focus:border-rose-500' : 'bg-white border-slate-300 text-slate-900 focus:border-rose-600 shadow-sm'
+                        }`}
+                      />
+                    </div>
+
+                    {/* 10. Other Deductions */}
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1 text-slate-700 dark:text-slate-300">
+                        {t('استقطاعات أخرى وتنبيهات (other deductions):', 'Other Deductions (other_deductions):')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        value={adjForm.otherDeductions ?? ''}
+                        onChange={e => setAdjForm({ ...adjForm, otherDeductions: Number(e.target.value) })}
+                        placeholder="0"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:outline-none border ${
+                          isDark ? 'bg-[#0a0c10] border-white/15 text-rose-300 focus:border-rose-500' : 'bg-white border-slate-300 text-slate-900 focus:border-rose-600 shadow-sm'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Real-time Calculated Summary Box */}
+                <div className={`p-4 rounded-2xl border ${
+                  isDark ? 'bg-[#0a0c10] border-teal-500/30' : 'bg-teal-50/50 border-teal-200'
+                }`}>
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">{t('إجمالي الراتب الاسمي والبدلات', 'Gross Salary')}</span>
+                      <span className="text-sm font-mono font-black text-cyan-600 dark:text-cyan-300">{Math.round(grossEst).toLocaleString()} IQD</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">{t('إجمالي الاستقطاعات', 'Total Deductions')}</span>
+                      <span className="text-sm font-mono font-black text-rose-600 dark:text-rose-400">-{Math.round(totalDeductionsEst).toLocaleString()} IQD</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">{t('صافي الراتب التقديري', 'Estimated Net')}</span>
+                      <span className="text-sm font-mono font-black text-emerald-600 dark:text-emerald-400">{Math.round(netEst).toLocaleString()} IQD</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('المحفزات والمكافآت (incentives / bonus):', 'Incentives & Bonus:')}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={adjForm.incentives}
-                  onChange={e => setAdjForm({ ...adjForm, incentives: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-[#0a0c10] border border-white/15 rounded-xl text-white font-mono focus:outline-none focus:border-teal-500"
-                />
-              </div>
+              {/* Modal Footer */}
+              <div className={`p-4 border-t flex flex-wrap items-center justify-between gap-2 ${
+                isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+              }`}>
+                <button
+                  type="button"
+                  onClick={handleResetDefaults}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    isDark ? 'bg-white/5 text-amber-300 hover:bg-white/10 border border-amber-500/30' : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">restart_alt</span>
+                  <span>{t('استعادة التلقائي', 'Reset to Defaults')}</span>
+                </button>
 
-              <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('استقطاع السلف والقروض (loan_payment):', 'Loan Payment Deduction (loan_payment):')}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={adjForm.loanPayment}
-                  onChange={e => setAdjForm({ ...adjForm, loanPayment: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-[#0a0c10] border border-white/15 rounded-xl text-white font-mono focus:outline-none focus:border-teal-500"
-                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingEmpId(null)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+                      isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                    }`}
+                  >
+                    {t('إلغاء', 'Cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveAdjustment}
+                    className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-sm">save</span>
+                    <span>{t('حفظ التعديلات', 'Save Adjustments')}</span>
+                  </button>
+                </div>
               </div>
-
-              <div>
-                <label className="text-slate-300 font-bold block mb-1">{t('استقطاعات أخرى وتنبيهات (other_deductions):', 'Other Deductions (other_deductions):')}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={adjForm.otherDeductions}
-                  onChange={e => setAdjForm({ ...adjForm, otherDeductions: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-[#0a0c10] border border-white/15 rounded-xl text-white font-mono focus:outline-none focus:border-teal-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
-              <button onClick={() => setEditingEmpId(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">
-                {t('إلغاء', 'Cancel')}
-              </button>
-              <button
-                onClick={handleSaveAdjustment}
-                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg"
-              >
-                {t('حفظ التعديلات', 'Save Adjustments')}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MODAL: Finalize & Lock Payroll Period Modal */}
       {showFinalizeModal && (
