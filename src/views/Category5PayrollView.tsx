@@ -994,55 +994,55 @@ export const Category5PayrollView: React.FC = () => {
                 isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-300 bg-white'
               }`}>
                 <table className="w-full text-left text-xs sm:text-sm border-collapse" dir="ltr">
-                  <thead className="bg-[#0f172a] text-white sticky top-0 z-10 shadow-md">
-                    <tr className="bg-[#0f172a] text-white font-mono font-extrabold text-xs sm:text-sm border-b-2 border-teal-500/50 select-none">
-                      <th className="p-3.5 text-center border-r border-slate-700/70 w-10 text-slate-300 bg-[#0a0c10] font-black">#</th>
-                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-amber-300 bg-[#0f172a] font-black tracking-wide">badge_no</th>
-                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-sky-300 bg-[#0f172a] font-black tracking-wide">location</th>
-                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-white font-black bg-[#1e293b] tracking-wide">employee_name</th>
-                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-purple-300 bg-[#0f172a] font-black tracking-wide">position</th>
-                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-cyan-300 font-black bg-[#1e293b] tracking-wide">
+                  <thead className="payroll-dark-header sticky top-0 z-10 shadow-lg">
+                    <tr className="payroll-dark-header font-mono font-extrabold text-xs sm:text-sm select-none border-b-2 border-teal-500">
+                      <th className="p-3.5 text-center border-r border-slate-700 w-10 font-black text-slate-400">#</th>
+                      <th className="th-badge p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">badge_no</th>
+                      <th className="th-location p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">location</th>
+                      <th className="th-name p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">employee_name</th>
+                      <th className="th-position p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">position</th>
+                      <th className="th-salary p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
                         {viewMode === 'summary' ? 'current_month_basic' : 'basic_salary'}
                       </th>
 
                       {viewMode === 'summary' && (
                         <>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">incentives</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-400 bg-[#0f172a] font-black tracking-wide">overtime</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-400 bg-[#0f172a] font-black tracking-wide">earned_leave</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#1e293b] font-black tracking-wide">allowances_total</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">incentives</th>
+                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">overtime</th>
+                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">earned_leave</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">allowances_total</th>
                         </>
                       )}
 
                       {viewMode === 'detailed' && (
                         <>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-cyan-200 bg-[#1e293b] font-black tracking-wide">current_month_basic</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">phone_allowance</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">family_allowance</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">cert_allowance</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">incentives</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">transportation</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 bg-[#0f172a] font-black tracking-wide">bonus</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-400 bg-[#0f172a] font-black tracking-wide">overtime</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-400 bg-[#0f172a] font-black tracking-wide">earned_leave</th>
+                          <th className="th-salary p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">current_month_basic</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">phone_allowance</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">family_allowance</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">cert_allowance</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">incentives</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">transportation</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">bonus</th>
+                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">overtime</th>
+                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">earned_leave</th>
                         </>
                       )}
 
-                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-cyan-200 font-black bg-[#1e293b] tracking-wide">gross_salary</th>
+                      <th className="th-gross p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">gross_salary</th>
 
                       {viewMode === 'detailed' && (
                         <>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-300 bg-[#0f172a] font-black tracking-wide">social_security</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-300 bg-[#0f172a] font-black tracking-wide">income_tax</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-300 bg-[#0f172a] font-black tracking-wide">insurance</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-300 bg-[#0f172a] font-black tracking-wide">loan_payment</th>
-                          <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-300 bg-[#0f172a] font-black tracking-wide">other_deductions</th>
+                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">social_security</th>
+                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">income_tax</th>
+                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">insurance</th>
+                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">loan_payment</th>
+                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">other_deductions</th>
                         </>
                       )}
 
-                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-rose-400 font-black bg-[#1e293b] tracking-wide">total_deductions</th>
-                      <th className="p-3.5 border-r border-slate-700/70 whitespace-nowrap text-emerald-300 font-black bg-[#1e293b] tracking-wide">net_salary</th>
-                      <th className="p-3.5 text-center whitespace-nowrap text-slate-100 font-black bg-[#0f172a]">{t('إجراءات', 'Actions')}</th>
+                      <th className="th-total-ded p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">total_deductions</th>
+                      <th className="th-net p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">net_salary</th>
+                      <th className="th-action p-3.5 text-center whitespace-nowrap font-black">{t('إجراءات', 'Actions')}</th>
                     </tr>
                   </thead>
 
@@ -2650,14 +2650,20 @@ export const Category5PayrollView: React.FC = () => {
                           <td className={`p-3 font-mono font-bold ${isDark ? 'text-cyan-300' : 'text-teal-800 text-sm'}`}>{emp.basic_salary.toLocaleString()} IQD</td>
                           <td className="p-3">
                             {emp.has_exit_date ? (
-                              <span className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold text-black dark:text-rose-200 bg-rose-100 border border-rose-300 dark:bg-rose-500/20 dark:border-rose-500/40 flex items-center gap-1 w-fit shadow-sm">
-                                <span className="material-symbols-outlined text-xs text-rose-700 dark:text-rose-400">event_busy</span>
-                                <span className="text-black dark:text-rose-200 font-bold">{t('تلقائي: تاريخ مغادرة', 'Auto: Exit Date')} ({emp.exit_date_val || 'مستقيل'})</span>
+                              <span
+                                className="px-2.5 py-1 rounded-xl text-[11px] font-black border flex items-center gap-1 w-fit shadow-sm"
+                                style={{ backgroundColor: isDark ? 'rgba(244,63,94,0.2)' : '#ffe4e6', borderColor: isDark ? 'rgba(244,63,94,0.4)' : '#fda4af', color: isDark ? '#fecdd3' : '#000000' }}
+                              >
+                                <span className="material-symbols-outlined text-xs" style={{ color: isDark ? '#fb7185' : '#be123c' }}>event_busy</span>
+                                <span style={{ color: isDark ? '#fecdd3' : '#000000', fontWeight: '900' }}>{t('تلقائي: تاريخ مغادرة', 'Auto: Exit Date')} ({emp.exit_date_val || 'مستقيل'})</span>
                               </span>
                             ) : (
-                              <span className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold text-black dark:text-amber-200 bg-amber-100 border border-amber-300 dark:bg-amber-500/20 dark:border-amber-500/40 flex items-center gap-1 w-fit shadow-sm">
-                                <span className="material-symbols-outlined text-xs text-amber-700 dark:text-amber-400">front_hand</span>
-                                <span className="text-black dark:text-amber-200 font-bold">{t('يدوي: إيقاف مؤقت', 'Manual On Hold')}</span>
+                              <span
+                                className="px-2.5 py-1 rounded-xl text-[11px] font-black border flex items-center gap-1 w-fit shadow-sm"
+                                style={{ backgroundColor: isDark ? 'rgba(245,158,11,0.2)' : '#fef3c7', borderColor: isDark ? 'rgba(245,158,11,0.4)' : '#fcd34d', color: isDark ? '#fde68a' : '#000000' }}
+                              >
+                                <span className="material-symbols-outlined text-xs" style={{ color: isDark ? '#fbbf24' : '#b45309' }}>front_hand</span>
+                                <span style={{ color: isDark ? '#fde68a' : '#000000', fontWeight: '900' }}>{t('يدوي: إيقاف مؤقت', 'Manual On Hold')}</span>
                               </span>
                             )}
                           </td>

@@ -25,9 +25,19 @@
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* Global Normal Font Weight Directive */
-  body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, label, input, select, textarea, th, td, kbd, option {
-    font-weight: 400 !important;
+  /* Default Font Weight */
+  body {
+    font-weight: 400;
+  }
+  
+  th, .font-bold, font-bold, strong, b, [class*="font-bold"] {
+    font-weight: 700 !important;
+  }
+  .font-black, [class*="font-black"], .font-extrabold, [class*="font-extrabold"] {
+    font-weight: 900 !important;
+  }
+  .font-semibold, [class*="font-semibold"] {
+    font-weight: 600 !important;
   }
 
   /* Dark Mode body */
@@ -437,6 +447,38 @@ html.light .text-slate-300 {
 html.light .text-slate-400 {
   color: #64748b !important;
 }
+/* ================================================================
+   PAYROLL TABLE HEADER (Solid High Contrast in All Modes)
+   ================================================================ */
+.payroll-dark-header,
+html.light thead.payroll-dark-header,
+html.light .payroll-dark-header,
+html:not(.dark) thead.payroll-dark-header,
+html:not(.dark) .payroll-dark-header {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+html.light thead.payroll-dark-header th,
+html:not(.dark) thead.payroll-dark-header th,
+thead.payroll-dark-header th {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  font-weight: 800 !important;
+}
+
+html.light thead.payroll-dark-header th.th-badge, thead.payroll-dark-header th.th-badge { color: #fbbf24 !important; }
+html.light thead.payroll-dark-header th.th-location, thead.payroll-dark-header th.th-location { color: #38bdf8 !important; }
+html.light thead.payroll-dark-header th.th-name, thead.payroll-dark-header th.th-name { background-color: #1e293b !important; color: #ffffff !important; font-weight: 900 !important; }
+html.light thead.payroll-dark-header th.th-position, thead.payroll-dark-header th.th-position { color: #c084fc !important; }
+html.light thead.payroll-dark-header th.th-salary, thead.payroll-dark-header th.th-salary { background-color: #1e293b !important; color: #67e8f9 !important; font-weight: 900 !important; }
+html.light thead.payroll-dark-header th.th-allowance, thead.payroll-dark-header th.th-allowance { color: #34d399 !important; }
+html.light thead.payroll-dark-header th.th-allowance-green, thead.payroll-dark-header th.th-allowance-green { color: #4ade80 !important; }
+html.light thead.payroll-dark-header th.th-gross, thead.payroll-dark-header th.th-gross { background-color: #1e293b !important; color: #38bdf8 !important; font-weight: 900 !important; }
+html.light thead.payroll-dark-header th.th-deduction, thead.payroll-dark-header th.th-deduction { color: #fb7185 !important; }
+html.light thead.payroll-dark-header th.th-total-ded, thead.payroll-dark-header th.th-total-ded { background-color: #1e293b !important; color: #f43f5e !important; font-weight: 900 !important; }
+html.light thead.payroll-dark-header th.th-net, thead.payroll-dark-header th.th-net { background-color: #1e293b !important; color: #4ade80 !important; font-weight: 900 !important; }
+html.light thead.payroll-dark-header th.th-action, thead.payroll-dark-header th.th-action { color: #ffffff !important; }
 
 /* ================================================================
    LIGHT MODE: Cards, Panels, Windows, Sidebar Overrides (Pure White)
