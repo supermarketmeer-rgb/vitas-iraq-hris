@@ -51,7 +51,7 @@ interface ApprovalRequestItem {
 }
 
 export const Category5PayrollView: React.FC = () => {
-  const { activeModuleId, setActiveModuleId, employees, t, currentUser, language, theme, appSettings } = useApp();
+  const { activeModuleId, setActiveModuleId, employees, updateEmployee, t, currentUser, language, theme, appSettings } = useApp();
   const isDark = theme === 'dark';
 
   // Period Selection: Automatically initialized to current live system year & month
@@ -97,8 +97,23 @@ export const Category5PayrollView: React.FC = () => {
     }
   }, [employees, selectedEmpId]);
 
-  // Live adjustments per employee (id -> adjustment)
-  const [adjustments, setAdjustments] = useState<Record<string, EmployeeAdjustment>>({});
+  // Live adjustments per employee (id -> adjustment) persisted in localStorage
+  const [adjustments, setAdjustments] = useState<Record<string, EmployeeAdjustment>>(() => {
+    try {
+      const saved = localStorage.getItem('vitas_payroll_manual_adjustments');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vitas_payroll_manual_adjustments', JSON.stringify(adjustments));
+    } catch (e) {
+      console.warn('Failed to persist adjustments to localStorage', e);
+    }
+  }, [adjustments]);
 
   // Adjustment Modal state
   const [editingEmpId, setEditingEmpId] = useState<string | null>(null);
@@ -229,8 +244,24 @@ export const Category5PayrollView: React.FC = () => {
   const [finalizeNotes, setFinalizeNotes] = useState<string>('');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  // On Hold Payroll State & Modal Controls
-  const [onHoldOverrides, setOnHoldOverrides] = useState<Record<string, boolean>>({});
+  // On Hold Payroll State & Modal Controls persisted in localStorage
+  const [onHoldOverrides, setOnHoldOverrides] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('vitas_payroll_on_hold_overrides');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vitas_payroll_on_hold_overrides', JSON.stringify(onHoldOverrides));
+    } catch (e) {
+      console.warn('Failed to persist onHoldOverrides to localStorage', e);
+    }
+  }, [onHoldOverrides]);
+
   const [showOnHoldModal, setShowOnHoldModal] = useState<boolean>(false);
 
   // Check if current period is archived/locked
@@ -516,7 +547,7 @@ export const Category5PayrollView: React.FC = () => {
     });
   }, [computedPayrollRows, selectedPayslipOffice]);
 
-  // Toggle On-Hold Action Handler
+  // Toggle On-Hold Action Handler with State & Storage Persistence
   const handleToggleOnHold = (empId: string | number) => {
     const strId = String(empId);
     const row = computedPayrollRows.find(r => String(r.id) === strId);
@@ -525,11 +556,26 @@ export const Category5PayrollView: React.FC = () => {
     const currentOnHold = row.is_on_hold;
     const nextVal = !currentOnHold;
 
-    setOnHoldOverrides(prev => ({
-      ...prev,
-      [empId]: nextVal,
-      [strId]: nextVal
-    }));
+    setOnHoldOverrides(prev => {
+      const updated = {
+        ...prev,
+        [empId]: nextVal,
+        [strId]: nextVal
+      };
+      try {
+        localStorage.setItem('vitas_payroll_on_hold_overrides', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // Update in AppContext / employees state & localStorage
+    const empObj = employees.find(e => String(e.id) === strId);
+    if (empObj) {
+      const updatedEmp = { ...empObj, on_hold: nextVal ? 1 : 0, onHold: nextVal };
+      if (typeof updateEmployee === 'function') {
+        updateEmployee(updatedEmp as any).catch(() => {});
+      }
+    }
 
     // Sync with backend API
     fetch(`/api/employees/${strId}`, {
