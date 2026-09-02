@@ -93,22 +93,21 @@ export function triggerRealtimeSync(localPool, tableName = null) {
 }
 
 export async function startAutoCloudSync(localPool) {
-  // Sync every 3 minutes in background between Local and Cloud
-  const THREE_MINUTES_MS = 3 * 60 * 1000;
+  // Sync every 15 seconds in background between Local and Cloud for continuous real-time sync
+  const FIFTEEN_SECONDS_MS = 15 * 1000;
   
   setInterval(async () => {
     if (isSyncing) return;
-    console.log('[AUTO CLOUD SYNC] Starting scheduled bidirectional sync cycle (Local ⇄ Cloud)...');
     await syncLocalToCloud(localPool).catch(err => {
-      console.warn('[AUTO CLOUD SYNC] Notice:', err.message);
+      // Silent error catch to keep background sync quiet
     });
-  }, THREE_MINUTES_MS);
+  }, FIFTEEN_SECONDS_MS);
 
-  // Initial fast sync after 3 seconds on startup
+  // Initial fast sync after 2 seconds on startup
   setTimeout(() => {
     console.log('[AUTO CLOUD SYNC] Triggering initial startup sync...');
     syncLocalToCloud(localPool, true).catch(() => {});
-  }, 3000);
+  }, 2000);
 }
 
 function sanitizeCreateTableSql(createSql, targetEnv = 'any') {
