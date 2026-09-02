@@ -1156,6 +1156,16 @@ app.post('/api/employees', async (req, res) => {
       }
     }
 
+    // 4. Match by email to prevent ER_DUP_ENTRY crash
+    const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if ((!existing || existing.length === 0) && cleanEmail !== '' && !cleanEmail.includes('no-email-')) {
+      const existingByEmail = await query('SELECT id FROM employees WHERE LOWER(email) = ?', [cleanEmail]);
+      if (existingByEmail && existingByEmail.length > 0) {
+        existing = existingByEmail;
+        targetDbId = existingByEmail[0].id;
+      }
+    }
+
       let finalEmpDbId = targetDbId;
       if (existing && existing.length > 0 && targetDbId) {
         console.log('Updating existing employee ID:', targetDbId);
