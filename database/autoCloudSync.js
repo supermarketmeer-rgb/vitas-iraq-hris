@@ -42,7 +42,7 @@ function getCloudConfig() {
     } catch (e) {}
   }
 
-  return { host: cloudHost, port: cloudPort, user: cloudUser, password: cloudPassword, database: cloudDatabase };
+  return { host: cloudHost, port: cloudPort, user: cloudUser, password: cloudPassword, database: cloudDatabase, timezone: '+00:00' };
 }
 
 // ─── Direct Asynchronous Real-Time Cloud Query Execution ───
@@ -285,6 +285,8 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
       allTables = Array.from(new Set([...localTables, ...cloudTables])).sort();
     }
 
+    await cloudConn.query("SET time_zone = '+00:00'").catch(() => {});
+    await queryLocal("SET time_zone = '+00:00'").catch(() => {});
     await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
     await queryLocal('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
 
