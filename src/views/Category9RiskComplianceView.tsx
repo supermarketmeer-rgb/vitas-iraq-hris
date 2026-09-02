@@ -146,24 +146,73 @@ export const Category9RiskComplianceView: React.FC = () => {
       })
       .catch(() => {});
 
-    // Load custom user permissions directly from Database (app_settings)
+    // 1. Load users directly from MySQL `users` table
+    api.getUsers()
+      .then((usersList: any) => {
+        if (Array.isArray(usersList) && usersList.length > 0) {
+          const nonAdminUsers = usersList.filter((u: any) => u.username !== 'admin' && u.username !== 'admin_super');
+          const delegationsFromDb: Record<string, any> = {};
+          const customUsersFromDb: Record<string, any> = {};
+
+          nonAdminUsers.forEach((u: any) => {
+            const uCode = (u.employee_id || u.username || String(u.id)).toUpperCase();
+            let parsedModules: Record<string, boolean> = {
+              employees: Boolean(u.can_manage_employees),
+              payroll: Boolean(u.can_manage_finance),
+              recruitment: Boolean(u.can_manage_recruitment),
+              settings: Boolean(u.can_manage_settings),
+              attendance: false,
+              reports: true,
+              risk: false
+            };
+
+            if (u.allowed_screens) {
+              try {
+                const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
+                if (s && typeof s === 'object') {
+                  parsedModules = { ...parsedModules, ...s };
+                }
+              } catch (e) {}
+            }
+
+            delegationsFromDb[uCode] = {
+              employeeId: uCode,
+              employeeName: u.name || u.full_name || u.username,
+              employeeNameEn: u.full_name || u.name || u.username,
+              department: u.department || 'الموارد البشرية والشؤون الإدارية',
+              jobTitle: u.job_title || 'مسؤول رواتب وحضور',
+              modules: parsedModules,
+              level: 'full',
+              notes: 'مسؤول رواتب وحضور',
+              grantedBy: 'مدير النظام (Super Admin)',
+              grantedAt: u.created_at ? new Date(u.created_at).toISOString().slice(0, 16) : '2026-09-02 11:30'
+            };
+
+            customUsersFromDb[u.username.toLowerCase()] = {
+              username: u.username,
+              password: u.password || 'Password123!',
+              name: u.name || u.full_name || u.username,
+              role: u.role || 'Employee',
+              employeeId: uCode
+            };
+          });
+
+          setSavedEmpDelegations(delegationsFromDb);
+          localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(delegationsFromDb));
+          localStorage.setItem('vitas_custom_users', JSON.stringify(customUsersFromDb));
+        }
+      })
+      .catch(() => {});
+
+    // 2. Fallback check from app_settings
     api.getAppSettings()
       .then((settings: any) => {
         if (settings && typeof settings === 'object') {
           if (settings.vitas_custom_employee_permissions) {
             try {
               const parsed = JSON.parse(settings.vitas_custom_employee_permissions);
-              if (parsed && typeof parsed === 'object') {
-                setSavedEmpDelegations(parsed);
-                localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(parsed));
-              }
-            } catch (e) {}
-          }
-          if (settings.vitas_custom_users) {
-            try {
-              const parsedUsers = JSON.parse(settings.vitas_custom_users);
-              if (parsedUsers && typeof parsedUsers === 'object') {
-                localStorage.setItem('vitas_custom_users', JSON.stringify(parsedUsers));
+              if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                setSavedEmpDelegations(prev => ({ ...prev, ...parsed }));
               }
             } catch (e) {}
           }
