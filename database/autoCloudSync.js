@@ -404,6 +404,70 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
   return { pushed, pulled, deleted };
 }
 
+// ─── TARGETED REALTIME HIGH-PRIORITY TABLE SYNC ENGINE ───
+async function syncTargetedTables(localPool, cfg, tables, preferCloud = false) {
+  let cloudConn = null;
+  const t0 = Date.now();
+  try {
+    cloudConn = await mysql.createConnection({
+      ...cfg,
+      connectTimeout: 8000
+    });
+    const queryLocal = (sql, params = []) => {
+      return new Promise((resolve, reject) => {
+        localPool.query(sql, params, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+    };
+
+    await cloudConn.query("SET time_zone = '+00:00'").catch(() => {});
+    await queryLocal("SET time_zone = '+00:00'").catch(() => {});
+    await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+    await queryLocal('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+
+    let pushed = 0, pulled = 0, deleted = 0;
+    for (const table of tables) {
+      try {
+        const res = await syncSingleTable(queryLocal, cloudConn, table, preferCloud);
+        pushed += res.pushed;
+        pulled += res.pulled;
+        deleted += res.deleted;
+      } catch (e) {
+        console.warn(`[TARGETED SYNC] Notice on ${table}:`, e.message);
+      }
+    }
+
+    await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+    await queryLocal('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+    if (pushed > 0 || pulled > 0 || deleted > 0) {
+      console.log(`[TARGETED REALTIME SYNC ⚡] Tables: [${tables.join(', ')}] in ${elapsed}s -> (Pushed: ${pushed}, Pulled: ${pulled}, Deleted: ${deleted})`);
+    }
+
+    if (pulled > 0 || deleted > 0) {
+      broadcastRealtimeEvent({
+        type: 'DATA_CHANGED',
+        table: tables.length === 1 ? tables[0] : 'all',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    return { success: true, pushed, pulled, deleted };
+  } catch (err) {
+    console.warn('[TARGETED REALTIME SYNC] Connection error:', err.message);
+    return { success: false, error: err.message };
+  } finally {
+    if (cloudConn) {
+      try { await cloudConn.end(); } catch (e) {}
+    }
+  }
+}
+
+let isFullSyncing = false;
+
 // ─── TRUE BIDIRECTIONAL TWO-WAY SYNCHRONIZATION ENGINE ───
 export async function syncLocalToCloud(localPool, forceFullSync = false, targetTables = null, preferCloud = false) {
   const cfg = getCloudConfig();
@@ -412,8 +476,13 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
     return { success: true, syncedTablesCount: 83, totalTables: 83 };
   }
 
-  if (isSyncing) return { success: true, syncedTablesCount: 83, totalTables: 83, reason: 'Sync already in progress' };
-  isSyncing = true;
+  // Fast-track targeted real-time table syncs with zero blocking!
+  if (Array.isArray(targetTables) && targetTables.length > 0) {
+    return await syncTargetedTables(localPool, cfg, targetTables, preferCloud);
+  }
+
+  if (isFullSyncing) return { success: true, syncedTablesCount: 83, totalTables: 83, reason: 'Full sync in progress' };
+  isFullSyncing = true;
 
   const t0 = Date.now();
   let cloudConn = null;
@@ -434,17 +503,13 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
 
     // 1. Discover all tables
     let allTables = [];
-    if (Array.isArray(targetTables) && targetTables.length > 0) {
-      allTables = targetTables;
-    } else {
-      const localTableRows = await queryLocal('SHOW TABLES').catch(() => []);
-      const localTables = localTableRows.map(r => Object.values(r)[0]).filter(Boolean);
+    const localTableRows = await queryLocal('SHOW TABLES').catch(() => []);
+    const localTables = localTableRows.map(r => Object.values(r)[0]).filter(Boolean);
 
-      const [cloudTableRows] = await cloudConn.query('SHOW TABLES').catch(() => [[]]);
-      const cloudTables = (Array.isArray(cloudTableRows) ? cloudTableRows : []).map(r => Object.values(r)[0]).filter(Boolean);
+    const [cloudTableRows] = await cloudConn.query('SHOW TABLES').catch(() => [[]]);
+    const cloudTables = (Array.isArray(cloudTableRows) ? cloudTableRows : []).map(r => Object.values(r)[0]).filter(Boolean);
 
-      allTables = Array.from(new Set([...localTables, ...cloudTables])).sort();
-    }
+    allTables = Array.from(new Set([...localTables, ...cloudTables])).sort();
 
     await cloudConn.query("SET time_zone = '+00:00'").catch(() => {});
     await queryLocal("SET time_zone = '+00:00'").catch(() => {});
@@ -491,7 +556,7 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
     }
     
     // Broadcast live event to refresh local UI if data was pulled from Cloud to Local
-    if (totalPulledToLocal > 0) {
+    if (totalPulledToLocal > 0 || totalRowsDeleted > 0) {
       broadcastRealtimeEvent({
         type: 'DATA_CHANGED',
         table: 'all',
@@ -499,7 +564,6 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
       });
     }
 
-    isSyncing = false;
     return {
       success: true,
       syncedTablesCount: allTables.length,
@@ -511,10 +575,10 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
       durationSeconds: elapsed
     };
   } catch (err) {
-    isSyncing = false;
-    console.warn('[AUTO CLOUD SYNC] Background sync skipped:', err.message);
+    console.error('[AUTO CLOUD SYNC] Sync failed with error:', err.message);
     return { success: false, error: err.message };
   } finally {
+    isFullSyncing = false;
     if (cloudConn) {
       try { await cloudConn.end(); } catch (e) {}
     }
