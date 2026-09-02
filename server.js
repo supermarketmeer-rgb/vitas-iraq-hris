@@ -1153,7 +1153,7 @@ app.post('/api/employees', async (req, res) => {
 
         const setClause = updateCols.map(col => `${col} = ?`).join(', ');
         try {
-          await query(`UPDATE employees SET ${setClause} WHERE id = ?`, updateVals);
+          await query(`UPDATE employees SET ${setClause}, updated_at = NOW() WHERE id = ?`, updateVals);
           console.log('Employee updated successfully');
         } catch (updateErr) {
           console.error('MySQL UPDATE error details:', updateErr);
@@ -2757,12 +2757,13 @@ app.put('/api/settings/app/:key', async (req, res) => {
     
     if (existing.length === 0) {
       // Insert new setting
-      await query('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)', [key, setting_value]);
+      await query('INSERT INTO app_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW())', [key, setting_value]);
     } else {
       // Update existing setting
-      await query('UPDATE app_settings SET setting_value = ? WHERE setting_key = ?', [setting_value, key]);
+      await query('UPDATE app_settings SET setting_value = ?, updated_at = NOW() WHERE setting_key = ?', [setting_value, key]);
     }
     
+    syncLocalToCloud(db).catch(() => {});
     res.json({ success: true });
   } catch (err) {
     console.error('Error updating app setting:', err);

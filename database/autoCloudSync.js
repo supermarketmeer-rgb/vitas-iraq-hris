@@ -169,7 +169,7 @@ export function startCloudRealtimeListener(localPool) {
                 const event = JSON.parse(line.slice(6));
                 if (event.type === 'DATA_CHANGED') {
                   console.log(`[REALTIME BRIDGE ⚡] Cloud edit detected on [${event.table || 'ALL'}] -> Pulling instantly to Local MySQL!`);
-                  await syncLocalToCloud(localPool, false, event.table && event.table !== 'all' ? [event.table] : null);
+                  await syncLocalToCloud(localPool, false, event.table && event.table !== 'all' ? [event.table] : null, true);
                   broadcastRealtimeEvent(event);
                 }
               } catch (e) {}
@@ -223,7 +223,7 @@ function sanitizeVal(v) {
 }
 
 // ─── SMART PER-TABLE BIDIRECTIONAL SYNC ENGINE ───
-async function syncSingleTable(queryLocal, cloudConn, table) {
+async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false) {
   const isSystemTable = ['sync_changes', 'sync_logs', 'sync_queue', 'sync_conflicts', 'sync_deleted_records'].includes(table);
 
   const localCols = await queryLocal(`DESCRIBE \`${table}\``).catch(() => []);
@@ -323,10 +323,21 @@ async function syncSingleTable(queryLocal, cloudConn, table) {
         const cTime = new Date(cRow.updated_at).getTime();
         if (lTime > cTime + 1000) localIsNewer = true;
         else if (cTime > lTime + 1000) cloudIsNewer = true;
+        else {
+          const lStr = JSON.stringify(lRow);
+          const cStr = JSON.stringify(cRow);
+          if (lStr !== cStr) {
+            if (preferCloud) cloudIsNewer = true;
+            else localIsNewer = true;
+          }
+        }
       } else {
         const lStr = JSON.stringify(lRow);
         const cStr = JSON.stringify(cRow);
-        if (lStr !== cStr) localIsNewer = true;
+        if (lStr !== cStr) {
+          if (preferCloud) cloudIsNewer = true;
+          else localIsNewer = true;
+        }
       }
 
       if (localIsNewer) {
@@ -370,7 +381,7 @@ async function syncSingleTable(queryLocal, cloudConn, table) {
 }
 
 // ─── TRUE BIDIRECTIONAL TWO-WAY SYNCHRONIZATION ENGINE ───
-export async function syncLocalToCloud(localPool, forceFullSync = false, targetTables = null) {
+export async function syncLocalToCloud(localPool, forceFullSync = false, targetTables = null, preferCloud = false) {
   const cfg = getCloudConfig();
 
   if (!cfg.host || cfg.host === 'proxy.rlwy.net') {
@@ -427,7 +438,7 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
       const chunk = allTables.slice(i, i + CHUNK_SIZE);
       await Promise.all(chunk.map(async (table) => {
         try {
-          const res = await syncSingleTable(queryLocal, cloudConn, table);
+          const res = await syncSingleTable(queryLocal, cloudConn, table, preferCloud);
           if (res.pushed > 0) {
             totalPushedToCloud += res.pushed;
             modifiedTablesCount++;
