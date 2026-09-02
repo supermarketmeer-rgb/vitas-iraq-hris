@@ -104,6 +104,32 @@ class ConnectionManagerService {
   }
 
   public async checkConnectionNow(): Promise<ConnectionMode> {
+    const isCloudDomain = typeof window !== 'undefined' && 
+      (window.location.hostname.includes('railway.app') || 
+       window.location.hostname.includes('.up.railway.app') || 
+       (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')));
+
+    if (isCloudDomain) {
+      // Running directly on Cloud Railway
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const res = await fetch('/api/health', { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          this.state.mode = 'CLOUD_CONNECTED';
+          this.state.activeBaseUrl = window.location.origin;
+          this.state.lastSuccessfulCheck = new Date().toISOString();
+          this.state.errorMessage = undefined;
+          this.notify();
+          logger.info('CONN_MGR', `Cloud API active at ${window.location.origin}`);
+          return 'CLOUD_CONNECTED';
+        }
+      } catch (e) {}
+    }
+
+    // Otherwise running locally (localhost / Electron app)
     // 1. Test Local Server
     try {
       const controller = new AbortController();
