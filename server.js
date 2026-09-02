@@ -108,6 +108,27 @@ const query = (sql, params = []) => {
         // 2. Extract table name to trigger fast targeted table delta sync
         const match = sql.match(/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|REPLACE\s+INTO)\s+[`]?([a-zA-Z0-9_]+)[`]?/i);
         const tableName = match ? match[1] : null;
+
+        // 3. Automatically record tombstone on deletion so neither server resurrects the deleted record
+        if (trimmed.startsWith('DELETE') && tableName && tableName !== 'sync_deleted_records') {
+          const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+          const sourceEnv = isRailway ? 'cloud' : 'local';
+          if (Array.isArray(params) && params.length > 0) {
+            for (const param of params) {
+              if (param !== undefined && param !== null && typeof param !== 'object') {
+                const recId = String(param).trim();
+                if (recId.length > 0) {
+                  const tombSql = 'INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE source_env = VALUES(source_env), deleted_at = NOW()';
+                  db.query(tombSql, [tableName, recId, sourceEnv], () => {});
+                  if (!isRailway) {
+                    executeCloudQuery(tombSql, [tableName, recId, 'local']).catch(() => {});
+                  }
+                }
+              }
+            }
+          }
+        }
+
         triggerRealtimeSync(db, tableName);
       }
 

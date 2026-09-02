@@ -224,23 +224,20 @@ async function syncSingleTable(queryLocal, cloudConn, table) {
   let deleted = 0;
 
   // 1. Process Deletions
+  const allKnownDeletions = new Set();
   if (!isSystemTable) {
-    const localDeletions = await queryLocal('SELECT * FROM sync_deleted_records WHERE table_name = ? AND source_env = "local"', [table]).catch(() => []);
-    if (Array.isArray(localDeletions) && localDeletions.length > 0) {
-      for (const del of localDeletions) {
-        await cloudConn.query(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ?`, [del.record_id]).catch(() => {});
-        await queryLocal('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, del.record_id]).catch(() => {});
-        deleted++;
-      }
-    }
+    const localDeletions = await queryLocal('SELECT * FROM sync_deleted_records WHERE table_name = ?', [table]).catch(() => []);
+    const [cloudDeletions] = await cloudConn.query('SELECT * FROM sync_deleted_records WHERE table_name = ?', [table]).catch(() => [[]]);
+    const combinedDeletions = [...(Array.isArray(localDeletions) ? localDeletions : []), ...(Array.isArray(cloudDeletions) ? cloudDeletions : [])];
 
-    const [cloudDeletions] = await cloudConn.query('SELECT * FROM sync_deleted_records WHERE table_name = ? AND source_env = "cloud"', [table]).catch(() => [[]]);
-    if (Array.isArray(cloudDeletions) && cloudDeletions.length > 0) {
-      for (const del of cloudDeletions) {
-        await queryLocal(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ?`, [del.record_id]).catch(() => {});
-        await cloudConn.query('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, del.record_id]).catch(() => {});
-        deleted++;
-      }
+    for (const del of combinedDeletions) {
+      if (!del.record_id) continue;
+      const recKey = String(del.record_id).toLowerCase().trim();
+      allKnownDeletions.add(recKey);
+
+      await cloudConn.query(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ? OR id = ?`, [del.record_id, del.record_id]).catch(() => {});
+      await queryLocal(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ? OR id = ?`, [del.record_id, del.record_id]).catch(() => {});
+      deleted++;
     }
   }
 
@@ -253,6 +250,10 @@ async function syncSingleTable(queryLocal, cloudConn, table) {
 
   // 3. Local to Cloud sync
   for (const [key, lRow] of localMap.entries()) {
+    if (allKnownDeletions.has(key) || (lRow.id && allKnownDeletions.has(String(lRow.id).toLowerCase()))) {
+      // Record was deleted - do not resurrect!
+      continue;
+    }
     const cRow = cloudMap.get(key);
     if (!cRow) {
       // Fresh record on Local -> Insert to Cloud
@@ -301,6 +302,10 @@ async function syncSingleTable(queryLocal, cloudConn, table) {
 
   // 4. Cloud to Local sync (New records created on Cloud)
   for (const [key, cRow] of cloudMap.entries()) {
+    if (allKnownDeletions.has(key) || (cRow.id && allKnownDeletions.has(String(cRow.id).toLowerCase()))) {
+      // Record was deleted - do not resurrect!
+      continue;
+    }
     if (!localMap.has(key)) {
       const insertCols = hasAutoIncId ? commonCols.filter(k => k !== 'id') : commonCols;
       const sql = `INSERT INTO \`${table}\` (${insertCols.map(k => `\`${k}\``).join(', ')}) VALUES (${insertCols.map(() => '?').join(', ')})`;
