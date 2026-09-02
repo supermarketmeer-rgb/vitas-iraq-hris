@@ -219,6 +219,55 @@ export const Category9RiskComplianceView: React.FC = () => {
         }
       })
       .catch(() => {});
+
+    const handleUsersChanged = () => {
+      api.getUsers().then((usersList: any) => {
+        if (Array.isArray(usersList)) {
+          const nonAdminUsers = usersList.filter((u: any) => u.username !== 'admin' && u.username !== 'admin_super');
+          const delegationsFromDb: Record<string, any> = {};
+
+          nonAdminUsers.forEach((u: any) => {
+            const uCode = (u.employee_id || u.username || String(u.id)).toUpperCase();
+            let parsedModules: Record<string, boolean> = {
+              employees: Boolean(u.can_manage_employees),
+              payroll: Boolean(u.can_manage_finance),
+              recruitment: Boolean(u.can_manage_recruitment),
+              settings: Boolean(u.can_manage_settings),
+              attendance: false,
+              reports: true,
+              risk: false
+            };
+
+            if (u.allowed_screens) {
+              try {
+                const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
+                if (s && typeof s === 'object') {
+                  parsedModules = { ...parsedModules, ...s };
+                }
+              } catch (e) {}
+            }
+
+            delegationsFromDb[uCode] = {
+              employeeId: uCode,
+              employeeName: u.name || u.full_name || u.username,
+              employeeNameEn: u.full_name || u.name || u.username,
+              department: u.department || 'الموارد البشرية والشؤون الإدارية',
+              jobTitle: u.job_title || 'مسؤول رواتب وحضور',
+              modules: parsedModules,
+              level: 'full',
+              notes: 'مسؤول رواتب وحضور',
+              grantedBy: 'مدير النظام (Super Admin)',
+              grantedAt: u.created_at ? new Date(u.created_at).toISOString().slice(0, 16) : '2026-09-02 11:30'
+            };
+          });
+
+          setSavedEmpDelegations(delegationsFromDb);
+        }
+      }).catch(() => {});
+    };
+
+    window.addEventListener('vitas:users_changed', handleUsersChanged);
+    return () => window.removeEventListener('vitas:users_changed', handleUsersChanged);
   }, [appSettings]);
 
   // Compute all unique departments from Settings + Employees table

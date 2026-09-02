@@ -187,22 +187,25 @@ class ConnectionManagerService {
     }
 
     try {
-      this.eventSource = new EventSource('/api/sync/events');
+      const isCustomBase = this.state.activeBaseUrl && !this.state.activeBaseUrl.includes(window.location.host);
+      const streamUrl = isCustomBase ? `${this.state.activeBaseUrl}/api/sync/events` : '/api/sync/events';
+
+      this.eventSource = new EventSource(streamUrl);
       this.eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'DATA_CHANGED' && onDataChange) {
-            onDataChange(data.table || 'general');
+            onDataChange(data.table || 'all');
           }
         } catch (e) {}
       };
       this.eventSource.onerror = () => {
         if (this.eventSource) {
-          this.eventSource.close();
+          try { this.eventSource.close(); } catch (e) {}
           this.eventSource = null;
         }
-        // Auto-reconnect after 8 seconds
-        setTimeout(() => this.initRealtimeEventStream(onDataChange), 8000);
+        // Auto-reconnect after 4 seconds
+        setTimeout(() => this.initRealtimeEventStream(onDataChange), 4000);
       };
     } catch (e) {}
   }

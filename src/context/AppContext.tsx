@@ -386,20 +386,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // ⚡ Real-Time Server-Sent Events (SSE) Live Data Synchronization
     connectionManager.initRealtimeEventStream((tableName) => {
-      if (!tableName || tableName === 'employees') {
+      const matchAll = !tableName || tableName === 'all' || tableName === 'general';
+
+      if (matchAll || tableName === 'employees') {
         api.getEmployees().then(d => { if (Array.isArray(d)) setEmployees(d); }).catch(() => {});
       }
-      if (!tableName || tableName === 'candidates') {
+      if (matchAll || tableName === 'candidates') {
         api.getCandidates().then(d => { if (Array.isArray(d)) setCandidates(d); }).catch(() => {});
       }
-      if (!tableName || tableName === 'job_vacancies') {
+      if (matchAll || tableName === 'job_vacancies') {
         api.getJobVacancies().then(d => { if (Array.isArray(d)) setJobVacancies(d); }).catch(() => {});
       }
-      if (!tableName || tableName === 'leave_requests') {
+      if (matchAll || tableName === 'leave_requests' || tableName === 'leaves') {
         api.getLeaveRequests().then(d => { if (Array.isArray(d)) setLeaveRequests(d); }).catch(() => {});
       }
-      if (!tableName || tableName === 'app_settings') {
+      if (matchAll || tableName === 'attendance') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('vitas:attendance_changed'));
+        }
+      }
+      if (matchAll || tableName === 'app_settings' || tableName === 'users') {
         api.getAppSettings().then(d => { if (d && typeof d === 'object') setAppSettings(d); }).catch(() => {});
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('vitas:users_changed'));
+        }
       }
     });
 
