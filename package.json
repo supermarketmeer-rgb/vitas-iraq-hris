@@ -5,13 +5,13 @@
   "type": "module",
   "main": "electron/main.mjs",
   "scripts": {
-    "dev": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js --port=5173 --host=0.0.0.0",
+    "dev": "concurrently \"node server.js\" \"node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js --port=5173 --host=0.0.0.0\"",
     "build": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
     "clean": "rm -rf dist dist-desktop",
     "lint": "tsc --noEmit",
     "server": "node server.js",
-    "dev:full": "concurrently \"npm run dev\" \"npm run server\"",
+    "dev:full": "concurrently \"node server.js\" \"npm run dev\"",
     "electron:dev": "concurrently \"npm run dev:full\" \"npx electron .\"",
     "build:desktop": "npm run build && npx electron-builder"
   },
