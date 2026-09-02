@@ -206,6 +206,11 @@ export const api = {
   updateAppSetting: (key: string, value: string) => apiClient.put(`/settings/app/${key}`, { setting_value: value }),
   updateAppSettingsBulk: (settings: Record<string, string>) => apiClient.post('/settings/app/bulk', settings),
 
+  // System Users
+  getUsers: () => apiClient.get('/users'),
+  saveUser: (user: any) => apiClient.post('/users', user),
+  deleteUser: (identifier: string | number) => apiClient.delete(`/users/${identifier}`),
+
   // Contract Template Clauses
   getContractClauses: (contractTypeId: string) => apiClient.get(`/settings/contract-clauses/${contractTypeId}`),
   addContractClause: (clause: any) => apiClient.post('/settings/contract-clauses', clause),

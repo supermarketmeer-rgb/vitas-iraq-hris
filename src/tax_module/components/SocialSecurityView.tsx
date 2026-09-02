@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext.js';
 import {
   Shield,
@@ -11,7 +11,13 @@ import {
   AlertCircle,
   Sliders,
   Sparkles,
+  Download,
+  Upload,
 } from 'lucide-react';
+import {
+  generateSocialSecurityTemplateExcel,
+  parseSocialSecurityExcel,
+} from '../../utils/payrollExcelHelper';
 
 export const SocialSecurityView: React.FC = () => {
   const {
@@ -21,6 +27,7 @@ export const SocialSecurityView: React.FC = () => {
     rules,
     parameters,
     snapshots,
+    employees,
     activePeriod,
     refreshData,
     showNotification,
@@ -32,6 +39,12 @@ export const SocialSecurityView: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'rules' | 'parameters' | 'reports'>('rules');
   const [exemptEmployees, setExemptEmployees] = useState<any[]>([]);
 
+  // Excel Template & Import States
+  const [isExportingTemplate, setIsExportingTemplate] = useState<boolean>(false);
+  const [isImportingExcel, setIsImportingExcel] = useState<boolean>(false);
+  const [ssImportModalData, setSsImportModalData] = useState<any | null>(null);
+  const ssFileInputRef = useRef<HTMLInputElement | null>(null);
+
   React.useEffect(() => {
     fetch('http://localhost:5000/api/tax-module/dashboard')
       .then((r) => r.json())
@@ -40,6 +53,66 @@ export const SocialSecurityView: React.FC = () => {
       })
       .catch(() => {});
   }, [activePeriod]);
+
+  // Export Social Security Template
+  const handleExportTemplate = async () => {
+    setIsExportingTemplate(true);
+    try {
+      const res = await generateSocialSecurityTemplateExcel(employees || [], activePeriod);
+      if (res.success) {
+        showNotification(
+          lang === 'ar'
+            ? 'تم إنشاء وحفظ قالب إكسل للضمان الاجتماعي بنجاح!'
+            : 'Social Security Excel template saved successfully!'
+        );
+      }
+    } catch (err: any) {
+      showNotification(err?.message || 'Failed to export SS template', 'error');
+    } finally {
+      setIsExportingTemplate(false);
+    }
+  };
+
+  // Trigger File Import
+  const handleTriggerImport = () => {
+    if (ssFileInputRef.current) {
+      ssFileInputRef.current.value = '';
+      ssFileInputRef.current.click();
+    }
+  };
+
+  // Handle Selected File
+  const handleSelectFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImportingExcel(true);
+    try {
+      const parseResult = await parseSocialSecurityExcel(file, employees || []);
+      if (!parseResult.success) {
+        showNotification(parseResult.error || 'Failed to parse SS excel file', 'error');
+        return;
+      }
+      setSsImportModalData(parseResult);
+    } catch (err: any) {
+      showNotification(err?.message || 'Error parsing SS excel', 'error');
+    } finally {
+      setIsImportingExcel(false);
+      if (ssFileInputRef.current) ssFileInputRef.current.value = '';
+    }
+  };
+
+  // Confirm Import
+  const handleConfirmImport = () => {
+    if (!ssImportModalData?.parsedData) return;
+    const count = ssImportModalData.matchedCount;
+    const exemptCount = ssImportModalData.exemptCount;
+    setSsImportModalData(null);
+    showNotification(
+      lang === 'ar'
+        ? `تم استيراد واعتماد بيانات الضمان الاجتماعي لـ ${count} موظفاً (منهم ${exemptCount} معفيين)!`
+        : `Successfully imported SS data for ${count} staff (${exemptCount} exempt)!`
+    );
+  };
 
   const ssRules = rules.filter((r) => r.category === 'SOCIAL_SECURITY');
   const ssParams = parameters.filter((p) => p.code.startsWith('SS_'));
@@ -85,40 +158,74 @@ export const SocialSecurityView: React.FC = () => {
           </p>
         </div>
 
-        {/* Sub-tab Switcher */}
-        <div className={`flex items-center gap-1 p-1 rounded-xl border ${
-          isDark ? 'bg-slate-800/80 border-slate-700/80' : 'bg-slate-100 border-slate-200'
-        }`}>
+        {/* Header Action Buttons & Sub-tab Switcher */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={ssFileInputRef}
+            onChange={handleSelectFile}
+            accept=".xlsx, .xls"
+            className="hidden"
+          />
+
+          {/* Export SS Template */}
           <button
-            onClick={() => setActiveSubTab('rules')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeSubTab === 'rules'
-                ? isDark ? 'bg-slate-900 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-            }`}
+            onClick={handleExportTemplate}
+            disabled={isExportingTemplate}
+            title={lang === 'ar' ? 'انشاء وتنزيل قالب إكسل للضمان الاجتماعي مع نافذة لحفظ الملف' : 'Download Social Security Excel Template'}
+            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
           >
-            {lang === 'ar' ? 'قواعد الحساب' : 'Calculation Rules'}
+            <Download className="w-3.5 h-3.5" />
+            <span>{isExportingTemplate ? (lang === 'ar' ? 'جارِ التصدير...' : 'Exporting...') : (lang === 'ar' ? 'قالب الضمان (Template)' : 'SS Template')}</span>
           </button>
+
+          {/* Import SS Excel */}
           <button
-            onClick={() => setActiveSubTab('parameters')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeSubTab === 'parameters'
-                ? isDark ? 'bg-slate-900 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-            }`}
+            onClick={handleTriggerImport}
+            disabled={isImportingExcel}
+            title={lang === 'ar' ? 'استيراد وعاء وإعفاءات واستقطاعات الضمان الاجتماعي من ملف إكسل' : 'Import Social Security from Excel'}
+            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
           >
-            {lang === 'ar' ? 'النسب والحدود (Parameters)' : 'Rates & Caps'}
+            <Upload className="w-3.5 h-3.5" />
+            <span>{isImportingExcel ? (lang === 'ar' ? 'جارِ القراءة...' : 'Reading...') : (lang === 'ar' ? 'استيراد إكسل الضمان' : 'Import SS')}</span>
           </button>
-          <button
-            onClick={() => setActiveSubTab('reports')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeSubTab === 'reports'
-                ? isDark ? 'bg-slate-900 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-            }`}
-          >
-            {lang === 'ar' ? 'التقارير وسجل الاشتراكات' : 'Reports & Schedule'}
-          </button>
+
+          {/* Sub-tab Switcher */}
+          <div className={`flex items-center gap-1 p-1 rounded-xl border ${
+            isDark ? 'bg-slate-800/80 border-slate-700/80' : 'bg-slate-100 border-slate-200'
+          }`}>
+            <button
+              onClick={() => setActiveSubTab('rules')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                activeSubTab === 'rules'
+                  ? isDark ? 'bg-slate-900 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                  : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+              }`}
+            >
+              {lang === 'ar' ? 'قواعد الحساب' : 'Calculation Rules'}
+            </button>
+            <button
+              onClick={() => setActiveSubTab('parameters')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                activeSubTab === 'parameters'
+                  ? isDark ? 'bg-slate-900 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                  : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+              }`}
+            >
+              {lang === 'ar' ? 'النسب والحدود (Parameters)' : 'Rates & Caps'}
+            </button>
+            <button
+              onClick={() => setActiveSubTab('reports')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                activeSubTab === 'reports'
+                  ? isDark ? 'bg-slate-900 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                  : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+              }`}
+            >
+              {lang === 'ar' ? 'التقارير وسجل الاشتراكات' : 'Reports & Schedule'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -367,6 +474,117 @@ export const SocialSecurityView: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Social Security Import Preview Modal */}
+      {ssImportModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-3xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {lang === 'ar' ? 'معاينة استيراد بيانات الضمان الاجتماعي' : 'Preview Social Security Excel Import'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {lang === 'ar'
+                      ? `تمت مطابقة ${ssImportModalData.matchedCount} موظفاً (منهم ${ssImportModalData.exemptCount} معفيين)`
+                      : `Matched ${ssImportModalData.matchedCount} staff (${ssImportModalData.exemptCount} exempt)`}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSsImportModalData(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-4 flex-1 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                  <span className="text-slate-500 block text-[11px]">{lang === 'ar' ? 'إجمالي استقطاع الموظفين (5%)' : 'Total Employee SS'}</span>
+                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+                    {ssImportModalData.summary.totalEmployeeSS.toLocaleString()} {currency}
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800">
+                  <span className="text-slate-500 block text-[11px]">{lang === 'ar' ? 'إجمالي مساهمة جهة العمل (12%)' : 'Total Employer SS'}</span>
+                  <p className="text-base font-bold text-purple-600 dark:text-purple-400 font-mono mt-0.5">
+                    {ssImportModalData.summary.totalEmployerSS.toLocaleString()} {currency}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="max-h-60 overflow-y-auto">
+                  <table className="w-full text-xs text-start">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 sticky top-0 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
+                      <tr>
+                        <th className="p-2.5 text-start">{lang === 'ar' ? 'الموظف' : 'Employee'}</th>
+                        <th className="p-2.5 text-center">{lang === 'ar' ? 'حالة الإعفاء' : 'Exemption'}</th>
+                        <th className="p-2.5 text-end">{lang === 'ar' ? 'استقطاع الموظف' : 'Emp SS'}</th>
+                        <th className="p-2.5 text-end">{lang === 'ar' ? 'مساهمة رب العمل' : 'Empr SS'}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {Object.entries(ssImportModalData.parsedData).map(([empId, d]: [string, any]) => {
+                        const emp = (employees || []).find((e) => String(e.id) === String(empId));
+                        return (
+                          <tr key={empId} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                            <td className="p-2.5">
+                              <div className="font-bold text-slate-900 dark:text-white">
+                                {emp ? (lang === 'ar' ? (emp.name_ar || emp.name) : (emp.name_en || emp.name)) : empId}
+                              </div>
+                              <div className="font-mono text-[10px] text-slate-400">VTS-{emp?.badge_no || empId}</div>
+                            </td>
+                            <td className="p-2.5 text-center">
+                              {d.isExempt ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                  {lang === 'ar' ? 'معفى' : 'Exempt'}
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                  {lang === 'ar' ? 'خاضع' : 'Covered'}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-2.5 text-end font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                              {(d.customEmployeeSS || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2.5 text-end font-mono font-bold text-purple-600 dark:text-purple-400">
+                              {(d.customEmployerSS || 0).toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 bg-slate-50 dark:bg-slate-900/50">
+              <button
+                onClick={() => setSsImportModalData(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              >
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                onClick={handleConfirmImport}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{lang === 'ar' ? 'اعتماد وتطبيق بيانات الضمان' : 'Apply SS Data'}</span>
+              </button>
             </div>
           </div>
         </div>

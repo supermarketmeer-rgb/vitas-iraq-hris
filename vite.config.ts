@@ -15,7 +15,7 @@ export default defineConfig(() => {
     build: {
       sourcemap: false,
       chunkSizeWarningLimit: 3000,
-      minify: 'esbuild',
+      minify: 'esbuild' as const,
       cssMinify: true,
     },
     server: {

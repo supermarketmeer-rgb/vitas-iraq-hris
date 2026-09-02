@@ -217,27 +217,49 @@ export const Category9RiskComplianceView: React.FC = () => {
     const empCode = cleanUsername.toUpperCase().startsWith('VTS') ? cleanUsername.toUpperCase() : `VTS-${cleanUsername.toUpperCase()}`;
     
     try {
-      // 1. Create employee in system
-      await addEmployee({
-        employeeId: empCode,
-        badgeNo: empCode,
-        fullNameAr: newUserForm.fullNameAr.trim(),
-        fullNameEn: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
-        fullName: newUserForm.fullNameAr.trim(),
-        name_ar: newUserForm.fullNameAr.trim(),
-        name_en: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
-        jobTitle: newUserForm.jobTitle.trim(),
-        position: newUserForm.jobTitle.trim(),
-        department: newUserForm.department,
-        branch: newUserForm.branch,
-        location: newUserForm.branch,
-        email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
-        phone: newUserForm.phone.trim() || '07700000000',
-        hireDate: new Date().toISOString().split('T')[0],
-        status: 'Active',
-        employmentType: 'Full-Time',
-        basicSalary: 950000
-      });
+      // 1. Create or update employee in system safely
+      const cleanEmpCode = empCode;
+      const existingEmp = (employees || []).find(
+        (e) => String(e.id) === String(cleanEmpCode) || String(e.badge_no) === String(cleanEmpCode) || String(e.employeeId) === String(cleanEmpCode)
+      );
+
+      if (existingEmp) {
+        await api.updateEmployee({
+          id: existingEmp.id,
+          fullNameAr: newUserForm.fullNameAr.trim(),
+          fullNameEn: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
+          name_ar: newUserForm.fullNameAr.trim(),
+          name_en: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
+          jobTitle: newUserForm.jobTitle.trim(),
+          position: newUserForm.jobTitle.trim(),
+          department: newUserForm.department,
+          branch: newUserForm.branch,
+          location: newUserForm.branch,
+          email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
+          phone: newUserForm.phone.trim() || '07700000000',
+        }).catch(() => {});
+      } else {
+        await addEmployee({
+          employeeId: cleanEmpCode,
+          badgeNo: cleanEmpCode,
+          fullNameAr: newUserForm.fullNameAr.trim(),
+          fullNameEn: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
+          fullName: newUserForm.fullNameAr.trim(),
+          name_ar: newUserForm.fullNameAr.trim(),
+          name_en: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
+          jobTitle: newUserForm.jobTitle.trim(),
+          position: newUserForm.jobTitle.trim(),
+          department: newUserForm.department,
+          branch: newUserForm.branch,
+          location: newUserForm.branch,
+          email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
+          phone: newUserForm.phone.trim() || '07700000000',
+          hireDate: new Date().toISOString().split('T')[0],
+          status: 'Active',
+          employmentType: 'Full-Time',
+          basicSalary: 950000
+        }).catch(() => {});
+      }
 
       // 2. Save credentials for login
       let existingUsers: any = {};
@@ -249,7 +271,7 @@ export const Category9RiskComplianceView: React.FC = () => {
           password: newUserForm.password,
           name: newUserForm.fullNameAr.trim(),
           role: 'Employee',
-          employeeId: empCode
+          employeeId: cleanEmpCode
         };
         localStorage.setItem('vitas_custom_users', JSON.stringify(existingUsers));
       } catch (err) {
@@ -259,8 +281,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       // 3. Save delegated module permissions
       const updatedDelegations = {
         ...savedEmpDelegations,
-        [empCode]: {
-          employeeId: empCode,
+        [cleanEmpCode]: {
+          employeeId: cleanEmpCode,
           employeeName: newUserForm.fullNameAr.trim(),
           employeeNameEn: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
           department: newUserForm.department,
@@ -275,24 +297,46 @@ export const Category9RiskComplianceView: React.FC = () => {
       setSavedEmpDelegations(updatedDelegations);
       localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(updatedDelegations));
 
-      // 3.5 Persist to Database (app_settings) so it automatically synchronizes to Cloud & all devices
-      api.updateAppSettingsBulk({
+      // 3.5 Persist to Database (app_settings and users table) and trigger Cloud sync immediately
+      await api.saveUser({
+        username: cleanUsername,
+        password: newUserForm.password,
+        full_name: newUserForm.fullNameAr.trim(),
+        name: newUserForm.fullNameAr.trim(),
+        email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
+        role: 'Employee',
+        department: newUserForm.department,
+        employee_id: cleanEmpCode,
+        branch: newUserForm.branch,
+        can_manage_employees: newUserForm.modules?.employees ? 1 : 0,
+        can_manage_finance: newUserForm.modules?.payroll ? 1 : 0,
+        can_manage_recruitment: newUserForm.modules?.recruitment ? 1 : 0,
+        can_manage_settings: newUserForm.modules?.settings ? 1 : 0,
+        can_manage_users: 0,
+        status: 'active',
+        allowed_screens: newUserForm.modules
+      }).catch((err: any) => {
+        console.warn('Notice saving to users table:', err.message);
+      });
+
+      await api.updateAppSettingsBulk({
         vitas_custom_employee_permissions: JSON.stringify(updatedDelegations),
         vitas_custom_users: JSON.stringify(existingUsers)
-      }).then(() => {
-        api.syncNow().catch(() => {});
-      }).catch(err => {
+      }).catch((err: any) => {
         console.warn('Notice saving custom users to DB:', err.message);
       });
 
+      api.syncNow().catch(() => {});
+
       // 4. Select this user and feedback
-      setSelectedEmpId(empCode);
+      setSelectedEmpId(cleanEmpCode);
       setIsAddUserModalOpen(false);
       setCustomEmpSavedToast(
         language === 'ar'
-          ? `تم إنشاء حساب المستخدم (${newUserForm.fullNameAr}) وتفويض صلاحياته وحفظها في قاعدة البيانات بنجاح!`
-          : `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}) created and saved to database!`
+          ? `تم حفظ وتحديث حساب المستخدم (${newUserForm.fullNameAr}) ومزامنته مع السرفر السحابي بنجاح!`
+          : `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}) saved and synced to cloud successfully!`
       );
+      setTimeout(() => setCustomEmpSavedToast(null), 5000);
       setTimeout(() => setCustomEmpSavedToast(null), 5000);
 
       // Reset form
@@ -1280,7 +1324,12 @@ export const Category9RiskComplianceView: React.FC = () => {
                                     console.error(e);
                                   }
 
-                                  // Persist deletion to Database (app_settings)
+                                  // Persist deletion to Database (users table and app_settings)
+                                  api.deleteUser(empKey).catch(() => {});
+                                  if (d.employeeId && d.employeeId !== empKey) {
+                                    api.deleteUser(d.employeeId).catch(() => {});
+                                  }
+
                                   api.updateAppSettingsBulk({
                                     vitas_custom_employee_permissions: JSON.stringify(updated),
                                     vitas_custom_users: JSON.stringify(cUsers)

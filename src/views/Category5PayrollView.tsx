@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
+import { generatePayrollTemplateExcel, parsePayrollExcel } from '../utils/payrollExcelHelper';
 
 interface EmployeeAdjustment {
   absenceDays?: number;
@@ -263,6 +264,12 @@ export const Category5PayrollView: React.FC = () => {
   }, [onHoldOverrides]);
 
   const [showOnHoldModal, setShowOnHoldModal] = useState<boolean>(false);
+
+  // Excel Template & Import States
+  const [isExportingTemplate, setIsExportingTemplate] = useState<boolean>(false);
+  const [isImportingExcel, setIsImportingExcel] = useState<boolean>(false);
+  const [payrollImportModalData, setPayrollImportModalData] = useState<any | null>(null);
+  const payrollFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Check if current period is archived/locked
   const currentArchivedPeriod = useMemo(() => {
@@ -821,6 +828,75 @@ export const Category5PayrollView: React.FC = () => {
     return language === 'en' ? enMonths[m - 1] : arMonths[m - 1];
   };
 
+  // Export Payroll Template with Windows File Save Dialog
+  const handleExportPayrollTemplate = async () => {
+    setIsExportingTemplate(true);
+    try {
+      const res = await generatePayrollTemplateExcel(computedPayrollRows, selectedYear, selectedMonth);
+      if (res.success) {
+        setActionMessage(t(`تم إنشاء وتنزيل قالب مسير الرواتب والبدلات لشهر ${selectedMonth}/${selectedYear} بنجاح!`, `Payroll template for ${selectedMonth}/${selectedYear} exported successfully!`));
+        setTimeout(() => setActionMessage(null), 4000);
+      } else if (!res.canceled) {
+        alert(t('فشل في تصدير قالب الإكسل', 'Failed to export excel template'));
+      }
+    } catch (err: any) {
+      console.error('Export template error:', err);
+      alert(err?.message || 'Error exporting template');
+    } finally {
+      setIsExportingTemplate(false);
+    }
+  };
+
+  // Trigger file selection for importing payroll Excel
+  const handleTriggerPayrollImport = () => {
+    if (payrollFileInputRef.current) {
+      payrollFileInputRef.current.value = '';
+      payrollFileInputRef.current.click();
+    }
+  };
+
+  // Handle selected Excel file for payroll import
+  const handleSelectPayrollImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImportingExcel(true);
+    try {
+      const parseResult = await parsePayrollExcel(file, employees);
+      if (!parseResult.success) {
+        alert(parseResult.error || t('فشل في قراءة ملف الإكسل', 'Failed to parse excel file'));
+        return;
+      }
+      setPayrollImportModalData(parseResult);
+    } catch (err: any) {
+      console.error('Import excel error:', err);
+      alert(err?.message || 'Error parsing excel');
+    } finally {
+      setIsImportingExcel(false);
+      if (payrollFileInputRef.current) payrollFileInputRef.current.value = '';
+    }
+  };
+
+  // Confirm and apply imported adjustments to live state
+  const handleConfirmPayrollImport = () => {
+    if (!payrollImportModalData?.parsedAdjustments) return;
+
+    setAdjustments(prev => {
+      const next = { ...prev };
+      Object.entries(payrollImportModalData.parsedAdjustments).forEach(([empId, adj]: [string, any]) => {
+        next[empId] = {
+          ...(next[empId] || {}),
+          ...adj
+        };
+      });
+      return next;
+    });
+
+    const count = payrollImportModalData.matchedCount;
+    setPayrollImportModalData(null);
+    setActionMessage(t(`تم استيراد وتطبيق بدلات وحوافز ومكافآت ${count} موظفاً بنجاح وحفظها في المسير!`, `Imported and applied allowances & incentives for ${count} staff successfully!`));
+    setTimeout(() => setActionMessage(null), 5000);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Action Notification Alert */}
@@ -1004,24 +1080,62 @@ export const Category5PayrollView: React.FC = () => {
               </div>
             </div>
 
-            {/* View Mode Switcher (Summary vs Detailed Breakdown) */}
-            <div className="flex items-center gap-1.5 bg-[#0a0c10] p-1 rounded-xl border border-white/10">
+            {/* Actions & View Controls Toolbar */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Hidden file input for Excel import */}
+              <input
+                type="file"
+                ref={payrollFileInputRef}
+                onChange={handleSelectPayrollImportFile}
+                accept=".xlsx, .xls"
+                className="hidden"
+              />
+
+              {/* Button: Export Excel Template with File Save Dialog */}
               <button
-                onClick={() => setViewMode('summary')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  viewMode === 'summary' ? 'bg-teal-600 text-white shadow' : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={handleExportPayrollTemplate}
+                disabled={isExportingTemplate}
+                title={t('انشاء وتنزيل قالب إكسل مع نافذة لاختيار مكان الحفظ، يحتوي بيانات الموظفين والمبالغ الثابتة لتعديل الحوافز والمكافآت', 'Download pre-filled Excel template with employee baseline and fixed amounts')}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                {t('ملخص موجز', 'Summary')}
+                <span className="material-symbols-outlined text-sm">
+                  {isExportingTemplate ? 'progress_activity' : 'download'}
+                </span>
+                <span>{isExportingTemplate ? t('جارِ التصدير...', 'Exporting...') : t('قالب إكسل (Template)', 'Excel Template')}</span>
               </button>
+
+              {/* Button: Import Excel Sheet */}
               <button
-                onClick={() => setViewMode('detailed')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  viewMode === 'detailed' ? 'bg-teal-600 text-white shadow' : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={handleTriggerPayrollImport}
+                disabled={isImportingExcel}
+                title={t('استيراد الحوافز، بدل النقل، المكافآت، والعمل الإضافي من ملف إكسل وتطبيقها مباشرة', 'Import incentives, transportation, bonus, overtime from Excel sheet')}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                {t('جدول تفصيلي مطبق لقاعدة البيانات (25 حقل SQL)', 'SQL Full Database Table Schema')}
+                <span className="material-symbols-outlined text-sm">
+                  {isImportingExcel ? 'progress_activity' : 'upload_file'}
+                </span>
+                <span>{isImportingExcel ? t('جارِ القراءة...', 'Reading...') : t('استيراد إكسل (Incentives / Bonus)', 'Import Excel')}</span>
               </button>
+
+              {/* View Mode Switcher (Summary vs Detailed Breakdown) */}
+              <div className="flex items-center gap-1.5 bg-[#0a0c10] p-1 rounded-xl border border-white/10">
+                <button
+                  onClick={() => setViewMode('summary')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    viewMode === 'summary' ? 'bg-teal-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {t('ملخص موجز', 'Summary')}
+                </button>
+                <button
+                  onClick={() => setViewMode('detailed')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    viewMode === 'detailed' ? 'bg-teal-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {t('جدول تفصيلي مطبق لقاعدة البيانات (25 حقل SQL)', 'SQL Full Database Table Schema')}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2744,6 +2858,166 @@ export const Category5PayrollView: React.FC = () => {
               >
                 {t('إغلاق النافذة', 'Close')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Excel Import Preview & Confirmation Modal */}
+      {payrollImportModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-4xl max-h-[90vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            {/* Modal Header */}
+            <div className={`p-6 border-b ${isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'} flex items-center justify-between`}>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/20 text-white">
+                  <span className="material-symbols-outlined text-2xl">table_chart</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <span>{t('معاينة واعتماد استيراد بيانات الإكسل', 'Preview & Confirm Excel Import')}</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      {payrollImportModalData.matchedCount} {t('موظفاً مطابقاً', 'Matched Staff')}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {t('تمت قراءة وتجهيز الحوافز، بدل النقل، المكافآت وساعات الإضافي بنجاح. راجع المبالغ قبل التطبيق.', 'Allowances and incentives parsed from Excel. Review amounts before applying.')}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPayrollImportModalData(null)}
+                className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${
+                  isDark ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                }`}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+              {/* Stat Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-[#0a0c10] border-teal-500/30' : 'bg-teal-50 border-teal-200'}`}>
+                  <span className="text-slate-400 block text-[11px] font-medium">{t('إجمالي الحوافز', 'Total Incentives')}</span>
+                  <p className="text-base font-black text-teal-500 font-mono mt-0.5">
+                    {payrollImportModalData.summary.totalIncentives.toLocaleString()} {t('د.ع', 'IQD')}
+                  </p>
+                </div>
+
+                <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-[#0a0c10] border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}>
+                  <span className="text-slate-400 block text-[11px] font-medium">{t('إجمالي بدل النقل', 'Total Transportation')}</span>
+                  <p className="text-base font-black text-blue-400 font-mono mt-0.5">
+                    {payrollImportModalData.summary.totalTransportation.toLocaleString()} {t('د.ع', 'IQD')}
+                  </p>
+                </div>
+
+                <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-[#0a0c10] border-purple-500/30' : 'bg-purple-50 border-purple-200'}`}>
+                  <span className="text-slate-400 block text-[11px] font-medium">{t('إجمالي المكافآت', 'Total Bonus')}</span>
+                  <p className="text-base font-black text-purple-400 font-mono mt-0.5">
+                    {payrollImportModalData.summary.totalBonus.toLocaleString()} {t('د.ع', 'IQD')}
+                  </p>
+                </div>
+
+                <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-[#0a0c10] border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
+                  <span className="text-slate-400 block text-[11px] font-medium">{t('إجمالي الإضافي والبدلات', 'Total Overtime')}</span>
+                  <p className="text-base font-black text-amber-400 font-mono mt-0.5">
+                    {payrollImportModalData.summary.totalOvertime.toLocaleString()} {t('د.ع', 'IQD')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Warnings if any rows were unmatched */}
+              {payrollImportModalData.unmatchedRows && payrollImportModalData.unmatchedRows.length > 0 && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-base shrink-0">warning</span>
+                  <span>
+                    {t(
+                      `تنبيه: تم تخطي ${payrollImportModalData.unmatchedRows.length} صفاً لعدم تطابق الرقم الوظيفي أو الاسم مع قاعدة البيانات.`,
+                      `Notice: ${payrollImportModalData.unmatchedRows.length} rows were skipped due to unmatched badge or name.`
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {/* Detailed Breakdown Preview Table */}
+              <div className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                <div className="max-h-64 overflow-y-auto">
+                  <table className="w-full text-xs text-right border-collapse">
+                    <thead className={`sticky top-0 ${isDark ? 'bg-[#0a0c10] text-slate-300' : 'bg-slate-100 text-slate-800'} font-bold`}>
+                      <tr className="border-b border-white/10">
+                        <th className="p-2.5 text-center">#</th>
+                        <th className="p-2.5">{t('الموظف والبادج', 'Employee & Badge')}</th>
+                        <th className="p-2.5 text-center">{t('الحوافز', 'Incentives')}</th>
+                        <th className="p-2.5 text-center">{t('بدل النقل', 'Transportation')}</th>
+                        <th className="p-2.5 text-center">{t('المكافآت', 'Bonus')}</th>
+                        <th className="p-2.5 text-center">{t('الإضافي', 'Overtime')}</th>
+                        <th className="p-2.5 text-center">{t('إجازات مستحقة', 'Earned Leave')}</th>
+                        <th className="p-2.5 text-center">{t('استقطاعات/سلف', 'Deductions/Loans')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y ${isDark ? 'divide-white/5' : 'divide-slate-200'}`}>
+                      {Object.entries(payrollImportModalData.parsedAdjustments).map(([empId, adj]: [string, any], idx) => {
+                        const emp = employees.find(e => String(e.id) === String(empId));
+                        return (
+                          <tr key={empId} className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                            <td className="p-2.5 text-center font-mono text-slate-400">{idx + 1}</td>
+                            <td className="p-2.5">
+                              <span className="font-bold block">{emp ? (language === 'en' ? (emp.name_en || emp.name) : (emp.name_ar || emp.name)) : empId}</span>
+                              <span className="text-[10px] font-mono text-teal-400">VTS-{emp?.badge_no || empId}</span>
+                            </td>
+                            <td className="p-2.5 text-center font-mono font-bold text-teal-400">
+                              {(adj.incentives || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2.5 text-center font-mono font-bold text-blue-400">
+                              {(adj.transportation || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2.5 text-center font-mono font-bold text-purple-400">
+                              {(adj.bonus || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2.5 text-center font-mono font-bold text-amber-400">
+                              {(adj.overtimeAmount || adj.overtime || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2.5 text-center font-mono font-bold text-emerald-400">
+                              {(adj.earnedLeave || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2.5 text-center font-mono font-bold text-rose-400">
+                              {((adj.loanPayment || 0) + (adj.otherDeductions || 0)).toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className={`p-4 border-t ${isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'} flex items-center justify-between`}>
+              <p className="text-xs text-slate-400">
+                {t('سيتم تحديث حقول البدلات والحوافز لجميع الموظفين المشمولين فور النقر على اعتماد.', 'Allowances will be updated immediately upon confirmation.')}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPayrollImportModalData(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    isDark ? 'bg-white/10 hover:bg-white/15 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                  }`}
+                >
+                  {t('إلغاء', 'Cancel')}
+                </button>
+                <button
+                  onClick={handleConfirmPayrollImport}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs shadow-lg shadow-teal-600/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">check_circle</span>
+                  <span>{t('اعتماد وتطبيق البيانات على المسير', 'Apply & Save to Payroll')}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

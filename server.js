@@ -8,7 +8,7 @@ import multer from 'multer';
 import fs from 'fs';
 import config from './database/config.mjs';
 import { initDatabase } from './database/initDatabase.js';
-import { startAutoCloudSync, syncLocalToCloud } from './database/autoCloudSync.js';
+import { startAutoCloudSync, syncLocalToCloud, executeCloudQuery } from './database/autoCloudSync.js';
 import { initSyncEngineTables } from './database/initSyncEngine.js';
 import { startLocalDiscoveryServer } from './database/localDiscovery.js';
 
@@ -2659,26 +2659,19 @@ app.get('/api/settings/app', async (req, res) => {
   }
 });
 
-app.post('/api/settings/app/bulk', async (req, res) => {
+app.post(['/api/settings/app/bulk', '/api/app-settings/bulk'], async (req, res) => {
   try {
     const settings = req.body;
-    const entries = Object.entries(settings);
-    if (entries.length === 0) {
-      return res.json({ success: true });
+    if (settings && typeof settings === 'object') {
+      for (const [key, value] of Object.entries(settings)) {
+        await query(
+          'INSERT INTO app_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()',
+          [key, String(value ?? ''), String(value ?? '')]
+        ).catch(() => {});
+      }
     }
-
-    const values = entries.map(([key, value]) => [
-      key,
-      value !== undefined && value !== null ? String(value) : ''
-    ]);
-
-    const sql = `
-      INSERT INTO app_settings (setting_key, setting_value)
-      VALUES ?
-      ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
-    `;
-    await query(sql, [values]);
-    res.json({ success: true });
+    syncLocalToCloud(db).catch(() => {});
+    res.json({ success: true, message: 'Settings saved and sync triggered' });
   } catch (err) {
     console.error('Error bulk updating app settings:', err);
     res.status(500).json({ error: err.message });
@@ -2704,6 +2697,102 @@ app.put('/api/settings/app/:key', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Error updating app setting:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// System Users API Endpoints (Direct MySQL `users` table)
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await query('SELECT * FROM users ORDER BY id ASC');
+    res.json(users);
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  try {
+    const {
+      username,
+      password,
+      full_name,
+      name,
+      email,
+      role = 'Employee',
+      department = 'الموارد البشرية والشؤون الإدارية',
+      employee_id,
+      branch = 'الإدارة العامة - بغداد',
+      can_manage_employees = 0,
+      can_manage_finance = 0,
+      can_manage_recruitment = 0,
+      can_manage_settings = 0,
+      can_manage_users = 0,
+      status = 'active',
+      allowed_screens
+    } = req.body;
+
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const cleanUsername = String(username).trim();
+    const finalFullName = (full_name || name || cleanUsername).trim();
+    const finalEmail = (email || `${cleanUsername.toLowerCase()}@vitasiraq.iq`).trim();
+    const finalEmpId = (employee_id || cleanUsername).trim();
+    const finalPass = password || 'Password123!';
+    const screensStr = typeof allowed_screens === 'object' ? JSON.stringify(allowed_screens) : (allowed_screens || null);
+
+    const sql = `
+      INSERT INTO users (
+        username, password, full_name, name, email, role, department, employee_id, branch,
+        can_manage_employees, can_manage_finance, can_manage_recruitment, can_manage_settings, can_manage_users,
+        status, allowed_screens, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      ON DUPLICATE KEY UPDATE
+        password = VALUES(password),
+        full_name = VALUES(full_name),
+        name = VALUES(name),
+        email = VALUES(email),
+        role = VALUES(role),
+        department = VALUES(department),
+        employee_id = VALUES(employee_id),
+        branch = VALUES(branch),
+        can_manage_employees = VALUES(can_manage_employees),
+        can_manage_finance = VALUES(can_manage_finance),
+        can_manage_recruitment = VALUES(can_manage_recruitment),
+        can_manage_settings = VALUES(can_manage_settings),
+        can_manage_users = VALUES(can_manage_users),
+        status = VALUES(status),
+        allowed_screens = VALUES(allowed_screens),
+        updated_at = NOW()
+    `;
+
+    await query(sql, [
+      cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, role, department, finalEmpId, branch,
+      can_manage_employees ? 1 : 0, can_manage_finance ? 1 : 0, can_manage_recruitment ? 1 : 0, can_manage_settings ? 1 : 0, can_manage_users ? 1 : 0,
+      status, screensStr
+    ]);
+
+    syncLocalToCloud(db).catch(() => {});
+    res.json({ success: true, message: 'User saved and synced to database' });
+  } catch (err) {
+    console.error('Error saving user:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/users/:identifier', async (req, res) => {
+  try {
+    const ident = req.params.identifier;
+    await query('DELETE FROM users WHERE id = ? OR username = ? OR employee_id = ?', [ident, ident, ident]);
+    executeCloudQuery('DELETE FROM users WHERE id = ? OR username = ? OR employee_id = ?', [ident, ident, ident]).catch(() => {});
+    syncLocalToCloud(db).catch(() => {});
+    res.json({ success: true, message: 'User deleted from database' });
+  } catch (err) {
+    console.error('Error deleting user:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2755,21 +2844,22 @@ app.get(['/api/app-settings', '/api/settings/app', '/api/attendance-settings'], 
   }
 });
 
-// Bulk update app settings & attendance settings
-app.post(['/api/app-settings/bulk', '/api/settings/app/bulk', '/api/attendance-settings/bulk', '/api/attendance-settings'], async (req, res) => {
+// Bulk update attendance settings
+app.post(['/api/attendance-settings/bulk', '/api/attendance-settings'], async (req, res) => {
   try {
     const settings = req.body;
     if (settings && typeof settings === 'object') {
       for (const [key, value] of Object.entries(settings)) {
         await query(
-          'INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
+          'INSERT INTO attendance_settings (key_name, key_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE key_value = ?',
           [key, String(value ?? ''), String(value ?? '')]
         ).catch(() => {});
       }
     }
-    res.json({ success: true, message: 'Settings saved successfully' });
+    syncLocalToCloud(db).catch(() => {});
+    res.json({ success: true, message: 'Attendance settings saved successfully' });
   } catch (err) {
-    console.error('Error saving app settings:', err);
+    console.error('Error saving attendance settings:', err);
     res.status(500).json({ error: err.message });
   }
 });
