@@ -117,6 +117,11 @@ export function triggerRealtimeSync(localPool, tableName = null) {
   }, 350);
 }
 
+// Send periodic keepalive ping every 10 seconds to keep SSE streams alive
+setInterval(() => {
+  broadcastRealtimeEvent({ type: 'PING', time: new Date().toISOString() });
+}, 10000);
+
 // ─── Persistent Real-Time Bridge from Cloud to Local ───
 export function startCloudRealtimeListener(localPool) {
   const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
@@ -129,18 +134,31 @@ export function startCloudRealtimeListener(localPool) {
 
   console.log(`[REALTIME BRIDGE ⚡] Connecting persistent Cloud SSE listener to ${streamUrl}...`);
 
+  let watchdogTimer = null;
+
+  function resetWatchdog(req) {
+    if (watchdogTimer) clearTimeout(watchdogTimer);
+    watchdogTimer = setTimeout(() => {
+      console.warn('[REALTIME BRIDGE] Stream idle timeout (25s). Reconnecting...');
+      try { req.destroy(); } catch (e) {}
+      connect();
+    }, 25000);
+  }
+
   function connect() {
     try {
       const req = https.get(streamUrl, { timeout: 0 }, (res) => {
         if (res.statusCode !== 200) {
-          setTimeout(connect, 10000);
+          setTimeout(connect, 6000);
           return;
         }
 
         console.log(`[REALTIME BRIDGE ⚡] Connected to Cloud live stream! Instant 2-way sync active.`);
+        resetWatchdog(req);
         
         let buffer = '';
         res.on('data', async (chunk) => {
+          resetWatchdog(req);
           buffer += chunk.toString();
           const lines = buffer.split('\n');
           buffer = lines.pop() || '';
@@ -160,20 +178,24 @@ export function startCloudRealtimeListener(localPool) {
         });
 
         res.on('end', () => {
-          console.warn('[REALTIME BRIDGE] Cloud SSE stream disconnected. Reconnecting in 5s...');
-          setTimeout(connect, 5000);
+          if (watchdogTimer) clearTimeout(watchdogTimer);
+          console.warn('[REALTIME BRIDGE] Cloud SSE stream disconnected. Reconnecting in 3s...');
+          setTimeout(connect, 3000);
         });
 
         res.on('error', () => {
-          setTimeout(connect, 8000);
+          if (watchdogTimer) clearTimeout(watchdogTimer);
+          setTimeout(connect, 5000);
         });
       });
 
       req.on('error', () => {
-        setTimeout(connect, 10000);
+        if (watchdogTimer) clearTimeout(watchdogTimer);
+        setTimeout(connect, 6000);
       });
     } catch (e) {
-      setTimeout(connect, 10000);
+      if (watchdogTimer) clearTimeout(watchdogTimer);
+      setTimeout(connect, 6000);
     }
   }
 
@@ -181,12 +203,12 @@ export function startCloudRealtimeListener(localPool) {
 }
 
 export async function startAutoCloudSync(localPool) {
-  const FIFTEEN_SECONDS_MS = 15 * 1000;
+  const TEN_SECONDS_MS = 10 * 1000;
   
   setInterval(async () => {
     if (isSyncing) return;
     await syncLocalToCloud(localPool).catch(() => {});
-  }, FIFTEEN_SECONDS_MS);
+  }, TEN_SECONDS_MS);
 
   setTimeout(() => {
     console.log('[AUTO CLOUD SYNC] Triggering initial startup sync...');
