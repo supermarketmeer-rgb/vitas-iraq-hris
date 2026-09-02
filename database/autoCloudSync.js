@@ -254,11 +254,28 @@ async function syncSingleTable(queryLocal, cloudConn, table) {
 
     for (const del of combinedDeletions) {
       if (!del.record_id) continue;
-      const recKey = String(del.record_id).toLowerCase().trim();
+      const recId = String(del.record_id).trim();
+      const recKey = recId.toLowerCase();
       allKnownDeletions.add(recKey);
 
-      await cloudConn.query(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ? OR id = ?`, [del.record_id, del.record_id]).catch(() => {});
-      await queryLocal(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ? OR id = ?`, [del.record_id, del.record_id]).catch(() => {});
+      if (table === 'users') {
+        const cleanUser = recId.replace(/^VTS-/i, '').trim().toLowerCase();
+        allKnownDeletions.add(cleanUser);
+        allKnownDeletions.add(`vts-${cleanUser}`);
+
+        const userDelSql = 'DELETE FROM users WHERE id = ? OR username = ? OR employee_id = ? OR LOWER(username) = ? OR LOWER(employee_id) = ? OR LOWER(username) = ?';
+        const userDelParams = [recId, recId, recId, recKey, recKey, cleanUser];
+        await cloudConn.query(userDelSql, userDelParams).catch(() => {});
+        await queryLocal(userDelSql, userDelParams).catch(() => {});
+      } else if (table === 'employees') {
+        const empDelSql = 'DELETE FROM employees WHERE id = ? OR employee_id = ? OR badge_no = ?';
+        const empDelParams = [recId, recId, recId];
+        await cloudConn.query(empDelSql, empDelParams).catch(() => {});
+        await queryLocal(empDelSql, empDelParams).catch(() => {});
+      } else {
+        await cloudConn.query(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ? OR id = ?`, [recId, recId]).catch(() => {});
+        await queryLocal(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ? OR id = ?`, [recId, recId]).catch(() => {});
+      }
       deleted++;
     }
   }
