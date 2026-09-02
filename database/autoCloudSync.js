@@ -245,7 +245,14 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
   let pulled = 0;
   let deleted = 0;
 
-  // 1. Process Deletions
+  // 1. Fetch all rows
+  const localRows = await queryLocal(`SELECT * FROM \`${table}\``).catch(() => []);
+  const [cloudRows] = await cloudConn.query(`SELECT * FROM \`${table}\``).catch(() => [[]]);
+
+  const localMap = new Map((Array.isArray(localRows) ? localRows : []).filter(r => r[syncKey] !== null && r[syncKey] !== undefined).map(r => [String(r[syncKey]).toLowerCase(), r]));
+  const cloudMap = new Map((Array.isArray(cloudRows) ? cloudRows : []).filter(r => r[syncKey] !== null && r[syncKey] !== undefined).map(r => [String(r[syncKey]).toLowerCase(), r]));
+
+  // 2. Process Deletions with Re-Creation Detection
   const allKnownDeletions = new Set();
   if (!isSystemTable) {
     const localDeletions = await queryLocal('SELECT * FROM sync_deleted_records WHERE table_name = ?', [table]).catch(() => []);
@@ -256,10 +263,25 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
       if (!del.record_id) continue;
       const recId = String(del.record_id).trim();
       const recKey = recId.toLowerCase();
+      const cleanUser = recId.replace(/^VTS-/i, '').trim().toLowerCase();
+      const delTime = del.deleted_at ? new Date(del.deleted_at).getTime() : 0;
+
+      // Check if a row was created/updated AFTER the tombstone was recorded
+      const lRow = localMap.get(recKey) || localMap.get(cleanUser) || localMap.get(`vts-${cleanUser}`);
+      const cRow = cloudMap.get(recKey) || cloudMap.get(cleanUser) || cloudMap.get(`vts-${cleanUser}`);
+      const lTime = lRow?.updated_at ? new Date(lRow.updated_at).getTime() : 0;
+      const cTime = cRow?.updated_at ? new Date(cRow.updated_at).getTime() : 0;
+
+      if ((lRow && lTime > delTime + 1000) || (cRow && cTime > delTime + 1000)) {
+        // Record was re-created after deletion! Expire old tombstone.
+        await queryLocal('DELETE FROM sync_deleted_records WHERE table_name = ? AND (record_id = ? OR record_id = ?)', [table, recId, cleanUser]).catch(() => {});
+        await cloudConn.query('DELETE FROM sync_deleted_records WHERE table_name = ? AND (record_id = ? OR record_id = ?)', [table, recId, cleanUser]).catch(() => {});
+        continue;
+      }
+
       allKnownDeletions.add(recKey);
 
       if (table === 'users') {
-        const cleanUser = recId.replace(/^VTS-/i, '').trim().toLowerCase();
         allKnownDeletions.add(cleanUser);
         allKnownDeletions.add(`vts-${cleanUser}`);
 
@@ -288,16 +310,18 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
           await queryLocal(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ?`, [recId]).catch(() => {});
         }
       }
+
+      // Once deletion is executed on both sides, clean up the tombstone so future additions of the same identifier are allowed
+      await queryLocal('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, del.record_id]).catch(() => {});
+      await cloudConn.query('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, del.record_id]).catch(() => {});
+      if (cleanUser && cleanUser !== recId) {
+        await queryLocal('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, cleanUser]).catch(() => {});
+        await cloudConn.query('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, cleanUser]).catch(() => {});
+      }
+
       deleted++;
     }
   }
-
-  // 2. Fetch all rows
-  const localRows = await queryLocal(`SELECT * FROM \`${table}\``).catch(() => []);
-  const [cloudRows] = await cloudConn.query(`SELECT * FROM \`${table}\``).catch(() => [[]]);
-
-  const localMap = new Map((Array.isArray(localRows) ? localRows : []).filter(r => r[syncKey] !== null && r[syncKey] !== undefined).map(r => [String(r[syncKey]).toLowerCase(), r]));
-  const cloudMap = new Map((Array.isArray(cloudRows) ? cloudRows : []).filter(r => r[syncKey] !== null && r[syncKey] !== undefined).map(r => [String(r[syncKey]).toLowerCase(), r]));
 
   // 3. Local to Cloud sync
   for (const [key, lRow] of localMap.entries()) {
