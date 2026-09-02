@@ -2856,9 +2856,24 @@ app.post('/api/users', async (req, res) => {
 app.delete('/api/users/:identifier', async (req, res) => {
   try {
     const ident = req.params.identifier;
-    await query('DELETE FROM users WHERE id = ? OR username = ? OR employee_id = ?', [ident, ident, ident]);
-    executeCloudQuery('DELETE FROM users WHERE id = ? OR username = ? OR employee_id = ?', [ident, ident, ident]).catch(() => {});
-    syncLocalToCloud(db).catch(() => {});
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    const sourceEnv = isRailway ? 'cloud' : 'local';
+
+    const isNumeric = /^\d+$/.test(String(ident).trim());
+    const deleteSql = isNumeric
+      ? 'DELETE FROM users WHERE id = ?'
+      : 'DELETE FROM users WHERE username = ? OR employee_id = ?';
+    const deleteParams = isNumeric ? [parseInt(ident)] : [ident, ident];
+
+    await query(deleteSql, deleteParams);
+    await query('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES ("users", ?, ?, NOW()) ON DUPLICATE KEY UPDATE source_env = VALUES(source_env), deleted_at = NOW()', [ident, sourceEnv]).catch(() => {});
+
+    if (!isRailway) {
+      executeCloudQuery(deleteSql, deleteParams).catch(() => {});
+      executeCloudQuery('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES ("users", ?, "local", NOW()) ON DUPLICATE KEY UPDATE deleted_at = NOW()', [ident]).catch(() => {});
+    }
+
+    triggerRealtimeSync(db, 'users');
     res.json({ success: true, message: 'User deleted from database' });
   } catch (err) {
     console.error('Error deleting user:', err);
