@@ -3,6 +3,25 @@ import mysql from 'mysql2/promise';
 
 let isSyncing = false;
 let lastSyncTimestamp = null;
+let realtimeSyncTimeout = null;
+const pendingTablesToSync = new Set();
+const sseClients = new Set();
+
+export function addSseClient(res) {
+  sseClients.add(res);
+  res.on('close', () => sseClients.delete(res));
+}
+
+export function broadcastRealtimeEvent(data) {
+  const payload = `data: ${JSON.stringify(data)}\n\n`;
+  for (const client of sseClients) {
+    try {
+      client.write(payload);
+    } catch (e) {
+      sseClients.delete(client);
+    }
+  }
+}
 
 function getCloudConfig() {
   let cloudHost = process.env.CLOUD_DB_HOST;
@@ -25,7 +44,7 @@ function getCloudConfig() {
   return { host: cloudHost, port: cloudPort, user: cloudUser, password: cloudPassword, database: cloudDatabase };
 }
 
-// Instant Direct Cloud Query Execution (Mirroring local mutations to cloud in real time)
+// ─── Direct Asynchronous Real-Time Cloud Query Execution (0ms Latency) ───
 export async function executeCloudQuery(sql, params = []) {
   const cfg = getCloudConfig();
   if (!cfg.host || cfg.host === 'proxy.rlwy.net') return null;
@@ -34,12 +53,12 @@ export async function executeCloudQuery(sql, params = []) {
   try {
     conn = await mysql.createConnection({
       ...cfg,
-      connectTimeout: 8000
+      connectTimeout: 6000
     });
     const [result] = await conn.query(sql, params);
     return result;
   } catch (err) {
-    console.warn('[CLOUD MIRROR] Notice executing query on Cloud:', err.message);
+    console.warn('[REALTIME CLOUD MIRROR] Notice executing query on Cloud:', err.message);
     return null;
   } finally {
     if (conn) {
@@ -48,8 +67,34 @@ export async function executeCloudQuery(sql, params = []) {
   }
 }
 
+// ─── Real-Time Debounced Table Sync Trigger ───
+export function triggerRealtimeSync(localPool, tableName = null) {
+  if (tableName) {
+    pendingTablesToSync.add(tableName);
+  }
+  
+  // Broadcast realtime event to all connected UI clients immediately
+  broadcastRealtimeEvent({
+    type: 'DATA_CHANGED',
+    table: tableName,
+    timestamp: new Date().toISOString()
+  });
+
+  if (realtimeSyncTimeout) clearTimeout(realtimeSyncTimeout);
+  realtimeSyncTimeout = setTimeout(async () => {
+    try {
+      const tablesList = Array.from(pendingTablesToSync);
+      pendingTablesToSync.clear();
+      console.log(`[REALTIME AUTO-SYNC ⚡] Synchronizing tables to Cloud:`, tablesList.length ? tablesList : 'ALL');
+      await syncLocalToCloud(localPool, false, tablesList.length ? tablesList : null);
+    } catch (e) {
+      console.warn('[REALTIME AUTO-SYNC] Warning:', e.message);
+    }
+  }, 350); // 350ms debounce
+}
+
 export async function startAutoCloudSync(localPool) {
-  // Sync every 5 minutes in background between Local and Cloud
+  // Sync every 5 minutes in background between Local and Cloud as safety net
   const FIVE_MINUTES_MS = 5 * 60 * 1000;
   
   setInterval(async () => {
@@ -80,7 +125,7 @@ function sanitizeCreateTableSql(createSql, targetEnv = 'any') {
   return sql;
 }
 
-export async function syncLocalToCloud(localPool, forceFullSync = false) {
+export async function syncLocalToCloud(localPool, forceFullSync = false, targetTables = null) {
   const cfg = getCloudConfig();
 
   if (!cfg.host || cfg.host === 'proxy.rlwy.net') {
@@ -102,7 +147,7 @@ export async function syncLocalToCloud(localPool, forceFullSync = false) {
   try {
     cloudConn = await mysql.createConnection({
       ...cfg,
-      connectTimeout: 12000
+      connectTimeout: 10000
     });
 
     const queryLocal = (sql, params = []) => {
@@ -114,21 +159,27 @@ export async function syncLocalToCloud(localPool, forceFullSync = false) {
       });
     };
 
-    // 1. Discover all tables
-    const localTableRows = await queryLocal('SHOW TABLES').catch(() => []);
-    const localTables = localTableRows.map(r => Object.values(r)[0]).filter(Boolean);
+    // 1. Discover tables
+    let allTables = [];
+    if (Array.isArray(targetTables) && targetTables.length > 0) {
+      allTables = targetTables;
+    } else {
+      const localTableRows = await queryLocal('SHOW TABLES').catch(() => []);
+      const localTables = localTableRows.map(r => Object.values(r)[0]).filter(Boolean);
 
-    const [cloudTableRows] = await cloudConn.query('SHOW TABLES').catch(() => [[]]);
-    const cloudTables = (Array.isArray(cloudTableRows) ? cloudTableRows : []).map(r => Object.values(r)[0]).filter(Boolean);
+      const [cloudTableRows] = await cloudConn.query('SHOW TABLES').catch(() => [[]]);
+      const cloudTables = (Array.isArray(cloudTableRows) ? cloudTableRows : []).map(r => Object.values(r)[0]).filter(Boolean);
 
-    const allTables = Array.from(new Set([...localTables, ...cloudTables])).sort();
+      allTables = Array.from(new Set([...localTables, ...cloudTables])).sort();
+    }
 
     await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
     await queryLocal('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
 
-    // Compute Delta Sync cutoff time (with 60-second safety buffer)
+    // Compute Delta Sync cutoff time
     const now = new Date();
-    const syncCutoff = (!forceFullSync && lastSyncTimestamp)
+    const isTargeted = Boolean(targetTables && targetTables.length > 0);
+    const syncCutoff = (!forceFullSync && !isTargeted && lastSyncTimestamp)
       ? new Date(lastSyncTimestamp.getTime() - 60000)
       : null;
 
@@ -142,26 +193,7 @@ export async function syncLocalToCloud(localPool, forceFullSync = false) {
       const chunk = allTables.slice(i, i + CHUNK_SIZE);
       await Promise.all(chunk.map(async (table) => {
         try {
-          // Skip internal sync logs from reconciliation deletion
           const isSystemTable = ['sync_changes', 'sync_logs', 'sync_queue', 'sync_conflicts'].includes(table);
-
-          // Ensure table exists on Cloud
-          if (!cloudTables.includes(table) && localTables.includes(table)) {
-            const createResult = await queryLocal(`SHOW CREATE TABLE \`${table}\``).catch(() => []);
-            if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
-              const cleanSql = sanitizeCreateTableSql(createResult[0]['Create Table'], 'cloud');
-              await cloudConn.query(cleanSql).catch(() => {});
-            }
-          }
-
-          // Ensure table exists on Local
-          if (!localTables.includes(table) && cloudTables.includes(table)) {
-            const [createResult] = await cloudConn.query(`SHOW CREATE TABLE \`${table}\``).catch(() => [[]]);
-            if (Array.isArray(createResult) && createResult[0] && createResult[0]['Create Table']) {
-              const cleanSql = sanitizeCreateTableSql(createResult[0]['Create Table'], 'local');
-              await queryLocal(cleanSql).catch(() => {});
-            }
-          }
 
           // Fetch table column structures
           const localCols = await queryLocal(`DESCRIBE \`${table}\``).catch(() => []);
@@ -181,7 +213,6 @@ export async function syncLocalToCloud(localPool, forceFullSync = false) {
           const hasCreatedAt = commonCols.includes('created_at');
 
           // ─── Step 1: Deletion Reconciliation (Local -> Cloud) ───────────
-          // If a row existed on Cloud but is no longer on Local, delete it from Cloud
           if (pkCol && commonCols.includes(pkCol) && !isSystemTable) {
             const localPkRows = await queryLocal(`SELECT \`${pkCol}\` FROM \`${table}\``).catch(() => []);
             const localPkSet = new Set((Array.isArray(localPkRows) ? localPkRows : []).map(r => String(r[pkCol])));
@@ -203,7 +234,7 @@ export async function syncLocalToCloud(localPool, forceFullSync = false) {
             }
           }
 
-          // ─── Step 2: Local -> Cloud (Only Modified / New Records) ───────────
+          // ─── Step 2: Local -> Cloud (Modified / New Records) ───────────
           let localQuery = `SELECT * FROM \`${table}\``;
           let localParams = [];
           if (syncCutoff && hasUpdatedAt) {
@@ -257,7 +288,9 @@ export async function syncLocalToCloud(localPool, forceFullSync = false) {
 
     lastSyncTimestamp = now;
     const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
-    console.log(`[AUTO CLOUD SYNC] ⚡ Full Sync & Deletion Reconciliation Completed in ${elapsed}s! (${modifiedTablesCount} updated tables, ${totalRowsSynced} rows synced, ${totalRowsDeleted} deleted rows).`);
+    if (modifiedTablesCount > 0 || totalRowsDeleted > 0 || forceFullSync) {
+      console.log(`[AUTO CLOUD SYNC] ⚡ Real-Time Sync Completed in ${elapsed}s! (${modifiedTablesCount} updated tables, ${totalRowsSynced} rows synced, ${totalRowsDeleted} deleted rows).`);
+    }
     
     isSyncing = false;
     return {

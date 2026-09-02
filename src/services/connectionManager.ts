@@ -178,6 +178,35 @@ class ConnectionManagerService {
     return 'OFFLINE';
   }
 
+  private eventSource: EventSource | null = null;
+
+  public initRealtimeEventStream(onDataChange?: (tableName: string) => void) {
+    if (typeof window === 'undefined' || typeof EventSource === 'undefined') return;
+    if (this.eventSource) {
+      try { this.eventSource.close(); } catch (e) {}
+    }
+
+    try {
+      this.eventSource = new EventSource('/api/sync/events');
+      this.eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'DATA_CHANGED' && onDataChange) {
+            onDataChange(data.table || 'general');
+          }
+        } catch (e) {}
+      };
+      this.eventSource.onerror = () => {
+        if (this.eventSource) {
+          this.eventSource.close();
+          this.eventSource = null;
+        }
+        // Auto-reconnect after 8 seconds
+        setTimeout(() => this.initRealtimeEventStream(onDataChange), 8000);
+      };
+    } catch (e) {}
+  }
+
   private startConnectionCheckLoop() {
     this.checkConnectionNow();
     if (this.checkTimer) clearInterval(this.checkTimer);

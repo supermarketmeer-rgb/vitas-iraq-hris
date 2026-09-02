@@ -14,6 +14,7 @@ import {
 } from '../types';
 import { CATEGORY_GROUPS } from '../data/categories';
 import { api } from '../api/client';
+import { connectionManager } from '../services/connectionManager';
 
 interface AppContextType {
   theme: ThemeMode;
@@ -379,9 +380,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
   }, []);
 
-  // Mount effect to load data and poll candidates/jobs
+  // Mount effect to load data and listen to Real-Time SSE stream
   useEffect(() => {
     loadData();
+
+    // ⚡ Real-Time Server-Sent Events (SSE) Live Data Synchronization
+    connectionManager.initRealtimeEventStream((tableName) => {
+      if (!tableName || tableName === 'employees') {
+        api.getEmployees().then(d => { if (Array.isArray(d)) setEmployees(d); }).catch(() => {});
+      }
+      if (!tableName || tableName === 'candidates') {
+        api.getCandidates().then(d => { if (Array.isArray(d)) setCandidates(d); }).catch(() => {});
+      }
+      if (!tableName || tableName === 'job_vacancies') {
+        api.getJobVacancies().then(d => { if (Array.isArray(d)) setJobVacancies(d); }).catch(() => {});
+      }
+      if (!tableName || tableName === 'leave_requests') {
+        api.getLeaveRequests().then(d => { if (Array.isArray(d)) setLeaveRequests(d); }).catch(() => {});
+      }
+      if (!tableName || tableName === 'app_settings') {
+        api.getAppSettings().then(d => { if (d && typeof d === 'object') setAppSettings(d); }).catch(() => {});
+      }
+    });
+
     const interval = setInterval(async () => {
       try {
         const [candData, jobData] = await Promise.all([

@@ -8,7 +8,7 @@ import multer from 'multer';
 import fs from 'fs';
 import config from './database/config.mjs';
 import { initDatabase } from './database/initDatabase.js';
-import { startAutoCloudSync, syncLocalToCloud, executeCloudQuery } from './database/autoCloudSync.js';
+import { startAutoCloudSync, syncLocalToCloud, executeCloudQuery, triggerRealtimeSync, addSseClient } from './database/autoCloudSync.js';
 import { initSyncEngineTables } from './database/initSyncEngine.js';
 import { startLocalDiscoveryServer } from './database/localDiscovery.js';
 
@@ -80,15 +80,41 @@ db.getConnection(async (err, connection) => {
   await ensureSettingsSeededAndSynced();
 });
 
-// Helper function to execute queries
-const query = (sql, params) => {
+// Helper function to execute queries with Real-Time Cloud Mirroring
+const query = (sql, params = []) => {
   return new Promise((resolve, reject) => {
     db.query(sql, params, (err, results) => {
-      if (err) reject(err);
-      else resolve(results);
+      if (err) return reject(err);
+
+      // RealTime Cloud Mirroring: If query is an INSERT, UPDATE, DELETE, or REPLACE
+      const trimmed = (typeof sql === 'string' ? sql.trim() : '').toUpperCase();
+      const isMutation = trimmed.startsWith('INSERT') || trimmed.startsWith('UPDATE') || trimmed.startsWith('DELETE') || trimmed.startsWith('REPLACE');
+
+      if (isMutation) {
+        // 1. Direct Asynchronous Cloud Execution (0ms latency impact)
+        executeCloudQuery(sql, params).catch(() => {});
+
+        // 2. Extract table name to trigger fast targeted table delta sync
+        const match = sql.match(/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|REPLACE\s+INTO)\s+[`]?([a-zA-Z0-9_]+)[`]?/i);
+        const tableName = match ? match[1] : null;
+        triggerRealtimeSync(db, tableName);
+      }
+
+      resolve(results);
     });
   });
 };
+
+// Real-Time Server-Sent Events (SSE) Stream
+app.get('/api/sync/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  addSseClient(res);
+  res.write(`data: ${JSON.stringify({ type: 'CONNECTED', time: new Date().toISOString() })}\n\n`);
+});
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: 'connected', time: new Date().toISOString() });
