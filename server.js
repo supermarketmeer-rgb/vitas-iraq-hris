@@ -8,7 +8,15 @@ import multer from 'multer';
 import fs from 'fs';
 import config from './database/config.mjs';
 import { initDatabase } from './database/initDatabase.js';
-import { startAutoCloudSync, syncLocalToCloud, executeCloudQuery, triggerRealtimeSync, addSseClient } from './database/autoCloudSync.js';
+import { 
+  startAutoCloudSync, 
+  syncLocalToCloud, 
+  executeCloudQuery, 
+  triggerRealtimeSync, 
+  addSseClient, 
+  startCloudRealtimeListener, 
+  broadcastRealtimeEvent 
+} from './database/autoCloudSync.js';
 import { initSyncEngineTables } from './database/initSyncEngine.js';
 import { startLocalDiscoveryServer } from './database/localDiscovery.js';
 
@@ -72,6 +80,9 @@ db.getConnection(async (err, connection) => {
   // Launch non-blocking background auto-sync to Cloud
   startAutoCloudSync(db);
 
+  // Launch persistent Real-Time Bridge from Cloud to Local
+  startCloudRealtimeListener(db);
+
   await loadEmployeeColumns();
   await ensureCandidateColumns();
   await ensureJobVacancyColumns();
@@ -114,6 +125,17 @@ app.get('/api/sync/events', (req, res) => {
 
   addSseClient(res);
   res.write(`data: ${JSON.stringify({ type: 'CONNECTED', time: new Date().toISOString() })}\n\n`);
+});
+
+// Real-Time Notification Webhook between Servers
+app.post('/api/sync/notify-change', (req, res) => {
+  const { table } = req.body || {};
+  broadcastRealtimeEvent({
+    type: 'DATA_CHANGED',
+    table: table || 'all',
+    timestamp: new Date().toISOString()
+  });
+  res.json({ success: true, notified: true });
 });
 
 app.get('/api/health', (req, res) => {

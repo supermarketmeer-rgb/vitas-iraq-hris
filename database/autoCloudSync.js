@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import mysql from 'mysql2/promise';
+import https from 'https';
 
 let isSyncing = false;
 let lastSyncTimestamp = null;
@@ -73,11 +74,23 @@ export function triggerRealtimeSync(localPool, tableName = null) {
     pendingTablesToSync.add(tableName);
   }
   
+  // 1. Broadcast to local connected UI browsers
   broadcastRealtimeEvent({
     type: 'DATA_CHANGED',
     table: tableName,
     timestamp: new Date().toISOString()
   });
+
+  // 2. Notify Cloud Server to broadcast to all Cloud UI browsers
+  const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+  if (!isRailway) {
+    const cloudUrl = process.env.VITE_CLOUD_API_URL || 'https://vitas-iraq-hris-production.up.railway.app';
+    fetch(`${cloudUrl}/api/sync/notify-change`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: tableName })
+    }).catch(() => {});
+  }
 
   if (realtimeSyncTimeout) clearTimeout(realtimeSyncTimeout);
   realtimeSyncTimeout = setTimeout(async () => {
@@ -92,15 +105,78 @@ export function triggerRealtimeSync(localPool, tableName = null) {
   }, 350);
 }
 
+// ─── Persistent Real-Time Bridge from Cloud to Local ───
+export function startCloudRealtimeListener(localPool) {
+  const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+  if (isRailway) {
+    // If running on Railway itself, no need to bridge to itself
+    return;
+  }
+
+  const cloudUrl = process.env.VITE_CLOUD_API_URL || 'https://vitas-iraq-hris-production.up.railway.app';
+  const streamUrl = `${cloudUrl}/api/sync/events`;
+
+  console.log(`[REALTIME BRIDGE ⚡] Connecting persistent Cloud SSE listener to ${streamUrl}...`);
+
+  function connect() {
+    try {
+      const req = https.get(streamUrl, { timeout: 0 }, (res) => {
+        if (res.statusCode !== 200) {
+          setTimeout(connect, 10000);
+          return;
+        }
+
+        console.log(`[REALTIME BRIDGE ⚡] Connected to Cloud live stream! Instant 2-way sync active.`);
+        
+        let buffer = '';
+        res.on('data', async (chunk) => {
+          buffer += chunk.toString();
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(line.slice(6));
+                if (event.type === 'DATA_CHANGED') {
+                  console.log(`[REALTIME BRIDGE ⚡] Cloud edit detected on [${event.table || 'ALL'}] -> Pulling instantly to Local MySQL!`);
+                  await syncLocalToCloud(localPool, false, event.table && event.table !== 'all' ? [event.table] : null);
+                  // Broadcast to local browser UI clients
+                  broadcastRealtimeEvent(event);
+                }
+              } catch (e) {}
+            }
+          }
+        });
+
+        res.on('end', () => {
+          console.warn('[REALTIME BRIDGE] Cloud SSE stream disconnected. Reconnecting in 5s...');
+          setTimeout(connect, 5000);
+        });
+
+        res.on('error', () => {
+          setTimeout(connect, 8000);
+        });
+      });
+
+      req.on('error', () => {
+        setTimeout(connect, 10000);
+      });
+    } catch (e) {
+      setTimeout(connect, 10000);
+    }
+  }
+
+  connect();
+}
+
 export async function startAutoCloudSync(localPool) {
-  // Sync every 15 seconds in background between Local and Cloud for continuous real-time sync
+  // Continuous background sync loop every 15 seconds
   const FIFTEEN_SECONDS_MS = 15 * 1000;
   
   setInterval(async () => {
     if (isSyncing) return;
-    await syncLocalToCloud(localPool).catch(err => {
-      // Silent error catch to keep background sync quiet
-    });
+    await syncLocalToCloud(localPool).catch(() => {});
   }, FIFTEEN_SECONDS_MS);
 
   // Initial fast sync after 2 seconds on startup
@@ -123,7 +199,6 @@ function sanitizeCreateTableSql(createSql, targetEnv = 'any') {
   return sql;
 }
 
-// Helper to upsert a batch of rows to a target database connection
 async function executeBatchUpsert(targetQueryFn, targetExecuteFn, table, rows, commonCols, pkCol) {
   if (!Array.isArray(rows) || rows.length === 0) return 0;
   const BATCH = 50;
@@ -279,23 +354,18 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
           for (const [pk, lRow] of localMap.entries()) {
             const cRow = cloudMap.get(pk);
             if (!cRow) {
-              // Row exists on Local but not on Cloud -> Push to Cloud
               toPushToCloud.push(lRow);
             } else {
-              // Row exists on both: compare timestamps
               if (hasUpdatedAt && lRow.updated_at && cRow.updated_at) {
                 const lTime = new Date(lRow.updated_at).getTime();
                 const cTime = new Date(cRow.updated_at).getTime();
 
-                // If Cloud is strictly newer by > 1.5 seconds -> Pull from Cloud to Local!
                 if (cTime > lTime + 1500) {
                   toPullToLocal.push(cRow);
                 } else if (lTime > cTime + 1500) {
-                  // If Local is strictly newer -> Push from Local to Cloud!
                   toPushToCloud.push(lRow);
                 }
               } else {
-                // For tables without updated_at (e.g. settings), compare JSON content
                 const lStr = JSON.stringify(lRow);
                 const cStr = JSON.stringify(cRow);
                 if (lStr !== cStr) {
@@ -308,7 +378,6 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
           // Compare Cloud rows against Local (new records created on Cloud)
           for (const [pk, cRow] of cloudMap.entries()) {
             if (!localMap.has(pk)) {
-              // New record created on Cloud -> Pull to Local!
               toPullToLocal.push(cRow);
             }
           }
@@ -355,7 +424,7 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
       console.log(`[AUTO CLOUD SYNC] ⚡ Bidirectional Sync Completed in ${elapsed}s! (Pushed: ${totalPushedToCloud}, Pulled: ${totalPulledToLocal}, Deleted: ${totalRowsDeleted}).`);
     }
     
-    // Broadcast live event to refresh frontend UI if data was pulled from Cloud to Local
+    // Broadcast live event to refresh local UI if data was pulled from Cloud to Local
     if (totalPulledToLocal > 0) {
       broadcastRealtimeEvent({
         type: 'DATA_CHANGED',
