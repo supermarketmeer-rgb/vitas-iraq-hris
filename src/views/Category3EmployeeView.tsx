@@ -2286,7 +2286,7 @@ export const Category3EmployeeView: React.FC = () => {
                 <div className="flex items-center gap-2 border-b border-white/10 pb-2">
                   <span className="material-symbols-outlined text-blue-400">family_restroom</span>
                   <h3 className="text-sm font-bold text-white">{t('التبويب 6: البيانات العائلية والأبناء', 'Tab 6: Family Data & Children')}</h3>
-                  <span className="mr-auto px-2.5 py-0.5 rounded-full bg-slate-700/60 border border-slate-600/40 text-slate-400 text-[10px] font-bold">{t('جميع الحقول اختيارية', 'All fields optional')}</span>
+                  <span className="mr-auto px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold">{t('جميع الحقول اختيارية', 'All fields optional')}</span>
                 </div>
 
                 {/* Spouse */}
@@ -2294,7 +2294,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block font-medium mb-1 flex items-center gap-1.5">
                       <span className="text-slate-400">{t('اسم الزوج / الزوجة', 'Spouse Name')}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-500 border border-slate-600/30">{t('اختياري', 'Optional')}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-300 font-semibold">{t('اختياري', 'Optional')}</span>
                     </label>
                     <input
                       type="text"
@@ -2324,7 +2324,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div className="flex items-center gap-2 border-b border-white/5 pb-2">
                     <span className="material-symbols-outlined text-teal-400 text-sm">child_care</span>
                     <label className="text-teal-400 font-bold text-xs">{t('الأبناء وبيانات الميلاد والأعمار', 'Children & Birth Data')}</label>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-500 border border-slate-600/30">{t('اختياري', 'Optional')}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-300 font-semibold">{t('اختياري', 'Optional')}</span>
                     <span className="ml-auto px-2 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 font-mono text-[10px]">{childrenList.length} {t('ولد/بنت', 'child/children')}</span>
                   </div>
 
