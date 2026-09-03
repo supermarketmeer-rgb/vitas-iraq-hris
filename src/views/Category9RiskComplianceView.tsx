@@ -64,6 +64,7 @@ export const Category9RiskComplianceView: React.FC = () => {
   const [newUserForm, setNewUserForm] = useState({
     id: undefined as number | string | undefined,
     originalUsername: '',
+    originalEmployeeId: '',
     username: '',
     password: 'Password123!',
     fullNameAr: '',
@@ -389,6 +390,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       const updatedDelegations = {
         ...savedEmpDelegations,
         [cleanEmpCode]: {
+          id: newUserForm.id,
+          username: cleanUsername,
           employeeId: cleanEmpCode,
           employeeName: newUserForm.fullNameAr.trim(),
           employeeNameEn: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
@@ -401,6 +404,17 @@ export const Category9RiskComplianceView: React.FC = () => {
           grantedAt: new Date().toISOString().replace('T', ' ').slice(0, 16)
         }
       };
+
+      // Clean up previous keys if code or username was renamed
+      if (newUserForm.originalEmployeeId && newUserForm.originalEmployeeId !== cleanEmpCode) {
+        delete updatedDelegations[newUserForm.originalEmployeeId];
+      }
+      if (newUserForm.originalUsername && newUserForm.originalUsername.toLowerCase() !== cleanUsername.toLowerCase()) {
+        delete existingUsers[newUserForm.originalUsername.toLowerCase()];
+        delete updatedDelegations[newUserForm.originalUsername.toUpperCase()];
+        delete updatedDelegations[`VTS-${newUserForm.originalUsername.toUpperCase()}`];
+      }
+
       setSavedEmpDelegations(updatedDelegations);
       localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(updatedDelegations));
 
@@ -408,6 +422,7 @@ export const Category9RiskComplianceView: React.FC = () => {
       await api.saveUser({
         id: newUserForm.id,
         original_username: newUserForm.originalUsername || undefined,
+        original_employee_id: newUserForm.originalEmployeeId || undefined,
         username: cleanUsername,
         password: newUserForm.password,
         full_name: newUserForm.fullNameAr.trim(),
@@ -1429,6 +1444,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                                 setNewUserForm({
                                   id: d.id,
                                   originalUsername: d.username || d.employeeId,
+                                  originalEmployeeId: d.employeeId,
                                   username: d.username || d.employeeId,
                                   password: 'Password123!',
                                   fullNameAr: d.employeeName || '',

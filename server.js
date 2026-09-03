@@ -2812,6 +2812,7 @@ app.post('/api/users', async (req, res) => {
     const {
       id,
       original_username,
+      original_employee_id,
       username,
       password,
       full_name,
@@ -2830,18 +2831,18 @@ app.post('/api/users', async (req, res) => {
       allowed_screens
     } = req.body;
 
-    if (!username && !original_username && !employee_id && !id) {
+    if (!username && !original_username && !original_employee_id && !employee_id && !id) {
       return res.status(400).json({ error: 'Username is required' });
     }
 
-    const cleanUsername = String(username || original_username || employee_id).trim();
+    const cleanUsername = String(username || original_username || original_employee_id || employee_id).trim();
     const finalFullName = (full_name || name || cleanUsername).trim();
     const finalEmail = (email || `${cleanUsername.toLowerCase()}@vitasiraq.iq`).trim();
     const finalEmpId = (employee_id || cleanUsername).trim();
     const finalPass = password || 'Password123!';
     const screensStr = typeof allowed_screens === 'object' ? JSON.stringify(allowed_screens) : (allowed_screens || null);
 
-    // 1. Check if user already exists (by ID, original username, exact username, or employee_id)
+    // 1. Check if user already exists (by ID, original username, original employee id, or exact employee_id/username)
     let targetUserId = null;
     if (id && !isNaN(Number(id))) {
       const byId = await query('SELECT id FROM users WHERE id = ?', [parseInt(id)]);
@@ -2850,6 +2851,10 @@ app.post('/api/users', async (req, res) => {
     if (!targetUserId && original_username) {
       const byOrig = await query('SELECT id FROM users WHERE username = ? OR employee_id = ?', [original_username, original_username]);
       if (Array.isArray(byOrig) && byOrig.length > 0) targetUserId = byOrig[0].id;
+    }
+    if (!targetUserId && original_employee_id) {
+      const byOrigEmp = await query('SELECT id FROM users WHERE employee_id = ? OR username = ?', [original_employee_id, original_employee_id]);
+      if (Array.isArray(byOrigEmp) && byOrigEmp.length > 0) targetUserId = byOrigEmp[0].id;
     }
     if (!targetUserId) {
       const byEmpId = await query('SELECT id FROM users WHERE employee_id = ? OR username = ?', [finalEmpId, cleanUsername]);
