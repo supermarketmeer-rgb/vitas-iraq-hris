@@ -2820,6 +2820,9 @@ app.post('/api/users', async (req, res) => {
       name,
       email,
       role = 'Employee',
+      job_title,
+      jobTitle,
+      position,
       department = 'الموارد البشرية والشؤون الإدارية',
       employee_id,
       branch = 'الإدارة العامة - بغداد',
@@ -2841,6 +2844,8 @@ app.post('/api/users', async (req, res) => {
     const finalEmail = (email || `${cleanUsername.toLowerCase()}@vitasiraq.iq`).trim();
     const finalEmpId = (employee_id || cleanUsername).trim();
     const finalPass = password || 'Password123!';
+    const finalJobTitle = String(job_title || jobTitle || position || (role && role !== 'Employee' ? role : '') || 'مدخل بيانات موارد بشرية').trim();
+    const finalRole = (role && role !== 'Employee') ? role : (finalJobTitle || 'Employee');
     const screensStr = typeof allowed_screens === 'object' ? JSON.stringify(allowed_screens) : (allowed_screens || null);
 
     const matchOrigUser = original_username ? String(original_username).trim() : '';
@@ -2872,13 +2877,13 @@ app.post('/api/users', async (req, res) => {
       // UPDATE existing user directly in place using portable identifiers (updates on both Local & Cloud!)
       const updateSql = `
         UPDATE users SET
-          username = ?, password = ?, full_name = ?, name = ?, email = ?, role = ?, department = ?, employee_id = ?, branch = ?,
+          username = ?, password = ?, full_name = ?, name = ?, email = ?, role = ?, job_title = ?, department = ?, employee_id = ?, branch = ?,
           can_manage_employees = ?, can_manage_finance = ?, can_manage_recruitment = ?, can_manage_settings = ?, can_manage_users = ?,
           status = ?, allowed_screens = ?, updated_at = NOW()
         WHERE id = ? OR username = ? OR employee_id = ? OR ( ? != '' AND (username = ? OR employee_id = ?) )
       `;
       const updateParams = [
-        cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, role, department, finalEmpId, branch,
+        cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, finalRole, finalJobTitle, department, finalEmpId, branch,
         can_manage_employees ? 1 : 0, can_manage_finance ? 1 : 0, can_manage_recruitment ? 1 : 0, can_manage_settings ? 1 : 0, can_manage_users ? 1 : 0,
         status, screensStr,
         matchRow.id, matchRow.username, matchRow.employee_id,
@@ -2892,17 +2897,18 @@ app.post('/api/users', async (req, res) => {
       // INSERT new user with UPSERT protection
       const insertSql = `
         INSERT INTO users (
-          username, password, full_name, name, email, role, department, employee_id, branch,
+          username, password, full_name, name, email, role, job_title, department, employee_id, branch,
           can_manage_employees, can_manage_finance, can_manage_recruitment, can_manage_settings, can_manage_users,
           status, allowed_screens, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE
           password = VALUES(password),
           full_name = VALUES(full_name),
           name = VALUES(name),
           email = VALUES(email),
           role = VALUES(role),
+          job_title = VALUES(job_title),
           department = VALUES(department),
           employee_id = VALUES(employee_id),
           branch = VALUES(branch),
@@ -2916,7 +2922,7 @@ app.post('/api/users', async (req, res) => {
           updated_at = NOW()
       `;
       const insertParams = [
-        cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, role, department, finalEmpId, branch,
+        cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, finalRole, finalJobTitle, department, finalEmpId, branch,
         can_manage_employees ? 1 : 0, can_manage_finance ? 1 : 0, can_manage_recruitment ? 1 : 0, can_manage_settings ? 1 : 0, can_manage_users ? 1 : 0,
         status, screensStr
       ];

@@ -318,7 +318,8 @@ export const Category9RiskComplianceView: React.FC = () => {
         full_name: newUserForm.fullNameAr.trim(),
         name: newUserForm.fullNameAr.trim(),
         email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
-        role: 'Employee',
+        job_title: newUserForm.jobTitle.trim(),
+        role: newUserForm.jobTitle.trim() || 'Employee',
         department: newUserForm.department,
         employee_id: cleanEmpCode,
         branch: newUserForm.branch,
@@ -1312,7 +1313,7 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                         <td className="p-3.5">
                           <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-700 dark:text-teal-300 font-bold text-[11px] inline-block">
-                            {u.role || u.job_title || t('موظف موارد بشرية', 'HR Specialist')}
+                            {u.job_title || (u.role && u.role !== 'Employee' ? u.role : null) || t('مسؤول رواتب وحضور', 'Payroll & Attendance Officer')}
                           </span>
                         </td>
 
@@ -1363,7 +1364,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                                   password: u.password || 'Password123!',
                                   fullNameAr: fullName,
                                   fullNameEn: u.name || fullName,
-                                  jobTitle: u.role || u.job_title || 'مدخل بيانات موارد بشرية',
+                                  jobTitle: u.job_title || (u.role && u.role !== 'Employee' ? u.role : '') || 'مسؤول رواتب وحضور',
                                   department: u.department || 'الموارد البشرية والشؤون الإدارية',
                                   branch: u.branch || 'الإدارة العامة - بغداد',
                                   email: u.email || `${u.username.toLowerCase()}@vitasiraq.iq`,
