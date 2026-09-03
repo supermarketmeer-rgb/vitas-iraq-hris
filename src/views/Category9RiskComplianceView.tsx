@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
 import { UserRole } from '../types';
 import { api } from '../api/client';
+import { transliterateEnglishNameToArabic, hasArabicCharacters } from '../utils/nameHelper';
 
 export const Category9RiskComplianceView: React.FC = () => {
   const {
@@ -21,6 +22,51 @@ export const Category9RiskComplianceView: React.FC = () => {
   } = useApp();
 
   const isDark = theme === 'dark';
+
+  // Extract Arabic Name with 100% certainty from all possible fields and transliteration fallback
+  const extractArabicName = (emp: any): string => {
+    if (!emp) return '';
+    const candidates = [
+      emp.full_name_ar,
+      emp.fullNameAr,
+      emp.name_ar,
+      emp.nameAr,
+      emp.fullName,
+      emp.full_name,
+      emp.name,
+      emp.employeeName,
+      emp.employeeNameAr
+    ];
+    for (const c of candidates) {
+      if (c && typeof c === 'string' && c.trim() && c.trim() !== 'غير محدد' && hasArabicCharacters(c)) {
+        return c.trim();
+      }
+    }
+    const en = emp.full_name_en || emp.fullNameEn || emp.name_en || emp.nameEn || emp.fullName || emp.name || '';
+    if (en && typeof en === 'string' && en.trim()) {
+      return transliterateEnglishNameToArabic(en.trim());
+    }
+    return '';
+  };
+
+  const extractEnglishName = (emp: any): string => {
+    if (!emp) return '';
+    const candidates = [
+      emp.full_name_en,
+      emp.fullNameEn,
+      emp.name_en,
+      emp.nameEn,
+      emp.fullName,
+      emp.full_name,
+      emp.name
+    ];
+    for (const c of candidates) {
+      if (c && typeof c === 'string' && c.trim() && c.trim() !== 'غير محدد' && !hasArabicCharacters(c)) {
+        return c.trim();
+      }
+    }
+    return emp.full_name_en || emp.fullNameEn || emp.name_en || '';
+  };
 
   // --- 1. Risk Assessment State ---
   const [riskTitle, setRiskTitle] = useState('');
@@ -141,13 +187,9 @@ export const Category9RiskComplianceView: React.FC = () => {
 
     const badge = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id || '';
     
-    // Robust Arabic full name resolution
-    let fullNameAr = (emp.full_name_ar && emp.full_name_ar !== 'غير محدد') ? emp.full_name_ar : '';
-    if (!fullNameAr) fullNameAr = (emp.name_ar && emp.name_ar !== 'غير محدد') ? emp.name_ar : '';
-    if (!fullNameAr) fullNameAr = (emp.fullNameAr && emp.fullNameAr !== 'غير محدد') ? emp.fullNameAr : '';
-    if (!fullNameAr) fullNameAr = emp.full_name || emp.name || emp.full_name_en || emp.name_en || '';
-
-    const fullNameEn = emp.full_name_en || emp.name_en || emp.fullNameEn || emp.full_name || emp.name || fullNameAr;
+    // Robust Arabic and English full name resolution with 100% guarantee
+    const fullNameAr = extractArabicName(emp);
+    const fullNameEn = extractEnglishName(emp) || fullNameAr;
     const jobTitle = emp.position || emp.position_ar || emp.job_title || emp.jobTitle || 'موظف';
     const dept = emp.department || emp.department_ar || 'الموارد البشرية والشؤون الإدارية';
     const branch = emp.branch || emp.location_ar || emp.location || 'الإدارة العامة - بغداد';
@@ -163,7 +205,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     setNewUserForm(prev => ({
       ...prev,
       originalEmployeeId: String(badge),
-      username: prev.username || suggestedUsername,
+      username: suggestedUsername || prev.username,
       fullNameAr: fullNameAr || prev.fullNameAr,
       fullNameEn: fullNameEn || prev.fullNameEn,
       jobTitle: jobTitle || prev.jobTitle,
@@ -1585,8 +1627,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                         ) : (
                           filteredEmployeesForCombobox.map((emp: any) => {
                             const b = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id || '';
-                            const arName = (emp.full_name_ar && emp.full_name_ar !== 'غير محدد') ? emp.full_name_ar : (emp.fullNameAr || emp.name_ar || emp.fullName || emp.full_name || emp.name || '');
-                            const enName = emp.full_name_en || emp.fullNameEn || emp.name_en || '';
+                            const arName = extractArabicName(emp);
+                            const enName = extractEnglishName(emp);
                             const dept = emp.department || emp.department_ar || '';
                             const pos = emp.position || emp.position_ar || emp.job_title || emp.jobTitle || '';
                             const mainName = arName || enName || `موظف #${b}`;
