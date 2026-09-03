@@ -89,19 +89,60 @@ export const Category9RiskComplianceView: React.FC = () => {
   });
   const [badgeSearchQuery, setBadgeSearchQuery] = useState<string>('');
   const [matchedEmployee, setMatchedEmployee] = useState<any>(null);
+  const [isComboboxOpen, setIsComboboxOpen] = useState<boolean>(false);
+
+  // Dynamic filter for Combobox search
+  const filteredEmployeesForCombobox = useMemo(() => {
+    const q = badgeSearchQuery.trim().toLowerCase();
+    if (!q) return (employees || []).slice(0, 40);
+    const cleanQ = q.replace(/^vts-?/i, '');
+    return (employees || []).filter((e: any) => {
+      const b = String(e.badge_no || e.badgeNo || '').toLowerCase();
+      const id = String(e.employee_id || e.employeeId || e.id || '').toLowerCase();
+      const cleanB = b.replace(/^vts-?/i, '');
+      const cleanId = id.replace(/^vts-?/i, '');
+      const nameAr = String(e.full_name_ar || e.name_ar || e.name || '').toLowerCase();
+      const nameEn = String(e.full_name_en || e.name_en || '').toLowerCase();
+      const dept = String(e.department || e.department_ar || '').toLowerCase();
+      const pos = String(e.position || e.position_ar || e.job_title || '').toLowerCase();
+      return (
+        b.includes(q) ||
+        cleanB.includes(cleanQ) ||
+        id.includes(q) ||
+        cleanId.includes(cleanQ) ||
+        nameAr.includes(q) ||
+        nameEn.includes(q) ||
+        dept.includes(q) ||
+        pos.includes(q)
+      );
+    }).slice(0, 50);
+  }, [employees, badgeSearchQuery]);
 
   const handleAutofillFromEmployee = (emp: any) => {
     if (!emp) return;
     setMatchedEmployee(emp);
+    setIsComboboxOpen(false);
+
     const badge = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id || '';
-    const fullNameAr = emp.full_name_ar || emp.name_ar || emp.fullNameAr || emp.full_name || emp.name || '';
-    const fullNameEn = emp.full_name_en || emp.name_en || emp.fullNameEn || emp.full_name || emp.name || '';
+    
+    // Robust Arabic full name resolution
+    let fullNameAr = (emp.full_name_ar && emp.full_name_ar !== 'غير محدد') ? emp.full_name_ar : '';
+    if (!fullNameAr) fullNameAr = (emp.name_ar && emp.name_ar !== 'غير محدد') ? emp.name_ar : '';
+    if (!fullNameAr) fullNameAr = (emp.fullNameAr && emp.fullNameAr !== 'غير محدد') ? emp.fullNameAr : '';
+    if (!fullNameAr) fullNameAr = emp.full_name || emp.name || emp.full_name_en || emp.name_en || '';
+
+    const fullNameEn = emp.full_name_en || emp.name_en || emp.fullNameEn || emp.full_name || emp.name || fullNameAr;
     const jobTitle = emp.position || emp.position_ar || emp.job_title || emp.jobTitle || 'موظف';
     const dept = emp.department || emp.department_ar || 'الموارد البشرية والشؤون الإدارية';
     const branch = emp.branch || emp.location_ar || emp.location || 'الإدارة العامة - بغداد';
     const email = emp.email || emp.org_email || emp.personal_email || (badge ? `${String(badge).toLowerCase().replace(/[^a-z0-9]/g, '')}@vitasiraq.iq` : '');
     const phone = emp.phone || emp.mobile || '';
-    const suggestedUsername = emp.username || (badge ? String(badge).toLowerCase() : (email ? email.split('@')[0] : ''));
+    
+    // Clean suggested username without spaces
+    const rawUser = emp.username || (emp.employee_id ? String(emp.employee_id).toLowerCase() : (badge ? String(badge).toLowerCase() : (email ? email.split('@')[0] : '')));
+    const suggestedUsername = rawUser.replace(/\s+/g, '');
+
+    setBadgeSearchQuery(`${badge} - ${fullNameAr || fullNameEn}`);
 
     setNewUserForm(prev => ({
       ...prev,
@@ -115,31 +156,6 @@ export const Category9RiskComplianceView: React.FC = () => {
       email: email || prev.email,
       phone: phone || prev.phone
     }));
-  };
-
-  const handleBadgeInputChange = (query: string) => {
-    setBadgeSearchQuery(query);
-    const trimmed = query.trim().toLowerCase();
-    if (!trimmed) {
-      setMatchedEmployee(null);
-      return;
-    }
-    const cleanQ = trimmed.replace(/^vts-?/i, '');
-    const found = (employees || []).find((e: any) => {
-      const b = String(e.badge_no || e.badgeNo || '').toLowerCase();
-      const id = String(e.employee_id || e.employeeId || e.id || '').toLowerCase();
-      const cleanB = b.replace(/^vts-?/i, '');
-      const cleanId = id.replace(/^vts-?/i, '');
-      const nameAr = String(e.full_name_ar || e.name_ar || e.name || '').toLowerCase();
-      const nameEn = String(e.full_name_en || e.name_en || '').toLowerCase();
-      return b === trimmed || cleanB === cleanQ || id === trimmed || cleanId === cleanQ || nameAr.includes(trimmed) || nameEn.includes(trimmed);
-    });
-
-    if (found) {
-      handleAutofillFromEmployee(found);
-    } else {
-      setMatchedEmployee(null);
-    }
   };
 
   const [empPermLevel, setEmpPermLevel] = useState<'full' | 'read'>('full');
@@ -1476,61 +1492,129 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <span>{t('1. بيانات المستخدم ونوع الوظيفة (User & Position Details)', '1. User Account & Position Details')}</span>
                 </h4>
 
-                {/* Badge Number / Employee Autofill Search Bar */}
-                <div className={`p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                {/* 🌟 Dynamic Searchable Combobox for Badge & Employee Name */}
+                <div className={`p-3.5 rounded-2xl border space-y-2 relative ${
                   isDark ? 'bg-teal-950/20 border-teal-500/30' : 'bg-teal-50/70 border-teal-500/30'
                 }`}>
-                  <div className="flex-1 w-full">
-                    <label className="font-bold text-teal-800 dark:text-teal-300 block text-[11px] mb-1 flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-base">search</span>
-                      <span>{t('رقم البادج أو البحث عن موظف للملء التلقائي (Badge No. Search)', 'Badge No. Search (Autofills Employee Info)')}</span>
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-teal-800 dark:text-teal-300 text-xs flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-base">person_search</span>
+                      <span>{t('البحث التفاعلي برقم البادج أو اسم الموظف (Dynamic Combobox Search)', 'Dynamic Search by Badge No. or Employee Name')}</span>
                     </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        list="employees-badge-datalist"
-                        placeholder={t('أدخل رقم البادج (مثال: B-101 أو VTS-1055) أو اسم الموظف لملء البيانات تلقائياً...', 'Enter Badge No. (e.g. B-101, VTS-1055) or employee name to autofill...')}
-                        value={badgeSearchQuery}
-                        onChange={e => handleBadgeInputChange(e.target.value)}
-                        className={`w-full px-3.5 py-2 rounded-xl border text-xs outline-none font-bold ${
-                          isDark ? 'bg-[#111827] border-teal-500/40 text-white placeholder-slate-500' : 'bg-white border-teal-500/40 text-slate-900 placeholder-slate-400'
-                        }`}
-                      />
-                      <datalist id="employees-badge-datalist">
-                        {(employees || []).map((emp: any) => {
-                          const b = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id;
-                          const n = emp.full_name_ar || emp.name_ar || emp.name || emp.full_name || '';
-                          const d = emp.department || emp.department_ar || '';
-                          return <option key={emp.id || b} value={b}>{`${b} - ${n} (${d})`}</option>;
-                        })}
-                      </datalist>
-                    </div>
+
+                    {matchedEmployee && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">verified</span>
+                        <span>{t('تم ربط الموظف والملء التلقائي', 'Employee Linked & Autofilled')}</span>
+                      </span>
+                    )}
                   </div>
 
-                  {matchedEmployee && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold self-stretch sm:self-auto justify-between sm:justify-start">
-                      <div className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-base text-emerald-600">verified</span>
-                        <span>
-                          {t(
-                            `تم التعرف: ${matchedEmployee.full_name_ar || matchedEmployee.name_ar || matchedEmployee.name} (${matchedEmployee.badge_no || matchedEmployee.employee_id})`,
-                            `Matched: ${matchedEmployee.full_name_ar || matchedEmployee.name_ar || matchedEmployee.name} (${matchedEmployee.badge_no || matchedEmployee.employee_id})`
-                          )}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMatchedEmployee(null);
-                          setBadgeSearchQuery('');
+                  <div className="relative">
+                    <div className="relative flex items-center">
+                      <span className="material-symbols-outlined absolute start-3 text-teal-600 text-base pointer-events-none">
+                        search
+                      </span>
+                      <input
+                        type="text"
+                        placeholder={t('اكتب رقم البادج (مثال: B-101، v 96) أو اسم الموظف بالعربية أو الإنجليزية للبحث الفوري...', 'Type Badge No. (e.g. B-101, v 96) or employee name to filter live...')}
+                        value={badgeSearchQuery}
+                        onFocus={() => setIsComboboxOpen(true)}
+                        onChange={e => {
+                          setBadgeSearchQuery(e.target.value);
+                          setIsComboboxOpen(true);
                         }}
-                        className="text-slate-400 hover:text-rose-500 px-1.5 py-0.5 rounded cursor-pointer"
-                        title="إلغاء التحديد"
-                      >
-                        ✕
-                      </button>
+                        className={`w-full ps-9 pe-16 py-2.5 rounded-xl border text-xs outline-none font-bold transition-all shadow-sm ${
+                          isDark ? 'bg-[#111827] border-teal-500/40 text-white placeholder-slate-500 focus:border-teal-400' : 'bg-white border-teal-500/40 text-slate-900 placeholder-slate-400 focus:border-teal-600'
+                        }`}
+                      />
+                      <div className="absolute end-2 flex items-center gap-1">
+                        {badgeSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBadgeSearchQuery('');
+                              setMatchedEmployee(null);
+                              setIsComboboxOpen(false);
+                            }}
+                            className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            title="مسح البحث"
+                          >
+                            <span className="material-symbols-outlined text-sm">close</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIsComboboxOpen(!isComboboxOpen)}
+                          className="p-1 rounded-lg text-teal-600 hover:bg-teal-500/10 transition-colors cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base">
+                            {isComboboxOpen ? 'expand_less' : 'expand_more'}
+                          </span>
+                        </button>
+                      </div>
                     </div>
-                  )}
+
+                    {/* Floating Dropdown List of Filtered Employees */}
+                    {isComboboxOpen && (
+                      <div className={`absolute start-0 end-0 top-full mt-1 z-50 max-h-60 overflow-y-auto rounded-2xl border shadow-2xl backdrop-blur-md divide-y ${
+                        isDark ? 'bg-[#0e131f]/95 border-teal-500/30 divide-white/5 text-white' : 'bg-white/95 border-teal-500/30 divide-slate-100 text-slate-900'
+                      }`}>
+                        {filteredEmployeesForCombobox.length === 0 ? (
+                          <div className="p-4 text-center text-slate-400 text-xs">
+                            <span className="material-symbols-outlined text-2xl block mb-1 opacity-50">search_off</span>
+                            {t('لا يوجد موظف مطابق لهذا البحث', 'No matching employee found')}
+                          </div>
+                        ) : (
+                          filteredEmployeesForCombobox.map((emp: any) => {
+                            const b = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id || '';
+                            const arName = (emp.full_name_ar && emp.full_name_ar !== 'غير محدد') ? emp.full_name_ar : (emp.name_ar || emp.fullNameAr || emp.full_name || emp.name || '');
+                            const enName = emp.full_name_en || emp.name_en || emp.fullNameEn || emp.name || '';
+                            const dept = emp.department || emp.department_ar || '';
+                            const pos = emp.position || emp.position_ar || emp.job_title || emp.jobTitle || '';
+
+                            return (
+                              <button
+                                key={emp.id || b}
+                                type="button"
+                                onClick={() => handleAutofillFromEmployee(emp)}
+                                className={`w-full p-2.5 text-start flex items-center justify-between gap-3 transition-colors cursor-pointer ${
+                                  isDark ? 'hover:bg-teal-500/15' : 'hover:bg-teal-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-xs shrink-0">
+                                    <span className="material-symbols-outlined text-base">person</span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-bold text-xs truncate">
+                                        {arName || enName || `موظف #${b}`}
+                                      </p>
+                                      {enName && arName && (
+                                        <span className="text-[10px] text-slate-400 truncate">
+                                          ({enName})
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 truncate">
+                                      {pos ? `${pos} • ` : ''}{dept}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="shrink-0 text-end">
+                                  <span className="px-2 py-0.5 rounded-md bg-teal-500/15 border border-teal-500/30 text-teal-700 dark:text-teal-300 font-mono font-bold text-[11px]">
+                                    {b}
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
