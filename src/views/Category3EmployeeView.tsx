@@ -1428,10 +1428,10 @@ export const Category3EmployeeView: React.FC = () => {
                     onClick={() => setActiveTab(tab.id)}
                     className={`p-3 rounded-2xl text-right transition-all flex flex-col justify-between h-24 border ${
                       isActive
-                        ? 'bg-gradient-to-br from-teal-600 to-teal-800 border-teal-400 text-white shadow-xl shadow-teal-600/30 scale-[1.02] z-10'
+                        ? 'bg-teal-600 border-teal-500 text-white shadow-xl shadow-teal-600/30 scale-[1.02] z-10'
                         : isCompleted
-                        ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-300 hover:bg-emerald-900/40'
-                        : 'bg-[#0a0c10] border-white/10 text-slate-400 hover:border-white/20 hover:text-slate-200'
+                        ? 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50 shadow-sm'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full mb-1">
@@ -1439,18 +1439,24 @@ export const Category3EmployeeView: React.FC = () => {
                         isActive
                           ? 'bg-white text-teal-700 shadow-md scale-110'
                           : isCompleted
-                          ? 'bg-emerald-500 text-slate-950 font-black'
-                          : 'bg-white/10 text-slate-400'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold'
+                          : 'bg-slate-100 text-slate-700 border border-slate-200 font-bold'
                       }`}>
                         {isCompleted ? '✓' : tab.id}
                       </span>
-                      <span className={`material-symbols-outlined text-base ${isActive ? 'text-white' : isCompleted ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      <span className={`material-symbols-outlined text-base ${
+                        isActive ? 'text-white' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
+                      }`}>
                         {tab.icon}
                       </span>
                     </div>
                     <div>
-                      <span className={`block text-[11px] font-bold leading-tight truncate ${isActive ? 'text-white' : ''}`}>{tab.title}</span>
-                      <span className={`block text-[9px] truncate mt-0.5 ${isActive ? 'text-white/90 font-medium' : 'opacity-70'}`}>{tab.desc}</span>
+                      <span className={`block text-[11px] font-bold leading-tight truncate ${
+                        isActive ? 'text-white' : 'text-slate-900'
+                      }`}>{tab.title}</span>
+                      <span className={`block text-[9px] truncate mt-0.5 ${
+                        isActive ? 'text-white/90 font-medium' : 'text-slate-500'
+                      }`}>{tab.desc}</span>
                     </div>
                   </button>
                 );
@@ -1734,7 +1740,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
                       {t('سنوات الخدمة الكلية', 'Total Years of Employment')}
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-400 border border-emerald-700/30">{t('تلقائي', 'Auto')}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">{t('تلقائي', 'Auto')}</span>
                     </label>
                     <div className="w-full bg-[#0a0c10] border border-emerald-500/20 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
                       <span className="text-emerald-400 font-mono font-bold text-lg">{yearsOfEmployment}</span>
@@ -1814,7 +1820,7 @@ export const Category3EmployeeView: React.FC = () => {
                     <label className="block text-black font-medium mb-1">
                       {t('تاريخ آخر تغيير وظيفي / منصب', 'Last Position Change Date')}
                       {statusChanges.length > 0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-900/40 text-teal-400 border border-teal-700/30 mr-2">{t('تلقائي من التغييرات', 'Auto from changes')}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold mr-2">{t('تلقائي من التغييرات', 'Auto from changes')}</span>
                       )}
                     </label>
                     <input
@@ -1834,7 +1840,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
                       {t('سنوات في الوظيفة الحالية', 'Years in Current Position')}
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-400 border border-blue-700/30">{t('تلقائي', 'Auto')}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('تلقائي', 'Auto')}</span>
                     </label>
                     <div className="w-full bg-[#0a0c10] border border-blue-500/20 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
                       <span className="text-blue-400 font-mono font-bold text-lg">{yearsInPosition}</span>
@@ -1976,7 +1982,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
                       {t('بدل النقل الثابت', 'Fixed Transportation Allowance')}
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-400 border border-blue-700/30">{t('من الإعدادات', 'From Settings')}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('من الإعدادات', 'From Settings')}</span>
                     </label>
                     <input
                       type="text"
@@ -1991,7 +1997,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
                       {t('المكافأة الثابتة', 'Fixed Bonus')}
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-400 border border-blue-700/30">{t('من الإعدادات', 'From Settings')}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('من الإعدادات', 'From Settings')}</span>
                     </label>
                     <input
                       type="text"
@@ -2006,7 +2012,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
                       مخصصات الهاتف (Phone Allowance)
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-400 border border-blue-700/30">من الإعدادات</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">من الإعدادات</span>
                     </label>
                     <input
                       type="text"
@@ -2033,7 +2039,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
                       بدل الزوج/ة (Spouse Allowance)
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-900/40 text-teal-400 border border-teal-700/30">تلقائي من السياسات</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">تلقائي من السياسات</span>
                     </label>
                     <input
                       type="text"
@@ -2048,7 +2054,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
                       بدل الطفل الواحد (Child Allowance)
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-900/40 text-teal-400 border border-teal-700/30">تلقائي من السياسات</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">تلقائي من السياسات</span>
                     </label>
                     <input
                       type="text"
@@ -2063,7 +2069,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
                       {t('إجمالي المخصصات العائلية', 'Total Family Allowance')}
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-900/40 text-teal-400 border border-teal-700/30">{t('تلقائي', 'Auto')}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">{t('تلقائي', 'Auto')}</span>
                     </label>
                     <div className="w-full bg-[#0a0c10] border border-teal-500/20 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
                       <span className="text-teal-400 font-mono font-bold text-lg">{familyAllowance > 0 ? formatWithCommas(familyAllowance) : '0'}</span>
