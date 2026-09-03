@@ -2933,27 +2933,53 @@ app.delete('/api/users/:identifier', async (req, res) => {
     const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
     const sourceEnv = isRailway ? 'cloud' : 'local';
 
+    // 1. Find user's business identifiers before deleting
+    let userRow = null;
     const isNumeric = /^\d+$/.test(ident);
-    const deleteSql = isNumeric
-      ? 'DELETE FROM users WHERE id = ?'
-      : 'DELETE FROM users WHERE username = ? OR employee_id = ? OR LOWER(username) = LOWER(?) OR LOWER(employee_id) = LOWER(?) OR LOWER(username) = LOWER(?) OR LOWER(employee_id) = LOWER(?)';
-    const deleteParams = isNumeric ? [parseInt(ident)] : [ident, ident, ident, ident, cleanIdent, `VTS-${cleanIdent}`];
+    if (isNumeric) {
+      const rows = await query('SELECT id, username, employee_id, email FROM users WHERE id = ?', [parseInt(ident)]);
+      if (Array.isArray(rows) && rows.length > 0) userRow = rows[0];
+    }
+    if (!userRow) {
+      const rows = await query(
+        'SELECT id, username, employee_id, email FROM users WHERE username = ? OR employee_id = ? OR LOWER(username) = LOWER(?) OR LOWER(employee_id) = LOWER(?)',
+        [ident, ident, ident, ident]
+      );
+      if (Array.isArray(rows) && rows.length > 0) userRow = rows[0];
+    }
+
+    const targetUser = userRow ? userRow.username : (cleanIdent || ident);
+    const targetEmpId = userRow ? userRow.employee_id : (ident.toUpperCase().startsWith('VTS') ? ident.toUpperCase() : `VTS-${cleanIdent.toUpperCase()}`);
+    const targetEmail = userRow ? (userRow.email || '') : '';
+    const targetId = userRow ? userRow.id : (isNumeric ? parseInt(ident) : null);
+
+    const deleteSql = `
+      DELETE FROM users
+      WHERE ( ? IS NOT NULL AND id = ? )
+         OR username = ? OR LOWER(username) = LOWER(?)
+         OR employee_id = ? OR LOWER(employee_id) = LOWER(?)
+         OR ( ? != '' AND (email = ? OR LOWER(email) = LOWER(?)) )
+    `;
+    const deleteParams = [
+      targetId, targetId,
+      targetUser, targetUser,
+      targetEmpId, targetEmpId,
+      targetEmail, targetEmail, targetEmail
+    ];
 
     await query(deleteSql, deleteParams);
-    
-    // Log tombstones for both full and clean identifiers
+
+    // Record tombstones for portable business identifiers so Cloud sync never resurrects the user
     const tombSql = 'INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES ("users", ?, ?, NOW()) ON DUPLICATE KEY UPDATE source_env = VALUES(source_env), deleted_at = NOW()';
-    await query(tombSql, [ident, sourceEnv]).catch(() => {});
-    if (cleanIdent && cleanIdent !== ident) {
-      await query(tombSql, [cleanIdent, sourceEnv]).catch(() => {});
-    }
+    if (targetUser) await query(tombSql, [targetUser, sourceEnv]).catch(() => {});
+    if (targetEmpId && targetEmpId !== targetUser) await query(tombSql, [targetEmpId, sourceEnv]).catch(() => {});
+    if (targetEmail) await query(tombSql, [targetEmail, sourceEnv]).catch(() => {});
 
     if (!isRailway) {
       executeCloudQuery(deleteSql, deleteParams).catch(() => {});
-      executeCloudQuery(tombSql, [ident, 'local']).catch(() => {});
-      if (cleanIdent && cleanIdent !== ident) {
-        executeCloudQuery(tombSql, [cleanIdent, 'local']).catch(() => {});
-      }
+      if (targetUser) executeCloudQuery(tombSql, [targetUser, 'local']).catch(() => {});
+      if (targetEmpId && targetEmpId !== targetUser) executeCloudQuery(tombSql, [targetEmpId, 'local']).catch(() => {});
+      if (targetEmail) executeCloudQuery(tombSql, [targetEmail, 'local']).catch(() => {});
     }
 
     triggerRealtimeSync(db, 'users');

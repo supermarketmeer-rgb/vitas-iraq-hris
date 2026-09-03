@@ -1389,7 +1389,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                                   : `Are you sure you want to delete user account (${fullName})?`;
 
                                 if (confirm(confirmMsg)) {
-                                  await api.deleteUser(u.id || u.username).catch(() => {});
+                                  await api.deleteUser(u.username || u.employee_id || u.id).catch(() => {});
                                   fetchUsersFromDb();
                                   setCustomEmpSavedToast(
                                     language === 'ar' ? `تم حذف حساب المستخدم (${fullName}) بنجاح.` : `User account (${fullName}) deleted.`
