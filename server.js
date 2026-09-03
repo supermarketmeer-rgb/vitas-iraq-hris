@@ -2877,13 +2877,17 @@ app.post('/api/users', async (req, res) => {
           status = ?, allowed_screens = ?, updated_at = NOW()
         WHERE id = ? OR username = ? OR employee_id = ? OR ( ? != '' AND (username = ? OR employee_id = ?) )
       `;
-      await query(updateSql, [
+      const updateParams = [
         cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, role, department, finalEmpId, branch,
         can_manage_employees ? 1 : 0, can_manage_finance ? 1 : 0, can_manage_recruitment ? 1 : 0, can_manage_settings ? 1 : 0, can_manage_users ? 1 : 0,
         status, screensStr,
         matchRow.id, matchRow.username, matchRow.employee_id,
         matchOrigUser, matchOrigUser, matchOrigUser
-      ]);
+      ];
+      await query(updateSql, updateParams);
+      if (!isRailway) {
+        executeCloudQuery(updateSql, updateParams).catch(() => {});
+      }
     } else {
       // INSERT new user with UPSERT protection
       const insertSql = `
@@ -2911,14 +2915,18 @@ app.post('/api/users', async (req, res) => {
           allowed_screens = VALUES(allowed_screens),
           updated_at = NOW()
       `;
-      await query(insertSql, [
+      const insertParams = [
         cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, role, department, finalEmpId, branch,
         can_manage_employees ? 1 : 0, can_manage_finance ? 1 : 0, can_manage_recruitment ? 1 : 0, can_manage_settings ? 1 : 0, can_manage_users ? 1 : 0,
         status, screensStr
-      ]);
+      ];
+      await query(insertSql, insertParams);
+      if (!isRailway) {
+        executeCloudQuery(insertSql, insertParams).catch(() => {});
+      }
     }
 
-    syncLocalToCloud(db).catch(() => {});
+    triggerRealtimeSync(db, 'users');
     res.json({ success: true, message: 'User saved and synced to database' });
   } catch (err) {
     console.error('Error saving user:', err);
