@@ -87,6 +87,61 @@ export const Category9RiskComplianceView: React.FC = () => {
     level: 'full' as 'full' | 'read',
     notes: 'مسؤول عن إدخال وتحديث بيانات الموظفين الأساسية، العقود، والمستندات في قسم الموارد البشرية'
   });
+  const [badgeSearchQuery, setBadgeSearchQuery] = useState<string>('');
+  const [matchedEmployee, setMatchedEmployee] = useState<any>(null);
+
+  const handleAutofillFromEmployee = (emp: any) => {
+    if (!emp) return;
+    setMatchedEmployee(emp);
+    const badge = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id || '';
+    const fullNameAr = emp.full_name_ar || emp.name_ar || emp.fullNameAr || emp.full_name || emp.name || '';
+    const fullNameEn = emp.full_name_en || emp.name_en || emp.fullNameEn || emp.full_name || emp.name || '';
+    const jobTitle = emp.position || emp.position_ar || emp.job_title || emp.jobTitle || 'موظف';
+    const dept = emp.department || emp.department_ar || 'الموارد البشرية والشؤون الإدارية';
+    const branch = emp.branch || emp.location_ar || emp.location || 'الإدارة العامة - بغداد';
+    const email = emp.email || emp.org_email || emp.personal_email || (badge ? `${String(badge).toLowerCase().replace(/[^a-z0-9]/g, '')}@vitasiraq.iq` : '');
+    const phone = emp.phone || emp.mobile || '';
+    const suggestedUsername = emp.username || (badge ? String(badge).toLowerCase() : (email ? email.split('@')[0] : ''));
+
+    setNewUserForm(prev => ({
+      ...prev,
+      originalEmployeeId: String(badge),
+      username: prev.username || suggestedUsername,
+      fullNameAr: fullNameAr || prev.fullNameAr,
+      fullNameEn: fullNameEn || prev.fullNameEn,
+      jobTitle: jobTitle || prev.jobTitle,
+      department: dept || prev.department,
+      branch: branch || prev.branch,
+      email: email || prev.email,
+      phone: phone || prev.phone
+    }));
+  };
+
+  const handleBadgeInputChange = (query: string) => {
+    setBadgeSearchQuery(query);
+    const trimmed = query.trim().toLowerCase();
+    if (!trimmed) {
+      setMatchedEmployee(null);
+      return;
+    }
+    const cleanQ = trimmed.replace(/^vts-?/i, '');
+    const found = (employees || []).find((e: any) => {
+      const b = String(e.badge_no || e.badgeNo || '').toLowerCase();
+      const id = String(e.employee_id || e.employeeId || e.id || '').toLowerCase();
+      const cleanB = b.replace(/^vts-?/i, '');
+      const cleanId = id.replace(/^vts-?/i, '');
+      const nameAr = String(e.full_name_ar || e.name_ar || e.name || '').toLowerCase();
+      const nameEn = String(e.full_name_en || e.name_en || '').toLowerCase();
+      return b === trimmed || cleanB === cleanQ || id === trimmed || cleanId === cleanQ || nameAr.includes(trimmed) || nameEn.includes(trimmed);
+    });
+
+    if (found) {
+      handleAutofillFromEmployee(found);
+    } else {
+      setMatchedEmployee(null);
+    }
+  };
+
   const [empPermLevel, setEmpPermLevel] = useState<'full' | 'read'>('full');
   const [empNotes, setEmpNotes] = useState<string>('');
   const [empModulePerms, setEmpModulePerms] = useState<Record<string, boolean>>({
@@ -202,7 +257,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     }
   }, [activeModuleId]);
 
-  // Handler to create a new user account & grant permissions immediately
+  // Handler to create a new user account & grant permissions immediately (WITHOUT inserting to employees table)
   const handleCreateNewUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserForm.username.trim() || !newUserForm.fullNameAr.trim()) {
@@ -212,53 +267,12 @@ export const Category9RiskComplianceView: React.FC = () => {
 
     const cleanUsername = newUserForm.username.trim();
     const empCode = cleanUsername.toUpperCase().startsWith('VTS') ? cleanUsername.toUpperCase() : `VTS-${cleanUsername.toUpperCase()}`;
+    const cleanEmpCode = newUserForm.originalEmployeeId || empCode;
     
     try {
-      // 1. Create or update employee in system safely
-      const cleanEmpCode = empCode;
-      const existingEmp = (employees || []).find(
-        (e) => String(e.id) === String(cleanEmpCode) || String(e.badge_no) === String(cleanEmpCode) || String(e.employeeId) === String(cleanEmpCode)
-      );
+      // NOTE: Creating a User NEVER adds or modifies records in the employees table!
 
-      if (existingEmp) {
-        await api.updateEmployee({
-          id: existingEmp.id,
-          fullNameAr: newUserForm.fullNameAr.trim(),
-          fullNameEn: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
-          name_ar: newUserForm.fullNameAr.trim(),
-          name_en: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
-          jobTitle: newUserForm.jobTitle.trim(),
-          position: newUserForm.jobTitle.trim(),
-          department: newUserForm.department,
-          branch: newUserForm.branch,
-          location: newUserForm.branch,
-          email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
-          phone: newUserForm.phone.trim() || '07700000000',
-        }).catch(() => {});
-      } else {
-        await addEmployee({
-          employeeId: cleanEmpCode,
-          badgeNo: cleanEmpCode,
-          fullNameAr: newUserForm.fullNameAr.trim(),
-          fullNameEn: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
-          fullName: newUserForm.fullNameAr.trim(),
-          name_ar: newUserForm.fullNameAr.trim(),
-          name_en: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
-          jobTitle: newUserForm.jobTitle.trim(),
-          position: newUserForm.jobTitle.trim(),
-          department: newUserForm.department,
-          branch: newUserForm.branch,
-          location: newUserForm.branch,
-          email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
-          phone: newUserForm.phone.trim() || '07700000000',
-          hireDate: new Date().toISOString().split('T')[0],
-          status: 'Active',
-          employmentType: 'Full-Time',
-          basicSalary: 950000
-        }).catch(() => {});
-      }
-
-      // 2. Save credentials for login
+      // 1. Save credentials for login (Local state)
       let existingUsers: any = {};
       try {
         const existingUsersRaw = localStorage.getItem('vitas_custom_users') || '{}';
@@ -275,7 +289,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         console.error(err);
       }
 
-      // 3. Save delegated module permissions
+      // 2. Save delegated module permissions (Local state)
       const updatedDelegations = {
         ...savedEmpDelegations,
         [cleanEmpCode]: {
@@ -307,7 +321,7 @@ export const Category9RiskComplianceView: React.FC = () => {
       setSavedEmpDelegations(updatedDelegations);
       localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(updatedDelegations));
 
-      // 3.5 Persist to Database (app_settings and users table) and trigger Cloud sync immediately
+      // 3. Persist to Database users table (and Real-Time sync to Cloud)
       await api.saveUser({
         id: newUserForm.id,
         original_username: newUserForm.originalUsername || undefined,
@@ -1108,6 +1122,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                     level: 'full',
                     notes: 'مخول بالعمل على الموديولات المحددة'
                   });
+                  setBadgeSearchQuery('');
+                  setMatchedEmployee(null);
                   setIsAddUserModalOpen(true);
                 }}
                 className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-teal-600/30 transition-all cursor-pointer shrink-0 border-2 border-teal-400/30"
@@ -1459,6 +1475,63 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <span className="material-symbols-outlined text-base">badge</span>
                   <span>{t('1. بيانات المستخدم ونوع الوظيفة (User & Position Details)', '1. User Account & Position Details')}</span>
                 </h4>
+
+                {/* Badge Number / Employee Autofill Search Bar */}
+                <div className={`p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                  isDark ? 'bg-teal-950/20 border-teal-500/30' : 'bg-teal-50/70 border-teal-500/30'
+                }`}>
+                  <div className="flex-1 w-full">
+                    <label className="font-bold text-teal-800 dark:text-teal-300 block text-[11px] mb-1 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-base">search</span>
+                      <span>{t('رقم البادج أو البحث عن موظف للملء التلقائي (Badge No. Search)', 'Badge No. Search (Autofills Employee Info)')}</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        list="employees-badge-datalist"
+                        placeholder={t('أدخل رقم البادج (مثال: B-101 أو VTS-1055) أو اسم الموظف لملء البيانات تلقائياً...', 'Enter Badge No. (e.g. B-101, VTS-1055) or employee name to autofill...')}
+                        value={badgeSearchQuery}
+                        onChange={e => handleBadgeInputChange(e.target.value)}
+                        className={`w-full px-3.5 py-2 rounded-xl border text-xs outline-none font-bold ${
+                          isDark ? 'bg-[#111827] border-teal-500/40 text-white placeholder-slate-500' : 'bg-white border-teal-500/40 text-slate-900 placeholder-slate-400'
+                        }`}
+                      />
+                      <datalist id="employees-badge-datalist">
+                        {(employees || []).map((emp: any) => {
+                          const b = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id;
+                          const n = emp.full_name_ar || emp.name_ar || emp.name || emp.full_name || '';
+                          const d = emp.department || emp.department_ar || '';
+                          return <option key={emp.id || b} value={b}>{`${b} - ${n} (${d})`}</option>;
+                        })}
+                      </datalist>
+                    </div>
+                  </div>
+
+                  {matchedEmployee && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold self-stretch sm:self-auto justify-between sm:justify-start">
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-base text-emerald-600">verified</span>
+                        <span>
+                          {t(
+                            `تم التعرف: ${matchedEmployee.full_name_ar || matchedEmployee.name_ar || matchedEmployee.name} (${matchedEmployee.badge_no || matchedEmployee.employee_id})`,
+                            `Matched: ${matchedEmployee.full_name_ar || matchedEmployee.name_ar || matchedEmployee.name} (${matchedEmployee.badge_no || matchedEmployee.employee_id})`
+                          )}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMatchedEmployee(null);
+                          setBadgeSearchQuery('');
+                        }}
+                        className="text-slate-400 hover:text-rose-500 px-1.5 py-0.5 rounded cursor-pointer"
+                        title="إلغاء التحديد"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {/* Username */}
