@@ -88,6 +88,7 @@ db.getConnection(async (err, connection) => {
   await ensureJobVacancyColumns();
   await ensureEmployeeChildrenColumns();
   await ensureOnHoldColumn();
+  await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(255) DEFAULT NULL').catch(() => {});
   await ensureSettingsSeededAndSynced();
 });
 
@@ -2838,6 +2839,8 @@ app.post('/api/users', async (req, res) => {
     if (!username && !original_username && !original_employee_id && !employee_id && !id) {
       return res.status(400).json({ error: 'Username is required' });
     }
+
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
 
     const cleanUsername = String(username || original_username || original_employee_id || employee_id).trim();
     const finalFullName = (full_name || name || cleanUsername).trim();
