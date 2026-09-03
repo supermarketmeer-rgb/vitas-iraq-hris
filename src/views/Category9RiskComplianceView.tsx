@@ -91,31 +91,47 @@ export const Category9RiskComplianceView: React.FC = () => {
   const [matchedEmployee, setMatchedEmployee] = useState<any>(null);
   const [isComboboxOpen, setIsComboboxOpen] = useState<boolean>(false);
 
-  // Dynamic filter for Combobox search
+  // Text normalization helper for flexible Arabic & English search
+  const normalizeSearchText = (text: any) => {
+    return String(text || '')
+      .toLowerCase()
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .replace(/[\u064B-\u065F]/g, '')
+      .trim();
+  };
+
+  // Dynamic filter for Combobox search (instant search on any 1-2 characters in name or badge)
   const filteredEmployeesForCombobox = useMemo(() => {
-    const q = badgeSearchQuery.trim().toLowerCase();
-    if (!q) return (employees || []).slice(0, 40);
-    const cleanQ = q.replace(/^vts-?/i, '');
+    const rawQ = badgeSearchQuery.trim();
+    if (!rawQ) return (employees || []).slice(0, 50);
+
+    const normQ = normalizeSearchText(rawQ);
+    const cleanQ = normQ.replace(/^vts-?/i, '').replace(/^v-?/i, '').replace(/^b-?/i, '').trim();
+
     return (employees || []).filter((e: any) => {
-      const b = String(e.badge_no || e.badgeNo || '').toLowerCase();
-      const id = String(e.employee_id || e.employeeId || e.id || '').toLowerCase();
-      const cleanB = b.replace(/^vts-?/i, '');
-      const cleanId = id.replace(/^vts-?/i, '');
-      const nameAr = String(e.full_name_ar || e.name_ar || e.name || '').toLowerCase();
-      const nameEn = String(e.full_name_en || e.name_en || '').toLowerCase();
-      const dept = String(e.department || e.department_ar || '').toLowerCase();
-      const pos = String(e.position || e.position_ar || e.job_title || '').toLowerCase();
+      const b = normalizeSearchText(e.badge_no || e.badgeNo || '');
+      const id = normalizeSearchText(e.employee_id || e.employeeId || e.id || '');
+      const cleanB = b.replace(/^vts-?/i, '').replace(/^v-?/i, '').replace(/^b-?/i, '').trim();
+      const cleanId = id.replace(/^vts-?/i, '').replace(/^v-?/i, '').replace(/^b-?/i, '').trim();
+
+      const nameAr = normalizeSearchText(e.full_name_ar || e.fullNameAr || e.name_ar || e.fullName || e.full_name || e.name || '');
+      const nameEn = normalizeSearchText(e.full_name_en || e.fullNameEn || e.name_en || '');
+      const dept = normalizeSearchText(e.department || e.department_ar || '');
+      const pos = normalizeSearchText(e.position || e.position_ar || e.job_title || e.jobTitle || '');
+
       return (
-        b.includes(q) ||
-        cleanB.includes(cleanQ) ||
-        id.includes(q) ||
-        cleanId.includes(cleanQ) ||
-        nameAr.includes(q) ||
-        nameEn.includes(q) ||
-        dept.includes(q) ||
-        pos.includes(q)
+        b.includes(normQ) ||
+        (cleanQ && cleanB.includes(cleanQ)) ||
+        id.includes(normQ) ||
+        (cleanQ && cleanId.includes(cleanQ)) ||
+        nameAr.includes(normQ) ||
+        nameEn.includes(normQ) ||
+        dept.includes(normQ) ||
+        pos.includes(normQ)
       );
-    }).slice(0, 50);
+    }).slice(0, 60);
   }, [employees, badgeSearchQuery]);
 
   const handleAutofillFromEmployee = (emp: any) => {
@@ -1574,41 +1590,54 @@ export const Category9RiskComplianceView: React.FC = () => {
                             const dept = emp.department || emp.department_ar || '';
                             const pos = emp.position || emp.position_ar || emp.job_title || emp.jobTitle || '';
                             const mainName = arName || enName || `موظف #${b}`;
+                            const photo = emp.photoUrl || emp.photo_url || emp.photo || emp.avatar || emp.avatarUrl || emp.profile_image || '';
 
                             return (
                               <button
                                 key={emp.id || b}
                                 type="button"
                                 onClick={() => handleAutofillFromEmployee(emp)}
-                                className="w-full p-3 text-start flex items-center justify-between gap-3 transition-all cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-teal-50"
+                                className="w-full p-2.5 text-start flex items-center justify-between gap-3 transition-all cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-teal-50/80"
                                 style={{ backgroundColor: '#ffffff', color: '#000000' }}
                               >
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold text-sm shrink-0 shadow-inner">
-                                    <span className="material-symbols-outlined text-xl">person</span>
+                                  {/* Employee Photo Thumbnail or Fallback Icon */}
+                                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-teal-200 text-teal-800 flex items-center justify-center text-sm shrink-0 shadow-sm">
+                                    {photo ? (
+                                      <img
+                                        src={photo}
+                                        alt={mainName}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          (e.target as HTMLElement).style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <span className="material-symbols-outlined text-xl text-teal-700">person</span>
+                                    )}
                                   </div>
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      {/* Main Arabic / Full Name in solid pure black */}
+                                      {/* Main Arabic / Full Name in Normal Font Weight */}
                                       <span
-                                        className="font-extrabold text-sm"
-                                        style={{ color: '#000000', WebkitTextFillColor: '#000000' }}
+                                        className="font-normal text-sm"
+                                        style={{ color: '#000000', WebkitTextFillColor: '#000000', fontWeight: 400 }}
                                       >
                                         {mainName}
                                       </span>
-                                      {/* Secondary English Name in dark slate */}
+                                      {/* Secondary English Name in Normal Font Weight */}
                                       {enName && arName && enName.toLowerCase() !== arName.toLowerCase() && (
                                         <span
-                                          className="text-xs font-bold"
-                                          style={{ color: '#334155', WebkitTextFillColor: '#334155' }}
+                                          className="text-xs font-normal"
+                                          style={{ color: '#475569', WebkitTextFillColor: '#475569', fontWeight: 400 }}
                                         >
                                           ({enName})
                                         </span>
                                       )}
                                     </div>
                                     <p
-                                      className="text-xs font-semibold mt-0.5"
-                                      style={{ color: '#475569', WebkitTextFillColor: '#475569' }}
+                                      className="text-xs font-normal mt-0.5"
+                                      style={{ color: '#64748b', WebkitTextFillColor: '#64748b', fontWeight: 400 }}
                                     >
                                       {pos ? `${pos} • ` : ''}{dept}
                                     </p>
@@ -1617,7 +1646,7 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                                 <div className="shrink-0 text-end">
                                   <span
-                                    className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-600 font-mono font-bold text-xs shadow-md inline-block"
+                                    className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-600 font-mono font-bold text-xs shadow-sm inline-block"
                                     style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
                                   >
                                     {b}
