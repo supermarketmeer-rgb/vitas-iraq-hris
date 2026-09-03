@@ -1139,8 +1139,8 @@ export const Category9RiskComplianceView: React.FC = () => {
             isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
           }`}>
             <p className="text-xs font-bold" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
-              {t(`إجمالي المستخدمين المخصصين: ${Object.keys(savedEmpDelegations).length} مستخدم (+ Super Admin دائم)`,
-                 `Total Custom Users: ${Object.keys(savedEmpDelegations).length} (+ Permanent Super Admin)`)}
+              {t(`إجمالي المستخدمين المخصصين: ${dbUsers.length} مستخدم (+ Super Admin دائم)`,
+                 `Total Custom Users: ${dbUsers.length} (+ Permanent Super Admin)`)}
             </p>
 
           <div className="flex flex-wrap items-center gap-3">
