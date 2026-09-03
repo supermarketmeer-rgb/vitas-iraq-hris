@@ -2810,6 +2810,8 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users', async (req, res) => {
   try {
     const {
+      id,
+      original_username,
       username,
       password,
       full_name,
@@ -2828,48 +2830,79 @@ app.post('/api/users', async (req, res) => {
       allowed_screens
     } = req.body;
 
-    if (!username) {
+    if (!username && !original_username && !employee_id && !id) {
       return res.status(400).json({ error: 'Username is required' });
     }
 
-    const cleanUsername = String(username).trim();
+    const cleanUsername = String(username || original_username || employee_id).trim();
     const finalFullName = (full_name || name || cleanUsername).trim();
     const finalEmail = (email || `${cleanUsername.toLowerCase()}@vitasiraq.iq`).trim();
     const finalEmpId = (employee_id || cleanUsername).trim();
     const finalPass = password || 'Password123!';
     const screensStr = typeof allowed_screens === 'object' ? JSON.stringify(allowed_screens) : (allowed_screens || null);
 
-    const sql = `
-      INSERT INTO users (
-        username, password, full_name, name, email, role, department, employee_id, branch,
-        can_manage_employees, can_manage_finance, can_manage_recruitment, can_manage_settings, can_manage_users,
-        status, allowed_screens, updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-      ON DUPLICATE KEY UPDATE
-        password = VALUES(password),
-        full_name = VALUES(full_name),
-        name = VALUES(name),
-        email = VALUES(email),
-        role = VALUES(role),
-        department = VALUES(department),
-        employee_id = VALUES(employee_id),
-        branch = VALUES(branch),
-        can_manage_employees = VALUES(can_manage_employees),
-        can_manage_finance = VALUES(can_manage_finance),
-        can_manage_recruitment = VALUES(can_manage_recruitment),
-        can_manage_settings = VALUES(can_manage_settings),
-        can_manage_users = VALUES(can_manage_users),
-        status = VALUES(status),
-        allowed_screens = VALUES(allowed_screens),
-        updated_at = NOW()
-    `;
+    // 1. Check if user already exists (by ID, original username, exact username, or employee_id)
+    let targetUserId = null;
+    if (id && !isNaN(Number(id))) {
+      const byId = await query('SELECT id FROM users WHERE id = ?', [parseInt(id)]);
+      if (Array.isArray(byId) && byId.length > 0) targetUserId = byId[0].id;
+    }
+    if (!targetUserId && original_username) {
+      const byOrig = await query('SELECT id FROM users WHERE username = ? OR employee_id = ?', [original_username, original_username]);
+      if (Array.isArray(byOrig) && byOrig.length > 0) targetUserId = byOrig[0].id;
+    }
+    if (!targetUserId) {
+      const byEmpId = await query('SELECT id FROM users WHERE employee_id = ? OR username = ?', [finalEmpId, cleanUsername]);
+      if (Array.isArray(byEmpId) && byEmpId.length > 0) targetUserId = byEmpId[0].id;
+    }
 
-    await query(sql, [
-      cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, role, department, finalEmpId, branch,
-      can_manage_employees ? 1 : 0, can_manage_finance ? 1 : 0, can_manage_recruitment ? 1 : 0, can_manage_settings ? 1 : 0, can_manage_users ? 1 : 0,
-      status, screensStr
-    ]);
+    if (targetUserId) {
+      // UPDATE existing user directly in place (Never duplicates records!)
+      const updateSql = `
+        UPDATE users SET
+          username = ?, password = ?, full_name = ?, name = ?, email = ?, role = ?, department = ?, employee_id = ?, branch = ?,
+          can_manage_employees = ?, can_manage_finance = ?, can_manage_recruitment = ?, can_manage_settings = ?, can_manage_users = ?,
+          status = ?, allowed_screens = ?, updated_at = NOW()
+        WHERE id = ?
+      `;
+      await query(updateSql, [
+        cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, role, department, finalEmpId, branch,
+        can_manage_employees ? 1 : 0, can_manage_finance ? 1 : 0, can_manage_recruitment ? 1 : 0, can_manage_settings ? 1 : 0, can_manage_users ? 1 : 0,
+        status, screensStr, targetUserId
+      ]);
+    } else {
+      // INSERT new user with UPSERT protection
+      const insertSql = `
+        INSERT INTO users (
+          username, password, full_name, name, email, role, department, employee_id, branch,
+          can_manage_employees, can_manage_finance, can_manage_recruitment, can_manage_settings, can_manage_users,
+          status, allowed_screens, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+          password = VALUES(password),
+          full_name = VALUES(full_name),
+          name = VALUES(name),
+          email = VALUES(email),
+          role = VALUES(role),
+          department = VALUES(department),
+          employee_id = VALUES(employee_id),
+          branch = VALUES(branch),
+          can_manage_employees = VALUES(can_manage_employees),
+          can_manage_finance = VALUES(can_manage_finance),
+          can_manage_recruitment = VALUES(can_manage_recruitment),
+          can_manage_settings = VALUES(can_manage_settings),
+          can_manage_users = VALUES(can_manage_users),
+          status = VALUES(status),
+          allowed_screens = VALUES(allowed_screens),
+          updated_at = NOW()
+      `;
+      await query(insertSql, [
+        cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, role, department, finalEmpId, branch,
+        can_manage_employees ? 1 : 0, can_manage_finance ? 1 : 0, can_manage_recruitment ? 1 : 0, can_manage_settings ? 1 : 0, can_manage_users ? 1 : 0,
+        status, screensStr
+      ]);
+    }
 
     syncLocalToCloud(db).catch(() => {});
     res.json({ success: true, message: 'User saved and synced to database' });

@@ -62,6 +62,8 @@ export const Category9RiskComplianceView: React.FC = () => {
   // Add New User Modal State
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [newUserForm, setNewUserForm] = useState({
+    id: undefined as number | string | undefined,
+    originalUsername: '',
     username: '',
     password: 'Password123!',
     fullNameAr: '',
@@ -97,6 +99,8 @@ export const Category9RiskComplianceView: React.FC = () => {
   const [customEmpSavedToast, setCustomEmpSavedToast] = useState<string | null>(null);
 
   const [savedEmpDelegations, setSavedEmpDelegations] = useState<Record<string, {
+    id?: number | string;
+    username?: string;
     employeeId: string;
     employeeName: string;
     employeeNameEn: string;
@@ -176,11 +180,13 @@ export const Category9RiskComplianceView: React.FC = () => {
             }
 
             delegationsFromDb[uCode] = {
+              id: u.id,
+              username: u.username,
               employeeId: uCode,
               employeeName: u.name || u.full_name || u.username,
               employeeNameEn: u.full_name || u.name || u.username,
               department: u.department || 'الموارد البشرية والشؤون الإدارية',
-              jobTitle: u.job_title || 'مسؤول رواتب وحضور',
+              jobTitle: u.job_title || u.role || 'مسؤول رواتب وحضور',
               modules: parsedModules,
               level: 'full',
               notes: 'مسؤول رواتب وحضور',
@@ -189,6 +195,7 @@ export const Category9RiskComplianceView: React.FC = () => {
             };
 
             customUsersFromDb[u.username.toLowerCase()] = {
+              id: u.id,
               username: u.username,
               password: u.password || 'Password123!',
               name: u.name || u.full_name || u.username,
@@ -248,11 +255,13 @@ export const Category9RiskComplianceView: React.FC = () => {
             }
 
             delegationsFromDb[uCode] = {
+              id: u.id,
+              username: u.username,
               employeeId: uCode,
               employeeName: u.name || u.full_name || u.username,
               employeeNameEn: u.full_name || u.name || u.username,
               department: u.department || 'الموارد البشرية والشؤون الإدارية',
-              jobTitle: u.job_title || 'مسؤول رواتب وحضور',
+              jobTitle: u.job_title || u.role || 'مسؤول رواتب وحضور',
               modules: parsedModules,
               level: 'full',
               notes: 'مسؤول رواتب وحضور',
@@ -397,6 +406,8 @@ export const Category9RiskComplianceView: React.FC = () => {
 
       // 3.5 Persist to Database (app_settings and users table) and trigger Cloud sync immediately
       await api.saveUser({
+        id: newUserForm.id,
+        original_username: newUserForm.originalUsername || undefined,
         username: cleanUsername,
         password: newUserForm.password,
         full_name: newUserForm.fullNameAr.trim(),
@@ -446,11 +457,13 @@ export const Category9RiskComplianceView: React.FC = () => {
               } catch (e) {}
             }
             delegationsFromDb[uCode] = {
+              id: u.id,
+              username: u.username,
               employeeId: uCode,
               employeeName: u.name || u.full_name || u.username,
               employeeNameEn: u.full_name || u.name || u.username,
               department: u.department || 'الموارد البشرية والشؤون الإدارية',
-              jobTitle: u.job_title || 'مسؤول رواتب وحضور',
+              jobTitle: u.job_title || u.role || 'مسؤول رواتب وحضور',
               modules: parsedModules,
               level: 'full',
               notes: 'مسؤول رواتب وحضور',
@@ -1164,6 +1177,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setNewUserForm({
+                    id: undefined,
+                    originalUsername: '',
                     username: '',
                     password: 'Password123!',
                     fullNameAr: '',
@@ -1412,14 +1427,16 @@ export const Category9RiskComplianceView: React.FC = () => {
                               type="button"
                               onClick={() => {
                                 setNewUserForm({
-                                  username: d.employeeId,
+                                  id: d.id,
+                                  originalUsername: d.username || d.employeeId,
+                                  username: d.username || d.employeeId,
                                   password: 'Password123!',
                                   fullNameAr: d.employeeName || '',
                                   fullNameEn: d.employeeNameEn || '',
                                   jobTitle: d.jobTitle || 'مدخل بيانات موارد بشرية',
                                   department: d.department || 'الموارد البشرية والشؤون الإدارية',
                                   branch: 'الإدارة العامة - بغداد',
-                                  email: `${d.employeeId.toLowerCase()}@vitasiraq.iq`,
+                                  email: `${(d.username || d.employeeId).toLowerCase()}@vitasiraq.iq`,
                                   phone: '07700000000',
                                   modules: d.modules || {},
                                   level: d.level || 'full',
