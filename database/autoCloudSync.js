@@ -252,6 +252,25 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
   const localMap = new Map((Array.isArray(localRows) ? localRows : []).filter(r => r[syncKey] !== null && r[syncKey] !== undefined).map(r => [String(r[syncKey]).toLowerCase(), r]));
   const cloudMap = new Map((Array.isArray(cloudRows) ? cloudRows : []).filter(r => r[syncKey] !== null && r[syncKey] !== undefined).map(r => [String(r[syncKey]).toLowerCase(), r]));
 
+  // Helper for flexible user matching across username, employee_id, and email
+  const findUserMatch = (row, map) => {
+    if (!row) return null;
+    const emp = row.employee_id ? String(row.employee_id).trim().toLowerCase() : null;
+    const usr = row.username ? String(row.username).trim().toLowerCase() : null;
+    const eml = row.email ? String(row.email).trim().toLowerCase() : null;
+
+    if (emp && map.has(emp)) return map.get(emp);
+    if (usr && map.has(usr)) return map.get(usr);
+    if (eml && map.has(eml)) return map.get(eml);
+
+    for (const other of map.values()) {
+      if (emp && other.employee_id && String(other.employee_id).trim().toLowerCase() === emp) return other;
+      if (usr && other.username && String(other.username).trim().toLowerCase() === usr) return other;
+      if (eml && other.email && String(other.email).trim().toLowerCase() === eml) return other;
+    }
+    return null;
+  };
+
   // 2. Process Deletions with Re-Creation Detection
   const allKnownDeletions = new Set();
   if (!isSystemTable) {
@@ -329,7 +348,7 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
       // Record was deleted - do not resurrect!
       continue;
     }
-    const cRow = cloudMap.get(key);
+    const cRow = table === 'users' ? findUserMatch(lRow, cloudMap) : cloudMap.get(key);
     if (!cRow) {
       // Fresh record on Local -> Insert to Cloud
       const insertCols = hasAutoIncId ? commonCols.filter(k => k !== 'id') : commonCols;
@@ -345,9 +364,13 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
       if (hasUpdatedAt && lRow.updated_at && cRow.updated_at) {
         const lTime = new Date(lRow.updated_at).getTime();
         const cTime = new Date(cRow.updated_at).getTime();
-        if (lTime > cTime + 1000) localIsNewer = true;
-        else if (cTime > lTime + 1000) cloudIsNewer = true;
-        else {
+        if (preferCloud) {
+          cloudIsNewer = true;
+        } else if (lTime > cTime + 2000) {
+          localIsNewer = true;
+        } else if (cTime > lTime + 2000) {
+          cloudIsNewer = true;
+        } else {
           const lStr = JSON.stringify(lRow);
           const cStr = JSON.stringify(cRow);
           if (lStr !== cStr) {
@@ -366,21 +389,37 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
 
       if (localIsNewer) {
         // Update Cloud from Local
-        const updateCols = commonCols.filter(k => k !== syncKey && k !== 'id');
-        if (updateCols.length > 0) {
-          const sql = `UPDATE \`${table}\` SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE \`${syncKey}\` = ?`;
-          const vals = [...updateCols.map(k => sanitizeVal(lRow[k])), lRow[syncKey]];
+        if (table === 'users') {
+          const updateCols = commonCols.filter(k => k !== 'id');
+          const sql = `UPDATE users SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE id = ? OR username = ? OR employee_id = ?`;
+          const vals = [...updateCols.map(k => sanitizeVal(lRow[k])), cRow.id, cRow.username, cRow.employee_id];
           await cloudConn.query(sql, vals).catch(() => {});
           pushed++;
+        } else {
+          const updateCols = commonCols.filter(k => k !== syncKey && k !== 'id');
+          if (updateCols.length > 0) {
+            const sql = `UPDATE \`${table}\` SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE \`${syncKey}\` = ?`;
+            const vals = [...updateCols.map(k => sanitizeVal(lRow[k])), lRow[syncKey]];
+            await cloudConn.query(sql, vals).catch(() => {});
+            pushed++;
+          }
         }
       } else if (cloudIsNewer) {
         // Update Local from Cloud
-        const updateCols = commonCols.filter(k => k !== syncKey && k !== 'id');
-        if (updateCols.length > 0) {
-          const sql = `UPDATE \`${table}\` SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE \`${syncKey}\` = ?`;
-          const vals = [...updateCols.map(k => sanitizeVal(cRow[k])), cRow[syncKey]];
+        if (table === 'users') {
+          const updateCols = commonCols.filter(k => k !== 'id');
+          const sql = `UPDATE users SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE id = ? OR username = ? OR employee_id = ?`;
+          const vals = [...updateCols.map(k => sanitizeVal(cRow[k])), lRow.id, lRow.username, lRow.employee_id];
           await queryLocal(sql, vals).catch(() => {});
           pulled++;
+        } else {
+          const updateCols = commonCols.filter(k => k !== syncKey && k !== 'id');
+          if (updateCols.length > 0) {
+            const sql = `UPDATE \`${table}\` SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE \`${syncKey}\` = ?`;
+            const vals = [...updateCols.map(k => sanitizeVal(cRow[k])), cRow[syncKey]];
+            await queryLocal(sql, vals).catch(() => {});
+            pulled++;
+          }
         }
       }
     }
@@ -392,7 +431,8 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
       // Record was deleted - do not resurrect!
       continue;
     }
-    if (!localMap.has(key)) {
+    const matchedLRow = table === 'users' ? findUserMatch(cRow, localMap) : localMap.get(key);
+    if (!matchedLRow) {
       const insertCols = hasAutoIncId ? commonCols.filter(k => k !== 'id') : commonCols;
       const sql = `INSERT INTO \`${table}\` (${insertCols.map(k => `\`${k}\``).join(', ')}) VALUES (${insertCols.map(() => '?').join(', ')})`;
       const vals = insertCols.map(k => sanitizeVal(cRow[k]));

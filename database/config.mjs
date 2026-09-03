@@ -6,5 +6,6 @@ export default {
   password: isRailway ? (process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || 'rNCwHnDkIkdSshFJqlqcbaCogULlAoPP') : (process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : ''),
   database: isRailway ? (process.env.MYSQLDATABASE || process.env.DB_NAME || 'railway') : (process.env.DB_NAME || 'vitasiraq_hris_db'),
   port: parseInt(isRailway ? (process.env.MYSQLPORT || process.env.DB_PORT || 3306) : (process.env.DB_PORT || 3306)),
+  timezone: '+00:00',
   connectTimeout: 15000
 };
