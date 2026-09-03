@@ -65,6 +65,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     id: undefined as number | string | undefined,
     originalUsername: '',
     originalEmployeeId: '',
+    originalEmail: '',
     username: '',
     password: 'Password123!',
     fullNameAr: '',
@@ -311,6 +312,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         id: newUserForm.id,
         original_username: newUserForm.originalUsername || undefined,
         original_employee_id: newUserForm.originalEmployeeId || undefined,
+        original_email: newUserForm.originalEmail || undefined,
         username: cleanUsername,
         password: newUserForm.password,
         full_name: newUserForm.fullNameAr.trim(),
@@ -330,6 +332,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       }).catch((err: any) => {
         console.warn('Notice saving to users table:', err.message);
       });
+
+      fetchUsersFromDb();
 
       await api.updateAppSettingsBulk({
         vitas_custom_employee_permissions: JSON.stringify(updatedDelegations),
@@ -1354,6 +1358,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                                   id: u.id,
                                   originalUsername: u.username,
                                   originalEmployeeId: u.employee_id || uCode,
+                                  originalEmail: u.email || '',
                                   username: u.username,
                                   password: u.password || 'Password123!',
                                   fullNameAr: fullName,

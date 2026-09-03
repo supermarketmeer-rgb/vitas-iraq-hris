@@ -2813,6 +2813,7 @@ app.post('/api/users', async (req, res) => {
       id,
       original_username,
       original_employee_id,
+      original_email,
       username,
       password,
       full_name,
@@ -2842,38 +2843,46 @@ app.post('/api/users', async (req, res) => {
     const finalPass = password || 'Password123!';
     const screensStr = typeof allowed_screens === 'object' ? JSON.stringify(allowed_screens) : (allowed_screens || null);
 
-    // 1. Check if user already exists (by ID, original username, original employee id, or exact employee_id/username)
-    let targetUserId = null;
-    if (id && !isNaN(Number(id))) {
-      const byId = await query('SELECT id FROM users WHERE id = ?', [parseInt(id)]);
-      if (Array.isArray(byId) && byId.length > 0) targetUserId = byId[0].id;
-    }
-    if (!targetUserId && original_username) {
-      const byOrig = await query('SELECT id FROM users WHERE username = ? OR employee_id = ?', [original_username, original_username]);
-      if (Array.isArray(byOrig) && byOrig.length > 0) targetUserId = byOrig[0].id;
-    }
-    if (!targetUserId && original_employee_id) {
-      const byOrigEmp = await query('SELECT id FROM users WHERE employee_id = ? OR username = ?', [original_employee_id, original_employee_id]);
-      if (Array.isArray(byOrigEmp) && byOrigEmp.length > 0) targetUserId = byOrigEmp[0].id;
-    }
-    if (!targetUserId) {
-      const byEmpId = await query('SELECT id FROM users WHERE employee_id = ? OR username = ?', [finalEmpId, cleanUsername]);
-      if (Array.isArray(byEmpId) && byEmpId.length > 0) targetUserId = byEmpId[0].id;
-    }
+    const matchOrigUser = original_username ? String(original_username).trim() : '';
+    const matchOrigEmp = original_employee_id ? String(original_employee_id).trim() : '';
+    const matchOrigEmail = original_email ? String(original_email).trim().toLowerCase() : '';
 
-    if (targetUserId) {
-      // UPDATE existing user directly in place (Never duplicates records!)
+    // 1. Check if user already exists (by portable identifiers across local & cloud MySQL)
+    const findSql = `
+      SELECT id, username, employee_id FROM users
+      WHERE ( ? != '' AND (username = ? OR LOWER(username) = LOWER(?)) )
+         OR ( ? != '' AND (employee_id = ? OR LOWER(employee_id) = LOWER(?)) )
+         OR ( ? != '' AND (email = ? OR LOWER(email) = LOWER(?)) )
+         OR username = ? OR LOWER(username) = LOWER(?)
+         OR employee_id = ? OR LOWER(employee_id) = LOWER(?)
+      LIMIT 1
+    `;
+    const findParams = [
+      matchOrigUser, matchOrigUser, matchOrigUser,
+      matchOrigEmp, matchOrigEmp, matchOrigEmp,
+      matchOrigEmail, matchOrigEmail, matchOrigEmail,
+      cleanUsername, cleanUsername,
+      finalEmpId, finalEmpId
+    ];
+
+    const existingRows = await query(findSql, findParams);
+
+    if (Array.isArray(existingRows) && existingRows.length > 0) {
+      const matchRow = existingRows[0];
+      // UPDATE existing user directly in place using portable identifiers (updates on both Local & Cloud!)
       const updateSql = `
         UPDATE users SET
           username = ?, password = ?, full_name = ?, name = ?, email = ?, role = ?, department = ?, employee_id = ?, branch = ?,
           can_manage_employees = ?, can_manage_finance = ?, can_manage_recruitment = ?, can_manage_settings = ?, can_manage_users = ?,
           status = ?, allowed_screens = ?, updated_at = NOW()
-        WHERE id = ?
+        WHERE id = ? OR username = ? OR employee_id = ? OR ( ? != '' AND (username = ? OR employee_id = ?) )
       `;
       await query(updateSql, [
         cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, role, department, finalEmpId, branch,
         can_manage_employees ? 1 : 0, can_manage_finance ? 1 : 0, can_manage_recruitment ? 1 : 0, can_manage_settings ? 1 : 0, can_manage_users ? 1 : 0,
-        status, screensStr, targetUserId
+        status, screensStr,
+        matchRow.id, matchRow.username, matchRow.employee_id,
+        matchOrigUser, matchOrigUser, matchOrigUser
       ]);
     } else {
       // INSERT new user with UPSERT protection
