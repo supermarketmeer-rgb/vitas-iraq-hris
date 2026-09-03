@@ -135,8 +135,19 @@ export const Category9RiskComplianceView: React.FC = () => {
     };
   });
 
-  // Dynamically derive departments from Settings API & Employees table
   const [departmentsList, setDepartmentsList] = useState<{ id: string | number; name_ar: string; name_en: string }[]>([]);
+  const [dbUsers, setDbUsers] = useState<any[]>([]);
+
+  const fetchUsersFromDb = () => {
+    api.getUsers()
+      .then((usersList: any) => {
+        if (Array.isArray(usersList)) {
+          const nonAdminUsers = usersList.filter((u: any) => u.username !== 'admin' && u.username !== 'admin_super');
+          setDbUsers(nonAdminUsers);
+        }
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     api.getDepartments()
@@ -151,134 +162,11 @@ export const Category9RiskComplianceView: React.FC = () => {
       })
       .catch(() => {});
 
-    // 1. Load users directly from MySQL `users` table
-    api.getUsers()
-      .then((usersList: any) => {
-        if (Array.isArray(usersList) && usersList.length > 0) {
-          const nonAdminUsers = usersList.filter((u: any) => u.username !== 'admin' && u.username !== 'admin_super');
-          const delegationsFromDb: Record<string, any> = {};
-          const customUsersFromDb: Record<string, any> = {};
-
-          nonAdminUsers.forEach((u: any) => {
-            const uCode = (u.employee_id || u.username || String(u.id)).toUpperCase();
-            let parsedModules: Record<string, boolean> = {
-              employees: Boolean(u.can_manage_employees),
-              payroll: Boolean(u.can_manage_finance),
-              recruitment: Boolean(u.can_manage_recruitment),
-              settings: Boolean(u.can_manage_settings),
-              attendance: false,
-              reports: true,
-              risk: false
-            };
-
-            if (u.allowed_screens) {
-              try {
-                const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
-                if (s && typeof s === 'object') {
-                  parsedModules = { ...parsedModules, ...s };
-                }
-              } catch (e) {}
-            }
-
-            delegationsFromDb[uCode] = {
-              id: u.id,
-              username: u.username,
-              employeeId: uCode,
-              employeeName: u.name || u.full_name || u.username,
-              employeeNameEn: u.full_name || u.name || u.username,
-              department: u.department || 'الموارد البشرية والشؤون الإدارية',
-              jobTitle: u.job_title || u.role || 'مسؤول رواتب وحضور',
-              modules: parsedModules,
-              level: 'full',
-              notes: 'مسؤول رواتب وحضور',
-              grantedBy: 'مدير النظام (Super Admin)',
-              grantedAt: u.created_at ? new Date(u.created_at).toISOString().slice(0, 16) : '2026-09-02 11:30'
-            };
-
-            customUsersFromDb[u.username.toLowerCase()] = {
-              id: u.id,
-              username: u.username,
-              password: u.password || 'Password123!',
-              name: u.name || u.full_name || u.username,
-              role: u.role || 'Employee',
-              employeeId: uCode
-            };
-          });
-
-          setSavedEmpDelegations(delegationsFromDb);
-          localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(delegationsFromDb));
-          localStorage.setItem('vitas_custom_users', JSON.stringify(customUsersFromDb));
-        }
-      })
-      .catch(() => {});
-
-    // 2. Fallback check from app_settings
-    api.getAppSettings()
-      .then((settings: any) => {
-        if (settings && typeof settings === 'object') {
-          if (settings.vitas_custom_employee_permissions) {
-            try {
-              const parsed = JSON.parse(settings.vitas_custom_employee_permissions);
-              if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-                setSavedEmpDelegations(prev => ({ ...prev, ...parsed }));
-              }
-            } catch (e) {}
-          }
-        }
-      })
-      .catch(() => {});
-
-    const handleUsersChanged = () => {
-      api.getUsers().then((usersList: any) => {
-        if (Array.isArray(usersList)) {
-          const nonAdminUsers = usersList.filter((u: any) => u.username !== 'admin' && u.username !== 'admin_super');
-          const delegationsFromDb: Record<string, any> = {};
-
-          nonAdminUsers.forEach((u: any) => {
-            const uCode = (u.employee_id || u.username || String(u.id)).toUpperCase();
-            let parsedModules: Record<string, boolean> = {
-              employees: Boolean(u.can_manage_employees),
-              payroll: Boolean(u.can_manage_finance),
-              recruitment: Boolean(u.can_manage_recruitment),
-              settings: Boolean(u.can_manage_settings),
-              attendance: false,
-              reports: true,
-              risk: false
-            };
-
-            if (u.allowed_screens) {
-              try {
-                const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
-                if (s && typeof s === 'object') {
-                  parsedModules = { ...parsedModules, ...s };
-                }
-              } catch (e) {}
-            }
-
-            delegationsFromDb[uCode] = {
-              id: u.id,
-              username: u.username,
-              employeeId: uCode,
-              employeeName: u.name || u.full_name || u.username,
-              employeeNameEn: u.full_name || u.name || u.username,
-              department: u.department || 'الموارد البشرية والشؤون الإدارية',
-              jobTitle: u.job_title || u.role || 'مسؤول رواتب وحضور',
-              modules: parsedModules,
-              level: 'full',
-              notes: 'مسؤول رواتب وحضور',
-              grantedBy: 'مدير النظام (Super Admin)',
-              grantedAt: u.created_at ? new Date(u.created_at).toISOString().slice(0, 16) : '2026-09-02 11:30'
-            };
-          });
-
-          setSavedEmpDelegations(delegationsFromDb);
-        }
-      }).catch(() => {});
-    };
-
+    fetchUsersFromDb();
+    const handleUsersChanged = () => { fetchUsersFromDb(); };
     window.addEventListener('vitas:users_changed', handleUsersChanged);
     return () => window.removeEventListener('vitas:users_changed', handleUsersChanged);
-  }, [appSettings]);
+  }, []);
 
   // Compute all unique departments from Settings + Employees table
   const allUniqueDepartments = useMemo(() => {
@@ -1250,7 +1138,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                  `Total Custom Users: ${Object.keys(savedEmpDelegations).length} (+ Permanent Super Admin)`)}
             </p>
 
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
               {/* Department filter */}
               <select
                 value={empDeptFilter}
@@ -1344,16 +1232,18 @@ export const Category9RiskComplianceView: React.FC = () => {
                     </td>
                   </tr>
 
-                  {/* 2. Custom Users Rows */}
-                  {Object.entries(savedEmpDelegations).map(([empKey, d]: [string, any]) => {
+                  {/* 2. Custom Users Rows (Directly from MySQL dbUsers) */}
+                  {dbUsers.map((u: any) => {
+                    const fullName = u.full_name || u.name || u.username;
+                    const uCode = (u.employee_id || `VTS-${u.username.toUpperCase()}`).toUpperCase();
                     const isCustomMatch =
                       empSearch.trim() === '' ||
-                      (d.employeeName || '').toLowerCase().includes(empSearch.toLowerCase()) ||
-                      (d.employeeNameEn || '').toLowerCase().includes(empSearch.toLowerCase()) ||
-                      (d.employeeId || '').toLowerCase().includes(empSearch.toLowerCase());
+                      (fullName || '').toLowerCase().includes(empSearch.toLowerCase()) ||
+                      (u.username || '').toLowerCase().includes(empSearch.toLowerCase()) ||
+                      (uCode || '').toLowerCase().includes(empSearch.toLowerCase());
 
                     if (!isCustomMatch) return null;
-                    if (empDeptFilter !== 'all' && d.department !== empDeptFilter) return null;
+                    if (empDeptFilter !== 'all' && u.department !== empDeptFilter) return null;
 
                     // Module labels mapping
                     const moduleLabels: Record<string, string> = {
@@ -1377,10 +1267,29 @@ export const Category9RiskComplianceView: React.FC = () => {
                       'cat-12-support': t('الدعم', 'Support'),
                     };
 
-                    const activeModEntries = Object.entries(d.modules || {}).filter(([_, v]) => Boolean(v));
+                    let parsedModules: Record<string, boolean> = {
+                      employees: Boolean(u.can_manage_employees),
+                      payroll: Boolean(u.can_manage_finance),
+                      recruitment: Boolean(u.can_manage_recruitment),
+                      settings: Boolean(u.can_manage_settings),
+                      attendance: false,
+                      reports: true,
+                      risk: false
+                    };
+
+                    if (u.allowed_screens) {
+                      try {
+                        const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
+                        if (s && typeof s === 'object') {
+                          parsedModules = { ...parsedModules, ...s };
+                        }
+                      } catch (e) {}
+                    }
+
+                    const activeModEntries = Object.entries(parsedModules).filter(([_, v]) => Boolean(v));
 
                     return (
-                      <tr key={empKey} className="hover:bg-slate-500/5 transition-colors">
+                      <tr key={u.id || u.username} className="hover:bg-slate-500/5 transition-colors">
                         <td className="p-3.5">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold">
@@ -1388,10 +1297,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                             </div>
                             <div>
                               <h4 className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                                {language === 'ar' ? (d.employeeName || d.employeeNameEn) : (d.employeeNameEn || d.employeeName)}
+                                {fullName}
                               </h4>
                               <p className="text-teal-600 dark:text-teal-400 font-mono text-[11px]">
-                                {d.employeeId}
+                                {uCode}
                               </p>
                             </div>
                           </div>
@@ -1399,13 +1308,13 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                         <td className="p-3.5">
                           <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-700 dark:text-teal-300 font-bold text-[11px] inline-block">
-                            {d.jobTitle || t('موظف موارد بشرية', 'HR Specialist')}
+                            {u.role || u.job_title || t('موظف موارد بشرية', 'HR Specialist')}
                           </span>
                         </td>
 
                         <td className="p-3.5">
                           <p className="font-medium text-slate-700 dark:text-slate-300 text-xs">
-                            {d.department || t('الموارد البشرية', 'Human Resources')}
+                            {u.department || t('الموارد البشرية والشؤون الإدارية', 'Human Resources')}
                           </p>
                         </td>
 
@@ -1442,21 +1351,21 @@ export const Category9RiskComplianceView: React.FC = () => {
                               type="button"
                               onClick={() => {
                                 setNewUserForm({
-                                  id: d.id,
-                                  originalUsername: d.username || d.employeeId,
-                                  originalEmployeeId: d.employeeId,
-                                  username: d.username || d.employeeId,
-                                  password: 'Password123!',
-                                  fullNameAr: d.employeeName || '',
-                                  fullNameEn: d.employeeNameEn || '',
-                                  jobTitle: d.jobTitle || 'مدخل بيانات موارد بشرية',
-                                  department: d.department || 'الموارد البشرية والشؤون الإدارية',
-                                  branch: 'الإدارة العامة - بغداد',
-                                  email: `${(d.username || d.employeeId).toLowerCase()}@vitasiraq.iq`,
-                                  phone: '07700000000',
-                                  modules: d.modules || {},
-                                  level: d.level || 'full',
-                                  notes: d.notes || ''
+                                  id: u.id,
+                                  originalUsername: u.username,
+                                  originalEmployeeId: u.employee_id || uCode,
+                                  username: u.username,
+                                  password: u.password || 'Password123!',
+                                  fullNameAr: fullName,
+                                  fullNameEn: u.name || fullName,
+                                  jobTitle: u.role || u.job_title || 'مدخل بيانات موارد بشرية',
+                                  department: u.department || 'الموارد البشرية والشؤون الإدارية',
+                                  branch: u.branch || 'الإدارة العامة - بغداد',
+                                  email: u.email || `${u.username.toLowerCase()}@vitasiraq.iq`,
+                                  phone: u.phone || '07700000000',
+                                  modules: parsedModules,
+                                  level: 'full',
+                                  notes: 'مخول بالعمل على الموديولات المحددة'
                                 });
                                 setIsAddUserModalOpen(true);
                               }}
@@ -1469,45 +1378,16 @@ export const Category9RiskComplianceView: React.FC = () => {
                             {/* Delete Button */}
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={async () => {
                                 const confirmMsg = language === 'ar'
-                                  ? `هل أنت متأكد من حذف حساب وصلاحيات المستخدم (${d.employeeName})؟`
-                                  : `Are you sure you want to delete user account (${d.employeeNameEn || d.employeeName})?`;
+                                  ? `هل أنت متأكد من حذف حساب وصلاحيات المستخدم (${fullName})؟`
+                                  : `Are you sure you want to delete user account (${fullName})?`;
 
                                 if (confirm(confirmMsg)) {
-                                  const updated = { ...savedEmpDelegations };
-                                  delete updated[empKey];
-                                  setSavedEmpDelegations(updated);
-                                  localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(updated));
-
-                                  let cUsers: any = {};
-                                  try {
-                                    const cUsersRaw = localStorage.getItem('vitas_custom_users');
-                                    if (cUsersRaw) {
-                                      cUsers = JSON.parse(cUsersRaw);
-                                      delete cUsers[empKey.toLowerCase()];
-                                      delete cUsers[d.employeeId.toLowerCase()];
-                                      localStorage.setItem('vitas_custom_users', JSON.stringify(cUsers));
-                                    }
-                                  } catch (e) {
-                                    console.error(e);
-                                  }
-
-                                  // Persist deletion to Database (users table and app_settings)
-                                  api.deleteUser(empKey).catch(() => {});
-                                  if (d.employeeId && d.employeeId !== empKey) {
-                                    api.deleteUser(d.employeeId).catch(() => {});
-                                  }
-
-                                  api.updateAppSettingsBulk({
-                                    vitas_custom_employee_permissions: JSON.stringify(updated),
-                                    vitas_custom_users: JSON.stringify(cUsers)
-                                  }).then(() => {
-                                    api.syncNow().catch(() => {});
-                                  }).catch(() => {});
-
+                                  await api.deleteUser(u.id || u.username).catch(() => {});
+                                  fetchUsersFromDb();
                                   setCustomEmpSavedToast(
-                                    language === 'ar' ? `تم حذف حساب المستخدم (${d.employeeName}) بنجاح.` : `User account (${d.employeeName}) deleted.`
+                                    language === 'ar' ? `تم حذف حساب المستخدم (${fullName}) بنجاح.` : `User account (${fullName}) deleted.`
                                   );
                                   setTimeout(() => setCustomEmpSavedToast(null), 4000);
                                 }
