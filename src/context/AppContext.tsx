@@ -415,9 +415,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const interval = setInterval(async () => {
       try {
-        const [candData, jobData] = await Promise.all([
+        const [candData, jobData, empData, setsData] = await Promise.all([
           api.getCandidates().catch(() => null),
-          api.getJobVacancies().catch(() => null)
+          api.getJobVacancies().catch(() => null),
+          api.getEmployees().catch(() => null),
+          api.getAppSettings().catch(() => null)
         ]);
 
         if (Array.isArray(candData)) {
@@ -426,6 +428,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         if (Array.isArray(jobData) && jobData.length > 0) {
           setJobVacancies(jobData);
+        }
+        if (Array.isArray(empData) && empData.length > 0) {
+          setEmployees(empData);
+        }
+        if (setsData && typeof setsData === 'object') {
+          setAppSettings(setsData);
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('vitas:users_changed'));
         }
       } catch (e) {}
     }, 4000);
