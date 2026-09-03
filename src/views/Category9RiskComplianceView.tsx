@@ -1555,14 +1555,12 @@ export const Category9RiskComplianceView: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Floating Dropdown List of Filtered Employees with High-Contrast Solid Black Text */}
+                    {/* Floating Dropdown List of Filtered Employees with Guaranteed Solid Black Text */}
                     {isComboboxOpen && (
-                      <div className={`absolute start-0 end-0 top-full mt-1.5 z-50 max-h-72 overflow-y-auto rounded-2xl border-2 shadow-2xl divide-y ${
-                        isDark ? 'bg-[#0e131f] border-teal-500/50 divide-white/10 text-white' : 'bg-white border-teal-500/50 divide-slate-100 text-black'
-                      }`}>
+                      <div className="absolute start-0 end-0 top-full mt-1.5 z-50 max-h-72 overflow-y-auto rounded-2xl border-2 border-teal-500 shadow-2xl divide-y divide-slate-200 bg-white">
                         {filteredEmployeesForCombobox.length === 0 ? (
-                          <div className="p-4 text-center text-slate-800 dark:text-slate-300 text-xs font-bold">
-                            <span className="material-symbols-outlined text-2xl block mb-1 text-slate-400">search_off</span>
+                          <div className="p-4 text-center text-xs font-bold" style={{ color: '#000000' }}>
+                            <span className="material-symbols-outlined text-2xl block mb-1 text-slate-500">search_off</span>
                             {t('لا يوجد موظف مطابق لهذا البحث', 'No matching employee found')}
                           </div>
                         ) : (
@@ -1579,35 +1577,33 @@ export const Category9RiskComplianceView: React.FC = () => {
                                 key={emp.id || b}
                                 type="button"
                                 onClick={() => handleAutofillFromEmployee(emp)}
-                                className={`w-full p-3 text-start flex items-center justify-between gap-3 transition-all cursor-pointer ${
-                                  isDark ? 'hover:bg-teal-500/20 text-white' : 'hover:bg-teal-50/80 text-black'
-                                }`}
+                                className="w-full p-3 text-start flex items-center justify-between gap-3 transition-all cursor-pointer bg-white hover:bg-teal-50/90 border-b border-slate-100 last:border-b-0"
                               >
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-800 dark:text-teal-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-inner">
+                                  <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold text-sm shrink-0 shadow-inner">
                                     <span className="material-symbols-outlined text-xl">person</span>
                                   </div>
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      {/* Main Arabic / Full Name in solid high-contrast black */}
-                                      <span className="font-extrabold text-xs text-black dark:text-white" style={{ color: isDark ? '#ffffff' : '#000000' }}>
+                                      {/* Main Arabic / Full Name in solid pure black */}
+                                      <span className="font-extrabold text-sm" style={{ color: '#000000' }}>
                                         {mainName}
                                       </span>
-                                      {/* Secondary English Name */}
+                                      {/* Secondary English Name in dark slate */}
                                       {enName && arName && enName.toLowerCase() !== arName.toLowerCase() && (
-                                        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300" style={{ color: isDark ? '#cbd5e1' : '#334155' }}>
+                                        <span className="text-xs font-bold" style={{ color: '#334155' }}>
                                           ({enName})
                                         </span>
                                       )}
                                     </div>
-                                    <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 mt-0.5" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
+                                    <p className="text-xs font-semibold mt-0.5" style={{ color: '#475569' }}>
                                       {pos ? `${pos} • ` : ''}{dept}
                                     </p>
                                   </div>
                                 </div>
 
                                 <div className="shrink-0 text-end">
-                                  <span className="px-3 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-mono font-bold text-xs shadow-md inline-block">
+                                  <span className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-600 text-white font-mono font-bold text-xs shadow-md inline-block">
                                     {b}
                                   </span>
                                 </div>
