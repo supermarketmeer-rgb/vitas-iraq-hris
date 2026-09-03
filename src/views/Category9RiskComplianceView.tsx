@@ -1555,14 +1555,14 @@ export const Category9RiskComplianceView: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Floating Dropdown List of Filtered Employees */}
+                    {/* Floating Dropdown List of Filtered Employees with High-Contrast Solid Black Text */}
                     {isComboboxOpen && (
-                      <div className={`absolute start-0 end-0 top-full mt-1 z-50 max-h-60 overflow-y-auto rounded-2xl border shadow-2xl backdrop-blur-md divide-y ${
-                        isDark ? 'bg-[#0e131f]/95 border-teal-500/30 divide-white/5 text-white' : 'bg-white/95 border-teal-500/30 divide-slate-100 text-slate-900'
+                      <div className={`absolute start-0 end-0 top-full mt-1.5 z-50 max-h-64 overflow-y-auto rounded-2xl border-2 shadow-2xl divide-y ${
+                        isDark ? 'bg-[#0e131f] border-teal-500/40 divide-white/10 text-white' : 'bg-white border-teal-500/40 divide-slate-100 text-slate-900'
                       }`}>
                         {filteredEmployeesForCombobox.length === 0 ? (
-                          <div className="p-4 text-center text-slate-400 text-xs">
-                            <span className="material-symbols-outlined text-2xl block mb-1 opacity-50">search_off</span>
+                          <div className="p-4 text-center text-slate-600 dark:text-slate-400 text-xs font-bold">
+                            <span className="material-symbols-outlined text-2xl block mb-1 text-slate-400">search_off</span>
                             {t('لا يوجد موظف مطابق لهذا البحث', 'No matching employee found')}
                           </div>
                         ) : (
@@ -1578,33 +1578,33 @@ export const Category9RiskComplianceView: React.FC = () => {
                                 key={emp.id || b}
                                 type="button"
                                 onClick={() => handleAutofillFromEmployee(emp)}
-                                className={`w-full p-2.5 text-start flex items-center justify-between gap-3 transition-colors cursor-pointer ${
-                                  isDark ? 'hover:bg-teal-500/15' : 'hover:bg-teal-50'
+                                className={`w-full p-3 text-start flex items-center justify-between gap-3 transition-colors cursor-pointer ${
+                                  isDark ? 'hover:bg-teal-500/20 text-white' : 'hover:bg-teal-50 text-slate-900'
                                 }`}
                               >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <div className="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-xs shrink-0">
-                                    <span className="material-symbols-outlined text-base">person</span>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold text-xs shrink-0 shadow-inner">
+                                    <span className="material-symbols-outlined text-lg">person</span>
                                   </div>
                                   <div className="min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-bold text-xs truncate">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
                                         {arName || enName || `موظف #${b}`}
                                       </p>
-                                      {enName && arName && (
-                                        <span className="text-[10px] text-slate-400 truncate">
+                                      {enName && arName && enName !== arName && (
+                                        <span className="text-[11px] font-semibold" style={{ color: isDark ? '#94a3b8' : '#334155' }}>
                                           ({enName})
                                         </span>
                                       )}
                                     </div>
-                                    <p className="text-[11px] text-slate-500 truncate">
+                                    <p className="text-[11px] font-medium mt-0.5" style={{ color: isDark ? '#cbd5e1' : '#475569' }}>
                                       {pos ? `${pos} • ` : ''}{dept}
                                     </p>
                                   </div>
                                 </div>
 
                                 <div className="shrink-0 text-end">
-                                  <span className="px-2 py-0.5 rounded-md bg-teal-500/15 border border-teal-500/30 text-teal-700 dark:text-teal-300 font-mono font-bold text-[11px]">
+                                  <span className="px-2.5 py-1 rounded-lg bg-teal-600 text-white font-mono font-bold text-xs shadow-sm inline-block">
                                     {b}
                                   </span>
                                 </div>
