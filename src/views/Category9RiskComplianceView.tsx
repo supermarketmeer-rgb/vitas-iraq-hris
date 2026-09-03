@@ -1557,54 +1557,57 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                     {/* Floating Dropdown List of Filtered Employees with High-Contrast Solid Black Text */}
                     {isComboboxOpen && (
-                      <div className={`absolute start-0 end-0 top-full mt-1.5 z-50 max-h-64 overflow-y-auto rounded-2xl border-2 shadow-2xl divide-y ${
-                        isDark ? 'bg-[#0e131f] border-teal-500/40 divide-white/10 text-white' : 'bg-white border-teal-500/40 divide-slate-100 text-slate-900'
+                      <div className={`absolute start-0 end-0 top-full mt-1.5 z-50 max-h-72 overflow-y-auto rounded-2xl border-2 shadow-2xl divide-y ${
+                        isDark ? 'bg-[#0e131f] border-teal-500/50 divide-white/10 text-white' : 'bg-white border-teal-500/50 divide-slate-100 text-black'
                       }`}>
                         {filteredEmployeesForCombobox.length === 0 ? (
-                          <div className="p-4 text-center text-slate-600 dark:text-slate-400 text-xs font-bold">
+                          <div className="p-4 text-center text-slate-800 dark:text-slate-300 text-xs font-bold">
                             <span className="material-symbols-outlined text-2xl block mb-1 text-slate-400">search_off</span>
                             {t('لا يوجد موظف مطابق لهذا البحث', 'No matching employee found')}
                           </div>
                         ) : (
                           filteredEmployeesForCombobox.map((emp: any) => {
                             const b = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id || '';
-                            const arName = (emp.full_name_ar && emp.full_name_ar !== 'غير محدد') ? emp.full_name_ar : (emp.name_ar || emp.fullNameAr || emp.full_name || emp.name || '');
-                            const enName = emp.full_name_en || emp.name_en || emp.fullNameEn || emp.name || '';
+                            const arName = (emp.full_name_ar && emp.full_name_ar !== 'غير محدد') ? emp.full_name_ar : (emp.fullNameAr || emp.name_ar || emp.fullName || emp.full_name || emp.name || '');
+                            const enName = emp.full_name_en || emp.fullNameEn || emp.name_en || '';
                             const dept = emp.department || emp.department_ar || '';
                             const pos = emp.position || emp.position_ar || emp.job_title || emp.jobTitle || '';
+                            const mainName = arName || enName || `موظف #${b}`;
 
                             return (
                               <button
                                 key={emp.id || b}
                                 type="button"
                                 onClick={() => handleAutofillFromEmployee(emp)}
-                                className={`w-full p-3 text-start flex items-center justify-between gap-3 transition-colors cursor-pointer ${
-                                  isDark ? 'hover:bg-teal-500/20 text-white' : 'hover:bg-teal-50 text-slate-900'
+                                className={`w-full p-3 text-start flex items-center justify-between gap-3 transition-all cursor-pointer ${
+                                  isDark ? 'hover:bg-teal-500/20 text-white' : 'hover:bg-teal-50/80 text-black'
                                 }`}
                               >
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold text-xs shrink-0 shadow-inner">
-                                    <span className="material-symbols-outlined text-lg">person</span>
+                                  <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-800 dark:text-teal-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-inner">
+                                    <span className="material-symbols-outlined text-xl">person</span>
                                   </div>
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      <p className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                                        {arName || enName || `موظف #${b}`}
-                                      </p>
-                                      {enName && arName && enName !== arName && (
-                                        <span className="text-[11px] font-semibold" style={{ color: isDark ? '#94a3b8' : '#334155' }}>
+                                      {/* Main Arabic / Full Name in solid high-contrast black */}
+                                      <span className="font-extrabold text-xs text-black dark:text-white" style={{ color: isDark ? '#ffffff' : '#000000' }}>
+                                        {mainName}
+                                      </span>
+                                      {/* Secondary English Name */}
+                                      {enName && arName && enName.toLowerCase() !== arName.toLowerCase() && (
+                                        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300" style={{ color: isDark ? '#cbd5e1' : '#334155' }}>
                                           ({enName})
                                         </span>
                                       )}
                                     </div>
-                                    <p className="text-[11px] font-medium mt-0.5" style={{ color: isDark ? '#cbd5e1' : '#475569' }}>
+                                    <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 mt-0.5" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
                                       {pos ? `${pos} • ` : ''}{dept}
                                     </p>
                                   </div>
                                 </div>
 
                                 <div className="shrink-0 text-end">
-                                  <span className="px-2.5 py-1 rounded-lg bg-teal-600 text-white font-mono font-bold text-xs shadow-sm inline-block">
+                                  <span className="px-3 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-mono font-bold text-xs shadow-md inline-block">
                                     {b}
                                   </span>
                                 </div>
