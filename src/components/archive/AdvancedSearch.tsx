@@ -8,17 +8,24 @@ interface AdvancedSearchProps {
   theme: 'light' | 'dark';
 }
 
-export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({ language }) => {
-  const { t } = useApp();
+export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({ theme = 'light' }) => {
+  const { t, theme: appTheme } = useApp();
+  const isDark = (theme || appTheme) === 'dark';
   
   return (
-    <div className="text-center py-12">
-      <span className="material-symbols-outlined text-6xl text-teal-400 mb-4">search</span>
-      <h2 className="text-xl font-bold text-white mb-2">
-        {t('محرك البحث المتقدم', 'Advanced Search')}
+    <div className={`text-center py-16 rounded-3xl border transition-all ${
+      isDark ? 'bg-[#0a0c10] border-white/10 text-white shadow-xl' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+    }`}>
+      <div className={`w-20 h-20 rounded-3xl mx-auto mb-4 flex items-center justify-center ${
+        isDark ? 'bg-teal-500/10 border border-teal-500/30 text-teal-400' : 'bg-teal-50 border border-teal-200 text-teal-700'
+      }`}>
+        <span className="material-symbols-outlined text-4xl">search</span>
+      </div>
+      <h2 className="text-xl font-bold mb-2">
+        {t('محرك البحث المتقدم في الوثائق', 'Advanced Document Search Engine')}
       </h2>
-      <p className="text-slate-400">
-        {t('قيد التطوير...', 'Under development...')}
+      <p className={`text-sm max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        {t('البحث المفصل بالكلمات المفتاحية، التصنيفات، التواريخ، والأرقام التعريفية لجميع المستندات.', 'Search through metadata, categories, full-text OCR contents, dates, and identifiers.')}
       </p>
     </div>
   );

@@ -233,10 +233,18 @@ function AppContent() {
         return <EmployeePortalView />;
 
       // Archive Module
+      case 'cat-12-archive':
       case 'archive-general':
       case 'archive-employee':
+      case 'archive-employees':
       case 'archive-documents':
+      case 'archive-upload':
+      case 'archive-search':
+      case 'archive-expiry':
+      case 'archive-workflows':
       case 'archive-reports':
+      case 'archive-audit':
+      case 'archive-settings':
         return <ArchiveModuleView />;
 
       // Settings & Security
