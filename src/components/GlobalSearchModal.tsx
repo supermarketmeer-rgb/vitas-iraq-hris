@@ -19,6 +19,7 @@ export const GlobalSearchModal: React.FC = () => {
   } = useApp();
 
   const [query, setQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const isDark = theme === 'dark';
 
   // Keyboard shortcut Ctrl+K / Cmd+K listener
@@ -98,8 +99,10 @@ export const GlobalSearchModal: React.FC = () => {
           <input
             type="text"
             autoFocus
-            placeholder={t('ابحث بالاسم، المعرّف، القسم، الوحدة، الوثائق، الأصول...', 'Search by name, ID, department, module, docs, assets...')}
+            placeholder={query || isFocused ? '' : t('ابحث بالاسم، المعرّف، القسم، الوحدة، الوثائق، الأصول...', 'Search by name, ID, department, module, docs, assets...')}
             value={query}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             onChange={e => setQuery(e.target.value)}
             className={`w-full bg-transparent font-bold text-base focus:outline-none ${
               isDark 
@@ -172,20 +175,28 @@ export const GlobalSearchModal: React.FC = () => {
                       setActiveModuleId(m.id);
                       setIsSearchOpen(false);
                     }}
-                    className={`p-3 rounded-xl text-start transition-all group flex items-start gap-3 border ${
+                    className={`global-search-result-card p-3 rounded-xl text-start transition-all group flex items-start gap-3 border ${
                       isDark
                         ? 'bg-white/[0.02] hover:bg-white/10 border-white/10'
-                        : 'bg-slate-50 hover:bg-teal-50 border-slate-300 hover:border-teal-500 shadow-sm'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-300 hover:border-teal-500 shadow-sm'
                     }`}
                   >
                     <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 mt-0.5">
                       {m.icon}
                     </span>
                     <div>
-                      <p className="text-xs font-extrabold text-slate-900 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-400">
+                      <p 
+                        className="text-xs font-extrabold"
+                        style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                      >
                         {language === 'en' ? m.titleEn : m.title}
                       </p>
-                      <p className="text-[10px] text-slate-700 dark:text-slate-400 font-medium line-clamp-1">{m.description}</p>
+                      <p 
+                        className="text-[10px] font-medium line-clamp-1"
+                        style={{ color: isDark ? '#94a3b8' : '#334155' }}
+                      >
+                        {m.description}
+                      </p>
                     </div>
                   </button>
                 ))}
@@ -207,22 +218,39 @@ export const GlobalSearchModal: React.FC = () => {
                       setActiveModuleId('emp-profile');
                       setIsSearchOpen(false);
                     }}
-                    className={`w-full p-2.5 rounded-xl flex items-center justify-between text-start text-xs border ${
+                    className={`global-search-result-card w-full p-2.5 rounded-xl flex items-center justify-between text-start text-xs border ${
                       isDark
                         ? 'bg-white/[0.02] hover:bg-white/10 border-white/10'
-                        : 'bg-slate-50 hover:bg-teal-50 border-slate-300 hover:border-teal-500 shadow-sm'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-300 hover:border-teal-500 shadow-sm'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-teal-600/20 text-teal-800 dark:text-teal-300 font-black flex items-center justify-center border border-teal-500/30">
+                      <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 font-black flex items-center justify-center border border-teal-300 dark:border-teal-500/30">
                         {e.fullName?.slice(0, 1) || 'U'}
                       </div>
                       <div>
-                        <p className="font-extrabold text-slate-900 dark:text-slate-100">{e.fullName}</p>
-                        <p className="text-[10px] text-slate-700 dark:text-slate-400 font-medium">{e.jobTitle} • {e.department}</p>
+                        <p 
+                          className="font-extrabold text-sm"
+                          style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                        >
+                          {e.fullName}
+                        </p>
+                        <p 
+                          className="text-[11px] font-medium"
+                          style={{ color: isDark ? '#94a3b8' : '#334155' }}
+                        >
+                          {e.jobTitle} • {e.department}
+                        </p>
                       </div>
                     </div>
-                    <span className="font-mono text-[10px] bg-teal-500/20 border border-teal-500/30 px-2 py-0.5 rounded text-teal-800 dark:text-teal-300 font-bold">
+                    <span 
+                      className="font-mono text-[11px] px-2 py-0.5 rounded font-bold border"
+                      style={{ 
+                        backgroundColor: isDark ? 'rgba(13, 148, 136, 0.2)' : '#e6fffa', 
+                        color: isDark ? '#2dd4bf' : '#0f766e',
+                        borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : '#99f6e4'
+                      }}
+                    >
                       {e.employeeId}
                     </span>
                   </button>
@@ -245,15 +273,25 @@ export const GlobalSearchModal: React.FC = () => {
                       setActiveModuleId('recruit-dash');
                       setIsSearchOpen(false);
                     }}
-                    className={`w-full p-2.5 rounded-xl text-start text-xs flex items-center justify-between border ${
+                    className={`global-search-result-card w-full p-2.5 rounded-xl text-start text-xs flex items-center justify-between border ${
                       isDark
                         ? 'bg-white/[0.02] hover:bg-white/10 border-white/10'
-                        : 'bg-slate-50 hover:bg-teal-50 border-slate-300 hover:border-teal-500 shadow-sm'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-300 hover:border-teal-500 shadow-sm'
                     }`}
                   >
                     <div>
-                      <p className="font-extrabold text-slate-900 dark:text-slate-100">{j.title}</p>
-                      <p className="text-[10px] text-slate-700 dark:text-slate-400 font-medium">{j.department} • {j.branch}</p>
+                      <p 
+                        className="font-extrabold"
+                        style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                      >
+                        {j.title}
+                      </p>
+                      <p 
+                        className="text-[10px] font-medium"
+                        style={{ color: isDark ? '#94a3b8' : '#334155' }}
+                      >
+                        {j.department} • {j.branch}
+                      </p>
                     </div>
                     <span className="text-[10px] bg-teal-600 text-white font-bold shadow-sm px-2 py-0.5 rounded">
                       {j.status}
@@ -278,15 +316,25 @@ export const GlobalSearchModal: React.FC = () => {
                       setActiveModuleId('recruit-ats');
                       setIsSearchOpen(false);
                     }}
-                    className={`w-full p-2.5 rounded-xl text-start text-xs flex items-center justify-between border ${
+                    className={`global-search-result-card w-full p-2.5 rounded-xl text-start text-xs flex items-center justify-between border ${
                       isDark
                         ? 'bg-white/[0.02] hover:bg-white/10 border-white/10'
-                        : 'bg-slate-50 hover:bg-teal-50 border-slate-300 hover:border-teal-500 shadow-sm'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-300 hover:border-teal-500 shadow-sm'
                     }`}
                   >
                     <div>
-                      <p className="font-extrabold text-slate-900 dark:text-slate-100">{c.fullName}</p>
-                      <p className="text-[10px] text-slate-700 dark:text-slate-400 font-medium">{c.jobTitle}</p>
+                      <p 
+                        className="font-extrabold"
+                        style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                      >
+                        {c.fullName}
+                      </p>
+                      <p 
+                        className="text-[10px] font-medium"
+                        style={{ color: isDark ? '#94a3b8' : '#334155' }}
+                      >
+                        {c.jobTitle}
+                      </p>
                     </div>
                     <span className="text-[10px] bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-bold px-2 py-0.5 rounded border border-emerald-500/30">
                       {c.stage}

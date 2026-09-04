@@ -904,6 +904,35 @@ html:not(.dark) .global-search-pill:hover {
 }
 
 /* ================================================================
+   GLOBAL SEARCH RESULT CARDS (FORCE BLACK TEXT IN LIGHT MODE)
+   ================================================================ */
+.global-search-result-card,
+.global-search-result-card *,
+.global-search-result-card p,
+.global-search-result-card span,
+.global-search-result-card div,
+html.light .global-search-result-card,
+html.light .global-search-result-card *,
+html.light .global-search-result-card p,
+html.light .global-search-result-card span,
+html:not(.dark) .global-search-result-card,
+html:not(.dark) .global-search-result-card * {
+  color: #0f172a !important;
+}
+
+html.light .global-search-result-card:hover,
+html:not(.dark) .global-search-result-card:hover {
+  background-color: #f1f5f9 !important;
+}
+
+html.dark .global-search-result-card,
+html.dark .global-search-result-card *,
+html.dark .global-search-result-card p,
+html.dark .global-search-result-card span {
+  color: #ffffff !important;
+}
+
+/* ================================================================
    GLOBAL PURE DARK MODAL WINDOWS & DIALOG POPUPS (#0a0c10)
    Fixes any modal window or popup across the entire application
    ================================================================ */
