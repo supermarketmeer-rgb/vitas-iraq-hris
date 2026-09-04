@@ -107,25 +107,68 @@ export const DesktopSyncSettings: React.FC = () => {
 
         {/* Connection Configuration */}
         <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200'} shadow-sm space-y-4`}>
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-800 font-bold text-base">
-            <Server className="w-5 h-5 text-teal-400" />
-            <span>{language === 'ar' ? 'عنوان السيرفر المحلي والسحابي' : 'Server Connection Endpoints'}</span>
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800 font-bold text-base">
+            <div className="flex items-center gap-2">
+              <Server className="w-5 h-5 text-teal-400" />
+              <span>{language === 'ar' ? 'عنوان السيرفر المحلي والسحابي' : 'Server Connection Endpoints'}</span>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/10 text-teal-400 border border-teal-500/20">
+              {language === 'ar' ? 'اسم الحاسوب / IP' : 'Computer Name / IP'}
+            </span>
           </div>
 
           <form onSubmit={handleSaveConnectionConfig} className="space-y-4 text-xs">
+            {/* Quick Connection Presets: Name vs IP vs Local */}
             <div>
               <label className="block text-slate-400 font-medium mb-1.5">
-                {language === 'ar' ? 'عنوان السيرفر المحلي (Local Server URL):' : 'Local Server LAN URL:'}
+                {language === 'ar' ? 'طريقة الاتصال بالسيرفر المحلي (LAN):' : 'Local Connection Method:'}
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setLocalServerUrl('http://localhost:5000')}
+                  className={`py-1.5 px-2 rounded-lg border text-center font-medium transition-colors ${localServerUrl.includes('localhost') || localServerUrl.includes('127.0.0.1') ? 'bg-teal-600 text-white border-teal-500' : (isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700')}`}
+                >
+                  {language === 'ar' ? '🖥️ هذا الحاسوب' : '🖥️ Localhost'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const host = prompt(language === 'ar' ? 'أدخل اسم الحاسوب في الشبكة (مثال: VITAS-SERVER أو DESKTOP-HRMS):' : 'Enter Computer Name (e.g. VITAS-SERVER):', 'VITAS-SERVER');
+                    if (host) setLocalServerUrl(`http://${host.trim().replace(/^https?:\/\//, '').replace(/:5000$/, '')}:5000`);
+                  }}
+                  className={`py-1.5 px-2 rounded-lg border text-center font-medium transition-colors ${!localServerUrl.includes('localhost') && !/\d+\.\d+\.\d+\.\d+/.test(localServerUrl) ? 'bg-blue-600 text-white border-blue-500' : (isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700')}`}
+                >
+                  {language === 'ar' ? '📛 اسم الحاسوب' : '📛 Name (Host)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ip = prompt(language === 'ar' ? 'أدخل عنوان الآي بي (مثال: 192.168.1.50):' : 'Enter IP Address (e.g. 192.168.1.50):', '192.168.1.50');
+                    if (ip) setLocalServerUrl(`http://${ip.trim().replace(/^https?:\/\//, '').replace(/:5000$/, '')}:5000`);
+                  }}
+                  className={`py-1.5 px-2 rounded-lg border text-center font-medium transition-colors ${/\d+\.\d+\.\d+\.\d+/.test(localServerUrl) && !localServerUrl.includes('127.0.0.1') ? 'bg-amber-600 text-white border-amber-500' : (isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700')}`}
+                >
+                  {language === 'ar' ? '🌐 عنوان IP' : '🌐 IP Address'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-medium mb-1.5">
+                {language === 'ar' ? 'عنوان السيرفر المحلي (اسم الحاسوب أو IP):' : 'Local Server LAN URL (Computer Name or IP):'}
               </label>
               <input
                 type="text"
                 value={localServerUrl}
                 onChange={(e) => setLocalServerUrl(e.target.value)}
                 className={`w-full px-3.5 py-2.5 rounded-xl border font-mono ${isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'} focus:outline-none focus:border-teal-500`}
-                placeholder="http://192.168.1.100:5000"
+                placeholder="http://VITAS-SERVER:5000 أو http://192.168.1.100:5000"
               />
               <p className="text-[11px] text-slate-500 mt-1">
-                {language === 'ar' ? 'عنوان IP الخاص بالسيرفر المحلي داخل شبكة المؤسسة LAN.' : 'LAN IP address of the dedicated Local Server machine.'}
+                {language === 'ar' 
+                  ? 'يمكنك كتابة اسم الحاسوب مباشرة (مثل http://VITAS-SERVER:5000) أو عنوان IP (مثل http://192.168.1.50:5000).'
+                  : 'You can specify Computer Name (e.g. http://VITAS-SERVER:5000) or LAN IP (e.g. http://192.168.1.50:5000).'}
               </p>
             </div>
 
@@ -144,10 +187,10 @@ export const DesktopSyncSettings: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs transition-colors flex items-center justify-center gap-2 border border-slate-700"
+              className="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-medium text-xs transition-colors flex items-center justify-center gap-2 border border-teal-500 shadow-md active:scale-98 cursor-pointer"
             >
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>{language === 'ar' ? 'حفظ إعدادات الاتصال' : 'Save Connection Settings'}</span>
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{language === 'ar' ? 'حفظ وتطبيق إعدادات الاتصال' : 'Save Connection Settings'}</span>
             </button>
           </form>
         </div>

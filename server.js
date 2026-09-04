@@ -19,6 +19,14 @@ import {
 } from './database/autoCloudSync.js';
 import { initSyncEngineTables } from './database/initSyncEngine.js';
 import { startLocalDiscoveryServer } from './database/localDiscovery.js';
+import { 
+  ensureBiometricTables, 
+  getBiometricConfig, 
+  saveBiometricConfig, 
+  testBiometricConnection, 
+  syncBiometricData, 
+  startBiometricScheduler 
+} from './database/biometricSyncEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -88,8 +96,11 @@ db.getConnection(async (err, connection) => {
   await ensureJobVacancyColumns();
   await ensureEmployeeChildrenColumns();
   await ensureOnHoldColumn();
-  await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(255) DEFAULT NULL').catch(() => {});
   await ensureSettingsSeededAndSynced();
+  
+  // Initialize Biometric Attendance Sync Engine & Tables
+  await ensureBiometricTables(db);
+  startBiometricScheduler(db);
 });
 
 // Helper function to execute queries with Real-Time Cloud Mirroring
@@ -3359,6 +3370,214 @@ import('./src/tax_module/server/taxRoutes.js').then(({ registerTaxModuleRoutes }
   registerTaxModuleRoutes(app, query);
 }).catch(err => {
   console.error('Error initializing tax module routes:', err);
+});
+
+// ============================================================
+// BIOMETRIC ATTENDANCE & SQL SERVER SYNC API ROUTES
+// ============================================================
+
+// Get Biometric Server Configuration
+app.get('/api/biometric/settings', async (req, res) => {
+  try {
+    const settings = await getBiometricConfig(db);
+    res.json({ success: true, settings });
+  } catch (err) {
+    console.error('Error fetching biometric settings:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Save Biometric Server Configuration
+app.post('/api/biometric/settings', async (req, res) => {
+  try {
+    const updated = await saveBiometricConfig(db, req.body);
+    res.json({ 
+      success: true, 
+      message_ar: 'تم حفظ إعدادات خادم البصمة بنجاح في قاعدة البيانات.',
+      message_en: 'Biometric server settings saved successfully.',
+      settings: updated 
+    });
+  } catch (err) {
+    console.error('Error saving biometric settings:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Test Connection to MS SQL Server
+app.post('/api/biometric/test-connection', async (req, res) => {
+  try {
+    const config = req.body || {};
+    const result = await testBiometricConnection(config);
+    res.json(result);
+  } catch (err) {
+    console.error('Error testing biometric connection:', err);
+    res.status(500).json({ 
+      success: false, 
+      status: 'error', 
+      message_ar: `خطأ في فحص الاتصال: ${err.message}`,
+      message_en: `Connection test error: ${err.message}` 
+    });
+  }
+});
+
+// Trigger Manual Sync from SQL Server
+app.post('/api/biometric/sync-now', async (req, res) => {
+  try {
+    const result = await syncBiometricData(db, { syncType: 'manual', fullSync: req.body?.fullSync });
+    res.json(result);
+  } catch (err) {
+    console.error('Error running biometric sync:', err);
+    res.status(500).json({ 
+      success: false, 
+      message_ar: `فشلت المزامنة: ${err.message}`, 
+      message_en: `Sync failed: ${err.message}` 
+    });
+  }
+});
+
+// Get Biometric Sync Status & History
+app.get('/api/biometric/status', async (req, res) => {
+  try {
+    const config = await getBiometricConfig(db);
+    const history = await query('SELECT * FROM biometric_sync_history ORDER BY id DESC LIMIT 20').catch(() => []);
+    res.json({ success: true, config, history });
+  } catch (err) {
+    console.error('Error fetching biometric status:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get Raw Biometric Logs
+app.get('/api/biometric/raw-logs', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 100, 500);
+    const rows = await query('SELECT * FROM raw_attendance_logs ORDER BY punch_datetime DESC, id DESC LIMIT ?', [limit]).catch(() => []);
+    res.json({ success: true, raw_logs: rows });
+  } catch (err) {
+    console.error('Error fetching raw logs:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Simulate Live Punch (creates punch log and recalculates attendance)
+app.post('/api/biometric/simulate-punch', async (req, res) => {
+  try {
+    const { employee_id, punch_type = 'check_in', verify_mode = 'fingerprint' } = req.body;
+    
+    // Find employee
+    const emps = await query('SELECT * FROM employees WHERE id = ?', [employee_id]).catch(() => []);
+    const emp = emps && emps.length > 0 ? emps[0] : null;
+
+    const empCode = emp ? (emp.badge_no || `EMP-100${emp.id}`) : `EMP-100${employee_id}`;
+    const nameAr = emp ? (emp.full_name_ar || `${emp.first_name} ${emp.last_name}`) : `موظف ${employee_id}`;
+    const nameEn = emp ? (emp.full_name_en || `${emp.first_name} ${emp.last_name}`) : `Employee ${employee_id}`;
+    
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0];
+    const dateTimeStr = `${dateStr} ${timeStr}`;
+
+    // Insert into raw_attendance_logs
+    await query(`
+      INSERT INTO raw_attendance_logs 
+      (device_id, employee_biometric_id, employee_number, employee_name_ar, employee_name_en, punch_datetime, punch_type, verify_mode, sync_batch_id, is_processed)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      ON DUPLICATE KEY UPDATE employee_name_ar = VALUES(employee_name_ar)
+    `, [
+      'SIMULATOR-VIRTUAL-DEV',
+      empCode,
+      empCode,
+      nameAr,
+      nameEn,
+      dateTimeStr,
+      punch_type,
+      verify_mode,
+      `SIM-${Date.now()}`
+    ]);
+
+    // Update attendance record for today
+    const existingAtt = await query('SELECT * FROM attendance_records WHERE employee_number = ? AND date = ?', [empCode, dateStr]).catch(() => []);
+    
+    if (existingAtt && existingAtt.length > 0) {
+      const rec = existingAtt[0];
+      const firstPunch = rec.first_punch || timeStr;
+      const lastPunch = timeStr;
+
+      // Calculate minutes
+      const [fH, fM] = firstPunch.split(':').map(Number);
+      const [lH, lM] = lastPunch.split(':').map(Number);
+      const workedMins = Math.max(0, (lH * 60 + lM) - (fH * 60 + fM));
+      const lateMins = Math.max(0, (fH * 60 + fM) - (8 * 60));
+
+      await query(`
+        UPDATE attendance_records 
+        SET 
+          last_punch = ?,
+          worked_minutes = ?,
+          regular_minutes = ?,
+          late_minutes = ?,
+          status = ?,
+          updated_at = NOW()
+        WHERE id = ?
+      `, [
+        lastPunch,
+        workedMins,
+        Math.min(workedMins, 480),
+        lateMins,
+        lateMins > 15 ? 'late' : 'present',
+        rec.id
+      ]);
+    } else {
+      const [fH, fM] = timeStr.split(':').map(Number);
+      const lateMins = Math.max(0, (fH * 60 + fM) - (8 * 60));
+
+      await query(`
+        INSERT INTO attendance_records 
+        (employee_id, employee_number, employee_name_ar, employee_name_en, department_name_ar, department_name_en, branch_name_ar, branch_name_en, date, scheduled_start, scheduled_end, first_punch, last_punch, worked_minutes, regular_minutes, break_minutes, late_minutes, status, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '08:00:00', '16:00:00', ?, ?, 0, 0, 45, ?, ?, 'biometric_simulator')
+      `, [
+        emp ? emp.id : employee_id,
+        empCode,
+        nameAr,
+        nameEn,
+        'الموارد البشرية والشؤون الإدارية',
+        'Human Resources & Admin',
+        'الإدارة العامة - بغداد',
+        'Headquarters - Baghdad',
+        dateStr,
+        timeStr,
+        timeStr,
+        lateMins,
+        lateMins > 15 ? 'late' : 'present'
+      ]);
+    }
+
+    res.json({
+      success: true,
+      message_ar: `تم تسجيل البصمة بنجاح لـ ${nameAr} في جدول البصمات وتحديث سجل الحضور اليومي.`,
+      message_en: `Biometric punch simulated for ${nameEn} and attendance updated.`,
+      punch_time: dateTimeStr
+    });
+  } catch (err) {
+    console.error('Error simulating punch:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reprocess all attendance records from raw logs
+app.post('/api/attendance/reprocess', async (req, res) => {
+  try {
+    const result = await syncBiometricData(db, { syncType: 'manual', fullSync: true });
+    res.json({
+      success: true,
+      message_ar: 'تمت إعادة معالجة جميع سجلات البصمات وتطبيق قواعد الدوام بنجاح.',
+      message_en: 'Reprocessed all attendance logs successfully.',
+      details: result
+    });
+  } catch (err) {
+    console.error('Error reprocessing attendance:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // SPA React Router fallback route

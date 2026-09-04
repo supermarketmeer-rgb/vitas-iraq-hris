@@ -14,6 +14,30 @@ interface AttendanceViewProps {
   onExportPdf: () => void;
 }
 
+// Department English Translation Helper
+const DEPT_EN_LOOKUP: Record<string, string> = {
+  'قسم الائتمان': 'Credit Department',
+  'الائتمان': 'Credit Department',
+  'قسم الاتئمان': 'Credit Department',
+  'المشتريات والتسهيلات': 'Procurement & Facilities Department',
+  'المشتريات': 'Procurement Department',
+  'الموارد البشرية': 'Human Resources Department',
+  'الموارد البشرية والشؤون الإدارية': 'Human Resources & Admin',
+  'قسم الموارد البشرية': 'Human Resources Department',
+  'المعلوماتية والاتصالات': 'IT & Communications Department',
+  'تكنولوجيا المعلومات': 'Information Technology Department',
+  'المالية والمحاسبة': 'Finance & Accounting Department',
+  'القسم المالي': 'Finance Department',
+  'المخاطر والامتثال': 'Risk & Compliance Department',
+  'الأمن': 'Security Department',
+  'قسم الأمن': 'Security Department',
+  'العمليات': 'Operations Department',
+  'الشؤون القانونية': 'Legal Affairs Department',
+  'التدقيق الداخلي': 'Internal Audit Department',
+  'التسويق والإعلام': 'Marketing & PR Department',
+  'خدمة العملاء': 'Customer Service Department'
+};
+
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
   records,
   lang,
@@ -77,43 +101,43 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   );
 
   const getStatusBadge = (status: AttendanceRecord['status'], isCorrected: boolean) => {
-    let bg = 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300';
+    let bg = 'bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-white border-slate-300 dark:border-white/20';
     let label: string = status;
 
     switch (status) {
       case 'present':
-        bg = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+        bg = 'bg-emerald-100 text-slate-900 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-400 dark:border-emerald-700';
         label = t.present;
         break;
       case 'late':
-        bg = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+        bg = 'bg-amber-100 text-slate-900 dark:bg-amber-950/60 dark:text-amber-300 border-amber-400 dark:border-amber-700';
         label = t.late;
         break;
       case 'early_leave':
-        bg = 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
+        bg = 'bg-purple-100 text-slate-900 dark:bg-purple-950/60 dark:text-purple-300 border-purple-400 dark:border-purple-700';
         label = t.early_leave;
         break;
       case 'on_leave':
-        bg = 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
+        bg = 'bg-blue-100 text-slate-900 dark:bg-blue-950/60 dark:text-blue-300 border-blue-400 dark:border-blue-700';
         label = t.on_leave;
         break;
       case 'absent':
-        bg = 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
+        bg = 'bg-rose-100 text-slate-900 dark:bg-rose-950/60 dark:text-rose-300 border-rose-400 dark:border-rose-700';
         label = t.absent;
         break;
       case 'missing_punch':
-        bg = 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 animate-pulse';
+        bg = 'bg-rose-100 text-slate-900 dark:bg-rose-950/60 dark:text-rose-300 border-rose-400 dark:border-rose-700 font-bold';
         label = t.missing_punch;
         break;
     }
 
     return (
       <div className="flex items-center gap-1">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${bg}`}>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold border shadow-xs ${bg}`}>
           {label}
         </span>
         {isCorrected && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400 font-medium">
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-900 dark:bg-teal-500/20 dark:text-teal-300 font-bold border border-slate-300 dark:border-teal-500/30">
             {lang === 'ar' ? 'معدل' : 'Corrected'}
           </span>
         )}
@@ -315,7 +339,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       {lang === 'ar' ? r.employee_name_ar : r.employee_name_en}
                     </td>
                     <td className="p-3 text-slate-600 dark:text-slate-300">
-                      {lang === 'ar' ? r.department_name_ar : r.department_name_en}
+                      {lang === 'ar' 
+                        ? (r.department_name_ar || r.department_name_en) 
+                        : (DEPT_EN_LOOKUP[r.department_name_ar] || r.department_name_en || r.department_name_ar)}
                     </td>
                     <td className="p-3 font-mono text-slate-600 dark:text-slate-300">{r.date}</td>
                     <td className="p-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">
@@ -338,13 +364,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => onViewPunches(r)}
-                          className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 hover:bg-teal-500/20 text-[11px] font-bold transition-all cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-teal-100 hover:bg-teal-200 dark:bg-teal-950/60 dark:hover:bg-teal-900 text-slate-900 dark:text-white border border-teal-300 dark:border-teal-700 text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
                         >
                           {t.view_punches}
                         </button>
                         <button
                           onClick={() => onCorrectPunch(r)}
-                          className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-200 text-[11px] font-bold transition-all cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white border border-slate-300 dark:border-white/20 text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
                         >
                           {t.correct_punch}
                         </button>

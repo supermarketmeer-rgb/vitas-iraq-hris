@@ -49,19 +49,19 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
     switch (status) {
       case 'approved':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-slate-900 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-400 dark:border-emerald-700">
             {t.leave_status_approved}
           </span>
         );
       case 'rejected':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-slate-900 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-400 dark:border-rose-700">
             {t.leave_status_rejected}
           </span>
         );
       case 'returned':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-slate-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-400 dark:border-amber-700">
             {t.leave_status_returned}
           </span>
         );
@@ -69,7 +69,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
       case 'pending_approval':
       default:
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-slate-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-400 dark:border-amber-700">
             {t.leave_status_pending}
           </span>
         );

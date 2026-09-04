@@ -37,6 +37,47 @@ let mockSettings = { ...initialBiometricSettings };
 let mockRawLogs = [...initialRawLogs];
 let mockLeaveTypes = [...initialLeaveTypes];
 
+// Comprehensive Department & Branch Bilingual Lookup Dictionary
+const DEPT_EN_MAP: Record<string, string> = {
+  'قسم الائتمان': 'Credit Department',
+  'الائتمان': 'Credit Department',
+  'قسم الاتئمان': 'Credit Department',
+  'المشتريات والتسهيلات': 'Procurement & Facilities Department',
+  'المشتريات': 'Procurement Department',
+  'الموارد البشرية': 'Human Resources Department',
+  'الموارد البشرية والشؤون الإدارية': 'Human Resources & Admin',
+  'قسم الموارد البشرية': 'Human Resources Department',
+  'المعلوماتية والاتصالات': 'IT & Communications Department',
+  'تكنولوجيا المعلومات': 'Information Technology Department',
+  'المالية والمحاسبة': 'Finance & Accounting Department',
+  'القسم المالي': 'Finance Department',
+  'المخاطر والامتثال': 'Risk & Compliance Department',
+  'الأمن': 'Security Department',
+  'قسم الأمن': 'Security Department',
+  'العمليات': 'Operations Department',
+  'الشؤون القانونية': 'Legal Affairs Department',
+  'التدقيق الداخلي': 'Internal Audit Department',
+  'التسويق والإعلام': 'Marketing & PR Department',
+  'خدمة العملاء': 'Customer Service Department'
+};
+
+const BRANCH_EN_MAP: Record<string, string> = {
+  'بابل_الحلة': 'Babil - Hilla',
+  'بابل - الحلة': 'Babil - Hilla',
+  'بغداد - الكرادة': 'Baghdad - Karrada',
+  'فرع بغداد - الكرادة': 'Baghdad Branch - Karrada',
+  'الإدارة العامة - بغداد': 'Headquarters - Baghdad',
+  'البصرة': 'Basra Branch',
+  'فرع البصرة': 'Basra Branch',
+  'أربيل': 'Erbil Branch',
+  'الديوانية': 'Diwaniyah Branch',
+  'النجف': 'Najaf Branch',
+  'كربلاء': 'Karbala Branch',
+  'الموصل': 'Mosul Branch',
+  'ذي قار': 'Dhi Qar Branch',
+  'كركوك': 'Kirkuk Branch'
+};
+
 export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<string, string>) => {
   if (!Array.isArray(appEmployees) || appEmployees.length === 0) return;
 
@@ -61,23 +102,32 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
     return { ...lt, max_days_per_year: maxDays };
   });
 
-  // Map real app employees into Attendance Employee objects
+  // Map real app employees into Attendance Employee objects using employee ID as exact key
   const mappedEmps = appEmployees.map((emp, index) => {
     const rawId = emp.id !== undefined && emp.id !== null ? String(emp.id) : String(index + 1);
     const numId = parseInt(rawId.replace(/\D/g, ''), 10) || (index + 1);
-    const empCode = emp.badgeNo || emp.badge_no || emp.employeeId || emp.employee_id || emp.empCode || `VTS-${5000 + numId}`;
+    
+    // Explicit Employee ID as the primary linking key
+    const trueEmployeeId = emp.employeeId || emp.employee_id || emp.id || emp.badgeNo || emp.badge_no || `EMP-${numId}`;
+    const cleanEmpId = String(trueEmployeeId).trim();
+
     const nameAr = emp.fullNameAr || emp.fullName || emp.full_name_ar || emp.name || `موظف ${index + 1}`;
     const nameEn = emp.fullNameEn || emp.full_name_en || emp.fullName || nameAr;
-    const deptAr = emp.department_ar || emp.department || emp.location_ar || 'الموارد البشرية والشؤون الإدارية';
-    const deptEn = emp.department_en || emp.department || emp.location_en || 'Human Resources & Admin';
+    
+    const rawDept = emp.department || emp.department_ar || '';
+    const deptAr = emp.department_ar || emp.department || 'الموارد البشرية والشؤون الإدارية';
+    const deptEn = emp.department_en || emp.departmentEn || DEPT_EN_MAP[rawDept] || DEPT_EN_MAP[deptAr] || 'Human Resources & Admin';
+    
+    const rawBranch = emp.branch || emp.location_ar || '';
     const branchAr = emp.location_ar || emp.branch || 'الإدارة العامة - بغداد';
-    const branchEn = emp.location_en || emp.branch || 'Headquarters - Baghdad';
-    const posAr = emp.position_ar || emp.position || 'أخصائي موارد بشرية';
-    const posEn = emp.position_en || emp.position || 'HR Specialist';
+    const branchEn = emp.branch_en || emp.branchEn || emp.location_en || BRANCH_EN_MAP[rawBranch] || 'Headquarters - Baghdad';
+    
+    const posAr = emp.position_ar || emp.position || emp.jobTitle || 'أخصائي موارد بشرية';
+    const posEn = emp.position_en || emp.positionEn || emp.jobTitleEn || 'HR Specialist';
 
     return {
       id: numId,
-      employee_number: empCode.startsWith('VTS-') || empCode.startsWith('EMP-') ? empCode : `VTS-${empCode}`,
+      employee_number: cleanEmpId,
       name_ar: nameAr,
       name_en: nameEn,
       email: emp.org_email || emp.email || `${nameEn.toLowerCase().replace(/[^a-z0-9]/g, '.')}@vitasiraq.com`,
@@ -96,7 +146,7 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
       manager_name_en: emp.supervisor_name || 'Zaid Al-Husseini',
       employment_status: emp.status === 'inactive' ? 'suspended' as const : 'active' as const,
       hire_date: emp.contract_start_date || emp.hireDate || '2022-01-15',
-      biometric_id: `BIO-${String(numId).padStart(4, '0')}`,
+      biometric_id: cleanEmpId,
       schedule_id: (index % 3) + 1,
       schedule_name_ar: `الدوام الإداري العام (${workStart} - ${workEnd})`,
       schedule_name_en: `Standard Office Shift (${workStart} - ${workEnd})`,
