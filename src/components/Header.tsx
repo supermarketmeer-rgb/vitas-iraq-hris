@@ -171,12 +171,12 @@ export const Header: React.FC = () => {
               : 'bg-white border border-slate-300 text-slate-700 hover:border-teal-500 hover:text-slate-900 shadow-xs'
           }`}
         >
-          <div className="flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-teal-500 group-hover:scale-110 transition-transform">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <span className="material-symbols-outlined text-teal-500 group-hover:scale-110 transition-transform shrink-0">
               search
             </span>
-            <span className={`font-normal ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-              {t('بحث شامل في النظام (موظفين، أقسام، أصول، لوائح)...', 'Global search system (employees, departments, assets, rules)...')}
+            <span className={`font-normal truncate whitespace-nowrap text-xs sm:text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              {t('بحث شامل في المنظومة...', 'Global search system...')}
             </span>
           </div>
           <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono text-teal-600 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/10 border border-teal-300 dark:border-teal-500/30 rounded shadow-xs">
