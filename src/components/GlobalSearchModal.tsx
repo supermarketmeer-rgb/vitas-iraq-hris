@@ -70,6 +70,47 @@ export const GlobalSearchModal: React.FC = () => {
 
   if (!isSearchOpen) return null;
 
+  // Localization helper functions
+  const getEmpDisplayName = (emp: any) => {
+    if (!emp) return '-';
+    if (language === 'en') {
+      const en = emp.fullNameEn || emp.full_name_en || emp.name_en;
+      if (en && en !== 'N/A' && String(en).trim() !== '') return en;
+      return emp.fullName || emp.full_name_ar || emp.name_ar || '-';
+    }
+    return emp.fullNameAr || emp.fullName || emp.full_name_ar || emp.name_ar || '-';
+  };
+
+  const getEmpDisplayJob = (emp: any) => {
+    if (!emp) return '-';
+    if (language === 'en') {
+      const en = emp.jobTitleEn || emp.job_title_en || emp.position_en;
+      if (en && en !== 'N/A' && String(en).trim() !== '') return en;
+      return emp.jobTitle || emp.position_ar || emp.position || '-';
+    }
+    return emp.jobTitle || emp.position_ar || emp.position || '-';
+  };
+
+  const getEmpDisplayDept = (emp: any) => {
+    if (!emp) return '-';
+    if (language === 'en') {
+      const en = emp.departmentEn || emp.department_en;
+      if (en && en !== 'N/A' && String(en).trim() !== '') return en;
+      return emp.department || emp.department_ar || '-';
+    }
+    return emp.department || emp.department_ar || '-';
+  };
+
+  const getCandidateDisplayName = (c: any) => {
+    if (!c) return '-';
+    if (language === 'en') {
+      const en = c.fullNameEn || c.full_name_en;
+      if (en && en !== 'N/A' && String(en).trim() !== '') return en;
+      return c.fullName || c.fullNameAr || '-';
+    }
+    return c.fullNameAr || c.fullName || '-';
+  };
+
   // Search Results Compilation
   const matchedModules = CATEGORY_GROUPS.flatMap(c =>
     c.modules.filter(m =>
@@ -79,34 +120,43 @@ export const GlobalSearchModal: React.FC = () => {
     )
   );
 
-  const matchedEmployees = employees.filter(e =>
-    e.fullName.includes(query) ||
-    e.employeeId.toLowerCase().includes(query.toLowerCase()) ||
-    e.department.includes(query)
-  );
+  const matchedEmployees = employees.filter(e => {
+    if (!query) return false;
+    const q = query.toLowerCase().trim();
+    const nameAr = (e.fullName || e.fullNameAr || e.full_name_ar || '').toLowerCase();
+    const nameEn = (e.fullNameEn || e.full_name_en || '').toLowerCase();
+    const empId = (e.employeeId || e.employee_id || e.id || '').toLowerCase();
+    const dept = (e.department || e.departmentEn || '').toLowerCase();
+    const job = (e.jobTitle || e.jobTitleEn || '').toLowerCase();
+    return nameAr.includes(q) || nameEn.includes(q) || empId.includes(q) || dept.includes(q) || job.includes(q);
+  });
 
   const matchedJobs = jobVacancies.filter(j =>
-    j.title.includes(query) ||
-    j.department.includes(query)
+    j.title.toLowerCase().includes(query.toLowerCase()) ||
+    j.department.toLowerCase().includes(query.toLowerCase())
   );
 
-  const matchedCandidates = candidates.filter(c =>
-    c.fullName.includes(query) ||
-    c.jobTitle.includes(query)
-  );
+  const matchedCandidates = candidates.filter(c => {
+    if (!query) return false;
+    const q = query.toLowerCase().trim();
+    const nameAr = (c.fullName || c.fullNameAr || '').toLowerCase();
+    const nameEn = (c.fullNameEn || (c as any).full_name_en || '').toLowerCase();
+    const job = (c.jobTitle || '').toLowerCase();
+    return nameAr.includes(q) || nameEn.includes(q) || job.includes(q);
+  });
 
   const matchedAssets = assetRecords.filter(a =>
-    a.name.includes(query) ||
+    a.name.toLowerCase().includes(query.toLowerCase()) ||
     a.assetTag.toLowerCase().includes(query.toLowerCase())
   );
 
   const matchedDocuments = documentRecords.filter(d =>
-    d.title.includes(query) ||
-    d.type.includes(query)
+    d.title.toLowerCase().includes(query.toLowerCase()) ||
+    d.type.toLowerCase().includes(query.toLowerCase())
   );
 
   const matchedRisks = riskRecords.filter(r =>
-    r.title.includes(query) ||
+    r.title.toLowerCase().includes(query.toLowerCase()) ||
     r.riskCode.toLowerCase().includes(query.toLowerCase())
   );
 
@@ -242,52 +292,58 @@ export const GlobalSearchModal: React.FC = () => {
                 {t('نتائج الموظفين', 'Employee Results')} ({matchedEmployees.length})
               </h3>
               <div className="space-y-1.5">
-                {matchedEmployees.map(e => (
-                  <button
-                    key={e.id}
-                    onClick={() => {
-                      setActiveModuleId('emp-profile');
-                      setIsSearchOpen(false);
-                    }}
-                    className={`global-search-result-card w-full p-2.5 rounded-xl flex items-center justify-between text-start text-xs border ${
-                      isDark
-                        ? 'bg-white/[0.02] hover:bg-white/10 border-white/10'
-                        : 'bg-slate-50 hover:bg-slate-100 border-slate-300 hover:border-teal-500 shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <SearchItemAvatar
-                        photo={e.photoUrl || e.photo_url || e.photo || (e as any).avatar}
-                        name={e.fullName}
-                        fallbackColor="teal"
-                      />
-                      <div>
-                        <p 
-                          className="font-extrabold text-sm"
-                          style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                        >
-                          {e.fullName}
-                        </p>
-                        <p 
-                          className="text-[11px] font-medium"
-                          style={{ color: isDark ? '#94a3b8' : '#334155' }}
-                        >
-                          {e.jobTitle} • {e.department}
-                        </p>
-                      </div>
-                    </div>
-                    <span 
-                      className="font-mono text-[11px] px-2 py-0.5 rounded font-bold border"
-                      style={{ 
-                        backgroundColor: isDark ? 'rgba(13, 148, 136, 0.2)' : '#e6fffa', 
-                        color: isDark ? '#2dd4bf' : '#0f766e',
-                        borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : '#99f6e4'
+                {matchedEmployees.map(e => {
+                  const displayName = getEmpDisplayName(e);
+                  const displayJob = getEmpDisplayJob(e);
+                  const displayDept = getEmpDisplayDept(e);
+
+                  return (
+                    <button
+                      key={e.id}
+                      onClick={() => {
+                        setActiveModuleId('emp-profile');
+                        setIsSearchOpen(false);
                       }}
+                      className={`global-search-result-card w-full p-2.5 rounded-xl flex items-center justify-between text-start text-xs border ${
+                        isDark
+                          ? 'bg-white/[0.02] hover:bg-white/10 border-white/10'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-300 hover:border-teal-500 shadow-sm'
+                      }`}
                     >
-                      {e.employeeId}
-                    </span>
-                  </button>
-                ))}
+                      <div className="flex items-center gap-2.5">
+                        <SearchItemAvatar
+                          photo={e.photoUrl || e.photo_url || e.photo || (e as any).avatar}
+                          name={displayName}
+                          fallbackColor="teal"
+                        />
+                        <div>
+                          <p 
+                            className="font-extrabold text-sm"
+                            style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                          >
+                            {displayName}
+                          </p>
+                          <p 
+                            className="text-[11px] font-medium"
+                            style={{ color: isDark ? '#94a3b8' : '#334155' }}
+                          >
+                            {displayJob} • {displayDept}
+                          </p>
+                        </div>
+                      </div>
+                      <span 
+                        className="font-mono text-[11px] px-2 py-0.5 rounded font-bold border"
+                        style={{ 
+                          backgroundColor: isDark ? 'rgba(13, 148, 136, 0.2)' : '#e6fffa', 
+                          color: isDark ? '#2dd4bf' : '#0f766e',
+                          borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : '#99f6e4'
+                        }}
+                      >
+                        {e.employeeId}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -342,45 +398,49 @@ export const GlobalSearchModal: React.FC = () => {
                 {t('المرشحون للتوظيف', 'Job Candidates')} ({matchedCandidates.length})
               </h3>
               <div className="space-y-1">
-                {matchedCandidates.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      setActiveModuleId('recruit-ats');
-                      setIsSearchOpen(false);
-                    }}
-                    className={`global-search-result-card w-full p-2.5 rounded-xl text-start text-xs flex items-center justify-between border ${
-                      isDark
-                        ? 'bg-white/[0.02] hover:bg-white/10 border-white/10'
-                        : 'bg-slate-50 hover:bg-slate-100 border-slate-300 hover:border-teal-500 shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <SearchItemAvatar
-                        photo={c.photoUrl || (c as any).photo_url || (c as any).photo || (c as any).avatar}
-                        name={c.fullName}
-                        fallbackColor="emerald"
-                      />
-                      <div>
-                        <p 
-                          className="font-extrabold"
-                          style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                        >
-                          {c.fullName}
-                        </p>
-                        <p 
-                          className="text-[10px] font-medium"
-                          style={{ color: isDark ? '#94a3b8' : '#334155' }}
-                        >
-                          {c.jobTitle}
-                        </p>
+                {matchedCandidates.map(c => {
+                  const candidateName = getCandidateDisplayName(c);
+
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => {
+                        setActiveModuleId('recruit-ats');
+                        setIsSearchOpen(false);
+                      }}
+                      className={`global-search-result-card w-full p-2.5 rounded-xl text-start text-xs flex items-center justify-between border ${
+                        isDark
+                          ? 'bg-white/[0.02] hover:bg-white/10 border-white/10'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-300 hover:border-teal-500 shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <SearchItemAvatar
+                          photo={c.photoUrl || (c as any).photo_url || (c as any).photo || (c as any).avatar}
+                          name={candidateName}
+                          fallbackColor="emerald"
+                        />
+                        <div>
+                          <p 
+                            className="font-extrabold"
+                            style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                          >
+                            {candidateName}
+                          </p>
+                          <p 
+                            className="text-[10px] font-medium"
+                            style={{ color: isDark ? '#94a3b8' : '#334155' }}
+                          >
+                            {c.jobTitle}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-bold px-2 py-0.5 rounded border border-emerald-500/30">
-                      {c.stage}
-                    </span>
-                  </button>
-                ))}
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-bold px-2 py-0.5 rounded border border-emerald-500/30">
+                        {c.stage}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
