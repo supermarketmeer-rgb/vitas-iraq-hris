@@ -67,7 +67,166 @@ export const SystemHelpGuideModal: React.FC<SystemHelpGuideModalProps> = ({ isOp
   };
 
   const handlePrint = () => {
-    window.print();
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    document.body.appendChild(printFrame);
+
+    const doc = printFrame.contentWindow?.document;
+    if (!doc) {
+      window.print();
+      return;
+    }
+
+    const direction = isAr ? 'rtl' : 'ltr';
+    const mainTitle = isAr
+      ? 'الدليل الشامل لفهرس ووظائف موديولات النظام'
+      : 'System Modules Complete Index & Functional Guide';
+    const subTitle = isAr
+      ? 'فهرس توضيحي معتمد يوضح وظائف ومهام كافة موديولات وأقسام منظومة فيتاس العراق للموارد البشرية بالتفصيل.'
+      : 'Official sequentially indexed reference explaining the features and functions of all VITAS Iraq HRMS modules.';
+    const orgName = isAr ? 'منظومة فيتاس العراق للموارد البشرية' : 'VITAS IRAQ HRMS ENTERPRISE PORTAL';
+    const totalCountText = isAr ? `${totalModulesCount} موديول مفهرس` : `${totalModulesCount} Indexed Modules`;
+    const printDate = new Date().toLocaleDateString(isAr ? 'ar-IQ' : 'en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    let categoriesHtml = '';
+    categories.forEach((cat) => {
+      let modulesHtml = '';
+      cat.modules.forEach((mod) => {
+        let fnsHtml = '';
+        mod.functions.forEach((fn) => {
+          fnsHtml += `<li style="margin-bottom: 4px; line-height: 1.5; color: #1e293b;"><span style="color: #0d9488; font-weight: bold; margin-${isAr ? 'left' : 'right'}: 6px;">•</span>${fn}</li>`;
+        });
+
+        modulesHtml += `
+          <div style="margin-bottom: 16px; padding: 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; page-break-inside: avoid;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+              <div style="font-weight: 800; font-size: 13pt; color: #0f172a;">
+                <span style="background: #0d9488; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-size: 10pt; font-family: monospace; margin-${isAr ? 'left' : 'right'}: 8px;">${mod.number}</span>
+                ${mod.title}
+              </div>
+              <span style="font-size: 9pt; color: #64748b; font-weight: 600;">${isAr ? `${mod.functions.length} وظائف أساسية` : `${mod.functions.length} Core Functions`}</span>
+            </div>
+            <div style="font-size: 10pt; color: #0f766e; font-weight: 600; margin-bottom: 8px;">${mod.summary}</div>
+            <ul style="list-style: none; padding-${isAr ? 'right' : 'left'}: 8px; margin: 0; font-size: 9.5pt;">
+              ${fnsHtml}
+            </ul>
+          </div>
+        `;
+      });
+
+      categoriesHtml += `
+        <div style="margin-bottom: 28px; page-break-after: auto; page-break-inside: avoid;">
+          <div style="display: flex; align-items: center; gap: 10px; background: #0f766e; color: #ffffff; padding: 10px 14px; border-radius: 6px; margin-bottom: 14px;">
+            <div style="background: #ffffff; color: #0f766e; font-weight: 800; font-size: 11pt; padding: 2px 10px; border-radius: 4px; font-family: monospace;">${cat.categoryNumber}</div>
+            <div>
+              <div style="font-size: 14pt; font-weight: 800;">${cat.title}</div>
+              <div style="font-size: 9pt; opacity: 0.9;">${cat.description}</div>
+            </div>
+          </div>
+          ${modulesHtml}
+        </div>
+      `;
+    });
+
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html dir="${direction}" lang="${isAr ? 'ar' : 'en'}">
+      <head>
+        <meta charset="utf-8">
+        <title>${mainTitle}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 12mm 15mm;
+          }
+          * {
+            box-sizing: border-box;
+          }
+          body {
+            font-family: ${isAr ? "'Cairo', sans-serif" : "'Inter', sans-serif"};
+            color: #0f172a;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .header-banner {
+            border-bottom: 2px solid #0d9488;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .header-logo-title {
+            font-size: 16pt;
+            font-weight: 900;
+            color: #0f172a;
+          }
+          .header-meta {
+            text-align: ${isAr ? 'left' : 'right'};
+            font-size: 9pt;
+            color: #64748b;
+          }
+          .summary-card {
+            background: #f0fdfa;
+            border: 1px solid #5eead4;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header-banner">
+          <div>
+            <div style="font-size: 10pt; font-weight: 700; color: #0d9488; text-transform: uppercase;">${orgName}</div>
+            <div class="header-logo-title">${mainTitle}</div>
+          </div>
+          <div class="header-meta">
+            <div><strong>${printDate}</strong></div>
+            <div><span style="background: #e6fffa; color: #047857; padding: 2px 6px; border-radius: 4px; border: 1px solid #6ee7b7; font-weight: bold;">${totalCountText}</span></div>
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <p style="margin: 0; font-size: 10pt; color: #134e4a; font-weight: 600;">${subTitle}</p>
+        </div>
+
+        ${categoriesHtml}
+
+        <div style="margin-top: 30px; padding-top: 10px; border-top: 1px solid #cbd5e1; text-align: center; font-size: 8pt; color: #94a3b8;">
+          ${orgName} • ${mainTitle} • ${printDate}
+        </div>
+      </body>
+      </html>
+    `;
+
+    doc.open();
+    doc.write(fullHtml);
+    doc.close();
+
+    setTimeout(() => {
+      printFrame.contentWindow?.focus();
+      printFrame.contentWindow?.print();
+      setTimeout(() => {
+        if (document.body.contains(printFrame)) {
+          document.body.removeChild(printFrame);
+        }
+      }, 2000);
+    }, 300);
   };
 
   if (!isOpen) return null;
