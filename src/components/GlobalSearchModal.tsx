@@ -2,6 +2,37 @@ import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { CATEGORY_GROUPS } from '../data/categories';
 
+interface AvatarProps {
+  photo?: string;
+  name?: string;
+  fallbackColor?: string;
+}
+
+const SearchItemAvatar: React.FC<AvatarProps> = ({ photo, name, fallbackColor = 'teal' }) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (photo && !hasError) {
+    return (
+      <img
+        src={photo}
+        alt={name || ''}
+        onError={() => setHasError(true)}
+        className="w-10 h-10 rounded-xl object-cover border-2 border-teal-500/40 shrink-0 shadow-xs bg-white"
+      />
+    );
+  }
+
+  return (
+    <div className={`w-10 h-10 rounded-xl font-black flex items-center justify-center text-sm shrink-0 border ${
+      fallbackColor === 'emerald'
+        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30'
+        : 'bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border-teal-300 dark:border-teal-500/30'
+    }`}>
+      {name?.slice(0, 1) || 'U'}
+    </div>
+  );
+};
+
 export const GlobalSearchModal: React.FC = () => {
   const {
     isSearchOpen,
@@ -225,9 +256,11 @@ export const GlobalSearchModal: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 font-black flex items-center justify-center border border-teal-300 dark:border-teal-500/30">
-                        {e.fullName?.slice(0, 1) || 'U'}
-                      </div>
+                      <SearchItemAvatar
+                        photo={e.photoUrl || e.photo_url || e.photo || (e as any).avatar}
+                        name={e.fullName}
+                        fallbackColor="teal"
+                      />
                       <div>
                         <p 
                           className="font-extrabold text-sm"
@@ -322,19 +355,26 @@ export const GlobalSearchModal: React.FC = () => {
                         : 'bg-slate-50 hover:bg-slate-100 border-slate-300 hover:border-teal-500 shadow-sm'
                     }`}
                   >
-                    <div>
-                      <p 
-                        className="font-extrabold"
-                        style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                      >
-                        {c.fullName}
-                      </p>
-                      <p 
-                        className="text-[10px] font-medium"
-                        style={{ color: isDark ? '#94a3b8' : '#334155' }}
-                      >
-                        {c.jobTitle}
-                      </p>
+                    <div className="flex items-center gap-2.5">
+                      <SearchItemAvatar
+                        photo={c.photoUrl || (c as any).photo_url || (c as any).photo || (c as any).avatar}
+                        name={c.fullName}
+                        fallbackColor="emerald"
+                      />
+                      <div>
+                        <p 
+                          className="font-extrabold"
+                          style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                        >
+                          {c.fullName}
+                        </p>
+                        <p 
+                          className="text-[10px] font-medium"
+                          style={{ color: isDark ? '#94a3b8' : '#334155' }}
+                        >
+                          {c.jobTitle}
+                        </p>
+                      </div>
                     </div>
                     <span className="text-[10px] bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-bold px-2 py-0.5 rounded border border-emerald-500/30">
                       {c.stage}
