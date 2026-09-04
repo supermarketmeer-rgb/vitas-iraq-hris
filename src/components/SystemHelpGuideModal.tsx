@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { ARABIC_SYSTEM_GUIDE, ENGLISH_SYSTEM_GUIDE, GuideCategory, GuideModule } from '../data/systemModulesGuide';
 
@@ -13,6 +13,13 @@ export const SystemHelpGuideModal: React.FC<SystemHelpGuideModalProps> = ({ isOp
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('cat-1-auth');
   const contentContainerRef = useRef<HTMLDivElement>(null);
+
+  // Sync guide language automatically whenever modal opens or appLanguage changes
+  useEffect(() => {
+    if (isOpen) {
+      setGuideLang(appLanguage === 'en' ? 'en' : 'ar');
+    }
+  }, [isOpen, appLanguage]);
 
   const isAr = guideLang === 'ar';
   const isDark = theme === 'dark';
@@ -66,13 +73,13 @@ export const SystemHelpGuideModal: React.FC<SystemHelpGuideModalProps> = ({ isOp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex flex-col w-screen h-screen bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-hidden">
       <div
         dir={isAr ? 'rtl' : 'ltr'}
-        className={`w-full max-w-7xl h-[92vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden transition-all duration-200 ${
+        className={`w-full h-full flex flex-col overflow-hidden transition-all duration-200 ${
           isDark
-            ? 'bg-[#0a0c10] border-teal-500/30 text-white shadow-teal-950/40'
-            : 'bg-white border-slate-300 text-slate-900 shadow-slate-900/20'
+            ? 'bg-[#0a0c10] text-white'
+            : 'bg-white text-slate-900'
         }`}
       >
         {/* Top Modal Header */}
