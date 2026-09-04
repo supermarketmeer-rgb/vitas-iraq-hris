@@ -144,7 +144,7 @@ export const IncomeTaxView: React.FC = () => {
   const handleDeleteBracket = async (id: string) => {
     if (!confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذه الشريحة؟' : 'Delete this tax bracket?')) return;
     try {
-      const res = await fetch(`/api/tax-brackets/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/tax-module/tax-brackets/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showNotification(lang === 'ar' ? 'تم حذف الشريحة' : 'Bracket deleted');
         refreshData();

@@ -207,12 +207,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = async () => {
     try {
       setLoading(true);
-      const baseUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:5000/api` : 'http://localhost:5000/api';
 
-      const safeFetch = (path: string) => 
-        fetch(`${baseUrl}${path}`)
-          .then((r) => r.json())
-          .catch(() => fetch(`/api${path}`).then((r) => r.json()).catch(() => []));
+      const safeFetch = async (path: string, timeoutMs = 8000) => {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), timeoutMs);
+          const res = await fetch(`/api${path}`, { signal: controller.signal });
+          clearTimeout(timer);
+          if (!res.ok) return [];
+          const data = await res.json();
+          return data;
+        } catch (e) {
+          console.warn(`[Tax Module] Fetch error on /api${path}:`, e);
+          return [];
+        }
+      };
 
       const [
         rulesRes,
@@ -230,16 +239,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         safeFetch('/tax-module/parameters'),
         safeFetch(`/tax-module/snapshots?period=${activePeriod}`),
         safeFetch('/tax-module/hr-bridge/employees'),
-        safeFetch('/employees'),
-        safeFetch('/employees'),
+        safeFetch('/departments'),
+        safeFetch('/branches'),
       ]);
 
-      setRules(Array.isArray(rulesRes) ? rulesRes : (rulesRes.rules || []));
-      setTaxBrackets(Array.isArray(bracketsRes) ? bracketsRes : (bracketsRes.tax_brackets || []));
-      setVariables(Array.isArray(varsRes) ? varsRes : (varsRes.variables || []));
-      setParameters(Array.isArray(paramsRes) ? paramsRes : (paramsRes.parameters || []));
-      setSnapshots(Array.isArray(snapsRes) ? snapsRes : (snapsRes.snapshots || []));
-      setEmployees(Array.isArray(empsRes) ? empsRes : (empsRes.employees || []));
+      setRules(Array.isArray(rulesRes) ? rulesRes : (rulesRes?.rules || []));
+      setTaxBrackets(Array.isArray(bracketsRes) ? bracketsRes : (bracketsRes?.tax_brackets || []));
+      setVariables(Array.isArray(varsRes) ? varsRes : (varsRes?.variables || []));
+      setParameters(Array.isArray(paramsRes) ? paramsRes : (paramsRes?.parameters || []));
+      setSnapshots(Array.isArray(snapsRes) ? snapsRes : (snapsRes?.snapshots || []));
+      setEmployees(Array.isArray(empsRes) ? empsRes : (empsRes?.employees || []));
+      setDepartments(Array.isArray(deptsRes) ? deptsRes : (deptsRes?.departments || []));
+      setBranches(Array.isArray(branchesRes) ? branchesRes : (branchesRes?.branches || []));
     } catch (err) {
       console.error('Failed to load payroll rules data:', err);
     } finally {

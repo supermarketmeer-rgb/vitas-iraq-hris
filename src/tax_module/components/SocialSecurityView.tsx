@@ -46,8 +46,8 @@ export const SocialSecurityView: React.FC = () => {
   const ssFileInputRef = useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
-    fetch('http://localhost:5000/api/tax-module/dashboard')
-      .then((r) => r.json())
+    fetch('/api/tax-module/dashboard')
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.exempt_employees) setExemptEmployees(d.exempt_employees);
       })

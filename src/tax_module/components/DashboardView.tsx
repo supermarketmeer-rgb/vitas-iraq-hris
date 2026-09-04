@@ -63,16 +63,20 @@ export const DashboardView: React.FC = () => {
   const fetchDashboard = async () => {
     try {
       setLoading(true);
-      const baseUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:5000/api` : 'http://localhost:5000/api';
       const path = `/tax-module/dashboard?period=${activePeriod}${
         activeDepartmentId ? `&department_id=${activeDepartmentId}` : ''
       }${activeBranchId ? `&branch_id=${activeBranchId}` : ''}`;
 
-      const res = await fetch(`${baseUrl}${path}`)
-        .then((r) => r.json())
-        .catch(() => fetch(`/api${path}`).then((r) => r.json()));
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(`/api${path}`, { signal: controller.signal })
+        .then((r) => r.ok ? r.json() : null)
+        .catch(() => null);
+      clearTimeout(timer);
 
-      setDashboardData(res);
+      if (res) {
+        setDashboardData(res);
+      }
     } catch (err) {
       console.error('Failed to load dashboard:', err);
     } finally {
