@@ -6,6 +6,7 @@ import vitasLogo from '../../assets/VitasLogo.jpeg';
 import { ConnectionStatusWidget } from './ConnectionStatusWidget';
 import { syncEngine } from '../services/syncEngine';
 import { api } from '../api/client';
+import { SystemHelpGuideModal } from './SystemHelpGuideModal';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +32,7 @@ export const Header: React.FC = () => {
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [showHelpGuideModal, setShowHelpGuideModal] = useState(false);
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -279,6 +281,19 @@ export const Header: React.FC = () => {
         >
           <span className="material-symbols-outlined text-xl text-teal-500">newspaper</span>
           <span className={`hidden md:inline text-xs ${isDark ? 'text-white' : 'text-slate-800'}`}>{t('أخبار المؤسسة', 'Company News')}</span>
+        </button>
+
+        {/* System Help & Functional Guide Modal Trigger */}
+        <button
+          onClick={() => setShowHelpGuideModal(true)}
+          className={`p-2 rounded-xl transition-all relative border flex items-center justify-center ${
+            isDark 
+              ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400' 
+              : 'bg-white text-slate-800 border-slate-300 hover:bg-teal-50 shadow-xs'
+          }`}
+          title={t('دليل وفهرس وظائف موديولات المنظومة (مفهرس)', 'System Modules Index & Functional Guide')}
+        >
+          <span className="material-symbols-outlined text-xl text-teal-500">help</span>
         </button>
 
         {/* Notifications Button */}
@@ -623,6 +638,12 @@ export const Header: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* System Help & Functional Guide Modal */}
+      <SystemHelpGuideModal
+        isOpen={showHelpGuideModal}
+        onClose={() => setShowHelpGuideModal(false)}
+      />
     </header>
   );
 };
