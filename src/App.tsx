@@ -35,6 +35,7 @@ import { DatabaseSchemaViewer } from './components/DatabaseSchemaViewer';
 import { SettingsSecurityView } from './views/SettingsSecurityView';
 import { TaxSecurityModuleView } from './views/TaxSecurityModuleView';
 import { ArchiveModuleView } from './views/ArchiveModuleView';
+import { DriversModuleView } from './views/DriversModuleView';
 import { DynamicReportBuilder } from './components/DynamicReportBuilder';
 import { CandidatePortal } from './components/recruitment/CandidatePortal';
 import { EmployeePortal } from './components/EmployeePortal';
@@ -46,10 +47,15 @@ function AppContent() {
   const { activeModuleId, isSidebarOpen, theme, currentUser } = useApp();
   const location = useLocation();
   const isPublicPortal = location.pathname === '/apply';
+  const isDriversRoute = location.pathname.startsWith('/drivers') || location.pathname.startsWith('/hr/drivers');
   const isDark = theme === 'dark';
 
   const renderActiveView = () => {
-    console.log('renderActiveView called with activeModuleId:', activeModuleId);
+    console.log('renderActiveView called with activeModuleId:', activeModuleId, 'pathname:', location.pathname);
+    if (isDriversRoute) {
+      return <DriversModuleView />;
+    }
+
     switch (activeModuleId) {
       // Category 1: Authentication & Security
       case 'auth-secure':
@@ -93,6 +99,8 @@ function AppContent() {
       case 'cat-4-leave':
       case 'leave-dashboard':
       case 'leave-attendance':
+      case 'leave-earned':
+      case 'earned-leaves':
       case 'leave-timesheets':
       case 'leave-apply':
       case 'leave-directory':
@@ -247,6 +255,16 @@ function AppContent() {
       case 'archive-settings':
         return <ArchiveModuleView />;
 
+      // Drivers Management Module
+      case 'cat-drivers':
+      case 'drivers-mgmt':
+      case 'drivers-trips':
+      case 'drivers-payroll':
+      case 'drivers-reports':
+      case 'drivers-offices':
+      case 'drivers-list':
+        return <DriversModuleView />;
+
       // Settings & Security
       case 'sys-settings-security':
         console.log('Matched sys-settings-security case, rendering SettingsSecurityView');
@@ -292,10 +310,12 @@ function AppContent() {
       <ErrorBoundary>
         <OfflineNotification />
         <Header />
-        <div className="flex min-h-[calc(100vh-4rem)]">
+        <div className="flex min-h-[calc(100vh-4rem)] relative">
           {isSidebarOpen && <Sidebar />}
-          <main className="flex-1 overflow-auto p-4 sm:p-6 pb-20 sm:pb-6">
-            {renderActiveView()}
+          <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-6 pb-24 lg:pb-6 transition-all duration-200">
+            <div key={activeModuleId} className="animate-in fade-in duration-200">
+              {renderActiveView()}
+            </div>
           </main>
         </div>
         <MobileEmployeeBottomNav />

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
-import { UserRole } from '../types';
+import { UserRole, CategoryGroup } from '../types';
 import { api } from '../api/client';
 import { transliterateEnglishNameToArabic, hasArabicCharacters } from '../utils/nameHelper';
+import { CATEGORY_GROUPS } from '../data/categories';
 
 export const Category9RiskComplianceView: React.FC = () => {
   const {
@@ -107,6 +108,21 @@ export const Category9RiskComplianceView: React.FC = () => {
 
   // Add New User Modal State
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [moduleFilterQuery, setModuleFilterQuery] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+    'cat-2-dash': true,
+    'cat-3-emp': true,
+    'cat-4-leave': true,
+    'cat-5-payroll': true,
+    'cat-drivers': false,
+    'cat-6-recruit': false,
+    'cat-7-perf': false,
+    'cat-8-assets': false,
+    'cat-12-archive': false,
+    'cat-9-risk': false,
+    'cat-10-sys': false,
+    'cat-11-support': false
+  });
   const [newUserForm, setNewUserForm] = useState({
     id: undefined as number | string | undefined,
     originalUsername: '',
@@ -116,26 +132,192 @@ export const Category9RiskComplianceView: React.FC = () => {
     password: 'Password123!',
     fullNameAr: '',
     fullNameEn: '',
-    jobTitle: 'مدخل بيانات موارد بشرية (HR Data Entry)',
+    jobTitle: 'موظف موارد بشرية',
     department: 'الموارد البشرية والشؤون الإدارية',
     branch: 'الإدارة العامة - بغداد',
     email: '',
     phone: '',
     modules: {
-      employees: true,
-      attendance: false,
-      payroll: false,
-      recruitment: false,
-      risk: false,
-      settings: false,
-      reports: true
-    },
+      'emp-list': 'write',
+      'emp-add': 'write',
+      'emp-directory': 'write',
+      'leave-attendance': 'write',
+      'sys-dynamic-reports': 'read'
+    } as Record<string, 'write' | 'read' | 'none' | boolean>,
     level: 'full' as 'full' | 'read',
-    notes: 'مسؤول عن إدخال وتحديث بيانات الموظفين الأساسية، العقود، والمستندات في قسم الموارد البشرية'
+    canManageUsers: false,
+    role: 'Employee' as UserRole,
+    notes: 'مخول بالعمل على الموديولات والشاشات المحددة أدناه'
   });
+
+  // Granular Permission Helpers
+  const getModLevel = (modId: string): 'write' | 'read' | 'none' => {
+    const val = (newUserForm.modules as any)?.[modId];
+    if (val === 'write' || val === true) return 'write';
+    if (val === 'read') return 'read';
+    return 'none';
+  };
+
+  const setModuleLevel = (modId: string, level: 'write' | 'read' | 'none') => {
+    setNewUserForm(prev => {
+      const nextModules = { ...prev.modules };
+      if (level === 'none') {
+        delete nextModules[modId];
+      } else {
+        nextModules[modId] = level;
+      }
+      return { ...prev, modules: nextModules };
+    });
+  };
+
+  const setCategoryAll = (cat: CategoryGroup, level: 'write' | 'read' | 'none') => {
+    setNewUserForm(prev => {
+      const nextModules = { ...prev.modules };
+      cat.modules.forEach(m => {
+        if (level === 'none') {
+          delete nextModules[m.id];
+        } else {
+          nextModules[m.id] = level;
+        }
+      });
+      if (level === 'none') {
+        delete nextModules[cat.id];
+      } else {
+        nextModules[cat.id] = level;
+      }
+      return { ...prev, modules: nextModules };
+    });
+  };
+
+  const setGlobalAll = (level: 'write' | 'read' | 'none') => {
+    setNewUserForm(prev => {
+      if (level === 'none') {
+        return { ...prev, modules: {} };
+      }
+      const nextModules: Record<string, any> = {};
+      CATEGORY_GROUPS.filter(c => c.id !== 'cat-1-auth').forEach(c => {
+        nextModules[c.id] = level;
+        c.modules.forEach(m => {
+          nextModules[m.id] = level;
+        });
+      });
+      return { ...prev, modules: nextModules };
+    });
+  };
+
+  const toggleCategory = (catId: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [catId]: !prev[catId]
+    }));
+  };
+
+  const toggleAllCategories = (expand: boolean) => {
+    const next: Record<string, boolean> = {};
+    CATEGORY_GROUPS.forEach(c => {
+      next[c.id] = expand;
+    });
+    setExpandedCategories(next);
+  };
+
+  const permissionStats = useMemo(() => {
+    let writeCount = 0;
+    let readCount = 0;
+    Object.entries(newUserForm.modules || {}).forEach(([k, v]) => {
+      if (k.startsWith('cat-')) return;
+      if (v === 'write' || v === true) writeCount++;
+      else if (v === 'read') readCount++;
+    });
+    return { writeCount, readCount, total: writeCount + readCount };
+  }, [newUserForm.modules]);
+
+  const dynamicModuleLabels = useMemo(() => {
+    const labels: Record<string, string> = {
+      employees: t('الموظفون والعقود', 'Employees & Contracts'),
+      attendance: t('الحضور والدوام والإجازات', 'Leaves & Attendance'),
+      payroll: t('الرواتب والتعويضات', 'Payroll & Compensation'),
+      recruitment: t('التوظيف والاستقطاب (ATS)', 'Recruitment & ATS'),
+      reports: t('التقارير الديناميكية وتصدير البيانات', 'Dynamic Reports & Export'),
+      risk: t('المخاطر والامتثال والحوكمة', 'Risk & Compliance'),
+      settings: t('إعدادات النظام والتهيئة', 'System Settings'),
+      support: t('الدعم والمساعدة الفنية', 'Support & Help Desk'),
+      drivers: t('إدارة السائقين والحركة والأسطول', 'Drivers & Fleet Management'),
+      performance: t('إدارة الأداء والتدريب والكفاءات', 'Performance & Training'),
+      assets: t('العهد والأصول والمستندات', 'Assets & Custody'),
+      archive: t('الأرشيف الإلكتروني الذكي', 'Smart Digital Archive'),
+      'cat-2-dash': t('الرئيسية والإدارة', 'Dashboard & Executive'),
+      'cat-3-emp': t('إدارة الموظفين والعقود', 'Employee Management & Contracts'),
+      'cat-4-leave': t('الحضور والدوام والإجازات', 'Leaves & Attendance'),
+      'cat-5-payroll': t('الرواتب والتعويضات', 'Payroll & Compensation'),
+      'cat-drivers': t('إدارة السائقين والحركة', 'Drivers & Fleet Management'),
+      'cat-6-recruit': t('التوظيف والاستقطاب', 'Recruitment & ATS'),
+      'cat-7-perf': t('إدارة الأداء والتدريب', 'Performance & Training'),
+      'cat-8-assets': t('العهد والأصول والمستندات', 'Assets & Custody'),
+      'cat-12-archive': t('الأرشيف الذكي والملفات', 'Smart Archive'),
+      'cat-9-risk': t('المخاطر والامتثال والحوكمة', 'Risk & Compliance'),
+      'cat-10-sys': t('التطوير البرمجي وإعدادات النظام', 'System Development & Settings'),
+      'cat-11-support': t('الدعم الفني ومركز المساعدة', 'Support & Help Desk')
+    };
+
+    CATEGORY_GROUPS.forEach(g => {
+      labels[g.id] = language === 'ar' ? g.title : g.titleEn;
+      g.modules.forEach(m => {
+        labels[m.id] = language === 'ar' ? m.title : m.titleEn;
+      });
+    });
+
+    return labels;
+  }, [language, t]);
+
+  const filteredCategoryGroups = useMemo(() => {
+    const operational = CATEGORY_GROUPS.filter(c => c.id !== 'cat-1-auth');
+    if (!moduleFilterQuery.trim()) {
+      return operational;
+    }
+    const q = moduleFilterQuery.toLowerCase().trim();
+    return operational.map(cat => {
+      const catMatches = cat.title.toLowerCase().includes(q) || cat.titleEn.toLowerCase().includes(q);
+      const matchedModules = cat.modules.filter(m => 
+        catMatches ||
+        m.title.toLowerCase().includes(q) ||
+        m.titleEn.toLowerCase().includes(q) ||
+        m.description.toLowerCase().includes(q) ||
+        m.id.toLowerCase().includes(q)
+      );
+      return {
+        ...cat,
+        modules: matchedModules
+      };
+    }).filter(cat => cat.modules.length > 0);
+  }, [moduleFilterQuery]);
   const [badgeSearchQuery, setBadgeSearchQuery] = useState<string>('');
   const [matchedEmployee, setMatchedEmployee] = useState<any>(null);
   const [isComboboxOpen, setIsComboboxOpen] = useState<boolean>(false);
+  const comboboxRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (comboboxRef.current && !comboboxRef.current.contains(event.target as Node)) {
+        setIsComboboxOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsComboboxOpen(false);
+      }
+    };
+
+    if (isComboboxOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isComboboxOpen]);
 
   // Text normalization helper for flexible Arabic & English search
   const normalizeSearchText = (text: any) => {
@@ -346,22 +528,83 @@ export const Category9RiskComplianceView: React.FC = () => {
     try {
       // NOTE: Creating a User NEVER adds or modifies records in the employees table!
 
+      // Prepare full modules map with category rollups
+      const fullModules: Record<string, any> = { ...newUserForm.modules };
+
+      const categoryRollupKeys: Record<string, { catId: string; subIds: string[] }> = {
+        employees: { catId: 'cat-3-emp', subIds: ['emp-list', 'emp-add', 'emp-contracts', 'emp-org-chart', 'emp-directory', 'emp-delegation', 'emp-sync-guide', 'emp-hr-directory'] },
+        attendance: { catId: 'cat-4-leave', subIds: ['leave-attendance', 'leave-apply', 'leave-balance', 'leave-approvals', 'leave-timesheets', 'leave-earned', 'leave-schedule', 'leave-biometric-settings', 'leave-db-schema'] },
+        payroll: { catId: 'cat-5-payroll', subIds: ['payroll-sheet', 'payroll-payslip', 'payroll-loans', 'payroll-tax', 'payroll-end-service', 'payroll-analytics', 'pay-dashboard', 'payroll-mgmt'] },
+        recruitment: { catId: 'cat-6-recruit', subIds: ['recruit-openings', 'recruit-pipeline', 'recruit-interviews', 'recruit-offers', 'recruit-onboarding', 'recruit-dash', 'recruit-ats', 'recruit-candidate-profile'] },
+        reports: { catId: 'cat-2-dash', subIds: ['sys-dynamic-reports', 'dash-overview', 'dash-exec-1', 'dash-exec-2', 'dash-ess', 'dash-search'] },
+        risk: { catId: 'cat-9-risk', subIds: ['risk-matrix', 'risk-audit-logs', 'risk-policies', 'risk-incidents', 'risk-compliance-checklist', 'sec-roles', 'risk-assessment'] },
+        settings: { catId: 'cat-10-sys', subIds: ['sys-code-view', 'sys-schema', 'sys-api-logs', 'sys-deploy-status', 'sys-sql-console', 'sys-env', 'auth-secure', 'auth-sso', 'auth-biometric'] },
+        support: { catId: 'cat-11-support', subIds: ['support-tickets', 'support-faq', 'support-contact', 'support-guides', 'supp-knowledge-base', 'supp-emp-portal', 'supp-internal-chat', 'supp-notif-center', 'supp-mobile-app'] },
+        drivers: { catId: 'cat-drivers', subIds: ['drivers-list', 'drivers-assignments', 'drivers-trips', 'drivers-maintenance', 'drivers-fuel', 'drivers-kpi'] },
+        performance: { catId: 'cat-7-perf', subIds: ['perf-appraisals', 'perf-goals', 'perf-kpi', 'perf-training-plans', 'perf-courses'] },
+        assets: { catId: 'cat-8-assets', subIds: ['asset-inventory', 'asset-assign', 'asset-custody', 'asset-maintenance', 'asset-my-requests', 'doc-company', 'doc-templates', 'doc-my-docs'] },
+        archive: { catId: 'cat-12-archive', subIds: ['archive-digital', 'archive-cabinets', 'archive-indexing', 'archive-retention', 'archive-ocr', 'archive-audit'] }
+      };
+
+      Object.entries(categoryRollupKeys).forEach(([catKey, info]) => {
+        const hasWrite = info.subIds.some(id => fullModules[id] === 'write' || fullModules[id] === true) || fullModules[info.catId] === 'write';
+        const hasRead = info.subIds.some(id => fullModules[id] === 'read') || fullModules[info.catId] === 'read';
+        if (hasWrite) {
+          fullModules[catKey] = 'write';
+          fullModules[info.catId] = 'write';
+        } else if (hasRead) {
+          fullModules[catKey] = 'read';
+          fullModules[info.catId] = 'read';
+        } else {
+          fullModules[catKey] = false;
+          fullModules[info.catId] = 'none';
+        }
+      });
+
       // 1. Save credentials for login (Local state)
       let existingUsers: any = {};
       try {
         const existingUsersRaw = localStorage.getItem('vitas_custom_users') || '{}';
         existingUsers = JSON.parse(existingUsersRaw);
+        const isExplicitAdmin = Boolean(newUserForm.canManageUsers || newUserForm.role === 'Admin');
+        const assignedRole: UserRole = isExplicitAdmin
+          ? 'Admin'
+          : (newUserForm.jobTitle.includes('مدير الموارد البشرية') ||
+            newUserForm.jobTitle.toLowerCase().includes('hr manager') ||
+            newUserForm.jobTitle.toLowerCase().includes('hr director'))
+              ? 'HR Manager'
+              : 'Employee';
+
+        if (isExplicitAdmin) {
+          fullModules['sec-roles-permissions'] = 'write';
+          fullModules['sec-roles'] = 'write';
+          fullModules['cat-9-risk'] = 'write';
+          fullModules['risk'] = 'write';
+        }
+
         existingUsers[cleanUsername.toLowerCase()] = {
           username: cleanUsername,
           password: newUserForm.password,
           name: newUserForm.fullNameAr.trim(),
-          role: 'Employee',
-          employeeId: cleanEmpCode
+          role: assignedRole,
+          can_manage_users: isExplicitAdmin ? 1 : 0,
+          employeeId: cleanEmpCode,
+          jobTitle: newUserForm.jobTitle.trim(),
+          modules: fullModules
         };
         localStorage.setItem('vitas_custom_users', JSON.stringify(existingUsers));
       } catch (err) {
         console.error(err);
       }
+
+      const isExplicitAdmin = Boolean(newUserForm.canManageUsers || newUserForm.role === 'Admin');
+      const assignedRole: UserRole = isExplicitAdmin
+        ? 'Admin'
+        : (newUserForm.jobTitle.includes('مدير الموارد البشرية') ||
+          newUserForm.jobTitle.toLowerCase().includes('hr manager') ||
+          newUserForm.jobTitle.toLowerCase().includes('hr director'))
+            ? 'HR Manager'
+            : 'Employee';
 
       // 2. Save delegated module permissions (Local state)
       const updatedDelegations = {
@@ -374,7 +617,9 @@ export const Category9RiskComplianceView: React.FC = () => {
           employeeNameEn: newUserForm.fullNameEn.trim() || newUserForm.fullNameAr.trim(),
           department: newUserForm.department,
           jobTitle: newUserForm.jobTitle.trim(),
-          modules: newUserForm.modules,
+          role: assignedRole,
+          can_manage_users: isExplicitAdmin ? 1 : 0,
+          modules: fullModules,
           level: newUserForm.level,
           notes: newUserForm.notes,
           grantedBy: currentUser?.name || 'Super Admin',
@@ -407,17 +652,17 @@ export const Category9RiskComplianceView: React.FC = () => {
         name: newUserForm.fullNameAr.trim(),
         email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
         job_title: newUserForm.jobTitle.trim(),
-        role: newUserForm.jobTitle.trim() || 'Employee',
+        role: assignedRole,
         department: newUserForm.department,
         employee_id: cleanEmpCode,
         branch: newUserForm.branch,
-        can_manage_employees: newUserForm.modules?.employees ? 1 : 0,
-        can_manage_finance: newUserForm.modules?.payroll ? 1 : 0,
-        can_manage_recruitment: newUserForm.modules?.recruitment ? 1 : 0,
-        can_manage_settings: newUserForm.modules?.settings ? 1 : 0,
-        can_manage_users: 0,
+        can_manage_employees: fullModules.employees ? 1 : (isExplicitAdmin ? 1 : 0),
+        can_manage_finance: fullModules.payroll ? 1 : 0,
+        can_manage_recruitment: fullModules.recruitment ? 1 : 0,
+        can_manage_settings: fullModules.settings ? 1 : (isExplicitAdmin ? 1 : 0),
+        can_manage_users: isExplicitAdmin ? 1 : 0,
         status: 'active',
-        allowed_screens: newUserForm.modules
+        allowed_screens: fullModules
       }).catch((err: any) => {
         console.warn('Notice saving to users table:', err.message);
       });
@@ -443,13 +688,13 @@ export const Category9RiskComplianceView: React.FC = () => {
               recruitment: Boolean(u.can_manage_recruitment),
               settings: Boolean(u.can_manage_settings),
               attendance: false,
-              reports: true,
+              reports: false,
               risk: false
             };
             if (u.allowed_screens) {
               try {
                 const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
-                if (s && typeof s === 'object') parsedModules = { ...parsedModules, ...s };
+                if (s && typeof s === 'object') parsedModules = { ...s };
               } catch (e) {}
             }
             delegationsFromDb[uCode] = {
@@ -588,35 +833,6 @@ export const Category9RiskComplianceView: React.FC = () => {
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {t('الحوكمة وإدارة المخاطر المعززة وفق معايير البنك المركزي العراقي CBI وقوانين العمل والضمان', 'Enhanced governance & risk management according to CBI guidelines & labor laws')}
           </p>
-        </div>
-
-        {/* Quick Module Switcher Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1">
-          {[
-            { id: 'risk-governance', label: t('الحوكمة', 'Governance'), icon: 'balance' },
-            { id: 'risk-audit-reports', label: t('التقارير', 'Reports'), icon: 'assessment' },
-            { id: 'risk-assessment', label: t('المخاطر', 'Risks'), icon: 'warning' },
-            { id: 'risk-policies', label: t('السياسات', 'Policies'), icon: 'policy' },
-            { id: 'sec-roles-permissions', label: t('إدارة المستخدمين', 'User Management'), icon: 'manage_accounts' },
-            { id: 'sec-audit-logs', label: t('سجل الأمان', 'Audit Logs'), icon: 'history' },
-            { id: 'sec-general-settings', label: t('الأمان', 'Security'), icon: 'security' },
-            { id: 'sec-api-keys', label: t('مفاتيح API', 'API Keys'), icon: 'key' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveModuleId(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
-                activeModuleId === tab.id
-                  ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
-                  : isDark
-                    ? 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
-                    : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-300'
-              }`}
-            >
-              <span className="material-symbols-outlined text-sm">{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
         </div>
       </div>
 
@@ -1166,7 +1382,7 @@ export const Category9RiskComplianceView: React.FC = () => {
             <div className="flex items-center gap-2">
               <span className="text-teal-600 dark:text-teal-400 font-bold bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs shrink-0">
                 <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
-                <span>{t('Super Admin نشط', 'Super Admin Active')}</span>
+                <span>{currentUser?.role === 'Admin' ? t('مسؤول نظام (Admin) نشط', 'Admin Active') : (currentUser?.role === 'Super Admin' ? t('Super Admin نشط', 'Super Admin Active') : t('إدارة الصلاحيات', 'RBAC Active'))}</span>
               </span>
 
               <button
@@ -1194,6 +1410,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                       reports: true
                     },
                     level: 'full',
+                    canManageUsers: false,
+                    role: 'Employee' as UserRole,
                     notes: 'مخول بالعمل على الموديولات المحددة'
                   });
                   setBadgeSearchQuery('');
@@ -1340,35 +1558,13 @@ export const Category9RiskComplianceView: React.FC = () => {
                     if (!isCustomMatch) return null;
                     if (empDeptFilter !== 'all' && u.department !== empDeptFilter) return null;
 
-                    // Module labels mapping
-                    const moduleLabels: Record<string, string> = {
-                      employees: t('الموظفون', 'Employees'),
-                      attendance: t('الحضور', 'Attendance'),
-                      payroll: t('الرواتب', 'Payroll'),
-                      recruitment: t('التوظيف', 'Recruitment'),
-                      reports: t('التقارير', 'Reports'),
-                      risk: t('المخاطر', 'Risk'),
-                      settings: t('الإعدادات', 'Settings'),
-                      'cat-3-emp': t('الموظفون', 'Employees'),
-                      'cat-4-leave': t('الحضور', 'Attendance'),
-                      'cat-5-payroll': t('الرواتب', 'Payroll'),
-                      'cat-6-recruit': t('التوظيف', 'Recruitment'),
-                      'cat-7-perf': t('الأداء', 'Performance'),
-                      'cat-8-assets': t('الأصول', 'Assets'),
-                      'cat-9-archive': t('الأرشيف', 'Archive'),
-                      'cat-9-risk': t('المخاطر', 'Risk'),
-                      'cat-10-sys': t('التقارير', 'Reports'),
-                      'cat-2-dash': t('لوحة القيادة', 'Dashboard'),
-                      'cat-12-support': t('الدعم', 'Support'),
-                    };
-
-                    let parsedModules: Record<string, boolean> = {
+                    let parsedModules: Record<string, any> = {
                       employees: Boolean(u.can_manage_employees),
                       payroll: Boolean(u.can_manage_finance),
                       recruitment: Boolean(u.can_manage_recruitment),
                       settings: Boolean(u.can_manage_settings),
                       attendance: false,
-                      reports: true,
+                      reports: false,
                       risk: false
                     };
 
@@ -1376,12 +1572,12 @@ export const Category9RiskComplianceView: React.FC = () => {
                       try {
                         const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
                         if (s && typeof s === 'object') {
-                          parsedModules = { ...parsedModules, ...s };
+                          parsedModules = { ...s };
                         }
                       } catch (e) {}
                     }
 
-                    const activeModEntries = Object.entries(parsedModules).filter(([_, v]) => Boolean(v));
+                    const activeModEntries = Object.entries(parsedModules).filter(([_, v]) => v && v !== 'none' && v !== false);
 
                     return (
                       <tr key={u.id || u.username} className="hover:bg-slate-500/5 transition-colors">
@@ -1391,9 +1587,17 @@ export const Category9RiskComplianceView: React.FC = () => {
                               <span className="material-symbols-outlined text-lg">person</span>
                             </div>
                             <div>
-                              <h4 className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                                {fullName}
-                              </h4>
+                              <div className="flex items-center gap-1.5">
+                                <h4 className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                                  {fullName}
+                                </h4>
+                                {(u.can_manage_users === 1 || u.role === 'Admin') && (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold text-[9px] inline-flex items-center gap-0.5 border border-amber-500/30">
+                                    <span className="material-symbols-outlined text-[11px]">admin_panel_settings</span>
+                                    Admin
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-teal-600 dark:text-teal-400 font-mono text-[11px]">
                                 {uCode}
                               </p>
@@ -1402,7 +1606,14 @@ export const Category9RiskComplianceView: React.FC = () => {
                         </td>
 
                         <td className="p-3.5">
-                          <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-700 dark:text-teal-300 font-bold text-[11px] inline-block">
+                          <span className={`px-2.5 py-1 rounded-lg border font-bold text-[11px] inline-flex items-center gap-1 ${
+                            (u.can_manage_users === 1 || u.role === 'Admin')
+                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-300'
+                              : 'bg-teal-500/10 border-teal-500/20 text-teal-700 dark:text-teal-300'
+                          }`}>
+                            {(u.can_manage_users === 1 || u.role === 'Admin') && (
+                              <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
+                            )}
                             {u.job_title || (u.role && u.role !== 'Employee' ? u.role : null) || t('مسؤول رواتب وحضور', 'Payroll & Attendance Officer')}
                           </span>
                         </td>
@@ -1414,21 +1625,33 @@ export const Category9RiskComplianceView: React.FC = () => {
                         </td>
 
                         <td className="p-3.5">
-                          <div className="flex flex-wrap gap-1.5 max-w-sm">
+                          <div className="flex flex-wrap gap-1.5 max-w-md">
                             {activeModEntries.length === 0 ? (
                               <span className="text-slate-400 text-[10px] italic">
                                 {t('لا توجد موديولات مفعلة', 'No modules assigned')}
                               </span>
                             ) : (
-                              activeModEntries.map(([mKey]) => (
-                                <span
-                                  key={mKey}
-                                  className="px-2 py-0.5 rounded-md bg-teal-500/15 border border-teal-500/30 text-teal-800 dark:text-teal-300 text-[10px] font-bold flex items-center gap-1"
-                                >
-                                  <span className="material-symbols-outlined text-[11px]">check</span>
-                                  <span>{moduleLabels[mKey] || mKey}</span>
-                                </span>
-                              ))
+                              activeModEntries.map(([mKey, mVal]) => {
+                                const isRead = mVal === 'read';
+                                return (
+                                  <span
+                                    key={mKey}
+                                    className={`px-2 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 shadow-2xs ${
+                                      isRead
+                                        ? 'bg-sky-500/15 border-sky-500/30 text-sky-800 dark:text-sky-300'
+                                        : 'bg-teal-500/15 border-teal-500/30 text-teal-800 dark:text-teal-300'
+                                    }`}
+                                  >
+                                    <span className="material-symbols-outlined text-[11px]">
+                                      {isRead ? 'visibility' : 'edit_note'}
+                                    </span>
+                                    <span>{dynamicModuleLabels[mKey] || mKey}</span>
+                                    <span className="text-[9px] opacity-75 font-normal">
+                                      ({isRead ? t('قراءة', 'Read') : t('تعديل', 'Write')})
+                                    </span>
+                                  </span>
+                                );
+                              })
                             )}
                           </div>
                         </td>
@@ -1445,6 +1668,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => {
+                                const isUserAdmin = Boolean(u.can_manage_users === 1 || u.role === 'Admin' || u.role === 'Super Admin');
                                 setNewUserForm({
                                   id: u.id,
                                   originalUsername: u.username,
@@ -1460,6 +1684,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                                   email: u.email || `${u.username.toLowerCase()}@vitasiraq.iq`,
                                   phone: u.phone || '07700000000',
                                   modules: parsedModules,
+                                  canManageUsers: isUserAdmin,
+                                  role: isUserAdmin ? 'Admin' : (u.role || 'Employee'),
                                   level: 'full',
                                   notes: 'مخول بالعمل على الموديولات المحددة'
                                 });
@@ -1510,7 +1736,7 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-3xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
+          <div className={`w-full max-w-4xl xl:max-w-5xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
             isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
           }`}>
             {/* Modal Header */}
@@ -1568,7 +1794,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="relative">
+                  <div ref={comboboxRef} className="relative">
                     <div className="relative flex items-center">
                       <span className="material-symbols-outlined absolute start-3 text-teal-600 text-base pointer-events-none">
                         search
@@ -1578,6 +1804,11 @@ export const Category9RiskComplianceView: React.FC = () => {
                         placeholder={t('اكتب رقم البادج (مثال: B-101، v 96) أو اسم الموظف بالعربية أو الإنجليزية للبحث الفوري...', 'Type Badge No. (e.g. B-101, v 96) or employee name to filter live...')}
                         value={badgeSearchQuery}
                         onFocus={() => setIsComboboxOpen(true)}
+                        onKeyDown={e => {
+                          if (e.key === 'Escape') {
+                            setIsComboboxOpen(false);
+                          }
+                        }}
                         onChange={e => {
                           setBadgeSearchQuery(e.target.value);
                           setIsComboboxOpen(true);
@@ -1615,11 +1846,40 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                     {/* Floating Dropdown List of Filtered Employees with Guaranteed Solid Black Text */}
                     {isComboboxOpen && (
-                      <div
-                        className="absolute start-0 end-0 top-full mt-1.5 z-50 max-h-72 overflow-y-auto rounded-2xl border-2 border-teal-500 shadow-2xl divide-y divide-slate-200"
-                        style={{ backgroundColor: '#ffffff', color: '#000000' }}
-                      >
-                        {filteredEmployeesForCombobox.length === 0 ? (
+                      <>
+                        {/* Transparent Backdrop to immediately intercept any click outside the dropdown and close it */}
+                        <div
+                          className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[0.5px]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsComboboxOpen(false);
+                          }}
+                        />
+
+                        <div
+                          className="absolute start-0 end-0 top-full mt-1.5 z-50 max-h-72 overflow-y-auto rounded-2xl border-2 border-teal-500 shadow-2xl divide-y divide-slate-200"
+                          style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                        >
+                          {/* Sticky Header Bar with Count and Dedicated Close Button */}
+                          <div className="sticky top-0 z-10 px-3 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700 shadow-xs">
+                            <span className="flex items-center gap-1.5 text-teal-800">
+                              <span className="material-symbols-outlined text-sm text-teal-600">badge</span>
+                              <span>{t('نتائج بحث الموظفين', 'Employee Search Results')} ({filteredEmployeesForCombobox.length})</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsComboboxOpen(false);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                            >
+                              <span className="material-symbols-outlined text-xs">close</span>
+                              <span>{t('إغلاق', 'Close')}</span>
+                            </button>
+                          </div>
+
+                          {filteredEmployeesForCombobox.length === 0 ? (
                           <div className="p-4 text-center text-xs font-bold" style={{ color: '#000000', WebkitTextFillColor: '#000000' }}>
                             <span className="material-symbols-outlined text-2xl block mb-1 text-slate-500">search_off</span>
                             {t('لا يوجد موظف مطابق لهذا البحث', 'No matching employee found')}
@@ -1699,6 +1959,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                           })
                         )}
                       </div>
+                    </>
                     )}
                   </div>
                 </div>
@@ -1845,111 +2106,355 @@ export const Category9RiskComplianceView: React.FC = () => {
                     />
                   </div>
                 </div>
+
+                {/* Admin Privileges Card */}
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  newUserForm.canManageUsers
+                    ? 'bg-amber-500/10 border-amber-500/40 dark:bg-amber-500/15 dark:border-amber-500/50 shadow-sm'
+                    : (isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-50 border-slate-200')
+                }`}>
+                  <label className="flex items-start gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(newUserForm.canManageUsers)}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        setNewUserForm(prev => {
+                          const nextModules = { ...prev.modules };
+                          if (checked) {
+                            nextModules['sec-roles-permissions'] = 'write';
+                            nextModules['sec-roles'] = 'write';
+                            nextModules['cat-9-risk'] = 'write';
+                            nextModules['risk'] = 'write';
+                          }
+                          return {
+                            ...prev,
+                            canManageUsers: checked,
+                            role: checked ? 'Admin' : (prev.jobTitle.includes('مدير الموارد') ? 'HR Manager' : 'Employee'),
+                            modules: nextModules
+                          };
+                        });
+                      }}
+                      className="mt-1 w-4 h-4 rounded border-amber-500 text-amber-600 focus:ring-amber-500 cursor-pointer accent-amber-600"
+                    />
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-lg">admin_panel_settings</span>
+                        <span className="font-bold text-xs text-amber-800 dark:text-amber-300">
+                          {t('منح صلاحية مسؤول نظام (Admin) لإدارة وإضافة المستخدمين', 'Grant Admin Privileges (Manage & Add Users)')}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                          {t('صلاحية إدارية عليا', 'High Administrative Privilege')}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        {t('تفعيل هذا الخيار يمنح المستخدم صلاحية الدخول لشاشة إدارة المستخدمين والصلاحيات (sec-roles-permissions) وإضافة مستخدمين جدد وتعديل الأدوار وكلمات المرور.',
+                           'Enabling this grants the user access to User Management & RBAC screen, allowing them to add/edit users, assign permissions, and manage credentials.')}
+                      </p>
+                    </div>
+                  </label>
+                </div>
               </div>
 
-              {/* Section 2: Quick Presets */}
-              <div className="flex flex-wrap gap-2">
-                <span className="text-[11px] font-bold text-slate-500 self-center">{t('قوالب سريعة:', 'Quick Presets:')}</span>
-                <button
-                  type="button"
-                  onClick={() => setNewUserForm(prev => ({
-                    ...prev,
-                    jobTitle: 'مدخل بيانات الموارد البشرية',
-                    modules: { employees: true, attendance: false, payroll: false, recruitment: false, risk: false, settings: false, reports: true }
-                  }))}
-                  className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-bold hover:bg-blue-500/20 transition-all cursor-pointer"
-                >
-                  📋 {t('مدخل بيانات الموارد البشرية', 'HR Data Entry')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewUserForm(prev => ({
-                    ...prev,
-                    jobTitle: 'مسؤول رواتب وحضور',
-                    modules: { employees: true, attendance: true, payroll: true, recruitment: false, risk: false, settings: false, reports: true }
-                  }))}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold hover:bg-emerald-500/20 transition-all cursor-pointer"
-                >
-                  💰 {t('مسؤول رواتب وحضور', 'Payroll & Attendance Officer')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewUserForm(prev => ({
-                    ...prev,
-                    jobTitle: 'مسؤول التوظيف',
-                    modules: { employees: true, attendance: false, payroll: false, recruitment: true, risk: false, settings: false, reports: true }
-                  }))}
-                  className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-700 dark:text-purple-300 text-[11px] font-bold hover:bg-purple-500/20 transition-all cursor-pointer"
-                >
-                  🎯 {t('مسؤول التوظيف', 'Recruitment Officer')}
-                </button>
-              </div>
+              {/* Section 2: Dynamic Hierarchical Module & Screen Permissions */}
+              <div className="space-y-4">
+                {/* Section Header with Stats & Global Controls */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-2xl border border-teal-500/20 bg-teal-500/5">
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-xs flex items-center gap-2 text-teal-700 dark:text-teal-300">
+                      <span className="material-symbols-outlined text-base">rule</span>
+                      <span>{t('2. مصفوفة الصلاحيات والموديولات الديناميكية (Read & Read/Write)', '2. Dynamic Module & Screen Permissions Matrix')}</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {t('حدد لكل شاشة وموديول نوع الصلاحية: قراءة فقط (Read) أو قراءة وكتابة وتعديل (Read / Write)',
+                         'Set permission level for each screen: Read Only or Read & Write')}
+                    </p>
+                  </div>
 
-              {/* Section 3: Module Permissions */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-xs flex items-center gap-2 text-teal-600 dark:text-teal-400">
-                    <span className="material-symbols-outlined text-base">checklist</span>
-                    <span>{t('2. الموديولات والصلاحيات الممنوحة (Tick ✓)', '2. Granted Module Permissions (Tick ✓)')}</span>
-                  </h4>
-                  <div className="flex gap-2">
+                  {/* Summary Badge */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1 rounded-xl bg-teal-500/15 border border-teal-500/30 text-teal-800 dark:text-teal-300 font-bold text-[11px] flex items-center gap-1.5 shadow-2xs">
+                      <span className="material-symbols-outlined text-sm">verified_user</span>
+                      <span>
+                        {permissionStats.total} {t('شاشة مصرح بها', 'screens')}
+                        <span className="font-normal opacity-85 text-[10px] mx-1">
+                          ({permissionStats.writeCount} {t('تعديل', 'Write')} • {permissionStats.readCount} {t('قراءة', 'Read')})
+                        </span>
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filter & Global Actions Toolbar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  {/* Search filter input */}
+                  <div className="relative flex-1 max-w-md">
+                    <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+                      search
+                    </span>
+                    <input
+                      type="text"
+                      placeholder={t('بحث سريع في الموديولات والشاشات (مثال: رواتب، عقود، تقارير...)...', 'Search screens & modules (e.g. payroll, contracts, reports...)...')}
+                      value={moduleFilterQuery}
+                      onChange={e => setModuleFilterQuery(e.target.value)}
+                      className={`w-full ps-9 pe-3 py-2 rounded-xl border text-xs outline-none transition-all ${
+                        isDark ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-teal-600'
+                      }`}
+                    />
+                    {moduleFilterQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setModuleFilterQuery('')}
+                        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs w-5 h-5 flex items-center justify-center rounded-full bg-slate-200 dark:bg-white/10"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Master Buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                     <button
                       type="button"
-                      onClick={() => setNewUserForm(prev => ({
-                        ...prev,
-                        modules: { employees: true, attendance: true, payroll: true, recruitment: true, risk: true, settings: true, reports: true }
-                      }))}
-                      className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 text-[10px] font-bold hover:bg-teal-500/20 cursor-pointer"
+                      onClick={() => setGlobalAll('write')}
+                      className="px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
+                      title={t('منح صلاحية كاملة (قراءة وتعديل) لكافة شاشات النظام', 'Grant Read/Write to all screens')}
                     >
-                      ✓ {t('تحديد الكل', 'Select All')}
+                      <span className="material-symbols-outlined text-xs">edit_note</span>
+                      <span>{t('الكل تعديل', 'All Write')}</span>
                     </button>
+
                     <button
                       type="button"
-                      onClick={() => setNewUserForm(prev => ({
-                        ...prev,
-                        modules: { employees: false, attendance: false, payroll: false, recruitment: false, risk: false, settings: false, reports: false }
-                      }))}
-                      className="px-2.5 py-1 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-400 text-[10px] font-bold hover:bg-slate-500/20 cursor-pointer"
+                      onClick={() => setGlobalAll('read')}
+                      className="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
+                      title={t('منح صلاحية قراءة فقط لكافة شاشات النظام', 'Grant Read Only to all screens')}
                     >
-                      ✗ {t('إلغاء الكل', 'Clear All')}
+                      <span className="material-symbols-outlined text-xs">visibility</span>
+                      <span>{t('الكل قراءة', 'All Read')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setGlobalAll('none')}
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                      title={t('إلغاء جميع الصلاحيات', 'Clear all permissions')}
+                    >
+                      <span className="material-symbols-outlined text-xs">close</span>
+                      <span>{t('إلغاء الكل', 'Clear All')}</span>
+                    </button>
+
+                    <div className="h-4 w-[1px] bg-slate-300 dark:bg-slate-700 mx-1 hidden sm:block" />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const anyCollapsed = Object.values(expandedCategories).some(v => !v);
+                        toggleAllCategories(anyCollapsed);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-xs">unfold_more</span>
+                      <span>{t('توسيع / طي', 'Expand / Collapse')}</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {[
-                    { key: 'employees', icon: 'group', nameAr: 'إدارة الموظفين والعقود', nameEn: 'Employee Data & Contracts', descAr: 'إدخال وتحديث البيانات الأساسية، العقود، والملفات', descEn: 'Employee master files & contracts' },
-                    { key: 'attendance', icon: 'schedule', nameAr: 'الحضور والدوام والإجازات', nameEn: 'Leaves & Attendance', descAr: 'حركات الدوام، التايم شيت، والبصمات', descEn: 'Attendance, timesheets, and leave logs' },
-                    { key: 'payroll', icon: 'payments', nameAr: 'الرواتب والتعويضات', nameEn: 'Payroll & Compensation', descAr: 'مسيرات الرواتب، قسائم الدفع، والبدلات', descEn: 'Payroll sheets, payslips, deductions' },
-                    { key: 'recruitment', icon: 'work', nameAr: 'التوظيف والاستقطاب (ATS)', nameEn: 'Recruitment & ATS', descAr: 'إدارة الشواغر، المتقدمين، والمقابلات', descEn: 'Job openings and candidate pipeline' },
-                    { key: 'reports', icon: 'assessment', nameAr: 'التقارير الديناميكية وتصدير البيانات', nameEn: 'Dynamic Reports & Export', descAr: 'استخراج وتصدير تقارير الموظفين والملفات', descEn: 'Custom reports & data export' },
-                    { key: 'risk', icon: 'security', nameAr: 'المخاطر والامتثال والحوكمة', nameEn: 'Risk & Compliance', descAr: 'سجلات المخاطر وسياسات الامتثال', descEn: 'Risk registers and governance policies' },
-                    { key: 'settings', icon: 'settings', nameAr: 'إعدادات النظام', nameEn: 'System Settings', descAr: 'إعدادات الأمان، المستخدمين، والنظام', descEn: 'Security, user and system settings' },
-                    { key: 'support', icon: 'support_agent', nameAr: 'الدعم والمساعدة (Help Desk)', nameEn: 'Support & Help Desk', descAr: 'لوحة التذاكر، الدليل والمساعدة الفنية', descEn: 'Support tickets & help center' },
-                  ].map(mod => {
-                    const isChecked = Boolean((newUserForm.modules as any)[mod.key]);
+                {/* Categories & Sub-Modules Tree */}
+                <div className="space-y-3 pt-1">
+                  {filteredCategoryGroups.map(cat => {
+                    const isExpanded = moduleFilterQuery.trim() ? true : Boolean(expandedCategories[cat.id]);
+                    const catModules = cat.modules.filter(m => !m.hidden);
+                    const enabledCount = catModules.filter(m => {
+                      const lvl = getModLevel(m.id);
+                      return lvl === 'write' || lvl === 'read';
+                    }).length;
+
+                    const allWrite = catModules.length > 0 && catModules.every(m => getModLevel(m.id) === 'write');
+                    const allRead = catModules.length > 0 && catModules.every(m => getModLevel(m.id) === 'read');
+
                     return (
-                      <label
-                        key={mod.key}
-                        className={`p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
-                          isChecked ? 'bg-teal-500/10 border-teal-500/50' : isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
+                      <div
+                        key={cat.id}
+                        className={`rounded-2xl border transition-all overflow-hidden ${
+                          isDark ? 'bg-[#0f141f] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
                         }`}
                       >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={e => setNewUserForm(prev => ({
-                            ...prev,
-                            modules: { ...prev.modules, [mod.key]: e.target.checked }
-                          }))}
-                          className="accent-teal-600 w-4 h-4 rounded cursor-pointer"
-                        />
-                        <span className={`material-symbols-outlined text-base ${isChecked ? 'text-teal-500' : 'text-slate-400'}`}>{mod.icon}</span>
-                        <div>
-                          <span className="font-bold text-xs block">{language === 'ar' ? mod.nameAr : mod.nameEn}</span>
-                          <span className="text-[10px] text-slate-400">{language === 'ar' ? mod.descAr : mod.descEn}</span>
+                        {/* Category Header Bar */}
+                        <div
+                          className={`p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-2.5 cursor-pointer select-none transition-colors ${
+                            enabledCount > 0
+                              ? isDark ? 'bg-teal-950/20 hover:bg-teal-950/30' : 'bg-teal-50/60 hover:bg-teal-50'
+                              : isDark ? 'bg-[#0a0c10] hover:bg-white/5' : 'bg-slate-50 hover:bg-slate-100'
+                          }`}
+                          onClick={() => toggleCategory(cat.id)}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+                              enabledCount > 0 ? 'bg-teal-600 text-white' : 'bg-slate-300 dark:bg-slate-800 text-slate-500'
+                            }`}>
+                              <span className="material-symbols-outlined text-lg">{cat.icon}</span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h5 className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
+                                  {language === 'ar' ? cat.title : cat.titleEn}
+                                </h5>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  enabledCount === catModules.length && enabledCount > 0
+                                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                                    : enabledCount > 0
+                                    ? 'bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-500/30'
+                                    : 'bg-slate-200 dark:bg-white/10 text-slate-500'
+                                }`}>
+                                  {enabledCount} / {catModules.length} {t('مفعل', 'active')}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Category-Level Quick Action Buttons */}
+                          <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => setCategoryAll(cat, 'write')}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                                allWrite
+                                  ? 'bg-teal-600 text-white border-teal-500 shadow-xs'
+                                  : 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 border-teal-500/30'
+                              }`}
+                              title={t('منح صلاحية كتابة وتعديل لكل موديولات هذا القسم', 'Grant Read/Write to all in category')}
+                            >
+                              <span className="material-symbols-outlined text-xs">edit_note</span>
+                              <span className="hidden sm:inline">{t('الكل تعديل', 'All Write')}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setCategoryAll(cat, 'read')}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                                allRead
+                                  ? 'bg-sky-600 text-white border-sky-500 shadow-xs'
+                                  : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/30'
+                              }`}
+                              title={t('منح صلاحية قراءة فقط لكل موديولات هذا القسم', 'Grant Read Only to all in category')}
+                            >
+                              <span className="material-symbols-outlined text-xs">visibility</span>
+                              <span className="hidden sm:inline">{t('الكل قراءة', 'All Read')}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setCategoryAll(cat, 'none')}
+                              className="px-2 py-1 rounded-lg text-[10px] font-bold border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 transition-all cursor-pointer flex items-center gap-1"
+                              title={t('إلغاء جميع صلاحيات هذا القسم', 'Clear all in category')}
+                            >
+                              <span className="material-symbols-outlined text-xs">close</span>
+                              <span className="hidden sm:inline">{t('إلغاء', 'Clear')}</span>
+                            </button>
+
+                            {/* Accordion Arrow Toggle */}
+                            <button
+                              type="button"
+                              onClick={() => toggleCategory(cat.id)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors cursor-pointer"
+                            >
+                              <span className={`material-symbols-outlined text-base transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                                expand_more
+                              </span>
+                            </button>
+                          </div>
                         </div>
-                      </label>
+
+                        {/* Sub-modules list */}
+                        {isExpanded && (
+                          <div className="p-3 sm:p-4 space-y-2 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50/30 dark:bg-black/10 animate-in fade-in duration-150">
+                            <div className="grid grid-cols-1 gap-2">
+                              {catModules.map(mod => {
+                                const modLevel = getModLevel(mod.id);
+                                return (
+                                  <div
+                                    key={mod.id}
+                                    className={`p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+                                      modLevel === 'write'
+                                        ? isDark ? 'bg-teal-950/25 border-teal-500/40 shadow-xs shadow-teal-500/5' : 'bg-teal-50/80 border-teal-500/40 shadow-xs'
+                                        : modLevel === 'read'
+                                        ? isDark ? 'bg-sky-950/25 border-sky-500/40 shadow-xs shadow-sky-500/5' : 'bg-sky-50/80 border-sky-500/40 shadow-xs'
+                                        : isDark ? 'bg-[#0a0c10]/40 border-white/5 opacity-80 hover:opacity-100' : 'bg-white border-slate-200/80 opacity-80 hover:opacity-100'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                        modLevel === 'write' ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' :
+                                        modLevel === 'read' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' :
+                                        'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                                      }`}>
+                                        <span className="material-symbols-outlined text-lg">{mod.icon || 'radio_button_unchecked'}</span>
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+                                            {language === 'ar' ? mod.title : mod.titleEn}
+                                          </span>
+                                          <span className="font-mono text-[9px] text-slate-400 hidden md:inline">({mod.id})</span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-sm sm:max-w-md">
+                                          {mod.description}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* 3-State Segmented Control: None | Read | Read & Write */}
+                                    <div className="flex items-center bg-slate-200/80 dark:bg-black/40 p-1 rounded-xl shrink-0 self-end sm:self-auto border border-slate-300 dark:border-white/10">
+                                      <button
+                                        type="button"
+                                        onClick={() => setModuleLevel(mod.id, 'none')}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                                          modLevel === 'none'
+                                            ? 'bg-slate-500 text-white shadow-xs'
+                                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                        }`}
+                                        title={t('تعطيل هذا الموديول', 'Disable this module')}
+                                      >
+                                        <span className="material-symbols-outlined text-xs">close</span>
+                                        <span>{t('معطل', 'None')}</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => setModuleLevel(mod.id, 'read')}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                                          modLevel === 'read'
+                                            ? 'bg-sky-600 text-white shadow-xs'
+                                            : 'text-sky-600 dark:text-sky-400 hover:bg-sky-500/10'
+                                        }`}
+                                        title={t('صلاحية قراءة وعرض فقط', 'Read only')}
+                                      >
+                                        <span className="material-symbols-outlined text-xs">visibility</span>
+                                        <span>{t('قراءة', 'Read')}</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => setModuleLevel(mod.id, 'write')}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                                          modLevel === 'write'
+                                            ? 'bg-teal-600 text-white shadow-xs'
+                                            : 'text-teal-600 dark:text-teal-400 hover:bg-teal-500/10'
+                                        }`}
+                                        title={t('صلاحية كاملة قراءة وتعديل وكتابة', 'Read and write')}
+                                      >
+                                        <span className="material-symbols-outlined text-xs">edit_note</span>
+                                        <span>{t('قراءة وكتابة', 'Read / Write')}</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>

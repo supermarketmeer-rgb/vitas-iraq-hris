@@ -28,14 +28,88 @@ import {
   startBiometricScheduler 
 } from './database/biometricSyncEngine.js';
 
+import http from 'http';
+import { spawn } from 'child_process';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ─── Drivers Module Backend Integration (Apache Proxy & Auto-Fallback) ────
+let phpProcess = null;
+const PHP_PORT = 8088;
+
+function ensurePhpBackend(cb) {
+  const checkReq = http.request({
+    hostname: '127.0.0.1',
+    port: 80,
+    path: '/hr_drivers/dashboard.php?embedded=1',
+    method: 'HEAD',
+    timeout: 1000
+  }, (res) => {
+    cb(80);
+  });
+
+  checkReq.on('error', () => {
+    if (!phpProcess) {
+      const phpExe = 'C:\\xampp\\php\\php.exe';
+      const docRoot = path.join(__dirname, 'modules', 'hr_drivers');
+      if (fs.existsSync(phpExe) && fs.existsSync(docRoot)) {
+        try {
+          phpProcess = spawn(phpExe, ['-S', `127.0.0.1:${PHP_PORT}`, '-t', docRoot], {
+            stdio: 'ignore',
+            detached: false
+          });
+          console.log(`[Drivers Module] Built-in PHP server started on port ${PHP_PORT}`);
+        } catch (e) {
+          console.error('[Drivers Module] Error starting built-in PHP runner:', e);
+        }
+      }
+    }
+    cb(PHP_PORT);
+  });
+
+  checkReq.end();
+}
+
 // Middleware
 app.use(cors());
+
+// Proxy /hr_drivers requests directly to PHP backend before json parser consumes body
+app.use('/hr_drivers', (req, res) => {
+  ensurePhpBackend((targetPort) => {
+    let targetPath = req.originalUrl || req.url;
+    if (targetPort === PHP_PORT) {
+      targetPath = targetPath.replace(/^\/hr_drivers/, '') || '/index.php';
+    }
+
+    const options = {
+      hostname: '127.0.0.1',
+      port: targetPort,
+      path: targetPath,
+      method: req.method,
+      headers: {
+        ...req.headers,
+        host: `127.0.0.1:${targetPort}`,
+      }
+    };
+
+    const proxyReq = http.request(options, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res, { end: true });
+    });
+
+    proxyReq.on('error', (err) => {
+      console.error('[Drivers Proxy] Backend connection error:', err.message);
+      res.status(502).send('Error connecting to Drivers PHP Module backend.');
+    });
+
+    req.pipe(proxyReq, { end: true });
+  });
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
 app.use('/assets', express.static(path.join(__dirname, 'dist', 'assets')));
@@ -1938,6 +2012,135 @@ app.get(['/api/branches', '/api/settings/branches'], async (req, res) => {
   }
 });
 
+// Settings - Branches POST / CREATE
+app.post(['/api/settings/branches', '/api/branches'], async (req, res) => {
+  try {
+    const { name, name_ar, name_en, address, city, phone, email, status, sort_order } = req.body;
+    const finalNameAr = (name_ar || name || name_en || '').trim();
+    const finalNameEn = (name_en || name || name_ar || '').trim();
+    const finalId = req.body.id ? String(req.body.id).trim() : `BR${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+    const sql = `
+      INSERT INTO branches (id, name, name_ar, name_en, address, city, country, phone, email, status, sort_order, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'Iraq', ?, ?, ?, ?, NOW())
+      ON DUPLICATE KEY UPDATE
+        name = VALUES(name),
+        name_ar = VALUES(name_ar),
+        name_en = VALUES(name_en),
+        address = VALUES(address),
+        city = VALUES(city),
+        phone = VALUES(phone),
+        email = VALUES(email),
+        status = VALUES(status),
+        sort_order = VALUES(sort_order),
+        updated_at = NOW()
+    `;
+    const params = [
+      finalId,
+      finalNameAr,
+      finalNameAr,
+      finalNameEn,
+      address ? String(address).trim() : null,
+      city ? String(city).trim() : null,
+      phone ? String(phone).trim() : null,
+      email ? String(email).trim() : null,
+      status || 'Active',
+      sort_order ? Number(sort_order) : 0
+    ];
+
+    await query(sql, params);
+    executeCloudQuery(sql, params).catch(() => {});
+
+    const rows = await query('SELECT * FROM branches WHERE id = ? LIMIT 1', [finalId]);
+    const inserted = (rows && rows[0]) ? rows[0] : {
+      id: finalId,
+      name: finalNameAr,
+      name_ar: finalNameAr,
+      name_en: finalNameEn,
+      address,
+      city,
+      phone,
+      email,
+      status: status || 'Active'
+    };
+    res.json(inserted);
+  } catch (err) {
+    console.error('Error in POST /api/settings/branches:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Settings - Branches PUT / UPDATE
+app.put(['/api/settings/branches/:id', '/api/branches/:id'], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, name_ar, name_en, address, city, phone, email, status, sort_order } = req.body;
+    const finalNameAr = (name_ar || name || name_en || '').trim();
+    const finalNameEn = (name_en || name || name_ar || '').trim();
+
+    const sql = `
+      UPDATE branches SET
+        name = ?,
+        name_ar = ?,
+        name_en = ?,
+        address = ?,
+        city = ?,
+        phone = ?,
+        email = ?,
+        status = ?,
+        sort_order = COALESCE(?, sort_order),
+        updated_at = NOW()
+      WHERE id = ?
+    `;
+    const params = [
+      finalNameAr,
+      finalNameAr,
+      finalNameEn,
+      address !== undefined ? (address ? String(address).trim() : null) : null,
+      city !== undefined ? (city ? String(city).trim() : null) : null,
+      phone !== undefined ? (phone ? String(phone).trim() : null) : null,
+      email !== undefined ? (email ? String(email).trim() : null) : null,
+      status || 'Active',
+      sort_order !== undefined ? Number(sort_order) : null,
+      id
+    ];
+
+    await query(sql, params);
+    executeCloudQuery(sql, params).catch(() => {});
+
+    const rows = await query('SELECT * FROM branches WHERE id = ? LIMIT 1', [id]);
+    const updated = (rows && rows[0]) ? rows[0] : {
+      id,
+      name: finalNameAr,
+      name_ar: finalNameAr,
+      name_en: finalNameEn,
+      address,
+      city,
+      phone,
+      email,
+      status
+    };
+    res.json(updated);
+  } catch (err) {
+    console.error('Error in PUT /api/settings/branches:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Settings - Branches DELETE
+app.delete(['/api/settings/branches/:id', '/api/branches/:id'], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sql = 'DELETE FROM branches WHERE id = ?';
+    await query(sql, [id]);
+    executeCloudQuery(sql, [id]).catch(() => {});
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error('Error in DELETE /api/settings/branches:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Settings - Departments CRUD
 app.get(['/api/settings/departments', '/api/departments'], async (req, res) => {
   try {
@@ -3582,7 +3785,7 @@ app.post('/api/attendance/reprocess', async (req, res) => {
 
 // SPA React Router fallback route
 app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads')) {
+  if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads') && !req.path.startsWith('/hr_drivers')) {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
   }
 });

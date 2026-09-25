@@ -22,6 +22,7 @@ import { LeaveDirectoryView } from '../components/leaves_attendance/LeaveDirecto
 import { MyScheduleView } from '../components/leaves_attendance/MyScheduleView';
 import { ManagerApprovalCenter } from '../components/leaves_attendance/ManagerApprovalCenter';
 import { BiometricSettingsView } from '../components/leaves_attendance/BiometricSettingsView';
+import { EarnedLeavesView } from '../components/leaves_attendance/EarnedLeavesView';
 
 import { LeaveApplyModal } from '../components/leaves_attendance/LeaveApplyModal';
 import { AttendanceCorrectionModal } from '../components/leaves_attendance/AttendanceCorrectionModal';
@@ -60,6 +61,7 @@ export const Category4LeaveView: React.FC = () => {
   const [publicHolidays, setPublicHolidays] = useState<PublicHoliday[]>([]);
   const [biometricSettings, setBiometricSettings] = useState<BiometricServerSettings | null>(null);
   const [rawLogs, setRawLogs] = useState<RawAttendanceLog[]>([]);
+  const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([]);
 
   // UI Modals state
   const [isApplyLeaveOpen, setIsApplyLeaveOpen] = useState(false);
@@ -122,6 +124,11 @@ export const Category4LeaveView: React.FC = () => {
       if (rawRes.data) {
         const filteredRaw = isEmployeeRole ? rawRes.data.filter(matchesCurrentEmployee) : rawRes.data;
         setRawLogs(filteredRaw.length > 0 ? filteredRaw : rawRes.data.slice(0, 2));
+      }
+
+      const balRes = await leavesApi.getLeaveBalances();
+      if (balRes.data) {
+        setLeaveBalances(balRes.data);
       }
     } catch (e) {
       console.error('Failed to load leave data:', e);
@@ -238,6 +245,18 @@ export const Category4LeaveView: React.FC = () => {
         />
       )}
 
+      {(activeModuleId === 'leave-earned' || activeModuleId === 'earned-leaves' || activeModuleId === 'leave-balance') && (
+        <EarnedLeavesView
+          employees={employees || []}
+          attendanceRecords={attendanceRecords || []}
+          leaveBalances={leaveBalances && leaveBalances.length > 0 ? leaveBalances : (stats?.my_leave_balances || [])}
+          leaveRequests={leaveRequests || []}
+          appSettings={appSettings || {}}
+          lang={lang}
+          onNavigate={(tab) => setActiveModuleId(tab)}
+        />
+      )}
+
       {(activeModuleId === 'leave-timesheets' || activeModuleId === 'timesheet') && (
         <TimesheetsView
           summaries={attendanceRecords.map((r) => ({
@@ -276,6 +295,7 @@ export const Category4LeaveView: React.FC = () => {
           </button>
           <LeaveDirectoryView
             requests={leaveRequests}
+            balances={leaveBalances.length > 0 ? leaveBalances : (stats?.my_leave_balances || [])}
             lang={lang}
             onOpenApply={() => setIsApplyLeaveOpen(true)}
             onViewDetails={(req) => setSelectedLeaveDetails(req)}
@@ -284,6 +304,11 @@ export const Category4LeaveView: React.FC = () => {
               await loadData();
             }}
             onExportExcel={() => setIsExportReportOpen(true)}
+            onUpdateBalance={async (id, updates) => {
+              await leavesApi.updateLeaveBalance(id, updates);
+              await loadData();
+            }}
+            onNavigateToEarned={() => setActiveModuleId('leave-earned')}
           />
         </div>
       )}
@@ -291,6 +316,7 @@ export const Category4LeaveView: React.FC = () => {
       {activeModuleId === 'leave-directory' && (
         <LeaveDirectoryView
           requests={leaveRequests}
+          balances={leaveBalances.length > 0 ? leaveBalances : (stats?.my_leave_balances || [])}
           lang={lang}
           onOpenApply={() => setIsApplyLeaveOpen(true)}
           onViewDetails={(req) => setSelectedLeaveDetails(req)}
@@ -299,6 +325,11 @@ export const Category4LeaveView: React.FC = () => {
             await loadData();
           }}
           onExportExcel={() => setIsExportReportOpen(true)}
+          onUpdateBalance={async (id, updates) => {
+            await leavesApi.updateLeaveBalance(id, updates);
+            await loadData();
+          }}
+          onNavigateToEarned={() => setActiveModuleId('leave-earned')}
         />
       )}
 

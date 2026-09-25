@@ -596,7 +596,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       )}
 
       {/* Quick Access Tools Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <button
           onClick={() => onNavigate('leave-attendance')}
           className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] hover:border-teal-500/40 shadow-sm transition-all flex items-center gap-3 text-left cursor-pointer group"
@@ -627,6 +627,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </h4>
             <span className="text-[10px] text-slate-400">
               {lang === 'ar' ? 'تجهيز مسير الرواتب' : 'Payroll preparation'}
+            </span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onNavigate('leave-earned')}
+          className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] hover:border-emerald-500/40 shadow-sm transition-all flex items-center gap-3 text-left cursor-pointer group"
+        >
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-all">
+            <span className="material-symbols-outlined text-xl">account_balance_wallet</span>
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              {lang === 'ar' ? 'الإجازات المستحقة' : 'Earned Leaves'}
+            </h4>
+            <span className="text-[10px] text-slate-400">
+              {lang === 'ar' ? 'الرصيد والاحتساب المالي' : 'Balance & Financials'}
             </span>
           </div>
         </button>

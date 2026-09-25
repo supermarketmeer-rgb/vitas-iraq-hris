@@ -193,8 +193,9 @@ export const Category2DashboardView: React.FC = () => {
             </button>
           )}
 
-          {/* Add New User - Super Admin and users with settings/can_manage_users permission */}
-          {(currentUser.role === 'Super Admin' || currentUser.can_manage_users === 1 ||
+          {/* Add New User - Super Admin, Admin and users with settings/can_manage_users permission */}
+          {(currentUser.role === 'Super Admin' || currentUser.role === 'Admin' || currentUser.can_manage_users === 1 ||
+            currentUser.modulePermissions?.['sec-roles-permissions'] ||
             currentUser.modulePermissions?.['settings']) && (
             <button
               onClick={() => setActiveModuleId('sec-roles-permissions')}

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { CATEGORY_GROUPS } from '../data/categories';
 import { useApp } from '../context/AppContext';
+import { getUserEffectivePermissions, isModuleAuthorized } from '../utils/permissionHelper';
 
 export const Sidebar: React.FC = () => {
   const {
     activeModuleId,
     setActiveModuleId,
     isSidebarOpen,
+    setIsSidebarOpen,
     language,
     toggleLanguage,
     toggleTheme,
@@ -23,86 +25,11 @@ export const Sidebar: React.FC = () => {
     theme
   } = useApp();
 
-  const currentRole = currentUserRole || currentUser?.role || 'Super Admin';
-
-  const EMPLOYEE_ALLOWED_MODULE_IDS = new Set([
-    'dash-ess',
-    'dash-overview',
-    'dash-search',
-    'cat-4-leave',
-    'leave-attendance',
-    'leave-apply',
-    'leave-timesheets',
-    'cat-5-payroll',
-    'payroll-payslip',
-    'supp-emp-portal',
-    'supp-knowledge-base',
-    'supp-guide-center'
-  ]);
-
-  const RECRUITER_ALLOWED_MODULE_IDS = new Set([
-    'recruit-dash',
-    'recruit-ats',
-    'recruit-candidate-profile',
-    'recruit-candidate-portal'
-  ]);
-
-  const DEPT_HEAD_ALLOWED_MODULE_IDS = new Set([
-    'dash-overview',
-    'dash-search',
-    'dash-ess',
-    'emp-directory',
-    'emp-branches',
-    'emp-company-profile',
-    'emp-calendar',
-    'leave-dashboard',
-    'leave-approvals',
-    'leave-attendance',
-    'leave-apply',
-    'leave-timesheets',
-    'recruit-dash',
-    'recruit-ats',
-    'perf-mgmt',
-    'perf-review',
-    'perf-goals',
-    'supp-knowledge-base',
-    'supp-guide-center'
-  ]);
-
-  const IT_ADMIN_ALLOWED_MODULE_IDS = new Set([
-    'dash-overview',
-    'dash-search',
-    'cat-9-risk',
-    'risk-audit-reports',
-    'risk-governance',
-    'risk-tracker',
-    'risk-policies',
-    'risk-assessment',
-    'risk-identify-new',
-    'risk-details-privacy',
-    'sec-general-settings',
-    'sec-audit-logs',
-    'sec-roles-permissions',
-    'sec-edit-role',
-    'sec-api-keys',
-    'cat-10-sys',
-    'sys-health-monitor',
-    'sys-health-config',
-    'sys-endpoint-perf',
-    'sys-n8n-automation',
-    'sys-api-gateway',
-    'sys-api-manager',
-    'sys-dev-docs',
-    'sys-db-schema',
-    'sys-it-handbook',
-    'sys-settings-security',
-    'supp-knowledge-base',
-    'supp-guide-center'
-  ]);
+  const currentRole = currentUserRole || currentUser?.role || 'Employee';
+  const userPerms = getUserEffectivePermissions(currentUser, currentRole);
 
   // Collapsed by default as requested
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
-
   const [sidebarFilter, setSidebarFilter] = useState('');
 
   const toggleCategory = (id: string) => {
@@ -122,6 +49,14 @@ export const Sidebar: React.FC = () => {
       allOpen[cat.id] = true;
     });
     setOpenCategories(allOpen);
+  };
+
+  // Helper to close sidebar drawer on mobile after clicking an item
+  const handleSelectModule = (modId: string) => {
+    setActiveModuleId(modId);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   };
 
   // Helper to retrieve live badge count for specific modules
@@ -156,360 +91,316 @@ export const Sidebar: React.FC = () => {
     return null;
   }
 
+  // Pre-calculate count of permitted categories (Excluding authentication/login demo pages)
+  const permittedCategories = CATEGORY_GROUPS
+    .filter(cat => cat.id !== 'cat-1-auth')
+    .map(cat => {
+      const filteredModules = cat.modules.filter(m => {
+        if (m.hidden) return false;
+        if (!isModuleAuthorized(cat.id, m.id, userPerms, currentRole)) {
+          return false;
+        }
+        if (sidebarFilter) {
+          return m.title.includes(sidebarFilter) || m.titleEn.toLowerCase().includes(sidebarFilter.toLowerCase());
+        }
+        return true;
+      });
+      return { ...cat, filteredModules };
+    }).filter(c => c.filteredModules.length > 0);
+
+  const totalPermittedModules = permittedCategories.reduce((acc, c) => acc + c.filteredModules.length, 0);
+
   return (
-    <aside className={`w-80 ${isDark ? 'bg-[#06080d] border-[#1e2a44] text-slate-300' : 'bg-[#e8ebef] border-slate-300 text-slate-800 shadow-sm'} border-x flex flex-col h-screen sticky top-0 z-20 shrink-0 select-none transition-all duration-200 print:hidden`}>
-      {/* Sidebar Top Filter & Collapse Controls */}
-      <div className={`p-3 border-b ${isDark ? 'border-[#1e2a44] bg-[#06080d]' : 'border-slate-300'} space-y-2`}>
-        <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-          <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm text-teal-400">menu_open</span>
-            {t('أقسام النظام', 'System Categories')}
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={collapseAll}
-              className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-teal-400 text-[11px] flex items-center gap-1 transition-all"
-              title={t('طوي كافة القوائم', 'Collapse all categories')}
-            >
-              <span className="material-symbols-outlined text-sm">unfold_less</span>
-              <span>{t('طوي الكل', 'Collapse All')}</span>
-            </button>
-            <button
-              onClick={expandAll}
-              className="p-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-teal-400 transition-all"
-              title={t('توسيع كافة القوائم', 'Expand all categories')}
-            >
-              <span className="material-symbols-outlined text-sm">unfold_more</span>
-            </button>
+    <>
+      {/* Mobile Drawer Backdrop Overlay */}
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden animate-in fade-in duration-200"
+        onClick={() => setIsSidebarOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside className={`fixed inset-y-0 start-0 z-50 w-80 max-w-[85vw] lg:static lg:w-80 h-full lg:h-screen lg:sticky lg:top-0 border-x flex flex-col shrink-0 select-none transition-all duration-300 shadow-2xl lg:shadow-none print:hidden ${
+        isDark ? 'bg-[#06080d] border-[#1e2a44] text-slate-300' : 'bg-[#e8ebef] border-slate-300 text-slate-800'
+      }`}>
+
+        {/* Mobile Header: Displays current user badge & authorized module count */}
+        <div className="lg:hidden p-3.5 border-b border-teal-500/20 bg-teal-950/20 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 font-bold shrink-0 overflow-hidden shadow-inner">
+              {currentUser?.avatar ? (
+                <img src={currentUser.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="material-symbols-outlined text-xl">person</span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-xs font-bold truncate text-white">
+                {currentUser?.name || t('المستخدم المرخص', 'Authorized User')}
+              </h4>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] text-teal-400 font-bold px-1.5 py-0.2 rounded bg-teal-500/10 border border-teal-500/30">
+                  {currentUser?.role || currentRole}
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {totalPermittedModules} {t('موديول مرخص', 'modules')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            title={t('إغلاق القائمة', 'Close Menu')}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Sidebar Top Filter & Collapse Controls */}
+        <div className={`p-3 border-b ${isDark ? 'border-[#1e2a44] bg-[#06080d]' : 'border-slate-300'} space-y-2`}>
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm text-teal-400">menu_open</span>
+              <span className="text-[11px] font-bold text-slate-200">
+                {t('أقسام النظام المرخصة', 'Authorized Categories')}
+              </span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-teal-500/10 text-teal-400 font-mono font-bold">
+                {permittedCategories.length}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={collapseAll}
+                className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-teal-400 text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                title={t('طوي كافة القوائم', 'Collapse all categories')}
+              >
+                <span className="material-symbols-outlined text-sm">unfold_less</span>
+                <span>{t('طوي الكل', 'Collapse All')}</span>
+              </button>
+              <button
+                onClick={expandAll}
+                className="p-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-teal-400 transition-all cursor-pointer"
+                title={t('توسيع كافة القوائم', 'Expand all categories')}
+              >
+                <span className="material-symbols-outlined text-sm">unfold_more</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="relative">
+            <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'right-3' : 'left-3'} top-2.5 text-slate-500 text-lg`}>
+              filter_list
+            </span>
+            <input
+              type="text"
+              placeholder={t('ابحث في الموديولات المتاحة لك...', 'Filter your permitted modules...')}
+              value={sidebarFilter}
+              onChange={e => setSidebarFilter(e.target.value)}
+              className={`w-full bg-white/5 border border-white/10 rounded-xl ${language === 'ar' ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500/60 transition-colors placeholder:text-slate-500`}
+            />
+            {sidebarFilter && (
+              <button
+                onClick={() => setSidebarFilter('')}
+                className={`absolute ${language === 'ar' ? 'left-2.5' : 'right-2.5'} top-2 text-slate-400 hover:text-slate-200 text-xs cursor-pointer`}
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="relative">
-          <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'right-3' : 'left-3'} top-2.5 text-slate-500 text-lg`}>
-            filter_list
-          </span>
-          <input
-            type="text"
-            placeholder={t('صفّي أقسام النظام...', 'Filter system modules...')}
-            value={sidebarFilter}
-            onChange={e => setSidebarFilter(e.target.value)}
-            className={`w-full bg-white/5 border border-white/10 rounded-xl ${language === 'ar' ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500/60 transition-colors placeholder:text-slate-500`}
-          />
-          {sidebarFilter && (
-            <button
-              onClick={() => setSidebarFilter('')}
-              className={`absolute ${language === 'ar' ? 'left-2.5' : 'right-2.5'} top-2 text-slate-400 hover:text-slate-200 text-xs`}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      </div>
+        {/* Navigation Categories Scrollable Container */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+          {permittedCategories.map((cat, groupIndex) => {
+            const isOpen = openCategories[cat.id];
+            const displayCatTitle = language === 'en' ? cat.titleEn : cat.title;
+            const displayCatSubtitle = language === 'en' ? cat.title : cat.titleEn;
 
-      {/* Navigation Categories Scrollable Container */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
-        {CATEGORY_GROUPS.map((cat, groupIndex) => {
-          // Filter modules based on user role, custom delegations, and quick sidebar filter
-          const filteredModules = cat.modules.filter(m => {
-            if (m.hidden) return false;
-
-            // Check custom granted permissions for current employee
-            let customEmpPerms: Record<string, boolean> | null = currentUser?.modulePermissions || null;
-
-            if (!customEmpPerms && typeof window !== 'undefined') {
-              const customPermissionsRaw = localStorage.getItem('vitas_custom_employee_permissions');
-              if (customPermissionsRaw && currentUser) {
-                try {
-                  const parsed = JSON.parse(customPermissionsRaw);
-                  const userKey = String(currentUser.id || currentUser.employeeId || '');
-                  const match = parsed[userKey] || Object.entries(parsed).find(([k, v]: any) => {
-                    const empIdClean = String(currentUser.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                    const kClean = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
-                    const vEmpIdClean = String(v.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                    const nameClean = String(currentUser.name || '').toLowerCase();
-                    const vNameClean = String(v.employeeName || '').toLowerCase();
-                    const vNameEnClean = String(v.employeeNameEn || '').toLowerCase();
-
-                    return (
-                      k === userKey ||
-                      (kClean && empIdClean && (kClean === empIdClean || kClean.includes(empIdClean) || empIdClean.includes(kClean))) ||
-                      (vEmpIdClean && empIdClean && (vEmpIdClean === empIdClean || vEmpIdClean.includes(empIdClean) || empIdClean.includes(vEmpIdClean))) ||
-                      (nameClean && vNameClean && (nameClean.includes(vNameClean) || vNameClean.includes(nameClean) || nameClean.includes(vNameEnClean)))
-                    );
-                  })?.[1];
-
-                  if (match && match.modules) {
-                    customEmpPerms = match.modules;
-                  }
-                } catch (e) {
-                  console.error(e);
-                }
-              }
-            }
-
-            if (customEmpPerms && currentUser?.role === 'Employee') {
-              if (sidebarFilter) {
-                const matchesFilter = m.title.includes(sidebarFilter) || m.titleEn.toLowerCase().includes(sidebarFilter.toLowerCase());
-                if (!matchesFilter) return false;
-              }
-
-              // Dashboard Category
-              if (cat.id === 'cat-2-dash') {
-                if (m.id === 'sys-dynamic-reports') return Boolean(customEmpPerms.reports);
-                return m.id === 'dash-overview' || m.id === 'dash-ess';
-              }
-
-              // Employees Category
-              if (cat.id === 'cat-3-emp') {
-                return Boolean(customEmpPerms.employees || customEmpPerms['cat-3-emp']);
-              }
-
-              // Leaves & Attendance Category
-              if (cat.id === 'cat-4-leave') {
-                return Boolean(customEmpPerms.attendance || customEmpPerms['cat-4-leave']);
-              }
-
-              // Payroll Category
-              if (cat.id === 'cat-5-payroll') {
-                return Boolean(customEmpPerms.payroll || customEmpPerms['cat-5-payroll']);
-              }
-
-              // Recruitment & ATS Category
-              if (cat.id === 'cat-6-recruit') {
-                return Boolean(customEmpPerms.recruitment || customEmpPerms['cat-6-recruit']);
-              }
-
-              // Performance & Training Category
-              if (cat.id === 'cat-7-perf') {
-                return Boolean(customEmpPerms.performance || customEmpPerms.recruitment || customEmpPerms['cat-7-perf']);
-              }
-
-              // Assets & Documents Category
-              if (cat.id === 'cat-8-assets') {
-                return Boolean(customEmpPerms.assets || customEmpPerms['cat-8-assets']);
-              }
-
-              // Smart Archive Category
-              if (cat.id === 'cat-12-archive' || cat.id === 'cat-9-archive') {
-                return Boolean(customEmpPerms.archive || customEmpPerms.employees || customEmpPerms['cat-12-archive']);
-              }
-
-              // Risk & Governance Category
-              if (cat.id === 'cat-9-risk') {
-                return Boolean(customEmpPerms.risk || customEmpPerms['cat-9-risk']);
-              }
-
-              // System & Developer Tools Category (Settings)
-              if (cat.id === 'cat-10-sys') {
-                return Boolean(customEmpPerms.settings || customEmpPerms['cat-10-sys']);
-              }
-
-              // Support Category (only if explicitly granted)
-              if (cat.id === 'cat-11-support' || cat.id === 'cat-12-support') {
-                return Boolean(customEmpPerms.support || customEmpPerms['cat-11-support'] || customEmpPerms['cat-12-support']);
-              }
-              
-              // Hide any ungranted category
-              return false;
-            }
-
-            if (currentRole === 'Employee' && !EMPLOYEE_ALLOWED_MODULE_IDS.has(m.id)) return false;
-            if (currentRole === 'Recruiter' && !RECRUITER_ALLOWED_MODULE_IDS.has(m.id)) return false;
-            if (currentRole === 'Department Head' && !DEPT_HEAD_ALLOWED_MODULE_IDS.has(m.id)) return false;
-            if (currentRole === 'IT Admin' && !IT_ADMIN_ALLOWED_MODULE_IDS.has(m.id)) return false;
-            if (sidebarFilter) {
-              return m.title.includes(sidebarFilter) || m.titleEn.toLowerCase().includes(sidebarFilter.toLowerCase());
-            }
-            return true;
-          });
-
-          if (filteredModules.length === 0) {
-            return null;
-          }
-
-          const isOpen = openCategories[cat.id];
-          const displayCatTitle = language === 'en' ? cat.titleEn : cat.title;
-          const displayCatSubtitle = language === 'en' ? cat.title : cat.titleEn;
-
-          return (
-            <div
-              key={cat.id}
-              className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden shadow-sm"
-            >
-              {/* Category Header Bar */}
-              <button
-                onClick={() => toggleCategory(cat.id)}
-                className="w-full px-3.5 py-2.5 flex items-center justify-between text-start hover:bg-white/5 transition-colors group"
+            return (
+              <div
+                key={cat.id}
+                className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden shadow-sm"
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-7 h-7 rounded-lg bg-teal-600/10 border border-teal-500/20 text-teal-400 flex items-center justify-center text-sm font-bold">
-                    {groupIndex + 1}
-                  </span>
-                  <div>
-                    <h2 className="text-xs font-bold text-slate-200 group-hover:text-teal-400 transition-colors">
-                      {displayCatTitle}
-                    </h2>
-                    <p className="text-[10px] text-slate-500 font-mono tracking-tight">
-                      {displayCatSubtitle}
-                    </p>
+                {/* Category Header Bar */}
+                <button
+                  onClick={() => toggleCategory(cat.id)}
+                  className="w-full px-3.5 py-2.5 flex items-center justify-between text-start hover:bg-white/5 transition-colors group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-7 h-7 rounded-lg bg-teal-600/10 border border-teal-500/20 text-teal-400 flex items-center justify-center text-sm font-bold">
+                      {groupIndex + 1}
+                    </span>
+                    <div>
+                      <h2 className="text-xs font-bold text-slate-200 group-hover:text-teal-400 transition-colors">
+                        {displayCatTitle}
+                      </h2>
+                      <p className="text-[10px] text-slate-500 font-mono tracking-tight">
+                        {displayCatSubtitle}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold bg-white/5 text-slate-400 px-1.5 py-0.5 rounded">
-                    {filteredModules.length}
-                  </span>
-                  <span
-                    className={`material-symbols-outlined text-slate-400 text-lg transition-transform duration-200 ${
-                      isOpen ? 'rotate-180' : ''
-                    }`}
-                  >
-                    expand_more
-                  </span>
-                </div>
-              </button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold bg-white/5 text-slate-400 px-1.5 py-0.5 rounded">
+                      {cat.filteredModules.length}
+                    </span>
+                    <span
+                      className={`material-symbols-outlined text-slate-400 text-lg transition-transform duration-200 ${
+                        isOpen ? 'rotate-180' : ''
+                      }`}
+                    >
+                      expand_more
+                    </span>
+                  </div>
+                </button>
 
-              {/* Module Items List */}
-              {isOpen && (
-                <div className="p-1.5 pt-0 space-y-1 bg-[#0a0c10]/40 border-t border-white/5">
-                  {filteredModules.map(mod => {
-                    const isActive = activeModuleId === mod.id;
-                    const badgeCount = getBadgeCount(mod.id);
-                    const displayModTitle = language === 'en' ? mod.titleEn : mod.title;
+                {/* Module Items List */}
+                {isOpen && (
+                  <div className="p-1.5 pt-0 space-y-1 bg-[#0a0c10]/40 border-t border-white/5">
+                    {cat.filteredModules.map(mod => {
+                      const isActive = activeModuleId === mod.id;
+                      const badgeCount = getBadgeCount(mod.id);
+                      const displayModTitle = language === 'en' ? mod.titleEn : mod.title;
 
-                    // Special styling for Module & Biometric Settings
-                    if (mod.id === 'leave-biometric-settings') {
                       return (
                         <button
                           key={mod.id}
-                          onClick={() => setActiveModuleId(mod.id)}
-                          className={`w-full text-center my-1.5 px-3 py-3 rounded-2xl text-xs flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-98 cursor-pointer ${
+                          onClick={() => handleSelectModule(mod.id)}
+                          className={`w-full text-start px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all group cursor-pointer ${
                             isActive
-                              ? 'bg-[#06080d] text-emerald-400 font-normal border-2 border-emerald-500 shadow-emerald-900/40'
-                              : 'bg-[#06080d] text-white font-normal border border-emerald-500/40 hover:border-emerald-400 shadow-emerald-950/30'
+                              ? 'bg-[#06080d] text-teal-400 font-bold border border-teal-500 shadow-md shadow-teal-500/10'
+                              : 'text-slate-300 hover:bg-white/5 hover:text-teal-400 border border-transparent'
                           }`}
                         >
-                          <span className="material-symbols-outlined text-lg text-emerald-400">
-                            settings
-                          </span>
-                          <span className="leading-snug max-w-[170px] text-center font-normal">
-                            {displayModTitle}
-                          </span>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              className={`material-symbols-outlined text-base ${
+                                isActive
+                                  ? 'text-teal-400'
+                                  : 'text-slate-400 group-hover:text-teal-400'
+                              }`}
+                            >
+                              {mod.icon}
+                            </span>
+                            <span className="truncate">{displayModTitle}</span>
+                          </div>
+
+                          {/* Live Badges */}
+                          {mod.id === 'leave-apply' && (
+                            <span className="text-[10px] bg-teal-500/20 text-teal-300 px-1.5 py-0.2 rounded-full font-mono font-bold">
+                              New
+                            </span>
+                          )}
+
+                          {mod.id === 'leave-approvals' && badgeCount !== null && badgeCount > 0 && (
+                            <span className="text-[10px] bg-rose-500 text-white px-1.5 py-0.2 rounded-full font-mono font-bold animate-pulse">
+                              {badgeCount}
+                            </span>
+                          )}
+
+                          {mod.id !== 'leave-apply' && mod.id !== 'leave-approvals' && badgeCount !== null && (
+                            <span
+                              className={`text-[10px] px-1.5 py-0.2 rounded-full font-normal ml-1 ${
+                                isActive
+                                  ? 'bg-[#06080d] text-teal-400 border border-teal-500'
+                                  : 'bg-teal-600/10 text-teal-400 border border-teal-500/20'
+                              }`}
+                            >
+                              {badgeCount}
+                            </span>
+                          )}
                         </button>
                       );
-                    }
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
-                    return (
-                      <button
-                        key={mod.id}
-                        onClick={() => setActiveModuleId(mod.id)}
-                        className={`w-full text-start px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all group ${
-                          isActive
-                            ? 'bg-[#06080d] text-teal-400 font-normal border border-teal-500 shadow-md shadow-teal-500/10'
-                            : 'text-slate-300 hover:bg-white/5 hover:text-teal-400 border border-transparent'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span
-                            className={`material-symbols-outlined text-base ${
-                              isActive
-                                ? 'text-teal-400'
-                                : 'text-slate-400 group-hover:text-teal-400'
-                            }`}
-                          >
-                            {mod.icon}
-                          </span>
-                          <span className="truncate">{displayModTitle}</span>
-                        </div>
-
-                        {/* Badges for Category 4 */}
-                        {mod.id === 'leave-apply' && (
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0 animate-pulse ml-1" />
-                        )}
-
-                        {mod.id === 'leave-approvals' && (
-                          <span className="w-5 h-5 rounded-full bg-rose-600 text-white font-normal text-[11px] flex items-center justify-center shrink-0 ml-1 shadow-sm">
-                            3
-                          </span>
-                        )}
-
-                        {mod.id !== 'leave-apply' && mod.id !== 'leave-approvals' && badgeCount !== null && (
-                          <span
-                            className={`text-[10px] px-1.5 py-0.2 rounded-full font-normal ml-1 ${
-                              isActive
-                                ? 'bg-[#06080d] text-teal-400 border border-teal-500'
-                                : 'bg-teal-600/10 text-teal-400 border border-teal-500/20'
-                            }`}
-                          >
-                            {badgeCount}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+          {permittedCategories.length === 0 && (
+            <div className="p-6 text-center text-slate-400 text-xs">
+              <span className="material-symbols-outlined text-3xl block mb-2 text-slate-500">lock</span>
+              <p>{t('لا توجد موديولات مطابقة لبحثك أو صلاحيات حسابك', 'No modules match your filter or permissions')}</p>
             </div>
-          );
-        })}
-      </nav>
+          )}
+        </nav>
 
-      {/* Settings & Bottom Controls (Settings & Security + Language Icon + Theme Icon on the SAME row) */}
-      <div className={`p-1.5 border-t ${isDark ? 'border-[#1e2a44] bg-[#06080d]' : 'border-slate-300 bg-[#e8ebef]'} flex items-center gap-1.5`}>
-        {/* Settings & Security Button */}
-        <button
-          onClick={() => setActiveModuleId('sys-settings-security')}
-          className={`flex-1 px-2.5 h-8 rounded-xl flex items-center gap-2 transition-all text-[11px] font-normal ${
-            activeModuleId === 'sys-settings-security'
-              ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
-              : isDark
-                ? 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
-                : 'bg-white/80 text-slate-800 hover:bg-white border border-slate-300 shadow-sm'
-          }`}
-          title={t('الإعدادات والأمان', 'Settings & Security')}
-        >
-          <span className="material-symbols-outlined text-base">settings</span>
-          <span className="truncate">{t('الإعدادات والأمان', 'Settings & Security')}</span>
-        </button>
+        {/* Settings & Bottom Controls (Settings & Security + Language Icon + Theme Icon on the SAME row) */}
+        <div className={`p-1.5 border-t ${isDark ? 'border-[#1e2a44] bg-[#06080d]' : 'border-slate-300 bg-[#e8ebef]'} flex items-center gap-1.5`}>
+          {/* Settings & Security Button (Available ONLY if user has settings permissions) */}
+          {(userPerms.isSuperAdmin || userPerms.settings) ? (
+            <button
+              onClick={() => handleSelectModule('sys-settings-security')}
+              className={`flex-1 px-2.5 h-8 rounded-xl flex items-center gap-2 transition-all text-[11px] font-normal cursor-pointer ${
+                activeModuleId === 'sys-settings-security'
+                  ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
+                  : isDark
+                    ? 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
+                    : 'bg-white/80 text-slate-800 hover:bg-white border border-slate-300 shadow-sm'
+              }`}
+              title={t('الإعدادات والأمان', 'Settings & Security')}
+            >
+              <span className="material-symbols-outlined text-base">settings</span>
+              <span className="truncate">{t('الإعدادات والأمان', 'Settings & Security')}</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => handleSelectModule('emp-profile')}
+              className={`flex-1 px-2.5 h-8 rounded-xl flex items-center gap-2 transition-all text-[11px] font-normal cursor-pointer ${
+                activeModuleId === 'emp-profile'
+                  ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
+                  : isDark
+                    ? 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
+                    : 'bg-white/80 text-slate-800 hover:bg-white border border-slate-300 shadow-sm'
+              }`}
+              title={t('ملفي الوظيفي', 'My Profile')}
+            >
+              <span className="material-symbols-outlined text-base">person</span>
+              <span className="truncate">{t('ملفي الوظيفي', 'My Profile')}</span>
+            </button>
+          )}
 
-        {/* Language AR/EN Toggle Button */}
-        <button
-          onClick={toggleLanguage}
-          className={`h-8 px-3 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal ${
-            isDark
-              ? 'bg-[#06080d] border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50'
-              : 'bg-[#f1f5f9] border-slate-300 text-slate-900 hover:bg-white'
-          }`}
-          title={language === 'ar' ? 'Switch to English' : 'التحويل للعربية'}
-        >
-          <span className={`text-xs tracking-wider font-normal ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {language === 'ar' ? 'EN' : 'AR'}
-          </span>
-        </button>
+          {/* Language AR/EN Toggle Button */}
+          <button
+            onClick={toggleLanguage}
+            className={`h-8 px-3 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer ${
+              isDark
+                ? 'bg-[#06080d] border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50'
+                : 'bg-[#f1f5f9] border-slate-300 text-slate-900 hover:bg-white'
+            }`}
+            title={language === 'ar' ? 'Switch to English' : 'التحويل للعربية'}
+          >
+            <span className={`text-xs tracking-wider font-normal ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {language === 'ar' ? 'EN' : 'AR'}
+            </span>
+          </button>
 
-        {/* Theme Day/Night Toggle Button */}
-        <button
-          onClick={toggleTheme}
-          className={`h-8 px-2.5 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal ${
-            isDark
-              ? 'bg-[#06080d] border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50'
-              : 'bg-[#f1f5f9] border-slate-300 text-slate-900 hover:bg-white'
-          }`}
-          title={theme === 'dark' ? t('الوضع الفاتح', 'Light Mode') : t('الوضع الداكن', 'Dark Mode')}
-        >
-          <span className="text-sm">{isDark ? '☀️' : '🌙'}</span>
-        </button>
-      </div>
-
-      {/* Sidebar Footer info */}
-      <div className="p-3 border-t border-[#1e2a44] bg-[#06080d] text-center">
-        <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
-          <span>{t('حالة النظام:', 'System Status:')} <span className="text-emerald-400 font-normal">{t('متصل بـ API', 'Connected API')}</span></span>
-          <span className="text-[10px] font-mono bg-[#06080d] text-teal-400 shadow-md px-1.5 py-0.5 rounded border border-teal-500">
-            v2.5 Enterprise
-          </span>
+          {/* Theme Day/Night Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className={`h-8 px-2.5 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer ${
+              isDark
+                ? 'bg-[#06080d] border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50'
+                : 'bg-[#f1f5f9] border-slate-300 text-slate-900 hover:bg-white'
+            }`}
+            title={theme === 'dark' ? t('الوضع الفاتح', 'Light Mode') : t('الوضع الداكن', 'Dark Mode')}
+          >
+            <span className="text-sm">{isDark ? '☀️' : '🌙'}</span>
+          </button>
         </div>
-      </div>
-    </aside>
+
+        {/* Sidebar Footer info */}
+        <div className="p-3 border-t border-[#1e2a44] bg-[#06080d] text-center">
+          <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+            <span>{t('الصلاحيات:', 'Access:')} <span className="text-emerald-400 font-normal">{userPerms.isSuperAdmin ? t('كاملة', 'Full') : t('مخصصة', 'Role Based')}</span></span>
+            <span className="text-[10px] font-mono bg-[#06080d] text-teal-400 shadow-md px-1.5 py-0.5 rounded border border-teal-500">
+              v2.5 Enterprise
+            </span>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 };

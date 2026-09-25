@@ -251,10 +251,41 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
   // Generate Leave Balances for all real employees using policy limits from appSettings
   const generatedBalances: LeaveBalance[] = [];
   let balId = 1;
+
+  // Retrieve any previously saved employee Curry Forward overrides
+  let savedCurryOverrides: Record<string, number> = {};
+  try {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('vitas_emp_curry_forward') : null;
+    if (stored) savedCurryOverrides = JSON.parse(stored);
+  } catch {
+    savedCurryOverrides = {};
+  }
+
   mappedEmps.forEach((emp) => {
     const usedAnn = emp.id % 6;
     const usedSick = emp.id % 3;
     const usedEmg = emp.id % 2;
+
+    // Check individual employee carried_forward_days from:
+    // 1. LocalStorage saved override for this employee
+    // 2. Existing balance in mockBalances
+    // 3. Initial balances in mockHrisDb
+    // 4. Default variance (0 to 6 days) based on past usage history
+    const existingBal = mockBalances.find(b => (b.employee_id === emp.id || b.employee_number === emp.employee_number) && b.leave_type_code === 'ANNUAL');
+    const initialBal = initialLeaveBalances.find(b => (b.employee_id === emp.id || b.employee_number === emp.employee_number) && b.leave_type_code === 'ANNUAL');
+
+    let empCarryForward = 0;
+    if (savedCurryOverrides[emp.employee_number] !== undefined) {
+      empCarryForward = Number(savedCurryOverrides[emp.employee_number]);
+    } else if (existingBal && existingBal.carried_forward_days !== undefined) {
+      empCarryForward = existingBal.carried_forward_days;
+    } else if (initialBal && initialBal.carried_forward_days !== undefined) {
+      empCarryForward = initialBal.carried_forward_days;
+    } else {
+      // Historical carry forward varies per employee (e.g. 4, 6, 2, 0, 1, 3, 5...)
+      const variance = [4, 6, 2, 0, 1, 3, 5, 2, 0, 4, 1, 3];
+      empCarryForward = variance[(emp.id - 1) % variance.length];
+    }
 
     generatedBalances.push(
       {
@@ -269,10 +300,10 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
         leave_type_name_en: 'Annual Leave',
         year: 2026,
         entitled_days: annualLimit,
-        carried_forward_days: 0,
+        carried_forward_days: empCarryForward,
         used_days: usedAnn,
         pending_days: 0,
-        available_days: Math.max(0, annualLimit - usedAnn),
+        available_days: Math.max(0, annualLimit + empCarryForward - usedAnn),
       },
       {
         id: balId++,
@@ -540,6 +571,32 @@ export const api = {
     if (data && Array.isArray(data.balances)) return data;
 
     return { balances: mockBalances };
+  },
+
+  async updateLeaveBalance(balanceId: number, updates: Partial<LeaveBalance>): Promise<{ balance: LeaveBalance }> {
+    const idx = mockBalances.findIndex(b => b.id === balanceId);
+    if (idx !== -1) {
+      mockBalances[idx] = {
+        ...mockBalances[idx],
+        ...updates,
+      };
+      if (updates.carried_forward_days !== undefined || updates.entitled_days !== undefined || updates.used_days !== undefined) {
+        const b = mockBalances[idx];
+        b.available_days = Math.max(0, (b.entitled_days || 0) + (b.carried_forward_days || 0) - (b.used_days || 0) - (b.pending_days || 0));
+      }
+      try {
+        if (typeof window !== 'undefined' && mockBalances[idx].employee_number && updates.carried_forward_days !== undefined) {
+          const stored = localStorage.getItem('vitas_emp_curry_forward') || '{}';
+          const parsed = JSON.parse(stored);
+          parsed[mockBalances[idx].employee_number] = updates.carried_forward_days;
+          localStorage.setItem('vitas_emp_curry_forward', JSON.stringify(parsed));
+        }
+      } catch (e) {
+        console.warn('Could not persist curry forward', e);
+      }
+      return { balance: mockBalances[idx] };
+    }
+    throw new Error('Leave balance not found');
   },
 
   async getLeaveRequests(params?: any): Promise<{ requests: LeaveRequest[]; total: number }> {
@@ -824,6 +881,10 @@ export const leavesApi = {
   getLeaveBalances: async (employeeId?: number) => {
     const res = await api.getLeaveBalances(employeeId);
     return { data: res.balances };
+  },
+  updateLeaveBalance: async (balanceId: number, updates: Partial<LeaveBalance>) => {
+    const res = await api.updateLeaveBalance(balanceId, updates);
+    return { data: res.balance };
   },
   getCurrentUser: async () => {
     const res = await api.getMe();

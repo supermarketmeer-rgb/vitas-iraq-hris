@@ -2,6 +2,7 @@ export type ThemeMode = 'dark' | 'light';
 
 export type UserRole = 
   | 'Super Admin' 
+  | 'Admin'
   | 'HR Manager' 
   | 'Recruiter' 
   | 'Department Head' 
@@ -24,8 +25,9 @@ export interface UserProfile {
   can_manage_recruitment?: number;
   can_manage_settings?: number;
   can_manage_users?: number;
-  // Fine-grained module permissions (for custom users)
-  modulePermissions?: Record<string, boolean>;
+  // Fine-grained module permissions (for custom users) - supports boolean or 'write' | 'read' | 'none'
+  modulePermissions?: Record<string, boolean | string>;
+  allowed_screens?: any;
 }
 
 export interface ModuleItem {

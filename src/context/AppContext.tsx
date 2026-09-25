@@ -15,6 +15,7 @@ import {
 import { CATEGORY_GROUPS } from '../data/categories';
 import { api } from '../api/client';
 import { connectionManager } from '../services/connectionManager';
+import { canUserWrite, isUserReadOnly, getModuleAccessLevel, getUserEffectivePermissions } from '../utils/permissionHelper';
 
 interface AppContextType {
   theme: ThemeMode;
@@ -82,6 +83,11 @@ interface AppContextType {
   // App Settings
   appSettings: Record<string, string>;
 
+  // Permissions & Granular Access Control
+  canWrite: (moduleId?: string) => boolean;
+  isReadOnly: (moduleId?: string) => boolean;
+  getAccessLevel: (moduleId?: string) => 'write' | 'read' | 'none';
+
   // General App Actions
   refreshAllData: () => Promise<void>;
   resetToZeroData: () => Promise<void>;
@@ -99,8 +105,8 @@ const DEFAULT_USER: UserProfile = {
   can_manage_employees: 1,
   can_manage_finance: 1,
   can_manage_recruitment: 1,
-  can_manage_settings: 1,
-  can_manage_users: 1
+  can_manage_settings: 0,
+  can_manage_users: 0
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -127,7 +133,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeModuleId, setActiveModuleId] = useState<string>('dash-overview');
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAuthenticated, setAuthenticated] = useState<boolean>(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return true;
+  });
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -228,7 +239,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAppSettings(localSettings || {});
 
         // Then fetch from API in background
-        const [empData, leaveData, jobData, candData, assetData, riskData, docData, notifData, settingsData] = await Promise.all([
+        const [empData, leaveData, jobData, candData, assetData, riskData, docData, notifData, settingsData, usersData] = await Promise.all([
           api.getEmployees().catch(() => null),
           api.getLeaveRequests().catch(() => null),
           api.getJobVacancies().catch(() => null),
@@ -237,8 +248,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           api.getRisks().catch(() => null),
           api.getDocuments().catch(() => null),
           api.getNotifications().catch(() => null),
-          api.getAppSettings().catch(() => null)
+          api.getAppSettings().catch(() => null),
+          api.getUsers().catch(() => null)
         ]);
+
+        // Process users from database & sync active currentUser permissions in real time
+        if (Array.isArray(usersData) && usersData.length > 0) {
+          try {
+            localStorage.setItem('vitas_db_users', JSON.stringify(usersData));
+            const currentStoredUser = localStorage.getItem('vitas_current_user');
+            if (currentStoredUser) {
+              const cur = JSON.parse(currentStoredUser);
+              const curEmail = String(cur.email || '').toLowerCase();
+              const curUsername = String(cur.username || cur.name || '').toLowerCase();
+              const curEmpId = String(cur.employeeId || cur.id || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+              const matched = usersData.find((u: any) => {
+                const uEmail = String(u.email || '').toLowerCase();
+                const uUser = String(u.username || '').toLowerCase();
+                const uEmp = String(u.employee_id || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+                return (
+                  (uEmail && (uEmail === curEmail || curEmail.includes(uEmail))) ||
+                  (uUser && (uUser === curUsername || curUsername.includes(uUser))) ||
+                  (curEmpId && uEmp === curEmpId) ||
+                  (curEmail.includes('hr') && (uUser === 'hrmanager' || uEmail.includes('hrmanager'))) ||
+                  (curUsername.includes('hr') && (uUser === 'hrmanager' || uEmail.includes('hrmanager')))
+                );
+              });
+
+              if (matched) {
+                let parsedAllowed: Record<string, any> = {};
+                if (matched.allowed_screens) {
+                  try {
+                    parsedAllowed = typeof matched.allowed_screens === 'string'
+                      ? JSON.parse(matched.allowed_screens)
+                      : matched.allowed_screens;
+                  } catch (e) {}
+                }
+
+                // Also merge vitas_custom_employee_permissions if present
+                try {
+                  const rawPerms = localStorage.getItem('vitas_custom_employee_permissions');
+                  if (rawPerms) {
+                    const pMap = JSON.parse(rawPerms);
+                    const pEntry = pMap[matched.employee_id] || pMap[matched.username?.toUpperCase()] || pMap[`VTS-${matched.username?.toUpperCase()}`];
+                    if (pEntry && pEntry.modules) {
+                      parsedAllowed = { ...parsedAllowed, ...pEntry.modules };
+                    }
+                  }
+                } catch (e) {}
+
+                const updatedUser: UserProfile = {
+                  ...cur,
+                  name: matched.full_name || matched.name || cur.name,
+                  employeeId: matched.employee_id || cur.employeeId,
+                  department: matched.department || cur.department,
+                  branch: matched.branch || cur.branch,
+                  can_manage_employees: matched.can_manage_employees ? 1 : 0,
+                  can_manage_finance: matched.can_manage_finance ? 1 : 0,
+                  can_manage_recruitment: matched.can_manage_recruitment ? 1 : 0,
+                  can_manage_settings: matched.can_manage_settings ? 1 : 0,
+                  can_manage_users: matched.can_manage_users ? 1 : 0,
+                  modulePermissions: parsedAllowed,
+                  allowed_screens: parsedAllowed
+                };
+
+                setCurrentUser(updatedUser);
+                localStorage.setItem('vitas_current_user', JSON.stringify(updatedUser));
+              }
+            }
+          } catch (e) {
+            console.error('Error syncing current user with DB users:', e);
+          }
+        }
 
         // Process employees - accept API result if returned (even if empty after data clear)
         let finalEmpData: any = empData;
@@ -1045,6 +1127,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('vitas_notifications', JSON.stringify([]));
   };
 
+  // Granular Permission Helpers
+  const canWrite = useCallback((moduleId?: string): boolean => {
+    const targetModule = moduleId || activeModuleId;
+    return canUserWrite(targetModule, currentUser, currentUser?.role || 'Employee');
+  }, [activeModuleId, currentUser]);
+
+  const isReadOnly = useCallback((moduleId?: string): boolean => {
+    const targetModule = moduleId || activeModuleId;
+    return isUserReadOnly(targetModule, currentUser, currentUser?.role || 'Employee');
+  }, [activeModuleId, currentUser]);
+
+  const getAccessLevel = useCallback((moduleId?: string): 'write' | 'read' | 'none' => {
+    const targetModule = moduleId || activeModuleId;
+    const perms = getUserEffectivePermissions(currentUser, currentUser?.role || 'Employee');
+    return getModuleAccessLevel('', targetModule, perms, currentUser?.role || 'Employee');
+  }, [activeModuleId, currentUser]);
+
   return (
     <AppContext.Provider
       value={{
@@ -1097,6 +1196,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markNotificationRead,
         addNotification,
         appSettings,
+        canWrite,
+        isReadOnly,
+        getAccessLevel,
         refreshAllData: loadData,
         resetToZeroData
       }}

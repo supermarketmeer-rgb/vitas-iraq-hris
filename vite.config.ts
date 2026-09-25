@@ -25,6 +25,11 @@ export default defineConfig(() => {
           changeOrigin: true,
           secure: false,
         },
+        '/hr_drivers': {
+          target: 'http://127.0.0.1:5000',
+          changeOrigin: true,
+          secure: false,
+        },
       },
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.

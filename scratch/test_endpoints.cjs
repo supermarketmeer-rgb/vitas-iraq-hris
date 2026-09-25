@@ -1,30 +1,31 @@
 const http = require('http');
 
-function get(path) {
-  return new Promise((resolve) => {
-    http.get(`http://localhost:5000${path}`, (res) => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        console.log(`GET ${path} -> Status: ${res.statusCode}`);
-        if (res.statusCode === 200) {
-          console.log('Data:', data.substring(0, 200));
-        } else {
-          console.log('Response body:', data);
-        }
-        resolve();
-      });
-    }).on('error', e => {
-      console.log(`GET ${path} Error:`, e.message);
-      resolve();
+function request(url, cookie = '') {
+    return new Promise((resolve, reject) => {
+        const req = http.get(url, { headers: { Cookie: cookie } }, res => {
+            let data = '';
+            const setCookie = res.headers['set-cookie'];
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => resolve({ statusCode: res.statusCode, headers: res.headers, data, setCookie }));
+        });
+        req.on('error', reject);
     });
-  });
 }
 
-async function main() {
-  await get('/api/settings/app');
-  await get('/api/employees');
-  await get('/api/company-profile/COMP-001');
+async function run() {
+    console.log('Testing SSO login with embedded=1...');
+    const ssoRes = await request('http://localhost:5000/hr_drivers/trips.php?embedded=1');
+    console.log('SSO response status:', ssoRes.statusCode);
+    const cookie = ssoRes.setCookie ? ssoRes.setCookie.map(c => c.split(';')[0]).join('; ') : '';
+    console.log('Cookie received:', cookie ? 'Yes' : 'No');
+
+    for (const page of ['trips.php', 'trip_add.php', 'trip_approval.php', 'offices.php', 'reports.php']) {
+        const res = await request(`http://localhost:5000/hr_drivers/${page}`, cookie);
+        console.log(`Page ${page} -> Status: ${res.statusCode}, Location: ${res.headers['location']}, Body length: ${res.data.length} bytes`);
+        if (res.statusCode !== 200) {
+            console.error(`Error on ${page}:`, res.data.substring(0, 300));
+        }
+    }
 }
 
-main();
+run().catch(console.error);

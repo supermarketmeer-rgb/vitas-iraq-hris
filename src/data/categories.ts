@@ -167,6 +167,13 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         description: 'سجل الحضور والدوام المعالج وحركات البصمة التفصيلية'
       },
       {
+        id: 'leave-earned',
+        title: 'الإجازات المستحقة',
+        titleEn: 'Earned Leaves',
+        icon: 'account_balance_wallet',
+        description: 'احتساب أرصدة ومستحقات الإجازات المالية وفق معادلة رصيد Curry Forward والدوام والراتب'
+      },
+      {
         id: 'leave-timesheets',
         title: 'سجلات التايم شيت',
         titleEn: 'Timesheets',
@@ -259,6 +266,56 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         titleEn: 'Social Security & Tax Engine',
         icon: 'policy',
         description: 'إدارة وقواعد الضمان الاجتماعي (قانون 18) وضريبة الدخل (قانون 113) وتتبع المحاكاة'
+      }
+    ]
+  },
+  {
+    id: 'cat-drivers',
+    title: 'إدارة السائقين والرحلات',
+    titleEn: 'Drivers Management',
+    icon: 'local_shipping',
+    modules: [
+      {
+        id: 'drivers-mgmt',
+        title: 'لوحة التحكم والملخص',
+        titleEn: 'Drivers Dashboard',
+        icon: 'dashboard',
+        description: 'الملخص الإحصائي، حالة السائقين، والرحلات النشطة'
+      },
+      {
+        id: 'drivers-list',
+        title: 'إدارة أسطول السائقين',
+        titleEn: 'Drivers Fleet',
+        icon: 'person',
+        description: 'قائمة السائقين، بيانات المركبات، وتراخيص القيادة'
+      },
+      {
+        id: 'drivers-trips',
+        title: 'سجل واعتماد الرحلات',
+        titleEn: 'Trips & Approvals',
+        icon: 'commute',
+        description: 'تسجيل الرحلات، تتبع المسارات، والاعتمادات الإدارية'
+      },
+      {
+        id: 'drivers-payroll',
+        title: 'احتساب مسيرات الرواتب',
+        titleEn: 'Driver Payroll',
+        icon: 'payments',
+        description: 'احتساب أجور الرحلات ومسيرات الرواتب الشهرية للسائقين'
+      },
+      {
+        id: 'drivers-offices',
+        title: 'المكاتب والمسارات والتسعير',
+        titleEn: 'Offices & Routes',
+        icon: 'domain',
+        description: 'إدارة الفروع، خطوط السير، وجداول تسعير الرحلات'
+      },
+      {
+        id: 'drivers-reports',
+        title: 'التقارير والإحصائيات',
+        titleEn: 'Reports & Analytics',
+        icon: 'bar_chart',
+        description: 'تقارير أداء السائقين، تكاليف الرحلات، والبيانات التراكمية'
       }
     ]
   },
@@ -536,7 +593,8 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         title: 'تعديل صلاحيات الدور',
         titleEn: 'Role Permission Editor',
         icon: 'manage_accounts',
-        description: 'تخصيص وإضافة الصلاحيات للأدوار المحددة'
+        description: 'تخصيص وإضافة الصلاحيات للأدوار المحددة',
+        hidden: true
       },
       {
         id: 'sec-api-keys',

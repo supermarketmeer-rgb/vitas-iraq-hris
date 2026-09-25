@@ -115,7 +115,7 @@ export const EmployeePortal: React.FC = () => {
             <p className="text-slate-400">{t('مؤسسة فيتاس العراق', 'VITAS Iraq')}</p>
           </div>
 
-          <div className={`p-6 rounded-2xl border shadow-2xl w-[calc(40vw-38px)] max-w-md ${
+          <div className={`p-6 rounded-2xl border shadow-2xl w-full max-w-md mx-auto ${
             isDark ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-200'
           }`}>
             <form onSubmit={handleLogin} className="space-y-6">

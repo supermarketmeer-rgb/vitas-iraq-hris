@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -30,7 +31,6 @@ export const Header: React.FC = () => {
     activeModuleId
   } = useApp();
 
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showHelpGuideModal, setShowHelpGuideModal] = useState(false);
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
@@ -120,7 +120,8 @@ export const Header: React.FC = () => {
     : currentUser.name || 'User';
 
   return (
-    <header className={`sticky top-0 z-30 h-16 ${isDark ? 'bg-[#06080d]/95 border-[#1e2a44] text-white' : 'bg-[#e8ebef]/95 border-slate-300 text-slate-800 shadow-sm'} backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden`}>
+    <>
+      <header className={`sticky top-0 z-30 h-16 ${isDark ? 'bg-[#06080d]/95 border-[#1e2a44] text-white' : 'bg-[#e8ebef]/95 border-slate-300 text-slate-800 shadow-sm'} backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden`}>
       {/* Left / Start Section - Logo & Sidebar Toggle */}
       <div className="flex items-center gap-3">
         <button
@@ -246,28 +247,30 @@ export const Header: React.FC = () => {
           <span className="material-symbols-outlined">search</span>
         </button>
 
-        {/* Role Switcher Selector */}
-        <div className={`hidden lg:flex items-center gap-1.5 p-1 rounded-xl border ${
-          isDark ? 'bg-[#06080d] border-teal-500/40' : 'bg-white border-slate-300 shadow-xs'
-        }`}>
-          <span className="material-symbols-outlined text-teal-500 text-sm ml-1">
-            admin_panel_settings
-          </span>
-          <select
-            value={currentUser.role}
-            onChange={(e) => setCurrentUserRole(e.target.value as UserRole)}
-            className={`bg-transparent text-xs font-normal focus:outline-none cursor-pointer py-1 ${
-              isDark ? 'text-white' : 'text-slate-800'
-            }`}
-            title={t('تبديل دور المستخدم للأمان والصلاحيات', 'Switch user role for permissions')}
-          >
-            {roles.map(r => (
-              <option key={r} value={r} className={isDark ? 'bg-[#0a0c10] text-white font-normal' : 'bg-white text-slate-800 font-normal'}>
-                {r}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Role Switcher Selector (Super Admin Only) */}
+        {currentUser?.role === 'Super Admin' && (
+          <div className={`hidden lg:flex items-center gap-1.5 p-1 rounded-xl border ${
+            isDark ? 'bg-[#06080d] border-teal-500/40' : 'bg-white border-slate-300 shadow-xs'
+          }`}>
+            <span className="material-symbols-outlined text-teal-500 text-sm ml-1">
+              admin_panel_settings
+            </span>
+            <select
+              value={currentUser.role}
+              onChange={(e) => setCurrentUserRole(e.target.value as UserRole)}
+              className={`bg-transparent text-xs font-normal focus:outline-none cursor-pointer py-1 ${
+                isDark ? 'text-white' : 'text-slate-800'
+              }`}
+              title={t('تبديل دور المستخدم للأمان والصلاحيات', 'Switch user role for permissions')}
+            >
+              {roles.map(r => (
+                <option key={r} value={r} className={isDark ? 'bg-[#0a0c10] text-white font-normal' : 'bg-white text-slate-800 font-normal'}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Company News Button */}
         <button
@@ -380,133 +383,66 @@ export const Header: React.FC = () => {
           )}
         </div>
 
-        {/* User Profile Menu Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className={`header-user-profile flex items-center gap-2.5 p-1.5 px-2.5 rounded-xl transition-colors border shadow-xs ${
-              isDark 
-                ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500/40 hover:border-teal-400' 
-                : 'bg-white hover:bg-slate-50 border-slate-300 hover:border-teal-500'
-            }`}
-          >
-            <div className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm shadow-xs ${
-              isDark ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-700'
-            }`}>
-              {(currentUserName || 'U').slice(0, 1)}
-            </div>
-            <div className="hidden xl:block text-start">
-              <p className={`text-xs font-normal leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {currentUserName}
-              </p>
-              <p className="text-[10px] text-teal-600 dark:text-teal-400 font-normal">{currentUser.role}</p>
-            </div>
-            <span className={`material-symbols-outlined text-lg hidden sm:block ${isDark ? 'text-white' : 'text-slate-600'}`}>
-              expand_more
-            </span>
-          </button>
-
-          {/* Profile Dropdown Menu */}
-          {showProfileMenu && (
-            <div className={`absolute ${language === 'ar' ? 'left-0' : 'right-0'} mt-2 w-64 rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150 border ${
-              isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-            }`}>
-              <div className={`p-2 border-b mb-2 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-                <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {currentUserName}
-                </p>
-                <p className="text-xs text-slate-400 font-mono">{currentUser.email}</p>
-                <div className="mt-2 inline-flex items-center gap-1 text-[10px] bg-teal-600 text-white shadow-md border border-teal-500/20 px-2 py-0.5 rounded-md font-semibold">
-                  <span className="material-symbols-outlined text-[12px]">verified_user</span>
-                  {currentUser.role}
-                </div>
-              </div>
-
-              <div className="space-y-1 text-xs font-medium">
-                <button
-                  onClick={() => {
-                    setActiveModuleId('emp-profile');
-                    setShowProfileMenu(false);
-                  }}
-                  className="w-full text-start px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-teal-400 text-base">account_box</span>
-                  {t('ملفي الشخصي الوظيفي', 'My Employee Profile')}
-                </button>
-
-                <button
-                  onClick={() => {
-                    setActiveModuleId('supp-profile-settings');
-                    setShowProfileMenu(false);
-                  }}
-                  className="w-full text-start px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-teal-400 text-base">settings</span>
-                  {t('إعدادات وتفضيلات الحساب', 'Account Settings & Preferences')}
-                </button>
-
-                <button
-                  onClick={() => {
-                    setActiveModuleId('sec-roles-permissions');
-                    setShowProfileMenu(false);
-                  }}
-                  className="w-full text-start px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-teal-400 text-base">admin_panel_settings</span>
-                  {t('إدارة الصلاحيات والأدوار', 'Roles & Permissions Management')}
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowProfileMenu(false);
-                    setShowChangePwdModal(true);
-                  }}
-                  className="w-full text-start px-3 py-2 rounded-lg text-teal-300 hover:bg-teal-500/10 flex items-center gap-2 font-bold"
-                >
-                  <span className="material-symbols-outlined text-teal-400 text-base">key</span>
-                  {t('تغيير كلمة المرور الخاصة بي', 'Change My Password')}
-                </button>
-
-                <div className="pt-2 border-t border-white/10 mt-2 space-y-1">
-                  <button
-                    onClick={() => {
-                      const confirmMsg = t(
-                        'هل أنت تأكد من تهيئة النظام وتفريغ كافة البيانات المدخلة لتكون صفراً تماماً؟',
-                        'Are you sure you want to reset and wipe all system data?'
-                      );
-                      if (confirm(confirmMsg)) {
-                        resetToZeroData();
-                        setShowProfileMenu(false);
-                      }
-                    }}
-                    className="w-full text-start px-3 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 font-bold"
-                  >
-                    <span className="material-symbols-outlined text-base">restart_alt</span>
-                    {t('إعادة ضبط البيانات لصفر (تفريغ الكلي)', 'Reset All System Data (Wipe)')}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setCurrentUser(null);
-                      setAuthenticated(false);
-                      setShowProfileMenu(false);
-                      navigate('/login');
-                    }}
-                    className="w-full text-start px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base">logout</span>
-                    {t('تسجيل الخروج', 'Logout')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+        {/* Current User Display Field (حقل عادي لعرض المستخدم الحالي) */}
+        <div
+          className={`flex items-center gap-2.5 p-1.5 px-3 rounded-xl border shadow-xs select-none ${
+            isDark 
+              ? 'bg-[#06080d] border-teal-500/40 text-white' 
+              : 'bg-white border-slate-300 text-slate-900'
+          }`}
+          title={`${currentUserName} (${currentUser.role})`}
+        >
+          <div className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm shadow-xs shrink-0 ${
+            isDark ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-700'
+          }`}>
+            {(currentUserName || 'U').slice(0, 1)}
+          </div>
+          <div className="text-start">
+            <p className={`text-xs font-bold leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {currentUserName}
+            </p>
+            <p className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold leading-tight mt-0.5">{currentUser.role}</p>
+          </div>
         </div>
+
+        {/* Change Password Quick Action Button */}
+        <button
+          type="button"
+          onClick={() => setShowChangePwdModal(true)}
+          className={`p-2 rounded-xl border transition-all flex items-center justify-center cursor-pointer shadow-xs active:scale-95 ${
+            isDark
+              ? 'bg-[#06080d] hover:bg-[#0a0c10] text-teal-400 border-teal-500/40 hover:border-teal-400'
+              : 'bg-white hover:bg-slate-50 text-teal-700 border-slate-300 hover:border-teal-500'
+          }`}
+          title={t('تغيير كلمة المرور الخاصة بي', 'Change My Password')}
+        >
+          <span className="material-symbols-outlined text-lg">key</span>
+        </button>
+
+        {/* Logout Quick Action Button */}
+        <button
+          type="button"
+          onClick={() => {
+            setCurrentUser(null);
+            setAuthenticated(false);
+            navigate('/login');
+          }}
+          className={`p-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
+            isDark
+              ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border-rose-500/30'
+              : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
+          }`}
+          title={t('تسجيل الخروج', 'Logout')}
+        >
+          <span className="material-symbols-outlined text-base">logout</span>
+          <span className="hidden sm:inline">{t('خروج', 'Logout')}</span>
+        </button>
       </div>
+    </header>
 
       {/* Self-Service Change Password Modal */}
-      {showChangePwdModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+      {showChangePwdModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
           <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden ${
             isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
           }`}>
@@ -636,7 +572,8 @@ export const Header: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* System Help & Functional Guide Modal */}
@@ -644,6 +581,6 @@ export const Header: React.FC = () => {
         isOpen={showHelpGuideModal}
         onClose={() => setShowHelpGuideModal(false)}
       />
-    </header>
+    </>
   );
 };

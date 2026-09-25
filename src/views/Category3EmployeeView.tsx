@@ -21,7 +21,9 @@ export const Category3EmployeeView: React.FC = () => {
     language,
     theme,
     currentUserRole,
-    currentUser
+    currentUser,
+    canWrite,
+    isReadOnly
   } = useApp();
 
   // Selected employee for profile view
@@ -47,9 +49,9 @@ export const Category3EmployeeView: React.FC = () => {
   const [showBranchModal, setShowBranchModal] = useState(false);
   const [editingBranch, setEditingBranch] = useState<any>(null);
   const [branchFormData, setBranchFormData] = useState({ name: '', name_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
-  const [branchDeleteConfirm, setBranchDeleteConfirm] = useState<{ show: boolean; id: number; name: string }>({
+  const [branchDeleteConfirm, setBranchDeleteConfirm] = useState<{ show: boolean; id: string | number; name: string }>({
     show: false,
-    id: 0,
+    id: '',
     name: ''
   });
 
@@ -785,16 +787,33 @@ export const Category3EmployeeView: React.FC = () => {
 
   const handleConfirmDeleteBranch = async () => {
     if (!branchDeleteConfirm.id) return;
+    if (!canWrite()) {
+      alert(language === 'ar' ? 'ليس لديك صلاحية حذف الفروع (وضع القراءة فقط)' : 'You do not have permission to delete branches (Read-Only Mode)');
+      setBranchDeleteConfirm({ show: false, id: '', name: '' });
+      return;
+    }
     
     try {
       await api.deleteBranch(branchDeleteConfirm.id.toString());
-      const updatedBranches = branchLocations.filter(b => b.id !== branchDeleteConfirm.id);
+      const updatedBranches = branchLocations.filter(b => String(b.id) !== String(branchDeleteConfirm.id));
       setBranchLocations(updatedBranches);
       setLocations(updatedBranches);
-      setBranchDeleteConfirm({ show: false, id: 0, name: '' });
+      setBranchDeleteConfirm({ show: false, id: '', name: '' });
+      api.getBranches().then((locs: any) => {
+        if (Array.isArray(locs)) {
+          const norm = locs.map((b: any) => ({
+            ...b,
+            name_ar: b.name_ar || b.name || '',
+            name: b.name || b.name_ar || '',
+            name_en: b.name_en || ''
+          }));
+          setBranchLocations(norm);
+          setLocations(norm);
+        }
+      }).catch(() => {});
     } catch (error) {
       console.error('Error deleting branch:', error);
-      alert('فشل حذف الفرع');
+      alert(language === 'ar' ? 'فشل حذف الفرع' : 'Failed to delete branch');
     }
   };
 
@@ -806,6 +825,10 @@ export const Category3EmployeeView: React.FC = () => {
 
   const handlePositionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canWrite()) {
+      alert(language === 'ar' ? 'ليس لديك صلاحية إضافة وظائف (وضع القراءة فقط)' : 'You do not have permission to add positions (Read-Only Mode)');
+      return;
+    }
     if (!positionFormData.name_ar && !positionFormData.name_en) {
       alert(language === 'ar' ? 'يرجى إدخال مسمى الوظيفة' : 'Please enter position title');
       return;
@@ -863,6 +886,10 @@ export const Category3EmployeeView: React.FC = () => {
 
   const handleCompanyProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canWrite()) {
+      alert(language === 'ar' ? 'ليس لديك صلاحية تعديل بيانات الشركة (وضع القراءة فقط)' : 'You do not have permission to edit company profile (Read-Only Mode)');
+      return;
+    }
     
     const isEditing = !!editingCompanyProfile;
     const targetId = editingCompanyProfile?.id || companyProfileFormData.id || 'COMP-001';
@@ -910,6 +937,10 @@ export const Category3EmployeeView: React.FC = () => {
 
   const handleBranchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canWrite()) {
+      alert(language === 'ar' ? 'ليس لديك صلاحية إضافة أو تعديل الفروع (وضع القراءة فقط)' : 'You do not have permission to modify branches (Read-Only Mode)');
+      return;
+    }
     
     try {
       const branchData = {
@@ -928,10 +959,15 @@ export const Category3EmployeeView: React.FC = () => {
         // Update existing branch
         console.log('Updating branch with ID:', editingBranch.id);
         await api.updateBranch(editingBranch.id.toString(), branchData);
+        const updatedBranch = {
+          ...editingBranch,
+          ...branchData,
+          name_ar: branchData.name,
+          name: branchData.name,
+          name_en: branchData.name_en
+        };
         const updatedBranches = branchLocations.map(b =>
-          b.id === editingBranch.id
-            ? { ...b, ...branchData, name_ar: branchData.name, name: branchData.name }
-            : b
+          String(b.id) === String(editingBranch.id) ? updatedBranch : b
         );
         setBranchLocations(updatedBranches);
         setLocations(updatedBranches);
@@ -942,27 +978,46 @@ export const Category3EmployeeView: React.FC = () => {
         console.log('Branch added result:', result);
         const newObj = typeof result === 'object' && result ? result : {};
         const newBranch = {
+          id: newObj.id || `BR${Date.now()}`,
           ...newObj,
           ...branchData,
           name_ar: branchData.name,
-          name: branchData.name
+          name: branchData.name,
+          name_en: branchData.name_en
         };
         const updatedBranches = [...branchLocations, newBranch];
         setBranchLocations(updatedBranches);
         setLocations(updatedBranches);
       }
       
+      api.getBranches().then((locs: any) => {
+        if (Array.isArray(locs)) {
+          const norm = locs.map((b: any) => ({
+            ...b,
+            name_ar: b.name_ar || b.name || '',
+            name: b.name || b.name_ar || '',
+            name_en: b.name_en || ''
+          }));
+          setBranchLocations(norm);
+          setLocations(norm);
+        }
+      }).catch(() => {});
+
       setShowBranchModal(false);
       setEditingBranch(null);
       setBranchFormData({ name: '', name_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
     } catch (error) {
       console.error('Error saving branch:', error);
-      alert('فشل حفظ الفرع: ' + (error as any).message);
+      alert((language === 'ar' ? 'فشل حفظ الفرع: ' : 'Failed to save branch: ') + ((error as any).message || error));
     }
   };
 
   const handleAddEmployeeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canWrite()) {
+      alert(language === 'ar' ? 'ليس لديك صلاحية حفظ أو تعديل الموظفين (وضع القراءة فقط)' : 'You do not have permission to save or edit employees (Read-Only Mode)');
+      return;
+    }
     if (!fullName) {
       alert(t('يرجى تعبئة الاسم الكامل الثلاثي في التبويب الأول (المعلومات الأساسية)', 'Please fill in the full name in the first tab (Basic Information)'));
       setActiveTab(1);
@@ -1222,33 +1277,43 @@ export const Category3EmployeeView: React.FC = () => {
 
         {(activeModuleId === 'emp-directory' || activeModuleId === 'emp-hr-directory') && (
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => {
-                handleResetForm();
-                setActiveTab(1);
-                setActiveModuleId('emp-add');
-              }}
-              className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-sm">person_add</span>
-              {t('تسجيل موظف جديد', 'Register New Employee')}
-            </button>
+            {canWrite() && (
+              <>
+                <button
+                  onClick={() => {
+                    handleResetForm();
+                    setActiveTab(1);
+                    setActiveModuleId('emp-add');
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">person_add</span>
+                  {t('تسجيل موظف جديد', 'Register New Employee')}
+                </button>
 
-            <button
-              onClick={handleAddPosition}
-              className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-sm">work</span>
-              {t('إضافة وظيفة جديدة', 'Add New Position')}
-            </button>
+                <button
+                  onClick={handleAddPosition}
+                  className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">work</span>
+                  {t('إضافة وظيفة جديدة', 'Add New Position')}
+                </button>
 
-            <button
-              onClick={handleAddBranch}
-              className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-sm">add_location_alt</span>
-              {t('إضافة Location جديد', 'Add New Location')}
-            </button>
+                <button
+                  onClick={handleAddBranch}
+                  className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">add_location_alt</span>
+                  {t('إضافة Location جديد', 'Add New Location')}
+                </button>
+              </>
+            )}
+            {isReadOnly() && (
+              <span className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                <span className="material-symbols-outlined text-sm">visibility</span>
+                {t('وضع القراءة فقط (غير مصرح بالتعديل)', 'Read-Only Mode (Modifications Disabled)')}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -1358,25 +1423,29 @@ export const Category3EmployeeView: React.FC = () => {
                       {t('السجل الشامل', 'Full Profile')}
                     </button>
 
-                    <button
-                      onClick={() => {
-                        handleLoadEmployeeData(emp.id);
-                        setActiveModuleId('emp-add');
-                      }}
-                      className="text-xs font-bold text-teal-500 hover:text-teal-600 flex items-center gap-1 shrink-0 cursor-pointer"
-                      title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
-                    >
-                      <span className="material-symbols-outlined text-sm">edit</span>
-                      {t('تعديل', 'Edit')}
-                    </button>
+                    {canWrite() && (
+                      <>
+                        <button
+                          onClick={() => {
+                            handleLoadEmployeeData(emp.id);
+                            setActiveModuleId('emp-add');
+                          }}
+                          className="text-xs font-bold text-teal-500 hover:text-teal-600 flex items-center gap-1 shrink-0 cursor-pointer"
+                          title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
+                        >
+                          <span className="material-symbols-outlined text-sm">edit</span>
+                          {t('تعديل', 'Edit')}
+                        </button>
 
-                    <button
-                      onClick={() => setDeleteConfirm({ show: true, empId: emp.id, empName: emp.fullName })}
-                      className="text-xs text-rose-500 hover:text-rose-600 p-1 shrink-0 cursor-pointer"
-                      title={t('حذف الموظف', 'Delete Employee')}
-                    >
-                      <span className="material-symbols-outlined text-sm">delete</span>
-                    </button>
+                        <button
+                          onClick={() => setDeleteConfirm({ show: true, empId: emp.id, empName: emp.fullName })}
+                          className="text-xs text-rose-500 hover:text-rose-600 p-1 shrink-0 cursor-pointer"
+                          title={t('حذف الموظف', 'Delete Employee')}
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1388,6 +1457,12 @@ export const Category3EmployeeView: React.FC = () => {
       {/* 7-TABS ADD EMPLOYEE FORM */}
       {activeModuleId === 'emp-add' && (
         <div className="max-w-4xl mx-auto p-6 rounded-3xl bg-[#111827] border border-white/10 shadow-2xl space-y-6">
+          {isReadOnly() && (
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 text-xs font-bold flex items-center gap-2 shadow-sm">
+              <span className="material-symbols-outlined text-base">lock</span>
+              {t('تنبيه: أنت تتصفح هذا السجل بوضع القراءة فقط (Read-Only). تم تعطيل عمليات الحفظ والتعديل.', 'Notice: You are viewing this record in Read-Only mode. Saving and modifying are disabled.')}
+            </div>
+          )}
           <div className="border-b border-white/10 pb-4 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
@@ -2736,13 +2811,20 @@ export const Category3EmployeeView: React.FC = () => {
                 >
                   إلغاء
                 </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-sm">save</span>
-                  {t('حفظ وتخزين الموظف (التبويبات الـ 7)', 'Save & Store Employee (All 7 Tabs)')}
-                </button>
+                {canWrite() ? (
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-sm">save</span>
+                    {t('حفظ وتخزين الموظف (التبويبات الـ 7)', 'Save & Store Employee (All 7 Tabs)')}
+                  </button>
+                ) : (
+                  <div className="px-5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold flex items-center gap-2">
+                    <span className="material-symbols-outlined text-sm">lock</span>
+                    {t('الحفظ والتعديل معطل (وضع القراءة فقط)', 'Save & Edit Disabled (Read-Only Access)')}
+                  </div>
+                )}
               </div>
             </div>
           </form>
@@ -2886,8 +2968,8 @@ export const Category3EmployeeView: React.FC = () => {
                     selectedEmployee.status === 'Active' ? 'bg-emerald-500 shadow-md shadow-emerald-500/40' : 'bg-amber-500'
                   }`} title={selectedEmployee.status} />
 
-                  {/* EDIT PHOTO / PROFILE OVERLAY ICON BUTTON (Only for HR / Admin) */}
-                  {currentUserRole !== 'Employee' && (
+                  {/* EDIT PHOTO / PROFILE OVERLAY ICON BUTTON (Only for users with Write permission) */}
+                  {canWrite() && (
                     <button
                       type="button"
                       onClick={() => {
@@ -3240,53 +3322,99 @@ export const Category3EmployeeView: React.FC = () => {
 
       {/* Branches & Company Profiles */}
       {activeModuleId === 'emp-branches' && (
-        <div className="p-6 rounded-3xl bg-[#111827] border border-white/10 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-blue-400">location_city</span>
-              فروع ومراكز مؤسسة فيتاس العراق
+        <div className={`p-6 rounded-3xl border shadow-xl space-y-4 ${
+          isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+        }`}>
+          <div className={`flex items-center justify-between border-b pb-3 ${
+            isDark ? 'border-white/10' : 'border-slate-200'
+          }`}>
+            <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: isDark ? '#ffffff' : '#000000' }}>
+              <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">location_city</span>
+              <span style={{ color: isDark ? '#ffffff' : '#000000' }}>فروع ومراكز مؤسسة فيتاس العراق</span>
             </h2>
-            <button
-              onClick={handleAddBranch}
-              className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-sm">add</span>
-              {t('إضافة فرع', 'Add Branch')}
-            </button>
+            {canWrite() && (
+              <button
+                type="button"
+                onClick={handleAddBranch}
+                className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+                {t('إضافة فرع', 'Add Branch')}
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
             {branchLocations.length > 0 ? (
-              branchLocations.map((branch) => (
-                <div key={branch.id} className="p-4 rounded-2xl bg-[#0a0c10] border border-white/5 space-y-2 group relative">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-blue-400 font-bold">
-                      <span className="material-symbols-outlined text-base">pin_drop</span>
-                      {language === 'ar' ? branch.name : branch.name_en}
+              branchLocations.map((branch) => {
+                const bName = language === 'ar' ? (branch.name || branch.name_ar || branch.name_en) : (branch.name_en || branch.name || branch.name_ar);
+                const assignedCount = employees.filter(e => e.branch && (e.branch.includes(branch.name || '') || e.branch.includes(branch.name_en || '') || e.branch.includes(branch.name_ar || ''))).length;
+                return (
+                  <div
+                    key={branch.id}
+                    className={`p-4 rounded-2xl border space-y-2.5 transition-all ${
+                      isDark
+                        ? 'bg-[#0a0c10] border-white/10 hover:border-teal-500/30'
+                        : 'bg-white border-slate-200 shadow-xs hover:border-teal-500/40 hover:shadow-md'
+                    }`}
+                    style={{ color: isDark ? '#ffffff' : '#000000' }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 font-bold text-sm" style={{ color: isDark ? '#ffffff' : '#000000' }}>
+                        <span className="material-symbols-outlined text-base text-teal-600 dark:text-teal-400">pin_drop</span>
+                        <span className="font-bold" style={{ color: isDark ? '#ffffff' : '#000000' }}>
+                          {bName}
+                        </span>
+                      </div>
+                      {canWrite() && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleEditBranch(branch)}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-teal-100 hover:bg-teal-200 border border-teal-300 text-teal-800 dark:bg-teal-950/50 dark:border-teal-700 dark:text-teal-300 transition-all cursor-pointer shadow-2xs"
+                            title={t('تعديل الفرع', 'Edit Branch')}
+                          >
+                            <span className="material-symbols-outlined text-[15px]">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteBranchClick(branch)}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-100 hover:bg-rose-200 border border-rose-300 text-rose-800 dark:bg-rose-950/50 dark:border-rose-700 dark:text-rose-300 transition-all cursor-pointer shadow-2xs"
+                            title={t('حذف الفرع', 'Delete Branch')}
+                          >
+                            <span className="material-symbols-outlined text-[15px]">delete</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleEditBranch(branch)}
-                        className="p-1.5 rounded-lg bg-teal-600/20 hover:bg-teal-600 text-blue-400 hover:text-white transition-all"
-                        title={t('تعديل', 'Edit')}
-                      >
-                        <span className="material-symbols-outlined text-sm">edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBranchClick(branch)}
-                        className="p-1.5 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white transition-all"
-                        title={t('حذف', 'Delete')}
-                      >
-                        <span className="material-symbols-outlined text-sm">delete</span>
-                      </button>
+
+                    <div className="space-y-1.5 pt-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[15px] text-teal-600 dark:text-teal-400 shrink-0">location_city</span>
+                        <span className="font-semibold" style={{ color: isDark ? '#94a3b8' : '#334155' }}>{t('المدينة', 'City')}:</span>
+                        <span className="font-bold" style={{ color: isDark ? '#ffffff' : '#000000' }}>{branch.city || '-'}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[15px] text-teal-600 dark:text-teal-400 shrink-0">home_pin</span>
+                        <span className="font-semibold" style={{ color: isDark ? '#94a3b8' : '#334155' }}>{t('العنوان', 'Address')}:</span>
+                        <span className="font-bold truncate" title={branch.address || ''} style={{ color: isDark ? '#ffffff' : '#000000' }}>{branch.address || '-'}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[15px] text-teal-600 dark:text-teal-400 shrink-0">call</span>
+                        <span className="font-semibold" style={{ color: isDark ? '#94a3b8' : '#334155' }}>{t('الهاتف', 'Phone')}:</span>
+                        <span className="font-mono font-bold" dir="ltr" style={{ color: isDark ? '#ffffff' : '#000000' }}>{branch.phone || '-'}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex items-center justify-between font-mono text-xs font-bold" style={{ color: isDark ? '#94a3b8' : '#000000' }}>
+                      <span style={{ color: isDark ? '#94a3b8' : '#334155' }}>{t('عدد الموظفين المعينين', 'Assigned Employees')}:</span>
+                      <span className="font-extrabold text-sm" style={{ color: isDark ? '#2dd4bf' : '#000000' }}>{assignedCount}</span>
                     </div>
                   </div>
-                  <p className="text-slate-400">الحالة: نشط ومربوط بـ VPN الشبكة الرئيسية</p>
-                  <p className="text-slate-500 font-mono text-[10px]">
-                    {t('عدد الموظفين المعينين', 'Assigned Employees')}: {employees.filter(e => e.branch.includes(branch.name || branch.name_en)).length}
-                  </p>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="col-span-full text-center py-8 text-slate-400">
                 <span className="material-symbols-outlined text-4xl mb-2">location_off</span>
@@ -3304,13 +3432,15 @@ export const Category3EmployeeView: React.FC = () => {
               <span className="material-symbols-outlined text-blue-400">domain</span>
               {t('الملف التعريفي للشركة', 'Company Profile')}
             </h2>
-            <button
-              onClick={() => handleEditCompanyProfile(companyProfile)}
-              className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-sm">edit</span>
-              {t('تعديل', 'Edit')}
-            </button>
+            {canWrite() && (
+              <button
+                onClick={() => handleEditCompanyProfile(companyProfile)}
+                className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">edit</span>
+                {t('تعديل', 'Edit')}
+              </button>
+            )}
           </div>
 
           {companyProfile ? (
@@ -3432,6 +3562,11 @@ export const Category3EmployeeView: React.FC = () => {
               </button>
               <button
                 onClick={() => {
+                  if (!canWrite()) {
+                    alert(language === 'ar' ? 'ليس لديك صلاحية حذف الموظفين (وضع القراءة فقط)' : 'You do not have permission to delete employees (Read-Only Mode)');
+                    setDeleteConfirm({ show: false, empId: '', empName: '' });
+                    return;
+                  }
                   deleteEmployee(deleteConfirm.empId);
                   setDeleteConfirm({ show: false, empId: '', empName: '' });
                 }}
@@ -3447,123 +3582,169 @@ export const Category3EmployeeView: React.FC = () => {
 
       {/* Branch Add/Edit Modal */}
       {showBranchModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-teal-400">
-                <span className="material-symbols-outlined text-3xl">location_city</span>
-                <h3 className="text-lg font-bold text-white">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className={`border rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`flex items-center justify-between border-b pb-3 ${
+              isDark ? 'border-white/10' : 'border-slate-200'
+            }`}>
+              <div className="flex items-center gap-3 text-teal-600 dark:text-teal-400">
+                <span className="material-symbols-outlined text-2xl">location_city</span>
+                <h3 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#000000' }}>
                   {editingBranch ? t('تعديل الفرع', 'Edit Branch') : t('إضافة فرع جديد', 'Add New Branch')}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setShowBranchModal(false);
                   setEditingBranch(null);
                   setBranchFormData({ name: '', name_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
                 }}
-                className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+                className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                  isDark
+                    ? 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                    : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-black'
+                }`}
               >
-                <span className="material-symbols-outlined">close</span>
+                <span className="material-symbols-outlined text-sm">close</span>
               </button>
             </div>
 
-            <form onSubmit={handleBranchSubmit} className="space-y-4">
+            <form onSubmit={handleBranchSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-black font-medium mb-1.5 text-xs">
-                  {t('اسم الفرع (عربي)', 'Branch Name (Arabic)')}
+                <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
+                  {t('اسم الفرع (عربي) *', 'Branch Name (Arabic) *')}
                 </label>
                 <input
                   type="text"
                   value={branchFormData.name}
                   onChange={(e) => setBranchFormData({ ...branchFormData, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#0a0c10] border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20 transition-all text-sm"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                    isDark
+                      ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
+                      : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
+                  }`}
+                  style={{ color: isDark ? '#ffffff' : '#000000' }}
                   placeholder={t('مثال: فرع بغداد - الكرادة', 'e.g., Baghdad Branch - Karrada')}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-black font-medium mb-1.5 text-xs">
-                  {t('اسم الفرع (إنجليزي)', 'Branch Name (English)')}
+                <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
+                  {t('اسم الفرع (إنجليزي) *', 'Branch Name (English) *')}
                 </label>
                 <input
                   type="text"
                   value={branchFormData.name_en}
                   onChange={(e) => setBranchFormData({ ...branchFormData, name_en: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#0a0c10] border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20 transition-all text-sm"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                    isDark
+                      ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
+                      : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
+                  }`}
+                  style={{ color: isDark ? '#ffffff' : '#000000' }}
                   placeholder={t('e.g., Baghdad Branch - Karrada', 'e.g., Baghdad Branch - Karrada')}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-black font-medium mb-1.5 text-xs">
+                <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
                   {t('العنوان', 'Address')}
                 </label>
                 <input
                   type="text"
                   value={branchFormData.address}
                   onChange={(e) => setBranchFormData({ ...branchFormData, address: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#0a0c10] border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20 transition-all text-sm"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                    isDark
+                      ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
+                      : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
+                  }`}
+                  style={{ color: isDark ? '#ffffff' : '#000000' }}
                   placeholder={t('العنوان الكامل', 'Full address')}
                 />
               </div>
 
               <div>
-                <label className="block text-black font-medium mb-1.5 text-xs">
+                <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
                   {t('المدينة', 'City')}
                 </label>
                 <input
                   type="text"
                   value={branchFormData.city}
                   onChange={(e) => setBranchFormData({ ...branchFormData, city: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#0a0c10] border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20 transition-all text-sm"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                    isDark
+                      ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
+                      : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
+                  }`}
+                  style={{ color: isDark ? '#ffffff' : '#000000' }}
                   placeholder={t('مثال: بغداد', 'e.g., Baghdad')}
                 />
               </div>
 
-              <div>
-                <label className="block text-black font-medium mb-1.5 text-xs">
-                  {t('رقم الهاتف', 'Phone Number')}
-                </label>
-                <input
-                  type="text"
-                  value={branchFormData.phone}
-                  onChange={(e) => setBranchFormData({ ...branchFormData, phone: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#0a0c10] border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20 transition-all text-sm"
-                  placeholder={t('مثال: 07700000000', 'e.g., 07700000000')}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
+                    {t('رقم الهاتف', 'Phone Number')}
+                  </label>
+                  <input
+                    type="text"
+                    value={branchFormData.phone}
+                    onChange={(e) => setBranchFormData({ ...branchFormData, phone: e.target.value })}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                      isDark
+                        ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
+                        : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
+                    }`}
+                    style={{ color: isDark ? '#ffffff' : '#000000' }}
+                    placeholder={t('مثال: 07700000000', 'e.g., 07700000000')}
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
+                    {t('الحالة', 'Status')}
+                  </label>
+                  <select
+                    value={branchFormData.status}
+                    onChange={(e) => setBranchFormData({ ...branchFormData, status: e.target.value })}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all cursor-pointer ${
+                      isDark
+                        ? 'bg-[#0a0c10] border-slate-700 text-white focus:border-teal-500'
+                        : 'bg-white border-slate-300 text-black focus:border-teal-600 shadow-2xs'
+                    }`}
+                    style={{ color: isDark ? '#ffffff' : '#000000' }}
+                  >
+                    <option value="Active">{t('نشط', 'Active')}</option>
+                    <option value="Inactive">{t('غير نشط', 'Inactive')}</option>
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block text-black font-medium mb-1.5 text-xs">
+                <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
                   {t('البريد الإلكتروني', 'Email')}
                 </label>
                 <input
                   type="email"
                   value={branchFormData.email}
                   onChange={(e) => setBranchFormData({ ...branchFormData, email: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#0a0c10] border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20 transition-all text-sm"
-                  placeholder={t('branch@vitas.iq', 'branch@vitas.iq')}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                    isDark
+                      ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
+                      : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
+                  }`}
+                  style={{ color: isDark ? '#ffffff' : '#000000' }}
+                  placeholder="branch@vitasiraq.iq"
                 />
               </div>
 
-              <div>
-                <label className="block text-black font-medium mb-1.5 text-xs">
-                  {t('الحالة', 'Status')}
-                </label>
-                <select
-                  value={branchFormData.status}
-                  onChange={(e) => setBranchFormData({ ...branchFormData, status: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#0a0c10] border border-white/10 text-white focus:outline-none focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20 transition-all text-sm"
-                >
-                  <option value="Active">{t('نشط', 'Active')}</option>
-                  <option value="Inactive">{t('غير نشط', 'Inactive')}</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-white/10">
                 <button
                   type="button"
                   onClick={() => {
@@ -3571,13 +3752,17 @@ export const Category3EmployeeView: React.FC = () => {
                     setEditingBranch(null);
                     setBranchFormData({ name: '', name_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
                   }}
-                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 font-bold hover:bg-white/10 border border-white/10 text-sm"
+                  className={`px-4 py-2.5 rounded-xl border font-bold text-xs cursor-pointer transition-all ${
+                    isDark
+                      ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                      : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                  }`}
                 >
                   {t('إلغاء', 'Cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 text-sm flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 text-xs flex items-center gap-2 cursor-pointer transition-all"
                 >
                   <span className="material-symbols-outlined text-sm">save</span>
                   {editingBranch ? t('حفظ التعديلات', 'Save Changes') : t('إضافة الفرع', 'Add Branch')}
@@ -3933,30 +4118,42 @@ export const Category3EmployeeView: React.FC = () => {
 
       {/* Branch Delete Confirmation Modal */}
       {branchDeleteConfirm.show && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center gap-3 text-rose-400">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className={`border rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
               <span className="material-symbols-outlined text-3xl">warning</span>
-              <h3 className="text-lg font-bold text-white">{t('تأكيد حذف الفرع', 'Confirm Branch Deletion')}</h3>
+              <h3 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#000000' }}>
+                {t('تأكيد حذف الفرع', 'Confirm Branch Deletion')}
+              </h3>
             </div>
-            <p className="text-slate-300 text-sm">
-              {t('هل أنت متأكد من حذف الفرع', 'Are you sure you want to delete the branch')} <span className="text-white font-bold">{branchDeleteConfirm.name}</span>؟
+            <p className="text-xs leading-relaxed" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
+              {t('هل أنت متأكد من حذف الفرع', 'Are you sure you want to delete the branch')} <span className="font-bold underline" style={{ color: isDark ? '#ffffff' : '#000000' }}>{branchDeleteConfirm.name}</span>؟
               <br />
-              <span className="text-rose-400 text-xs">{t('لا يمكن التراجع عن هذا الإجراء', 'This action cannot be undone')}</span>
+              <span className="text-rose-600 dark:text-rose-400 text-[11px] font-bold mt-1 block">
+                {t('لا يمكن التراجع عن هذا الإجراء', 'This action cannot be undone')}
+              </span>
             </p>
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200 dark:border-white/10">
               <button
-                onClick={() => setBranchDeleteConfirm({ show: false, id: 0, name: '' })}
-                className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 font-bold hover:bg-white/10 border border-white/10 text-sm"
+                type="button"
+                onClick={() => setBranchDeleteConfirm({ show: false, id: '', name: '' })}
+                className={`px-4 py-2.5 rounded-xl border font-bold text-xs cursor-pointer transition-all ${
+                  isDark
+                    ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                    : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                }`}
               >
                 {t('إلغاء', 'Cancel')}
               </button>
               <button
+                type="button"
                 onClick={handleConfirmDeleteBranch}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-lg shadow-rose-600/25 text-sm flex items-center gap-2"
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-lg shadow-rose-600/25 text-xs flex items-center gap-2 cursor-pointer transition-all"
               >
                 <span className="material-symbols-outlined text-sm">delete</span>
-                {t('حذف', 'Delete')}
+                {t('حذف الفرع', 'Delete Branch')}
               </button>
             </div>
           </div>

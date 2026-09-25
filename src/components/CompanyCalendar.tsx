@@ -1272,41 +1272,73 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <button
+                        type="button"
                         onClick={() => {
                           setSelectedHolidayType('official');
                           setShowBranchSelectionModal(false);
                         }}
-                        className={`p-4 rounded-xl border-2 transition-all ${
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
                           selectedHolidayType === 'official'
-                            ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
+                            ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20 shadow-sm'
                             : 'border-gray-200 dark:border-white/10 hover:border-teal-300'
                         }`}
                       >
-                        <CalendarCheck className="mx-auto mb-2 text-teal-600" size={32} />
-                        <div className={`text-center font-semibold ${colors.text}`}>
+                        <CalendarCheck 
+                          className={`mx-auto mb-2 transition-colors ${
+                            selectedHolidayType === 'official'
+                              ? 'text-teal-600 dark:text-teal-400'
+                              : 'text-slate-400 dark:text-slate-500'
+                          }`} 
+                          size={32} 
+                        />
+                        <div className={`text-center font-bold transition-colors ${
+                          selectedHolidayType === 'official'
+                            ? 'text-teal-700 dark:text-teal-300'
+                            : isDark ? 'text-slate-300' : 'text-slate-700'
+                        }`}>
                           {language === 'ar' ? 'عطل رسمية' : 'Official Holidays'}
                         </div>
-                        <div className={`text-center text-sm ${colors.textSecondary}`}>
+                        <div className={`text-center text-xs mt-1 transition-colors ${
+                          selectedHolidayType === 'official'
+                            ? 'text-teal-600 dark:text-teal-400 font-medium'
+                            : isDark ? 'text-slate-400' : 'text-slate-500'
+                        }`}>
                           {language === 'ar' ? 'تطبق على جميع الفروع' : 'Apply to all branches'}
                         </div>
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => {
                           setSelectedHolidayType('emergency');
                           setShowBranchSelectionModal(true);
                         }}
-                        className={`p-4 rounded-xl border-2 transition-all ${
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
                           selectedHolidayType === 'emergency'
-                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20 shadow-sm'
                             : 'border-gray-200 dark:border-white/10 hover:border-red-300'
                         }`}
                       >
-                        <CalendarX className="mx-auto mb-2 text-red-600" size={32} />
-                        <div className={`text-center font-semibold ${colors.text}`}>
+                        <CalendarX 
+                          className={`mx-auto mb-2 transition-colors ${
+                            selectedHolidayType === 'emergency'
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-slate-400 dark:text-slate-500'
+                          }`} 
+                          size={32} 
+                        />
+                        <div className={`text-center font-bold transition-colors ${
+                          selectedHolidayType === 'emergency'
+                            ? 'text-red-700 dark:text-red-300'
+                            : isDark ? 'text-slate-300' : 'text-slate-700'
+                        }`}>
                           {language === 'ar' ? 'عطل طارئة' : 'Emergency Holidays'}
                         </div>
-                        <div className={`text-center text-sm ${colors.textSecondary}`}>
+                        <div className={`text-center text-xs mt-1 transition-colors ${
+                          selectedHolidayType === 'emergency'
+                            ? 'text-red-600 dark:text-red-400 font-medium'
+                            : isDark ? 'text-slate-400' : 'text-slate-500'
+                        }`}>
                           {language === 'ar' ? 'اختيار الفروع المتأثرة' : 'Select affected branches'}
                         </div>
                       </button>

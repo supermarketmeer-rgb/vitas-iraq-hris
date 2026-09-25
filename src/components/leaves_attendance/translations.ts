@@ -25,6 +25,7 @@ export const translations = {
     nav_manager_approvals: 'مركز موافقات المدير',
     nav_settings: 'إعدادات الموديول والبصمة',
     nav_db_schema: 'قاعدة البيانات وPHP/SQL',
+    nav_earned_leaves: 'الإجازات المستحقة (احتساب مالي)',
     
     bento_grid_title: 'شبكة بينتو الذكية (Bento Grid)',
     customize_layout: 'تخصيص ترتيب البطاقات',
@@ -329,6 +330,7 @@ export const translations = {
     nav_manager_approvals: 'Manager Approvals',
     nav_settings: 'Module & Biometric Settings',
     nav_db_schema: 'Database & PHP/SQL',
+    nav_earned_leaves: 'Earned Leaves & Financials',
     
     bento_grid_title: 'Bento Grid Smart Dashboard',
     customize_layout: 'Customize Bento Grid',

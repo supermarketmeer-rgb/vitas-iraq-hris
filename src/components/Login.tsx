@@ -59,10 +59,107 @@ export const Login: React.FC = () => {
         return;
       }
 
+      // 0. FIRST: Query real database users from MySQL (`/api/users`)
+      try {
+        const dbUsers: any = await api.getUsers().catch(() => []);
+        if (Array.isArray(dbUsers) && dbUsers.length > 0) {
+          localStorage.setItem('vitas_db_users', JSON.stringify(dbUsers));
+
+          const cleanInput = cleanUser.replace(/[^a-z0-9]/g, '');
+          const matchedDbUser = dbUsers.find((u: any) => {
+            const uUsername = String(u.username || '').toLowerCase();
+            const uEmail = String(u.email || '').toLowerCase();
+            const uEmpId = String(u.employee_id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+            return (
+              uUsername === cleanUser ||
+              uEmail === cleanUser ||
+              uEmail.split('@')[0] === cleanUser ||
+              (cleanInput && uEmpId === cleanInput) ||
+              (cleanUser === 'hr' && (uUsername === 'hrmanager' || uEmail.includes('hr@') || uEmail.includes('hrmanager'))) ||
+              (cleanUser === 'hrmanager' && (uUsername === 'hrmanager' || uEmail.includes('hrmanager')))
+            );
+          });
+
+          if (matchedDbUser) {
+            let parsedScreens: Record<string, any> = {};
+            if (matchedDbUser.allowed_screens) {
+              try {
+                parsedScreens = typeof matchedDbUser.allowed_screens === 'string'
+                  ? JSON.parse(matchedDbUser.allowed_screens)
+                  : matchedDbUser.allowed_screens;
+              } catch (e) {}
+            }
+
+            // Also check vitas_custom_employee_permissions in localStorage if available
+            try {
+              const rawPerms = localStorage.getItem('vitas_custom_employee_permissions');
+              if (rawPerms) {
+                const pMap = JSON.parse(rawPerms);
+                const pEntry = pMap[matchedDbUser.employee_id] || 
+                               pMap[matchedDbUser.username?.toUpperCase()] || 
+                               pMap[`VTS-${matchedDbUser.username?.toUpperCase()}`];
+                if (pEntry && pEntry.modules) {
+                  parsedScreens = { ...parsedScreens, ...pEntry.modules };
+                }
+              }
+            } catch (e) {}
+
+            const isSuperAdmin = matchedDbUser.username === 'admin' || matchedDbUser.role === 'Super Admin';
+            const isAdmin = matchedDbUser.role === 'Admin' || matchedDbUser.can_manage_users === 1 || Boolean(parsedScreens?.['sec-roles-permissions']);
+            const isHR = (matchedDbUser.job_title && (matchedDbUser.job_title.includes('مدير الموارد البشرية') || matchedDbUser.job_title.toLowerCase().includes('hr manager'))) ||
+                         (matchedDbUser.role && (matchedDbUser.role.includes('مدير الموارد البشرية') || matchedDbUser.role === 'HR Manager')) ||
+                         matchedDbUser.username === 'hrmanager';
+
+            const assignedRole: UserRole = isSuperAdmin 
+              ? 'Super Admin' 
+              : isAdmin
+              ? 'Admin'
+              : isHR 
+              ? 'HR Manager' 
+              : (matchedDbUser.role as UserRole) || 'Employee';
+
+            const userProfile: UserProfile = {
+              id: String(matchedDbUser.id),
+              name: matchedDbUser.full_name || matchedDbUser.name || matchedDbUser.username,
+              email: matchedDbUser.email || `${cleanUser}@vitasiraq.iq`,
+              role: assignedRole,
+              avatar: '',
+              department: matchedDbUser.department || 'الموارد البشرية والشؤون الإدارية',
+              employeeId: matchedDbUser.employee_id || `VTS-${cleanUser.toUpperCase()}`,
+              branch: matchedDbUser.branch || 'الإدارة العامة - بغداد',
+              can_manage_employees: matchedDbUser.can_manage_employees ? 1 : (isAdmin ? 1 : 0),
+              can_manage_finance: matchedDbUser.can_manage_finance ? 1 : 0,
+              can_manage_recruitment: matchedDbUser.can_manage_recruitment ? 1 : 0,
+              can_manage_settings: matchedDbUser.can_manage_settings ? 1 : (isAdmin ? 1 : 0),
+              can_manage_users: (matchedDbUser.can_manage_users || isAdmin) ? 1 : 0,
+              modulePermissions: parsedScreens,
+              allowed_screens: parsedScreens
+            };
+
+            let initialModule = isSuperAdmin ? 'dash-overview' : (isAdmin ? 'sec-roles-permissions' : (isHR ? 'emp-hr-directory' : 'dash-overview'));
+            if (parsedScreens['employees'] || parsedScreens['emp-directory'] || parsedScreens['emp-hr-directory']) initialModule = 'emp-hr-directory';
+            else if (parsedScreens['attendance'] || parsedScreens['leave-attendance']) initialModule = 'leave-attendance';
+            else if (isAdmin || parsedScreens['sec-roles-permissions']) initialModule = 'sec-roles-permissions';
+
+            localStorage.setItem('vitas_current_user', JSON.stringify(userProfile));
+            localStorage.setItem('vitas_user_role', assignedRole);
+            setCurrentUserRole(assignedRole);
+            setCurrentUser(userProfile);
+            setActiveModuleId(initialModule);
+            console.log('Login successful via Database User:', userProfile);
+            setTimeout(() => navigate('/'), 100);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Notice checking database users on login:', err);
+      }
+
       // 1. Check for Super Admin
       if (cleanUser === 'admin') {
         const superAdmin: UserProfile = {
-          id: '0',
+          id: '1',
           name: 'مدير النظام (Super Admin)',
           email: 'admin@vitasiraq.iq',
           role: 'Super Admin',
@@ -87,7 +184,7 @@ export const Login: React.FC = () => {
         return;
       }
 
-      // 2. Check for HR Manager
+      // 2. Check for Fallback HR Manager (only if not found in MySQL users table)
       if (cleanUser === 'hrmanager' || cleanUser === 'hr') {
         const hrManager: UserProfile = {
           id: '1',
@@ -96,21 +193,32 @@ export const Login: React.FC = () => {
           role: 'HR Manager',
           avatar: '',
           department: 'الموارد البشرية',
-          employeeId: 'HR-001',
+          employeeId: 'VTS-HRMANAGER',
           branch: 'المقر الرئيسي',
           can_manage_employees: 1,
-          can_manage_finance: 1,
-          can_manage_recruitment: 1,
-          can_manage_settings: 1,
-          can_manage_users: 0
+          can_manage_finance: 0,
+          can_manage_recruitment: 0,
+          can_manage_settings: 0,
+          can_manage_users: 0,
+          modulePermissions: {
+            'cat-2-dash': true,
+            'cat-3-emp': true,
+            'cat-4-leave': true,
+            'employees': true,
+            'attendance': true,
+            'payroll': false,
+            'recruitment': false,
+            'risk': false,
+            'settings': false
+          }
         };
         
         localStorage.setItem('vitas_current_user', JSON.stringify(hrManager));
         localStorage.setItem('vitas_user_role', 'HR Manager');
         setCurrentUserRole('HR Manager');
         setCurrentUser(hrManager);
-        setActiveModuleId('emp-directory');
-        console.log('Login successful - HR Manager', hrManager);
+        setActiveModuleId('emp-hr-directory');
+        console.log('Login successful - HR Manager fallback', hrManager);
         setTimeout(() => navigate('/'), 100);
         return;
       }
@@ -234,37 +342,49 @@ export const Login: React.FC = () => {
               console.error('Error reading custom permissions:', err);
             }
 
+            // Determine role: check explicit role or infer from job title / permissions
+            let assignedRole: UserRole = (cUser.role as UserRole) || 'Employee';
+            const titleLower = String(cUser.jobTitle || userJobTitleFromPerms || '').toLowerCase();
+            if (cUser.role === 'Admin' || cUser.can_manage_users === 1 || Boolean(modulePerms['sec-roles-permissions'])) {
+              assignedRole = 'Admin';
+            } else if (titleLower.includes('مدير الموارد البشرية') || titleLower.includes('hr manager') || titleLower.includes('hr director')) {
+              assignedRole = 'HR Manager';
+            }
+
+            const isAdminCustom = assignedRole === 'Admin' || cUser.can_manage_users === 1;
+
             // Map module permissions to UserProfile permission flags
             const customUserProfile: UserProfile = {
               id: cUser.employeeId || '1050',
               name: cUser.name || `الموظف (${cleanUser})`,
               email: `${cleanUser}@vitasiraq.iq`,
-              role: (cUser.role as UserRole) || 'Employee',
+              role: assignedRole,
               avatar: '',
               department: userDeptFromPerms,
               employeeId: cUser.employeeId || `VTS-${cleanUser.toUpperCase()}`,
               branch: 'الإدارة العامة - بغداد',
-              can_manage_employees: modulePerms['employees'] ? 1 : 0,
-              can_manage_finance: modulePerms['payroll'] ? 1 : 0,
-              can_manage_recruitment: modulePerms['recruitment'] ? 1 : 0,
-              can_manage_settings: modulePerms['settings'] ? 1 : 0,
-              can_manage_users: 0,
+              can_manage_employees: modulePerms['employees'] ? 1 : (assignedRole === 'HR Manager' || isAdminCustom ? 1 : 0),
+              can_manage_finance: modulePerms['payroll'] ? 1 : (assignedRole === 'HR Manager' ? 1 : 0),
+              can_manage_recruitment: modulePerms['recruitment'] ? 1 : (assignedRole === 'HR Manager' ? 1 : 0),
+              can_manage_settings: modulePerms['settings'] ? 1 : (isAdminCustom ? 1 : 0),
+              can_manage_users: isAdminCustom ? 1 : 0,
               // Store module permissions directly for runtime access
               ...(Object.keys(modulePerms).length > 0 ? { modulePermissions: modulePerms } : {})
             };
 
             // Determine initial module based on allowed modules
-            let initialModule = 'dash-overview';
-            if (modulePerms['employees']) initialModule = 'emp-directory';
+            let initialModule = assignedRole === 'HR Manager' ? 'emp-hr-directory' : (isAdminCustom ? 'sec-roles-permissions' : 'dash-overview');
+            if (modulePerms['employees']) initialModule = 'emp-hr-directory';
             else if (modulePerms['attendance']) initialModule = 'leave-attendance';
             else if (modulePerms['payroll']) initialModule = 'pay-dashboard';
             else if (modulePerms['recruitment']) initialModule = 'recruit-dash';
             else if (modulePerms['reports']) initialModule = 'sys-dynamic-reports';
+            else if (isAdminCustom || modulePerms['sec-roles-permissions']) initialModule = 'sec-roles-permissions';
             else if (modulePerms['risk']) initialModule = 'risk-assessment';
 
             localStorage.setItem('vitas_current_user', JSON.stringify(customUserProfile));
-            localStorage.setItem('vitas_user_role', 'Employee');
-            setCurrentUserRole('Employee');
+            localStorage.setItem('vitas_user_role', assignedRole);
+            setCurrentUserRole(assignedRole);
             setCurrentUser(customUserProfile);
             setActiveModuleId(initialModule);
             console.log('Login successful - Custom User', customUserProfile);
@@ -354,14 +474,20 @@ export const Login: React.FC = () => {
             employeeUser.can_manage_finance = matchedPerm.modules['payroll'] ? 1 : 0;
             employeeUser.can_manage_recruitment = matchedPerm.modules['recruitment'] ? 1 : 0;
             employeeUser.can_manage_settings = matchedPerm.modules['settings'] ? 1 : 0;
+            const isDelegatedAdmin = Boolean(matchedPerm.can_manage_users === 1 || matchedPerm.role === 'Admin' || matchedPerm.modules['sec-roles-permissions']);
+            employeeUser.can_manage_users = isDelegatedAdmin ? 1 : 0;
+            if (isDelegatedAdmin) {
+              employeeUser.role = 'Admin';
+            }
             if (matchedPerm.department) employeeUser.department = matchedPerm.department;
           }
         }
       } catch (e) {}
 
+      const finalRoleToStore: UserRole = employeeUser.role || 'Employee';
       localStorage.setItem('vitas_current_user', JSON.stringify(employeeUser));
-      localStorage.setItem('vitas_user_role', 'Employee');
-      setCurrentUserRole('Employee');
+      localStorage.setItem('vitas_user_role', finalRoleToStore);
+      setCurrentUserRole(finalRoleToStore);
       setCurrentUser(employeeUser);
 
       console.log('Login successful - Employee', employeeUser);
@@ -430,15 +556,15 @@ export const Login: React.FC = () => {
         </div>
 
         {/* Login Card */}
-        <div className={`backdrop-blur-xl border rounded-3xl p-6 shadow-2xl w-[calc(40vw-38px)] max-w-md ${
+        <div className={`backdrop-blur-xl border rounded-3xl p-6 sm:p-8 shadow-2xl w-full max-w-md mx-auto transition-all ${
           isDark 
             ? 'bg-[#0a0c10] border-white/10 text-white' 
             : 'bg-[#e8ebef] border-slate-300 text-slate-900'
         }`}>
           {/* Logo */}
-          <div className="text-center mb-2">
-            <div className="inline-block mb-4">
-              <div className="w-24 h-24 mx-auto rounded-full overflow-hidden shadow-2xl shadow-teal-500/40 animate-[logoBreathe_3s_ease-in-out_infinite] border-4 border-teal-500/30 backdrop-blur-sm">
+          <div className="text-center mb-6">
+            <div className="inline-block mb-3">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full overflow-hidden shadow-2xl shadow-teal-500/40 animate-[logoBreathe_3s_ease-in-out_infinite] border-4 border-teal-500/30 backdrop-blur-sm">
                 <img 
                   src={vitasLogo} 
                   alt="VITAS Iraq Logo" 
@@ -446,58 +572,58 @@ export const Login: React.FC = () => {
                 />
               </div>
             </div>
-            <h1 className={`text-2xl font-bold mb-2 ${isDark ? 'text-teal-400' : 'text-slate-900'}`}>{t('مؤسسة فيتاس العراق', 'VITAS Iraq')}</h1>
-            <p className={`text-xs font-medium mb-1 ${isDark ? 'text-white' : 'text-slate-700'}`}>{t('مؤسسة الاسكان التعاونية CHF', 'Cooperative Housing Foundation CHF')}</p>
-            <p className={`text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>{t('نظام إدارة الموارد البشرية', 'HRMS System')}</p>
+            <h1 className={`text-xl sm:text-2xl font-bold mb-1.5 ${isDark ? 'text-teal-400' : 'text-slate-900'}`}>{t('مؤسسة فيتاس العراق', 'VITAS Iraq')}</h1>
+            <p className={`text-xs font-medium mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t('مؤسسة الاسكان التعاونية CHF', 'Cooperative Housing Foundation CHF')}</p>
+            <p className={`text-xs sm:text-sm font-semibold ${isDark ? 'text-teal-500/90' : 'text-teal-700'}`}>{t('نظام إدارة الموارد البشرية', 'HRMS System')}</p>
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <label className={`block text-xs sm:text-sm font-bold mb-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 {t('اسم المستخدم', 'Username')}
               </label>
-              <div className="relative">
-                <span className={`material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-lg ${isDark ? 'text-teal-400' : 'text-slate-700'}`}>person</span>
+              <div className="relative flex items-center">
+                <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'right-3' : 'left-3'} text-lg pointer-events-none ${isDark ? 'text-teal-400' : 'text-slate-600'}`}>person</span>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder={language === 'ar' ? 'أدخل اسم المستخدم' : 'Enter username'}
                   style={{
-                    backgroundColor: isDark ? '#0a0c10' : '#d8e0e8',
-                    color: isDark ? '#ffffff' : '#000000',
+                    backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                    color: isDark ? '#ffffff' : '#0f172a',
                     borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'
                   }}
-                  className={`w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
+                  className={`w-full ${language === 'ar' ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all shadow-xs ${
                     isDark 
-                      ? 'bg-[#0a0c10] border-white/15 text-white placeholder-slate-400' 
-                      : 'bg-[#d8e0e8] border-slate-300 text-slate-900 placeholder-slate-500'
+                      ? 'placeholder-slate-400' 
+                      : 'placeholder-slate-400'
                   }`}
                 />
               </div>
             </div>
 
             <div>
-              <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <label className={`block text-xs sm:text-sm font-bold mb-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 {t('كلمة المرور', 'Password')}
               </label>
-              <div className="relative">
-                <span className={`material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-lg ${isDark ? 'text-teal-400' : 'text-slate-700'}`}>lock</span>
+              <div className="relative flex items-center">
+                <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'right-3' : 'left-3'} text-lg pointer-events-none ${isDark ? 'text-teal-400' : 'text-slate-600'}`}>lock</span>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={language === 'ar' ? 'أدخل كلمة المرور' : 'Enter password'}
                   style={{
-                    backgroundColor: isDark ? '#0a0c10' : '#d8e0e8',
-                    color: isDark ? '#ffffff' : '#000000',
+                    backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                    color: isDark ? '#ffffff' : '#0f172a',
                     borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'
                   }}
-                  className={`w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
+                  className={`w-full ${language === 'ar' ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all shadow-xs ${
                     isDark 
-                      ? 'bg-[#0a0c10] border-white/15 text-white placeholder-slate-400' 
-                      : 'bg-[#d8e0e8] border-slate-300 text-slate-900 placeholder-slate-500'
+                      ? 'placeholder-slate-400' 
+                      : 'placeholder-slate-400'
                   }`}
                 />
               </div>
