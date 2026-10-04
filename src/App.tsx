@@ -82,6 +82,7 @@ function AppContent() {
       case 'emp-directory':
       case 'emp-hr-directory':
       case 'emp-add':
+      case 'emp-edit':
       case 'emp-onboarding':
       case 'emp-profile':
       case 'emp-organization':
