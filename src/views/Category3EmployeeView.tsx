@@ -1443,37 +1443,33 @@ export const Category3EmployeeView: React.FC = () => {
                       const empTargetId = emp.id || emp.employeeId || emp.employee_id;
                       return (
                         <div className="flex items-center justify-end gap-3 w-full">
-                          {canWrite() && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleLoadEmployeeData(emp);
-                                  setActiveModuleId('emp-add');
-                                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }}
-                                className="px-3.5 py-1.5 rounded-xl bg-teal-600/10 hover:bg-teal-600 border border-teal-500/30 hover:border-teal-500 text-teal-400 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm z-10"
-                                title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
-                              >
-                                <span className="material-symbols-outlined text-sm">edit</span>
-                                <span>{t('تعديل', 'Edit')}</span>
-                              </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleLoadEmployeeData(emp);
+                              setActiveModuleId('emp-add');
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="px-3.5 py-1.5 rounded-xl bg-teal-600/10 hover:bg-teal-600 border border-teal-500/30 hover:border-teal-500 text-teal-400 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm z-10"
+                            title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
+                          >
+                            <span className="material-symbols-outlined text-sm">edit</span>
+                            <span>{t('تعديل', 'Edit')}</span>
+                          </button>
 
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar });
-                                }}
-                                className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-500 text-rose-400 hover:text-white transition-all cursor-pointer"
-                                title={t('حذف الموظف', 'Delete Employee')}
-                              >
-                                <span className="material-symbols-outlined text-sm">delete</span>
-                              </button>
-                            </>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar });
+                            }}
+                            className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-500 text-rose-400 hover:text-white transition-all cursor-pointer"
+                            title={t('حذف الموظف', 'Delete Employee')}
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
                         </div>
                       );
                     })()}
