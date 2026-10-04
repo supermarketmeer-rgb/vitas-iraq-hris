@@ -1290,7 +1290,11 @@ export const Category3EmployeeView: React.FC = () => {
           <h1 className={`text-2xl font-black drop-shadow-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {activeModuleId === 'emp-directory' && t('دليل الموظفين المؤسسي', 'Corporate Employee Directory')}
             {activeModuleId === 'emp-hr-directory' && t('دليل الموظفين الشامل - إدارة الموارد البشرية', 'Comprehensive Employee Directory - HR')}
-            {activeModuleId === 'emp-add' && t('تسجيل وإضافة موظف جديد (نموذج 7 تبويبات)', 'Register & Add New Employee (7-Tab Form)')}
+            {activeModuleId === 'emp-add' && (
+              selectedEmpId 
+                ? t('تعديل بيانات الموظف (نموذج 7 تبويبات)', 'Edit Employee Data (7-Tab Form)')
+                : t('تسجيل وإضافة موظف جديد (نموذج 7 تبويبات)', 'Register & Add New Employee (7-Tab Form)')
+            )}
             {activeModuleId === 'emp-profile' && t('ملفات الموظفين - HR Employees Profiles', 'HR Employees Profiles')}
             {activeModuleId === 'emp-branches' && t('إدارة الفروع والمواقع الميدانية في العراق', 'Branch & Field Location Management in Iraq')}
             {activeModuleId === 'emp-company-profile' && t('إعدادات ملف مؤسسة فيتاس العراق', 'VITAS Iraq Institution Profile Settings')}
