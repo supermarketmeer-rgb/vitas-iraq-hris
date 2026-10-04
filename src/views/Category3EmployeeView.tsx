@@ -2944,22 +2944,32 @@ export const Category3EmployeeView: React.FC = () => {
               {/* Direct Select Menu */}
               <div>
                 <select
-                  value={selectedEmployee?.id || ''}
+                  value={selectedEmployee ? (selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id || '') : ''}
                   onChange={(e) => {
-                    const found = employees.find(emp => emp.id === e.target.value);
+                    const val = e.target.value;
+                    const found = employees.find(emp => {
+                      const tVal = String(val).toLowerCase().trim();
+                      return String(emp.id).toLowerCase().trim() === tVal ||
+                             (emp.employeeId && String(emp.employeeId).toLowerCase().trim() === tVal) ||
+                             (emp.employee_id && String(emp.employee_id).toLowerCase().trim() === tVal);
+                    });
                     if (found) {
-                      setSelectedEmpId(found.id);
+                      const targetId = found.id || found.employeeId || found.employee_id;
+                      setSelectedEmpId(targetId);
                       setProfileSearchQuery(getEmpFullName(found));
                     }
                   }}
                   className={`w-full ${profileColors.inputBg} border ${profileColors.inputBorder} rounded-xl px-3.5 py-2.5 text-xs ${profileColors.inputText} focus:outline-none focus:border-blue-500 ${isDark ? 'focus:bg-[#111827]' : 'focus:bg-white'} transition-all shadow-sm font-bold`}
                 >
                   <option value="" disabled>-- {t('اختر موظفاً مباشرة للتنقل السريع', 'Select an employee directly for fast navigation')} --</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {getEmpFullName(emp)} ({emp.employeeId || 'EMP'}) - {getEmpBranch(emp)}
-                    </option>
-                  ))}
+                  {employees.map(emp => {
+                    const empOptId = emp.id || emp.employeeId || emp.employee_id;
+                    return (
+                      <option key={empOptId} value={empOptId}>
+                        {getEmpFullName(emp)} ({emp.employeeId || emp.employee_id || 'EMP'}) - {getEmpBranch(emp)}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
