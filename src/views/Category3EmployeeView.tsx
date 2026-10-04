@@ -1442,43 +1442,37 @@ export const Category3EmployeeView: React.FC = () => {
                     {(() => {
                       const empTargetId = emp.id || emp.employeeId || emp.employee_id;
                       return (
-                        <>
-                          <button
-                            onClick={() => {
-                              setSelectedEmpId(empTargetId);
-                              setProfileSearchQuery(getEmpFullName(emp));
-                              setActiveModuleId('emp-profile');
-                            }}
-                            className="text-xs font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 shrink-0 cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-sm">visibility</span>
-                            {t('السجل الشامل', 'Full Profile')}
-                          </button>
-
+                        <div className="flex items-center justify-end gap-3 w-full">
                           {canWrite() && (
                             <>
                               <button
-                                onClick={() => {
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   handleLoadEmployeeData(emp);
                                   setActiveModuleId('emp-add');
                                 }}
-                                className="text-xs font-bold text-teal-500 hover:text-teal-600 flex items-center gap-1 shrink-0 cursor-pointer"
+                                className="px-3 py-1.5 rounded-xl bg-teal-600/10 hover:bg-teal-600 border border-teal-500/30 hover:border-teal-500 text-teal-400 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                                 title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
                               >
                                 <span className="material-symbols-outlined text-sm">edit</span>
-                                {t('تعديل', 'Edit')}
+                                <span>{t('تعديل', 'Edit')}</span>
                               </button>
 
                               <button
-                                onClick={() => setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar })}
-                                className="text-xs text-rose-500 hover:text-rose-600 p-1 shrink-0 cursor-pointer"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar });
+                                }}
+                                className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-500 text-rose-400 hover:text-white transition-all cursor-pointer"
                                 title={t('حذف الموظف', 'Delete Employee')}
                               >
                                 <span className="material-symbols-outlined text-sm">delete</span>
                               </button>
                             </>
                           )}
-                        </>
+                        </div>
                       );
                     })()}
                   </div>
