@@ -1448,11 +1448,13 @@ export const Category3EmployeeView: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={(e) => {
+                                  e.preventDefault();
                                   e.stopPropagation();
                                   handleLoadEmployeeData(emp);
                                   setActiveModuleId('emp-add');
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }}
-                                className="px-3 py-1.5 rounded-xl bg-teal-600/10 hover:bg-teal-600 border border-teal-500/30 hover:border-teal-500 text-teal-400 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                                className="px-3.5 py-1.5 rounded-xl bg-teal-600/10 hover:bg-teal-600 border border-teal-500/30 hover:border-teal-500 text-teal-400 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm z-10"
                                 title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
                               >
                                 <span className="material-symbols-outlined text-sm">edit</span>
