@@ -161,28 +161,51 @@ export const CompanyNews: React.FC<CompanyNewsProps> = ({ language, isReadOnly }
   };
 
   const getPriorityBadge = (priority: string) => {
-    const colors: Record<string, string> = {
-      low: 'bg-slate-500',
-      normal: 'bg-blue-500',
-      high: 'bg-orange-500',
-      urgent: 'bg-red-500'
+    if (!isDark) {
+      const lightColors: Record<string, string> = {
+        low: 'bg-white text-slate-700 border border-slate-300 font-bold',
+        normal: 'bg-white text-blue-700 border border-slate-300 font-bold',
+        high: 'bg-white text-amber-700 border border-slate-300 font-bold',
+        urgent: 'bg-white text-rose-700 border border-slate-300 font-bold'
+      };
+      return lightColors[priority] || 'bg-white text-slate-700 border border-slate-300 font-bold';
+    }
+
+    const darkColors: Record<string, string> = {
+      low: 'bg-slate-700 text-slate-200 border border-slate-600',
+      normal: 'bg-blue-500/20 text-blue-300 border border-blue-500/40',
+      high: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
+      urgent: 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
     };
-    return colors[priority] || 'bg-slate-500';
+    return darkColors[priority] || 'bg-slate-700 text-slate-200 border border-slate-600';
   };
 
   const getStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      draft: 'bg-slate-500',
-      published: 'bg-green-500',
-      archived: 'bg-gray-500'
-    };
     const labels: Record<string, { ar: string; en: string }> = {
       draft: { ar: 'مسودة', en: 'Draft' },
       published: { ar: 'منشور', en: 'Published' },
       archived: { ar: 'أرشيف', en: 'Archived' }
     };
+
+    if (!isDark) {
+      const lightColors: Record<string, string> = {
+        draft: 'bg-white text-slate-700 border border-slate-300 font-bold',
+        published: 'bg-white text-emerald-700 border border-slate-300 font-bold',
+        archived: 'bg-white text-slate-600 border border-slate-300 font-bold'
+      };
+      return {
+        color: lightColors[status] || 'bg-white text-slate-700 border border-slate-300 font-bold',
+        label: labels[status]?.[language] || status
+      };
+    }
+
+    const darkColors: Record<string, string> = {
+      draft: 'bg-slate-700 text-slate-200 border border-slate-600',
+      published: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
+      archived: 'bg-gray-700 text-gray-200 border border-gray-600'
+    };
     return {
-      color: colors[status] || 'bg-slate-500',
+      color: darkColors[status] || 'bg-slate-700 text-slate-200 border border-slate-600',
       label: labels[status]?.[language] || status
     };
   };
@@ -279,14 +302,14 @@ export const CompanyNews: React.FC<CompanyNewsProps> = ({ language, isReadOnly }
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs text-white ${getPriorityBadge(item.priority)}`}>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs ${getPriorityBadge(item.priority)}`}>
                         {item.priority}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs text-white ${statusBadge.color}`}>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs ${statusBadge.color}`}>
                         {statusBadge.label}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${
-                        isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700 font-semibold'
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs ${
+                        isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-white text-slate-700 border border-slate-300 font-bold shadow-2xs'
                       }`}>
                         {getCategoryLabel(item.category)}
                       </span>
