@@ -1290,7 +1290,7 @@ export const Category3EmployeeView: React.FC = () => {
           <h1 className={`text-2xl font-black drop-shadow-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {activeModuleId === 'emp-directory' && t('دليل الموظفين المؤسسي', 'Corporate Employee Directory')}
             {activeModuleId === 'emp-hr-directory' && t('دليل الموظفين الشامل - إدارة الموارد البشرية', 'Comprehensive Employee Directory - HR')}
-            {activeModuleId === 'emp-add' && (
+            {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
               selectedEmpId 
                 ? t('تعديل بيانات الموظف (نموذج 7 تبويبات)', 'Edit Employee Data (7-Tab Form)')
                 : t('تسجيل وإضافة موظف جديد (نموذج 7 تبويبات)', 'Register & Add New Employee (7-Tab Form)')
@@ -1453,7 +1453,7 @@ export const Category3EmployeeView: React.FC = () => {
                               e.preventDefault();
                               e.stopPropagation();
                               handleLoadEmployeeData(emp);
-                              setActiveModuleId('emp-add');
+                              setActiveModuleId('emp-edit');
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
                             className="px-3.5 py-1.5 rounded-xl bg-teal-600/10 hover:bg-teal-600 border border-teal-500/30 hover:border-teal-500 text-teal-400 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm z-10"
@@ -1485,8 +1485,8 @@ export const Category3EmployeeView: React.FC = () => {
         </div>
       )}
 
-      {/* 7-TABS ADD EMPLOYEE FORM */}
-      {activeModuleId === 'emp-add' && (
+      {/* 7-TABS ADD/EDIT EMPLOYEE FORM */}
+      {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
         <div className="max-w-4xl mx-auto p-6 rounded-3xl bg-[#111827] border border-white/10 shadow-2xl space-y-6">
           {isReadOnly() && (
             <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 text-xs font-bold flex items-center gap-2 shadow-sm">
