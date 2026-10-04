@@ -109,7 +109,10 @@ export const Header: React.FC = () => {
 
       header.querySelectorAll('*').forEach(el => {
         const htmlEl = el as HTMLElement;
-        if (htmlEl.closest('.notif-dropdown') || htmlEl.classList.contains('notif-dropdown')) {
+        if (
+          htmlEl.closest('.notif-dropdown') || htmlEl.classList.contains('notif-dropdown') ||
+          htmlEl.closest('.sync-toast-popup') || htmlEl.classList.contains('sync-toast-popup')
+        ) {
           return;
         }
 
@@ -287,16 +290,18 @@ export const Header: React.FC = () => {
 
           {/* Sync Toast Feedback Tooltip */}
           {syncFeedbackMsg && (
-            <div className={`absolute top-full mt-2 ${language === 'ar' ? 'left-0' : 'right-0'} z-50 p-2.5 px-3.5 rounded-xl shadow-2xl border text-xs font-bold whitespace-nowrap animate-in fade-in slide-in-from-top-1 ${
+            <div className={`sync-toast-popup absolute top-full mt-2 ${language === 'ar' ? 'left-0' : 'right-0'} z-50 p-3 px-4 rounded-xl shadow-2xl border text-xs font-extrabold whitespace-nowrap animate-in fade-in slide-in-from-top-1 ${
               syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error')
-                ? 'bg-rose-950 text-rose-200 border-rose-600'
-                : 'bg-teal-950 text-teal-200 border-teal-500'
+                ? (isDark ? 'bg-[#0a0c10] text-rose-300 border-rose-600' : 'bg-white text-rose-800 border-2 border-rose-600 shadow-xl')
+                : (isDark ? 'bg-[#0a0c10] text-teal-300 border-teal-500' : 'bg-white text-slate-900 border-2 border-emerald-500 shadow-xl')
             }`}>
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm text-teal-400">
+                <span className={`material-symbols-outlined text-base font-bold ${
+                  syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error') ? 'text-rose-600' : 'text-emerald-600'
+                }`}>
                   {syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error') ? 'error' : 'check_circle'}
                 </span>
-                <span>{syncFeedbackMsg}</span>
+                <span className={isDark ? 'text-white font-bold' : 'text-slate-900 font-extrabold'}>{syncFeedbackMsg}</span>
               </div>
             </div>
           )}

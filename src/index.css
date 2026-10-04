@@ -1596,3 +1596,19 @@ html.light header .notif-dropdown button {
   color: #0f766e !important;
 }
 
+/* Sync Toast Popup in Light Mode: Solid White BG & High-Contrast Black Text */
+html:not(.dark) header .sync-toast-popup,
+html.light header .sync-toast-popup {
+  background-color: #ffffff !important;
+  border-color: #10b981 !important;
+  color: #0f172a !important;
+}
+html:not(.dark) header .sync-toast-popup *,
+html.light header .sync-toast-popup * {
+  color: #0f172a !important;
+}
+html:not(.dark) header .sync-toast-popup span,
+html.light header .sync-toast-popup span {
+  color: #0f172a !important;
+}
+
