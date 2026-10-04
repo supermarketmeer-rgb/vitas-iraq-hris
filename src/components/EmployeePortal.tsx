@@ -105,14 +105,15 @@ export const EmployeePortal: React.FC = () => {
   // Login form
   if (!isLoggedIn) {
     return (
-      <div className={`min-h-screen flex items-center justify-center p-4 ${
-        // Always use dark theme for outer background regardless of isDark
-        'bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white'
+      <div className={`min-h-screen flex items-center justify-center p-4 transition-colors ${
+        isDark 
+          ? 'bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white' 
+          : 'bg-slate-100 text-slate-900'
       }`}>
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">{t('بوابة الموظف الذاتية', 'Employee Self-Service Portal')}</h1>
-            <p className="text-slate-400">{t('مؤسسة فيتاس العراق', 'VITAS Iraq')}</p>
+            <h1 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{t('بوابة الموظف الذاتية', 'Employee Self-Service Portal')}</h1>
+            <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>{t('مؤسسة فيتاس العراق', 'VITAS Iraq')}</p>
           </div>
 
           <div className={`p-6 rounded-2xl border shadow-2xl w-full max-w-md mx-auto ${
@@ -170,20 +171,25 @@ export const EmployeePortal: React.FC = () => {
 
   // Main portal interface
   return (
-    <div className={`min-h-screen ${
-      // Always use dark theme for outer background regardless of isDark
-      'bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white'
+    <div className={`min-h-screen transition-colors ${
+      isDark 
+        ? 'bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white' 
+        : 'bg-slate-100 text-slate-900'
     }`}>
       <div className="container mx-auto p-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
+        <div className={`flex items-center justify-between mb-8 pb-4 border-b ${
+          isDark ? 'border-white/10' : 'border-slate-300'
+        }`}>
           <div>
-            <h1 className="text-2xl font-bold">{t('بوابة الموظف الذاتية', 'Employee Self-Service Portal')}</h1>
-            <p className="text-sm text-slate-400">{selectedEmployee?.fullName}</p>
+            <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {t('بوابة الموظف الذاتية', 'Employee Self-Service Portal')}
+            </h1>
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{selectedEmployee?.fullName}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all"
+            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all shadow-md shadow-rose-600/20"
           >
             {t('تسجيل الخروج', 'Logout')}
           </button>
@@ -195,8 +201,8 @@ export const EmployeePortal: React.FC = () => {
             onClick={() => setActiveTab('profile')}
             className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${
               activeTab === 'profile'
-                ? 'bg-teal-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
+                : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
             }`}
           >
             {t('الملف الشخصي', 'Profile')}
@@ -205,8 +211,8 @@ export const EmployeePortal: React.FC = () => {
             onClick={() => setActiveTab('leave')}
             className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${
               activeTab === 'leave'
-                ? 'bg-teal-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
+                : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
             }`}
           >
             {t('الإجازات', 'Leave')}
@@ -215,8 +221,8 @@ export const EmployeePortal: React.FC = () => {
             onClick={() => setActiveTab('evaluation')}
             className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${
               activeTab === 'evaluation'
-                ? 'bg-teal-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
+                : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
             }`}
           >
             {t('التقييم الذاتي', 'Self Evaluation')}
@@ -224,36 +230,38 @@ export const EmployeePortal: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className={`p-6 rounded-2xl border ${
-          isDark ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-300'
+        <div className={`p-6 rounded-2xl border shadow-xl ${
+          isDark ? 'bg-[#1e293b] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
         }`}>
           {activeTab === 'profile' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold mb-4">{t('معلومات الموظف', 'Employee Information')}</h2>
+              <h2 className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {t('معلومات الموظف', 'Employee Information')}
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-slate-400">{t('الاسم الكامل', 'Full Name')}</label>
-                  <p className="text-sm font-normal">{selectedEmployee?.fullName}</p>
+                  <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الاسم الكامل', 'Full Name')}</label>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee?.fullName}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-slate-400">{t('رقم الموظف', 'Employee ID')}</label>
-                  <p className="text-sm font-normal">{selectedEmployee?.employeeId}</p>
+                  <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('رقم الموظف', 'Employee ID')}</label>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee?.employeeId}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-slate-400">{t('رقم البادج', 'Badge Number')}</label>
-                  <p className="text-sm font-normal">{selectedEmployee?.badgeNo}</p>
+                  <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('رقم البادج', 'Badge Number')}</label>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee?.badgeNo}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-slate-400">{t('القسم', 'Department')}</label>
-                  <p className="text-sm font-normal">{selectedEmployee?.department}</p>
+                  <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('القسم', 'Department')}</label>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee?.department}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-slate-400">{t('المسمى الوظيفي', 'Job Title')}</label>
-                  <p className="text-sm font-normal">{selectedEmployee?.jobTitle}</p>
+                  <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('المسمى الوظيفي', 'Job Title')}</label>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee?.jobTitle}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-slate-400">{t('البريد الإلكتروني', 'Email')}</label>
-                  <p className="text-sm font-normal">{selectedEmployee?.email}</p>
+                  <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('البريد الإلكتروني', 'Email')}</label>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee?.email}</p>
                 </div>
               </div>
             </div>
@@ -261,18 +269,18 @@ export const EmployeePortal: React.FC = () => {
 
           {activeTab === 'leave' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold mb-4">{t('طلب إجازة', 'Leave Request')}</h2>
-              <div className="p-4 rounded-xl bg-slate-500/20 border border-slate-600">
-                <p className="text-sm text-slate-400">{t('سيتم إضافة نموذج طلب الإجازة قريباً', 'Leave request form will be added soon')}</p>
+              <h2 className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>{t('طلب إجازة', 'Leave Request')}</h2>
+              <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-500/20 border-slate-600 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                <p className="text-sm font-medium">{t('سيتم إضافة نموذج طلب الإجازة قريباً', 'Leave request form will be added soon')}</p>
               </div>
             </div>
           )}
 
           {activeTab === 'evaluation' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold mb-4">{t('التقييم الذاتي', 'Self Evaluation')}</h2>
-              <div className="p-4 rounded-xl bg-slate-500/20 border border-slate-600">
-                <p className="text-sm text-slate-400">{t('سيتم إضافة نموذج التقييم الذاتي قريباً', 'Self evaluation form will be added soon')}</p>
+              <h2 className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>{t('التقييم الذاتي', 'Self Evaluation')}</h2>
+              <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-500/20 border-slate-600 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                <p className="text-sm font-medium">{t('سيتم إضافة نموذج التقييم الذاتي قريباً', 'Self evaluation form will be added soon')}</p>
               </div>
             </div>
           )}

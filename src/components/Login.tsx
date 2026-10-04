@@ -519,9 +519,10 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 text-white relative overflow-hidden ${
-      // Always use dark theme for outer background regardless of isDark
-      'bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a]'
+    <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden transition-colors ${
+      isDark 
+        ? 'bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white' 
+        : 'bg-slate-100 text-slate-900'
     }`}>
       {/* Animated Orbs - Always visible since outer background is always dark */}
       <>
