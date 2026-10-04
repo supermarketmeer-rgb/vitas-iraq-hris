@@ -2944,7 +2944,7 @@ export const Category3EmployeeView: React.FC = () => {
               {/* Direct Select Menu */}
               <div>
                 <select
-                  value={selectedEmployee ? (selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id || '') : ''}
+                  value={selectedEmployee ? String(selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id || '') : ''}
                   onChange={(e) => {
                     const val = e.target.value;
                     const found = employees.find(emp => {
@@ -2963,7 +2963,7 @@ export const Category3EmployeeView: React.FC = () => {
                 >
                   <option value="" disabled>-- {t('اختر موظفاً مباشرة للتنقل السريع', 'Select an employee directly for fast navigation')} --</option>
                   {employees.map(emp => {
-                    const empOptId = emp.id || emp.employeeId || emp.employee_id;
+                    const empOptId = String(emp.id || emp.employeeId || emp.employee_id || '');
                     return (
                       <option key={empOptId} value={empOptId}>
                         {getEmpFullName(emp)} ({emp.employeeId || emp.employee_id || 'EMP'}) - {getEmpBranch(emp)}
