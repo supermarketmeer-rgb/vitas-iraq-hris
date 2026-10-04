@@ -652,8 +652,8 @@ export const Category3EmployeeView: React.FC = () => {
     return parts.join(' و') + ' دينار عراقي';
   };
 
-  const handleLoadEmployeeData = (empId: string) => {
-    const emp = employees.find(e => e.id === empId);
+  const handleLoadEmployeeData = (empId: string | number) => {
+    const emp = employees.find(e => String(e.id) === String(empId) || String(e.employeeId) === String(empId) || String(e.employee_id) === String(empId));
     if (!emp) return;
 
     const clean = (val?: string) => (!val || val === 'N/A' || val === 'غير محدد' ? '' : val);
