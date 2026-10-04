@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CATEGORY_GROUPS } from '../data/categories';
 import { useApp } from '../context/AppContext';
 import { getUserEffectivePermissions, isModuleAuthorized } from '../utils/permissionHelper';
@@ -27,10 +27,60 @@ export const Sidebar: React.FC = () => {
 
   const currentRole = currentUserRole || currentUser?.role || 'Employee';
   const userPerms = getUserEffectivePermissions(currentUser, currentRole);
+  const isDark = theme === 'dark';
 
   // Collapsed by default as requested
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [sidebarFilter, setSidebarFilter] = useState('');
+
+
+  // Ref to the aside element — used to force dark blue bg + white color in light mode via JS
+  // (CSS alone cannot reliably override Tailwind v4 utility cascade in this project)
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const aside = sidebarRef.current;
+    if (!aside) return;
+
+    const applyDark = () => {
+      // Disconnect first to prevent style changes from re-triggering the observer
+      observer.disconnect();
+
+      const applyEl = (el: Element) => {
+        const tag = (el as HTMLElement).tagName?.toLowerCase();
+        if (!tag) return;
+        const isImg = tag === 'img';
+        const isInput = tag === 'input' || tag === 'select' || tag === 'textarea';
+        const isContainer = tag === 'div' || tag === 'nav' || tag === 'section' || tag === 'ul' || tag === 'li' || tag === 'aside';
+
+        if (!isImg) {
+          (el as HTMLElement).style.setProperty('color', '#e2e8f0', 'important');
+        }
+        if (isContainer) {
+          const insideButton = !!(el as HTMLElement).closest('button');
+          (el as HTMLElement).style.setProperty('background-color', insideButton ? 'transparent' : '#06080d', 'important');
+        }
+        if (isInput) {
+          (el as HTMLElement).style.setProperty('background-color', 'rgba(255,255,255,0.08)', 'important');
+          (el as HTMLElement).style.setProperty('border-color', 'rgba(255,255,255,0.2)', 'important');
+        }
+        // Buttons: keep their own background — only text color is overridden
+      };
+
+      applyEl(aside);
+      aside.querySelectorAll('*').forEach(applyEl);
+
+      // Reconnect after applying styles
+      observer.observe(aside, { childList: true, subtree: true });
+    };
+
+    const observer = new MutationObserver(applyDark);
+    applyDark();
+    return () => observer.disconnect();
+  }, [isDark, openCategories, sidebarFilter, activeModuleId]);
+
+
+
 
   const toggleCategory = (id: string) => {
     setOpenCategories(prev => ({
@@ -85,7 +135,7 @@ export const Sidebar: React.FC = () => {
     }
   };
 
-  const isDark = theme === 'dark';
+
 
   if (!isSidebarOpen) {
     return null;
@@ -119,9 +169,11 @@ export const Sidebar: React.FC = () => {
         aria-hidden="true"
       />
 
-      <aside className={`fixed inset-y-0 start-0 z-50 w-80 max-w-[85vw] lg:static lg:w-80 h-full lg:h-screen lg:sticky lg:top-0 border-x flex flex-col shrink-0 select-none transition-all duration-300 shadow-2xl lg:shadow-none print:hidden ${
-        isDark ? 'bg-[#06080d] border-[#1e2a44] text-slate-300' : 'bg-[#e8ebef] border-slate-300 text-slate-800'
-      }`}>
+      <aside
+        ref={sidebarRef}
+        className="fixed inset-y-0 start-0 z-50 w-80 max-w-[85vw] lg:static lg:w-80 h-full lg:h-screen lg:sticky lg:top-0 border-x flex flex-col shrink-0 select-none transition-all duration-300 shadow-2xl lg:shadow-none print:hidden bg-[#06080d] border-[#1e2a44] text-slate-300"
+      >
+
 
         {/* Mobile Header: Displays current user badge & authorized module count */}
         <div className="lg:hidden p-3.5 border-b border-teal-500/20 bg-teal-950/20 flex items-center justify-between">
@@ -158,7 +210,9 @@ export const Sidebar: React.FC = () => {
         </div>
 
         {/* Sidebar Top Filter & Collapse Controls */}
-        <div className={`p-3 border-b ${isDark ? 'border-[#1e2a44] bg-[#06080d]' : 'border-slate-300'} space-y-2`}>
+        <div
+          className="p-3 border-b border-[#1e2a44] bg-[#06080d] space-y-2"
+        >
           <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
             <div className="flex items-center gap-1.5">
               <span className="material-symbols-outlined text-sm text-teal-400">menu_open</span>
@@ -199,6 +253,7 @@ export const Sidebar: React.FC = () => {
               onChange={e => setSidebarFilter(e.target.value)}
               className={`w-full bg-white/5 border border-white/10 rounded-xl ${language === 'ar' ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500/60 transition-colors placeholder:text-slate-500`}
             />
+
             {sidebarFilter && (
               <button
                 onClick={() => setSidebarFilter('')}
@@ -220,33 +275,35 @@ export const Sidebar: React.FC = () => {
             return (
               <div
                 key={cat.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden shadow-sm"
+                className="rounded-2xl overflow-hidden shadow-md bg-white/[0.03]"
               >
                 {/* Category Header Bar */}
                 <button
                   onClick={() => toggleCategory(cat.id)}
-                  className="w-full px-3.5 py-2.5 flex items-center justify-between text-start hover:bg-white/5 transition-colors group cursor-pointer"
+                  className="w-full px-3.5 py-2.5 flex items-center justify-between text-start hover:bg-white/5 transition-colors group cursor-pointer text-white"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="w-7 h-7 rounded-lg bg-teal-600/10 border border-teal-500/20 text-teal-400 flex items-center justify-center text-sm font-bold">
+                    <span
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold bg-teal-600/20 border border-teal-500/40 text-teal-300"
+                    >
                       {groupIndex + 1}
                     </span>
                     <div>
-                      <h2 className="text-xs font-bold text-slate-200 group-hover:text-teal-400 transition-colors">
+                      <h2 className="text-xs font-bold text-white group-hover:text-teal-400 transition-colors">
                         {displayCatTitle}
                       </h2>
-                      <p className="text-[10px] text-slate-500 font-mono tracking-tight">
+                      <p className="text-[10px] text-white/80 font-mono tracking-tight">
                         {displayCatSubtitle}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold bg-white/5 text-slate-400 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-bold bg-white/10 text-white px-1.5 py-0.5 rounded">
                       {cat.filteredModules.length}
                     </span>
                     <span
-                      className={`material-symbols-outlined text-slate-400 text-lg transition-transform duration-200 ${
+                      className={`material-symbols-outlined text-white text-lg transition-transform duration-200 ${
                         isOpen ? 'rotate-180' : ''
                       }`}
                     >
@@ -257,7 +314,9 @@ export const Sidebar: React.FC = () => {
 
                 {/* Module Items List */}
                 {isOpen && (
-                  <div className="p-1.5 pt-0 space-y-1 bg-[#0a0c10]/40 border-t border-white/5">
+                  <div
+                    className="p-1.5 pt-0 space-y-1 border-t border-white/5 bg-[#0a0c10]/40"
+                  >
                     {cat.filteredModules.map(mod => {
                       const isActive = activeModuleId === mod.id;
                       const badgeCount = getBadgeCount(mod.id);
@@ -269,8 +328,8 @@ export const Sidebar: React.FC = () => {
                           onClick={() => handleSelectModule(mod.id)}
                           className={`w-full text-start px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all group cursor-pointer ${
                             isActive
-                              ? 'bg-[#06080d] text-teal-400 font-bold border border-teal-500 shadow-md shadow-teal-500/10'
-                              : 'text-slate-300 hover:bg-white/5 hover:text-teal-400 border border-transparent'
+                              ? `bg-[#06080d] text-teal-400 font-bold border border-teal-500 shadow-md shadow-teal-500/10`
+                              : 'text-white hover:bg-white/10 hover:text-teal-400 border border-transparent'
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -278,7 +337,7 @@ export const Sidebar: React.FC = () => {
                               className={`material-symbols-outlined text-base ${
                                 isActive
                                   ? 'text-teal-400'
-                                  : 'text-slate-400 group-hover:text-teal-400'
+                                  : 'text-white group-hover:text-teal-400'
                               }`}
                             >
                               {mod.icon}
@@ -328,7 +387,10 @@ export const Sidebar: React.FC = () => {
         </nav>
 
         {/* Settings & Bottom Controls (Settings & Security + Language Icon + Theme Icon on the SAME row) */}
-        <div className={`p-1.5 border-t ${isDark ? 'border-[#1e2a44] bg-[#06080d]' : 'border-slate-300 bg-[#e8ebef]'} flex items-center gap-1.5`}>
+        <div
+          id="sidebar-footer-controls"
+          className="p-1.5 border-t border-[#1e2a44] bg-[#06080d] flex items-center gap-1.5"
+        >
           {/* Settings & Security Button (Available ONLY if user has settings permissions) */}
           {(userPerms.isSuperAdmin || userPerms.settings) ? (
             <button
@@ -338,7 +400,7 @@ export const Sidebar: React.FC = () => {
                   ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
                   : isDark
                     ? 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
-                    : 'bg-white/80 text-slate-800 hover:bg-white border border-slate-300 shadow-sm'
+                    : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
               }`}
               title={t('الإعدادات والأمان', 'Settings & Security')}
             >
@@ -353,7 +415,7 @@ export const Sidebar: React.FC = () => {
                   ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
                   : isDark
                     ? 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
-                    : 'bg-white/80 text-slate-800 hover:bg-white border border-slate-300 shadow-sm'
+                    : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
               }`}
               title={t('ملفي الوظيفي', 'My Profile')}
             >
@@ -365,14 +427,10 @@ export const Sidebar: React.FC = () => {
           {/* Language AR/EN Toggle Button */}
           <button
             onClick={toggleLanguage}
-            className={`h-8 px-3 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer ${
-              isDark
-                ? 'bg-[#06080d] border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50'
-                : 'bg-[#f1f5f9] border-slate-300 text-slate-900 hover:bg-white'
-            }`}
+            className="h-8 px-3 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50"
             title={language === 'ar' ? 'Switch to English' : 'التحويل للعربية'}
           >
-            <span className={`text-xs tracking-wider font-normal ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <span className="text-xs tracking-wider font-normal text-white">
               {language === 'ar' ? 'EN' : 'AR'}
             </span>
           </button>
@@ -380,11 +438,7 @@ export const Sidebar: React.FC = () => {
           {/* Theme Day/Night Toggle Button */}
           <button
             onClick={toggleTheme}
-            className={`h-8 px-2.5 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer ${
-              isDark
-                ? 'bg-[#06080d] border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50'
-                : 'bg-[#f1f5f9] border-slate-300 text-slate-900 hover:bg-white'
-            }`}
+            className="h-8 px-2.5 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50"
             title={theme === 'dark' ? t('الوضع الفاتح', 'Light Mode') : t('الوضع الداكن', 'Dark Mode')}
           >
             <span className="text-sm">{isDark ? '☀️' : '🌙'}</span>
@@ -392,10 +446,12 @@ export const Sidebar: React.FC = () => {
         </div>
 
         {/* Sidebar Footer info */}
-        <div className="p-3 border-t border-[#1e2a44] bg-[#06080d] text-center">
+        <div
+          className="p-3 border-t border-[#1e2a44] bg-[#06080d] text-center"
+        >
           <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
             <span>{t('الصلاحيات:', 'Access:')} <span className="text-emerald-400 font-normal">{userPerms.isSuperAdmin ? t('كاملة', 'Full') : t('مخصصة', 'Role Based')}</span></span>
-            <span className="text-[10px] font-mono bg-[#06080d] text-teal-400 shadow-md px-1.5 py-0.5 rounded border border-teal-500">
+            <span className={`text-[10px] font-mono ${isDark ? 'bg-[#06080d]' : 'bg-[#06080d]'} text-teal-400 shadow-md px-1.5 py-0.5 rounded border border-teal-500`}>
               v2.5 Enterprise
             </span>
           </div>

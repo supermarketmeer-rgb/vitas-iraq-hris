@@ -110,10 +110,24 @@ html.light *::selection {
 /* ================================================================
    INPUTS / SELECTS / TEXTAREAS
    ================================================================ */
-input, select, textarea {
+input:not(aside input):not(header input),
+select:not(aside select):not(header select),
+textarea:not(aside textarea):not(header textarea) {
   background-color: #ffffff;
   color: #0f172a;
   border-color: #cbd5e1;
+}
+
+/* Sidebar & Header inputs keep dark-blue style in light mode */
+aside input, aside select, aside textarea,
+header input, header select, header textarea {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+aside input::placeholder, aside textarea::placeholder,
+header input::placeholder, header textarea::placeholder {
+  color: #94a3b8 !important;
 }
 
 html.dark input,
@@ -386,65 +400,65 @@ html.dark ::-webkit-scrollbar-thumb {
 
 /* ================================================================
    LIGHT MODE: Comprehensive Dark Classes Override (Pure White & Clean Light)
+   Excludes aside (sidebar) and header so they keep dark blue.
    ================================================================ */
-html.light .bg-\[\#0a0c10\],
-html.light [class*="bg-[#0a0c10]"],
-html.light .bg-\[\#111827\],
-html.light [class*="bg-[#111827]"],
-html.light .bg-\[\#0c0f17\],
-html.light [class*="bg-[#0c0f17]"],
-html.light .bg-\[\#121b2d\],
-html.light [class*="bg-[#121b2d]"],
-html.light .bg-\[\#1e293b\],
-html.light [class*="bg-[#1e293b]"],
-html.light .bg-\[\#121c33\],
-html.light [class*="bg-[#121c33]"],
-html.light .bg-\[\#0c1322\],
-html.light [class*="bg-[#0c1322]"],
-html.light .bg-\[\#172545\],
-html.light [class*="bg-[#172545]"],
-html.light .bg-\[\#172238\],
-html.light [class*="bg-[#172238]"],
-html.light .bg-\[\#1f2d4a\],
-html.light [class*="bg-[#1f2d4a]"],
-html.light .bg-slate-900,
-html.light [class*="bg-slate-900"],
-html.light .bg-slate-950,
-html.light [class*="bg-slate-950"],
-html.light .bg-gray-900,
-html.light [class*="bg-gray-900"],
-html.light .bg-gray-950,
-html.light [class*="bg-gray-950"] {
+html.light .bg-\[\#0a0c10\]:not(aside *):not(header *),
+html.light [class*="bg-[#0a0c10]"]:not(aside *):not(header *),
+html.light .bg-\[\#111827\]:not(aside *):not(header *),
+html.light [class*="bg-[#111827]"]:not(aside *):not(header *),
+html.light .bg-\[\#0c0f17\]:not(aside *):not(header *),
+html.light [class*="bg-[#0c0f17]"]:not(aside *):not(header *),
+html.light .bg-\[\#121b2d\]:not(aside *):not(header *),
+html.light [class*="bg-[#121b2d]"]:not(aside *):not(header *),
+html.light .bg-\[\#1e293b\]:not(aside *):not(header *),
+html.light [class*="bg-[#1e293b]"]:not(aside *):not(header *),
+html.light .bg-\[\#121c33\]:not(aside *):not(header *),
+html.light [class*="bg-[#121c33]"]:not(aside *):not(header *),
+html.light .bg-\[\#0c1322\]:not(aside *):not(header *),
+html.light [class*="bg-[#0c1322]"]:not(aside *):not(header *),
+html.light .bg-\[\#172545\]:not(aside *):not(header *),
+html.light [class*="bg-[#172545]"]:not(aside *):not(header *),
+html.light .bg-\[\#172238\]:not(aside *):not(header *),
+html.light [class*="bg-[#172238]"]:not(aside *):not(header *),
+html.light .bg-\[\#1f2d4a\]:not(aside *):not(header *),
+html.light [class*="bg-[#1f2d4a]"]:not(aside *):not(header *),
+html.light .bg-slate-900:not(aside *):not(header *),
+html.light [class*="bg-slate-900"]:not(aside *):not(header *),
+html.light .bg-slate-950:not(aside *):not(header *),
+html.light [class*="bg-slate-950"]:not(aside *):not(header *),
+html.light .bg-gray-900:not(aside *):not(header *),
+html.light [class*="bg-gray-900"]:not(aside *):not(header *),
+html.light .bg-gray-950:not(aside *):not(header *),
+html.light [class*="bg-gray-950"]:not(aside *):not(header *) {
   background-color: #ffffff !important;
-  color: #0f172a !important;
   border-color: #e2e8f0 !important;
 }
 
-/* Sub-panels, dark chips, and inner container boxes in Light Mode */
-html.light .bg-\[\#06080d\],
-html.light [class*="bg-[#06080d]"]:not(html.light aside):not(html.light header),
-html.light [class*="bg-[#030508]"],
-html.light [class*="bg-[#04060a]"] {
+/* Sub-panels, dark chips, and inner container boxes in Light Mode (excludes aside & header) */
+html.light .bg-\[\#06080d\]:not(aside *):not(header *),
+html.light [class*="bg-[#06080d]"]:not(aside *):not(header *),
+html.light [class*="bg-[#030508]"]:not(aside *):not(header *),
+html.light [class*="bg-[#04060a]"]:not(aside *):not(header *) {
   background-color: #f8fafc !important;
-  color: #0f172a !important;
   border-color: #e2e8f0 !important;
 }
 
-/* Border overrides for dark hex borders in Light Mode */
-html.light .border-white\/10,
-html.light .border-white\/5,
-html.light .border-white\/20,
-html.light [class*="border-white"] {
+
+/* Border overrides for dark hex borders in Light Mode (excludes aside & header) */
+html.light .border-white\/10:not(aside *):not(header *),
+html.light .border-white\/5:not(aside *):not(header *),
+html.light .border-white\/20:not(aside *):not(header *),
+html.light [class*="border-white"]:not(aside *):not(header *) {
   border-color: #e2e8f0 !important;
 }
 
-/* Text overrides for white/slate text in Light Mode */
-html.light .text-slate-200,
-html.light .text-slate-300 {
+/* Text overrides for white/slate text in Light Mode (excludes aside & header) */
+html.light .text-slate-200:not(aside *):not(header *),
+html.light .text-slate-300:not(aside *):not(header *) {
   color: #334155 !important;
 }
 
-html.light .text-slate-400 {
+html.light .text-slate-400:not(aside *):not(header *) {
   color: #64748b !important;
 }
 /* ================================================================
@@ -507,22 +521,33 @@ html.light .bg-slate-100 {
 /* ================================================================
    LIGHT MODE: Headings, Titles & White Text -> Teal (#0f766e)
    ================================================================ */
-html.light h1:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
-html.light h2:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
-html.light h3:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
-html.light h4:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
-html.light h5:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
-html:not(.dark) h1:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
-html:not(.dark) h2:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
-html:not(.dark) h3:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
-html:not(.dark) h4:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]),
-html:not(.dark) h5:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]) {
+html.light h1:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(aside *):not(header *),
+html.light h2:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(aside *):not(header *),
+html.light h3:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(aside *):not(header *),
+html.light h4:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(aside *):not(header *),
+html.light h5:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(aside *):not(header *),
+html:not(.dark) h1:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(aside *):not(header *),
+html:not(.dark) h2:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(aside *):not(header *),
+html:not(.dark) h3:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(aside *):not(header *),
+html:not(.dark) h4:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(aside *):not(header *),
+html:not(.dark) h5:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(aside *):not(header *) {
   color: #0f766e !important;
 }
 
 html.light .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(th):not(th *):not(thead *),
 html:not(.dark) .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(th):not(th *):not(thead *) {
   color: #0f766e !important;
+}
+
+/* ============================================================
+   CRITICAL: aside & header always white text in light mode
+   This MUST come after all other color rules.
+   ============================================================ */
+html:not(.dark) aside,
+html:not(.dark) aside *,
+html:not(.dark) header,
+html:not(.dark) header * {
+  color: #ffffff !important;
 }
 
 html.light .text-white-force:not(.dark-banner *),
@@ -598,8 +623,8 @@ html.light .bg-red-950\/60 {
   background-color: #fff1f2 !important;
 }
 
-/* Text color fixes for dark-first text */
-html.light .text-slate-100 {
+/* Text color fixes for dark-first text (excludes aside & header) */
+html.light .text-slate-100:not(aside *):not(header *) {
   color: #0f172a !important;
 }
 
@@ -1323,5 +1348,227 @@ html.dark .dashboard-banner-teal-btn,
 html.dark .dashboard-banner-teal-btn *,
 html.dark .dashboard-banner-teal-btn span,
 html.dark .dashboard-banner-teal-btn .material-symbols-outlined {
+  color: #2dd4bf !important;
+}
+
+/* ================================================================
+   LIGHT MODE: SIDEBAR (aside) & HEADER — DARK BLUE OVERRIDE
+   Force dark blue background (#0f2044) with white text on all
+   elements inside aside and header. This undoes all the global
+   light-mode overrides for ONLY the sidebar and header.
+   Dark mode is NOT affected (html.dark rules remain unchanged).
+   ================================================================ */
+
+/* --- ASIDE (Sidebar): identical to dark mode in light mode --- */
+html:not(.dark) aside {
+  background-color: #06080d !important;
+  border-color: #1e2a44 !important;
+  color: #e2e8f0 !important;
+}
+html:not(.dark) aside > div,
+html:not(.dark) aside > nav {
+  background-color: #06080d !important;
+  border-color: #1e2a44 !important;
+}
+
+/* Inputs */
+html:not(.dark) aside input,
+html:not(.dark) aside select,
+html:not(.dark) aside textarea {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+html:not(.dark) aside input::placeholder,
+html:not(.dark) aside textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Text colors — native Tailwind values */
+html:not(.dark) aside .text-white { color: #ffffff !important; }
+html:not(.dark) aside .text-white\/80 { color: rgba(255, 255, 255, 0.8) !important; }
+html:not(.dark) aside .text-slate-200 { color: #e2e8f0 !important; }
+html:not(.dark) aside .text-slate-300 { color: #cbd5e1 !important; }
+html:not(.dark) aside .text-slate-400 { color: #94a3b8 !important; }
+html:not(.dark) aside .text-slate-500 { color: #64748b !important; }
+html:not(.dark) aside .text-teal-300 { color: #5eead4 !important; }
+html:not(.dark) aside .text-teal-400 { color: #2dd4bf !important; }
+html:not(.dark) aside .text-emerald-400 { color: #34d399 !important; }
+html:not(.dark) aside h2,
+html:not(.dark) aside h3,
+html:not(.dark) aside h4 { color: #ffffff !important; }
+
+/* Borders — native values */
+html:not(.dark) aside .border-white\/5 { border-color: rgba(255, 255, 255, 0.05) !important; }
+html:not(.dark) aside .border-white\/10 { border-color: rgba(255, 255, 255, 0.1) !important; }
+html:not(.dark) aside .border-teal-500 { border-color: #14b8a6 !important; }
+html:not(.dark) aside .border-teal-500\/20 { border-color: rgba(20, 184, 166, 0.2) !important; }
+html:not(.dark) aside .border-teal-500\/40 { border-color: rgba(20, 184, 166, 0.4) !important; }
+html:not(.dark) aside .border-transparent { border-color: transparent !important; }
+
+/* Backgrounds — native values */
+html:not(.dark) aside .bg-white\/5 { background-color: rgba(255, 255, 255, 0.05) !important; }
+html:not(.dark) aside .bg-white\/10 { background-color: rgba(255, 255, 255, 0.1) !important; }
+html:not(.dark) aside .bg-\[\#06080d\] { background-color: #06080d !important; }
+html:not(.dark) aside .bg-teal-500\/10 { background-color: rgba(20, 184, 166, 0.1) !important; }
+html:not(.dark) aside .bg-teal-500\/20 { background-color: rgba(20, 184, 166, 0.2) !important; }
+html:not(.dark) aside .bg-teal-600\/10 { background-color: rgba(13, 148, 136, 0.1) !important; }
+html:not(.dark) aside .bg-teal-600\/20 { background-color: rgba(13, 148, 136, 0.2) !important; }
+html:not(.dark) aside .bg-rose-500 { background-color: #f43f5e !important; }
+
+/* Category cards — no navy, no border */
+html:not(.dark) aside .rounded-2xl {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border-color: transparent !important;
+}
+
+/* --- HEADER Background & Text --- */
+html:not(.dark) header {
+  background-color: rgba(15, 32, 68, 0.95) !important;
+  border-color: #1a3570 !important;
+  color: #ffffff !important;
+}
+
+/* Inputs, selects inside header */
+html:not(.dark) header input,
+html:not(.dark) header select,
+html:not(.dark) header textarea {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+html:not(.dark) header input::placeholder {
+  color: #93c5fd !important;
+}
+
+/* Buttons inside header */
+html:not(.dark) header button {
+  color: #e2e8f0 !important;
+}
+
+/* White text inside header */
+html:not(.dark) header .text-white {
+  color: #ffffff !important;
+}
+html:not(.dark) header .text-slate-200,
+html:not(.dark) header .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+html:not(.dark) header .text-teal-300,
+html:not(.dark) header .text-teal-400 {
+  color: #5eead4 !important;
+}
+html:not(.dark) header .text-blue-200 {
+  color: #93c5fd !important;
+}
+html:not(.dark) header .text-rose-300 {
+  color: #fda4af !important;
+}
+
+/* Header borders */
+html:not(.dark) header .border-white\/10,
+html:not(.dark) header .border-white\/20,
+html:not(.dark) header [class*="border-white"] {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Header button backgrounds */
+html:not(.dark) header button[class*="bg-white\/10"] {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+html:not(.dark) header [class*="bg-white\/10"] {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Notification dropdown inside header */
+html:not(.dark) header [class*="bg-\[#0f2044\]"],
+html:not(.dark) header .bg-\[\\#0f2044\] {
+  background-color: #0f2044 !important;
+}
+
+/* ---------------------------------------------------------------
+   FINAL: Force white color for all text and icons inside Header (light mode)
+   (Sidebar is handled above with native dark-mode colors)
+   --------------------------------------------------------------- */
+html:not(.dark) header {
+  color: #ffffff !important;
+}
+html:not(.dark) header * {
+  color: #ffffff !important;
+}
+html:not(.dark) header .material-symbols-outlined {
+  color: #ffffff !important;
+}
+/* Ensure badge numbers stay white */
+html:not(.dark) header span.bg-white\/10 {
+  color: #ffffff !important;
+}
+html:not(.dark) header input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+/* Keep sidebar & header button hover dark (no white background on hover) */
+aside button:hover,
+aside a:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+/* Teal category number badge — always teal regardless of theme */
+aside span.bg-teal-600\/20 {
+  background-color: rgba(13, 148, 136, 0.2) !important;
+  border-color: rgba(20, 184, 166, 0.4) !important;
+  color: #5eead4 !important;
+}
+/* ================================================================
+   SIDEBAR: same look in light & dark. Buttons without their own bg
+   class stay transparent (undo global light-mode button bg rules).
+   ================================================================ */
+html:not(.dark) aside button:not([class^="bg-"]):not([class*=" bg-"]):not(:hover),
+html:not(.dark) aside a:not([class^="bg-"]):not([class*=" bg-"]):not(:hover) {
+  background-color: transparent !important;
+}
+/* Category combobox header + card: always dark */
+html:not(.dark) aside nav > div.rounded-2xl,
+html:not(.dark) aside nav > div.rounded-2xl > button:not(:hover) {
+  background-color: #06080d !important;
+}
+aside button:not(.border-teal-500):hover,
+aside a:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+/* Light mode: hover stays dark (beats global light-mode hover rules) */
+html:not(.dark) body aside button:hover,
+html:not(.dark) body aside a:hover,
+html:not(.dark) body aside nav > div.rounded-2xl > button:hover,
+html:not(.dark) body aside button[class]:not(.border-teal-500):hover {
+  background-color: #12151c !important;
+  background-image: none !important;
+}
+html:not(.dark) body aside button.border-teal-500:hover {
+  background-color: #06080d !important;
+}
+
+/* Sidebar footer buttons (Settings / AR-EN / Theme): always dark */
+#sidebar-footer-controls > button,
+html:not(.dark) body #sidebar-footer-controls > button {
+  background-color: #0d1017 !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+}
+#sidebar-footer-controls > button *,
+html:not(.dark) body #sidebar-footer-controls > button * {
+  color: #cbd5e1 !important;
+}
+#sidebar-footer-controls > button:hover,
+html:not(.dark) body #sidebar-footer-controls > button:hover {
+  background-color: #151922 !important;
+  border-color: rgba(20, 184, 166, 0.5) !important;
+}
+#sidebar-footer-controls > button.border-teal-500,
+html:not(.dark) body #sidebar-footer-controls > button.border-teal-500 {
+  background-color: #06080d !important;
+  border-color: #14b8a6 !important;
+}
+#sidebar-footer-controls > button.border-teal-500 *,
+html:not(.dark) body #sidebar-footer-controls > button.border-teal-500 * {
   color: #2dd4bf !important;
 }

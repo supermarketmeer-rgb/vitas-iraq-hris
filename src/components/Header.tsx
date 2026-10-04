@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
@@ -93,13 +93,69 @@ export const Header: React.FC = () => {
 
   const isDark = theme === 'dark';
 
+  // Header is always dark — force dark bg + white text via JS (overrides any CSS)
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+
+    const applyStyles = () => {
+      // Disconnect first to prevent infinite loop when setting style attributes
+      observer.disconnect();
+
+      // Force header bg dark
+      header.style.setProperty('background-color', '#06080d', 'important');
+
+      header.querySelectorAll('*').forEach(el => {
+        const tag = (el as HTMLElement).tagName?.toLowerCase();
+        if (!tag) return;
+        const isImg = tag === 'img';
+        const isInput = tag === 'input' || tag === 'select' || tag === 'textarea';
+
+        if (!isImg) {
+          (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+        }
+        if (tag === 'div' || tag === 'nav' || tag === 'section') {
+          (el as HTMLElement).style.setProperty('background-color', 'transparent', 'important');
+        }
+        if (isInput) {
+          (el as HTMLElement).style.setProperty('background-color', 'rgba(255,255,255,0.08)', 'important');
+          (el as HTMLElement).style.setProperty('border-color', 'rgba(255,255,255,0.2)', 'important');
+        }
+      });
+
+      // Restore data-keep-color (e.g. VITAS teal)
+      header.querySelectorAll('[data-keep-color]').forEach(el => {
+        const keepColor = el.getAttribute('data-keep-color');
+        if (keepColor) {
+          (el as HTMLElement).style.setProperty('color', keepColor, 'important');
+        }
+      });
+
+      // Reconnect after applying styles
+      observer.observe(header, { childList: true, subtree: true });
+    };
+
+    const observer = new MutationObserver(applyStyles);
+
+    // Initial apply
+    applyStyles();
+
+    return () => observer.disconnect();
+  }, [isDark]);
+
+
+
+
+
+
   // Handle null currentUser - show simplified header or redirect
   if (!currentUser) {
     return (
-      <header className={`sticky top-0 z-30 h-16 ${isDark ? 'bg-[#06080d]/95 border-[#1e2a44] text-white' : 'bg-[#e8ebef]/95 border-slate-300 text-slate-800 shadow-sm'} backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden`}>
+      <header className={`sticky top-0 z-30 h-16 ${isDark ? 'bg-[#06080d]/95 border-[#1e2a44] text-white' : 'bg-[#0f2044]/95 border-[#1a3570] text-white shadow-md'} backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden`}>
         <div className="flex items-center gap-3">
           <img src={vitasLogo} alt="VITAS Iraq Logo" className="w-10 h-10 rounded-full object-cover border-2 border-teal-500/40 shadow-md bg-white" />
-          <span className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>VITAS Iraq HRMS</span>
+          <span className={`text-lg font-bold ${isDark ? 'text-white' : 'text-white'}`}>VITAS Iraq HRMS</span>
         </div>
       </header>
     );
@@ -121,13 +177,13 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className={`sticky top-0 z-30 h-16 ${isDark ? 'bg-[#06080d]/95 border-[#1e2a44] text-white' : 'bg-[#e8ebef]/95 border-slate-300 text-slate-800 shadow-sm'} backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden`}>
+      <header ref={headerRef} className="sticky top-0 z-30 h-16 bg-[#06080d]/95 border-[#1e2a44] text-white backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden">
       {/* Left / Start Section - Logo & Sidebar Toggle */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className={`p-2 rounded-lg transition-colors ${
-            isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+            isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-200 hover:text-white hover:bg-white/10'
           }`}
           title={t('تبديل القائمة الجانبية', 'Toggle Sidebar')}
         >
@@ -148,14 +204,14 @@ export const Header: React.FC = () => {
           />
           <div className="hidden sm:block">
             <div className="flex items-center gap-1.5">
-              <span className={`font-extrabold text-lg tracking-tight font-['Inter',sans-serif] ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                VITAS<span className="text-teal-500">IRAQ</span>
+              <span className={`font-extrabold text-lg tracking-tight font-['Inter',sans-serif] ${isDark ? 'text-white' : 'text-white'}`}>
+                <span data-keep-color="#14b8a6" style={{ color: '#14b8a6' }}>VITAS</span>IRAQ
               </span>
               <span className="text-[10px] bg-teal-600 text-white shadow-md border border-teal-500/20 px-1.5 py-0.5 rounded font-mono font-semibold">
                 HRMS
               </span>
             </div>
-            <p className={`text-[11px] -mt-1 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-[11px] -mt-1 font-medium ${isDark ? 'text-slate-400' : 'text-blue-200'}`}>
               {t('بوابة الموارد البشرية المؤسسية', 'Enterprise HR Portal')}
             </p>
           </div>
@@ -169,18 +225,20 @@ export const Header: React.FC = () => {
           className={`w-full h-10 px-3.5 rounded-xl flex items-center justify-between text-sm transition-all group ${
             isDark 
               ? 'bg-[#06080d] border border-teal-500/40 text-slate-200 hover:text-white hover:border-teal-400 shadow-inner' 
-              : 'bg-white border border-slate-300 text-slate-700 hover:border-teal-500 hover:text-slate-900 shadow-xs'
+              : 'bg-white/10 border border-white/20 text-slate-200 hover:border-teal-400 hover:text-white shadow-inner'
           }`}
         >
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <span className="material-symbols-outlined text-teal-500 group-hover:scale-110 transition-transform shrink-0">
               search
             </span>
-            <span className={`font-normal truncate whitespace-nowrap text-xs sm:text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+            <span className={`font-normal truncate whitespace-nowrap text-xs sm:text-sm ${isDark ? 'text-slate-300' : 'text-blue-200'}`}>
               {t('بحث شامل في المنظومة...', 'Global search system...')}
             </span>
           </div>
-          <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono text-teal-600 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/10 border border-teal-300 dark:border-teal-500/30 rounded shadow-xs">
+          <kbd className={`hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded shadow-xs ${
+            isDark ? 'text-teal-300 bg-teal-500/10 border border-teal-500/30' : 'text-teal-300 bg-white/10 border border-white/20'
+          }`}>
             ⌘K
           </kbd>
         </button>
@@ -201,7 +259,7 @@ export const Header: React.FC = () => {
                 ? 'bg-teal-500/20 text-teal-400 border-teal-500 animate-pulse'
                 : isDark
                   ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400 hover:bg-teal-950/30'
-                  : 'bg-white text-slate-800 border-slate-300 hover:bg-teal-50 hover:border-teal-400'
+                  : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-teal-400'
             }`}
             title={t(
               'مزامنة فورية بين السيرفر المحلي والسحابي (تلقائياً كل 15 دقيقة)',
@@ -211,10 +269,12 @@ export const Header: React.FC = () => {
             <span className={`material-symbols-outlined text-lg text-teal-500 ${isManualSyncing ? 'animate-spin' : ''}`}>
               sync
             </span>
-            <span className="hidden sm:inline text-xs font-bold text-teal-700 dark:text-teal-400">
+            <span className={`hidden sm:inline text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-300'}`}>
               {isManualSyncing ? t('جاري المزامنة...', 'Syncing...') : t('مزامنة', 'Sync')}
             </span>
-            <span className="hidden md:inline-block text-[10px] font-mono px-1 py-0.2 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/30 font-semibold">
+            <span className={`hidden md:inline-block text-[10px] font-mono px-1 py-0.2 rounded border font-semibold ${
+              isDark ? 'bg-teal-500/10 text-teal-300 border-teal-500/30' : 'bg-white/10 text-teal-200 border-white/20'
+            }`}>
               15m
             </span>
           </button>
@@ -240,7 +300,7 @@ export const Header: React.FC = () => {
         <button
           onClick={() => setIsSearchOpen(true)}
           className={`md:hidden p-2 rounded-lg transition-colors ${
-            isDark ? 'text-white hover:bg-white/10' : 'text-slate-700 hover:bg-slate-200'
+            isDark ? 'text-white hover:bg-white/10' : 'text-white hover:bg-white/10'
           }`}
           title={t('البحث', 'Search')}
         >
@@ -250,7 +310,7 @@ export const Header: React.FC = () => {
         {/* Role Switcher Selector (Super Admin Only) */}
         {currentUser?.role === 'Super Admin' && (
           <div className={`hidden lg:flex items-center gap-1.5 p-1 rounded-xl border ${
-            isDark ? 'bg-[#06080d] border-teal-500/40' : 'bg-white border-slate-300 shadow-xs'
+            isDark ? 'bg-[#06080d] border-teal-500/40' : 'bg-white/10 border-white/20'
           }`}>
             <span className="material-symbols-outlined text-teal-500 text-sm ml-1">
               admin_panel_settings
@@ -259,12 +319,12 @@ export const Header: React.FC = () => {
               value={currentUser.role}
               onChange={(e) => setCurrentUserRole(e.target.value as UserRole)}
               className={`bg-transparent text-xs font-normal focus:outline-none cursor-pointer py-1 ${
-                isDark ? 'text-white' : 'text-slate-800'
+                isDark ? 'text-white' : 'text-white'
               }`}
               title={t('تبديل دور المستخدم للأمان والصلاحيات', 'Switch user role for permissions')}
             >
               {roles.map(r => (
-                <option key={r} value={r} className={isDark ? 'bg-[#0a0c10] text-white font-normal' : 'bg-white text-slate-800 font-normal'}>
+                <option key={r} value={r} className={isDark ? 'bg-[#0a0c10] text-white font-normal' : 'bg-[#06080d] text-white font-normal'}>
                   {r}
                 </option>
               ))}
@@ -277,13 +337,13 @@ export const Header: React.FC = () => {
           onClick={() => setActiveModuleId('emp-news')}
           className={`p-2 px-3 rounded-xl border text-xs font-normal transition-all flex items-center gap-1.5 ${
             activeModuleId === 'emp-news'
-              ? (isDark ? 'bg-[#06080d] text-teal-400 border-teal-400 shadow-lg shadow-teal-500/20' : 'bg-teal-50 text-teal-800 border-teal-500 shadow-xs')
-              : (isDark ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400' : 'bg-white text-slate-800 border-slate-300 hover:bg-teal-50 shadow-xs')
+              ? (isDark ? 'bg-[#06080d] text-teal-400 border-teal-400 shadow-lg shadow-teal-500/20' : 'bg-white/20 text-teal-300 border-teal-400 shadow-lg shadow-teal-500/20')
+              : (isDark ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400' : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-teal-400')
           }`}
           title={t('أخبار وإعلانات المؤسسة', 'Company News & Announcements')}
         >
           <span className="material-symbols-outlined text-xl text-teal-500">newspaper</span>
-          <span className={`hidden md:inline text-xs ${isDark ? 'text-white' : 'text-slate-800'}`}>{t('أخبار المؤسسة', 'Company News')}</span>
+          <span className={`hidden md:inline text-xs ${isDark ? 'text-white' : 'text-white'}`}>{t('أخبار المؤسسة', 'Company News')}</span>
         </button>
 
         {/* System Help & Functional Guide Modal Trigger */}
@@ -292,7 +352,7 @@ export const Header: React.FC = () => {
           className={`p-2 rounded-xl transition-all relative border flex items-center justify-center ${
             isDark 
               ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400' 
-              : 'bg-white text-slate-800 border-slate-300 hover:bg-teal-50 shadow-xs'
+              : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-teal-400'
           }`}
           title={t('دليل وفهرس وظائف موديولات المنظومة (مفهرس)', 'System Modules Index & Functional Guide')}
         >
@@ -306,11 +366,11 @@ export const Header: React.FC = () => {
             className={`p-2 rounded-xl transition-all relative border ${
               isDark 
                 ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400' 
-                : 'bg-white text-slate-800 border-slate-300 hover:bg-teal-50 shadow-xs'
+                : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-teal-400'
             }`}
             title={t('الإشعارات', 'Notifications')}
           >
-            <span className={`material-symbols-outlined text-xl ${isDark ? 'text-white' : 'text-slate-800'}`}>notifications</span>
+            <span className={`material-symbols-outlined text-xl ${isDark ? 'text-white' : 'text-white'}`}>notifications</span>
             {unreadCount > 0 && (
               <span 
                 className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-600 text-white border border-rose-500 text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-md shadow-rose-600/40"
@@ -324,17 +384,17 @@ export const Header: React.FC = () => {
           {/* Notifications Dropdown */}
           {showNotifMenu && (
             <div className={`absolute ${language === 'ar' ? 'left-0' : 'right-0'} mt-2 w-80 sm:w-96 rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 border ${
-              isDark ? 'bg-[#0a0c10] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+              isDark ? 'bg-[#0a0c10] border-white/10 text-white' : 'bg-[#06080d] border-[#1e2a44] text-white'
             }`}>
-              <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+              <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-white/10' : 'border-white/10'}`}>
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-teal-500">notifications_active</span>
-                  <h3 className={`font-normal text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <h3 className={`font-normal text-sm ${isDark ? 'text-white' : 'text-white'}`}>
                     {t('مركز التنبيهات', 'Notification Center')}
                   </h3>
                 </div>
                 <span className={`text-xs shadow-xs border px-2 py-0.5 rounded-full font-normal ${
-                  isDark ? 'bg-[#06080d] text-teal-400 border-teal-500' : 'bg-teal-50 text-teal-700 border-teal-300'
+                  isDark ? 'bg-[#06080d] text-teal-400 border-teal-500' : 'bg-teal-500/20 text-teal-300 border-teal-500/40'
                 }`}>
                   {notifications.length} {t('تنبيهات', 'notifications')}
                 </span>
@@ -354,27 +414,27 @@ export const Header: React.FC = () => {
                       key={n.id}
                       className={`p-3 rounded-xl border text-xs transition-colors ${
                         n.read
-                          ? (isDark ? 'bg-white/[0.02] border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500')
-                          : (isDark ? 'bg-teal-500/5 border-teal-500/20 text-slate-200 font-normal' : 'bg-teal-50/50 border-teal-200 text-slate-800 font-normal')
+                          ? (isDark ? 'bg-white/[0.02] border-white/5 text-slate-400' : 'bg-white/5 border-white/10 text-slate-400')
+                          : (isDark ? 'bg-teal-500/5 border-teal-500/20 text-slate-200 font-normal' : 'bg-teal-500/10 border-teal-500/30 text-white font-normal')
                       }`}
                     >
                       <div className="flex items-center justify-between font-normal mb-1">
                         <span className="font-bold">{n.title}</span>
                         <span className="text-[10px] text-slate-400">{n.timestamp}</span>
                       </div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>{n.message}</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-300'}>{n.message}</p>
                     </div>
                   ))
                 )}
               </div>
 
-              <div className={`pt-2 border-t text-center ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+              <div className={`pt-2 border-t text-center ${isDark ? 'border-white/10' : 'border-white/10'}`}>
                 <button
                   onClick={() => {
                     setActiveModuleId('supp-notif-center');
                     setShowNotifMenu(false);
                   }}
-                  className="text-xs font-normal text-teal-600 dark:text-teal-400 hover:underline py-1 transition-colors"
+                  className={`text-xs font-normal hover:underline py-1 transition-colors ${isDark ? 'text-teal-400' : 'text-teal-300'}`}
                 >
                   {t('عرض كافة الإشعارات والتحكم الإداري ←', 'View all notifications & settings →')}
                 </button>
@@ -388,20 +448,20 @@ export const Header: React.FC = () => {
           className={`flex items-center gap-2.5 p-1.5 px-3 rounded-xl border shadow-xs select-none ${
             isDark 
               ? 'bg-[#06080d] border-teal-500/40 text-white' 
-              : 'bg-white border-slate-300 text-slate-900'
+              : 'bg-white/10 border-white/20 text-white'
           }`}
           title={`${currentUserName} (${currentUser.role})`}
         >
           <div className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm shadow-xs shrink-0 ${
-            isDark ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-700'
+            isDark ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-teal-500/30 border-teal-400/50 text-teal-200'
           }`}>
             {(currentUserName || 'U').slice(0, 1)}
           </div>
           <div className="text-start">
-            <p className={`text-xs font-bold leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <p className={`text-xs font-bold leading-tight ${isDark ? 'text-white' : 'text-white'}`}>
               {currentUserName}
             </p>
-            <p className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold leading-tight mt-0.5">{currentUser.role}</p>
+            <p className={`text-[10px] font-semibold leading-tight mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-300'}`}>{currentUser.role}</p>
           </div>
         </div>
 
@@ -412,7 +472,7 @@ export const Header: React.FC = () => {
           className={`p-2 rounded-xl border transition-all flex items-center justify-center cursor-pointer shadow-xs active:scale-95 ${
             isDark
               ? 'bg-[#06080d] hover:bg-[#0a0c10] text-teal-400 border-teal-500/40 hover:border-teal-400'
-              : 'bg-white hover:bg-slate-50 text-teal-700 border-slate-300 hover:border-teal-500'
+              : 'bg-white/10 hover:bg-white/20 text-teal-300 border-white/20 hover:border-teal-400'
           }`}
           title={t('تغيير كلمة المرور الخاصة بي', 'Change My Password')}
         >
@@ -430,7 +490,7 @@ export const Header: React.FC = () => {
           className={`p-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
             isDark
               ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border-rose-500/30'
-              : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
+              : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/30'
           }`}
           title={t('تسجيل الخروج', 'Logout')}
         >
