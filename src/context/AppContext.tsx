@@ -1057,7 +1057,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markNotificationRead = async (id: string) => {
     try {
-      await api.markNotificationRead(id);
+      await api.markNotificationRead(id).catch(() => {});
+      api.syncNow().catch(() => {});
       setNotifications(prev => {
         const updated = prev.map(n => (n.id === id ? { ...n, read: true } : n));
         try { localStorage.setItem('vitas_notifications', JSON.stringify(updated)); } catch (e) {}
@@ -1081,10 +1082,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
     try {
-      const unreadList = notifications.filter(n => !n.read);
-      for (const n of unreadList) {
-        api.markNotificationRead(n.id).catch(() => {});
-      }
+      await api.markAllNotificationsRead().catch(() => {});
+      api.syncNow().catch(() => {});
     } catch (e) {
       console.error('Error in markAllNotificationsAsRead API sync:', e);
     }

@@ -1987,19 +1987,27 @@ app.get('/api/notifications', async (req, res) => {
   }
 });
 
-app.post('/api/notifications', async (req, res) => {
+app.put('/api/notifications/read-all', async (req, res) => {
   try {
-    const data = req.body;
-    const notificationId = `NOTIF-${Date.now()}`;
-    await query(
-      `INSERT INTO system_notifications (id, title, message, type, priority, target_audience, user_id, link_url, is_read) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [notificationId, data.title, data.message, data.type, data.priority, data.targetAudience, data.userId, data.linkUrl, false]
-    );
-    res.json({ success: true, id: notificationId });
+    await query('UPDATE system_notifications SET is_read = 1, updated_at = NOW()');
+    await query('UPDATE notifications SET is_read = 1, updated_at = NOW()').catch(() => {});
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+app.put('/api/notifications/:id/read', async (req, res) => {
+  try {
+    const id = req.params.id;
+    await query('UPDATE system_notifications SET is_read = 1, updated_at = NOW() WHERE id = ?', [id]);
+    await query('UPDATE notifications SET is_read = 1, updated_at = NOW() WHERE id = ?', [id]).catch(() => {});
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // Branches
 app.get(['/api/branches', '/api/settings/branches'], async (req, res) => {

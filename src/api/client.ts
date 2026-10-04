@@ -154,6 +154,7 @@ export const api = {
   getNotifications: () => apiClient.get('/notifications'),
   addNotification: (notification: any) => apiClient.post('/notifications', notification),
   markNotificationRead: (id: string) => apiClient.put(`/notifications/${id}/read`, {}),
+  markAllNotificationsRead: () => apiClient.put('/notifications/read-all', {}),
 
   // Branches
   getBranches: () => apiClient.get('/branches'),
