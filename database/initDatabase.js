@@ -43,7 +43,8 @@ export async function initDatabase(pool, force = false) {
       'schema.sql',
       'add_attendance_tables.sql',
       'company_calendar_tables.sql',
-      'company_news_table.sql'
+      'company_news_table.sql',
+      'drivers_migration.sql'
     ];
 
     for (const fileName of sqlFiles) {
