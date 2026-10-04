@@ -57,6 +57,7 @@ export const Header: React.FC = () => {
 
       const modCount = backendRes?.modifiedTablesCount || 0;
       const rowCount = backendRes?.totalRowsSynced || 0;
+      const totalTables = backendRes?.totalTables || backendRes?.syncedTablesCount || 97;
       const duration = backendRes?.durationSeconds || '1.2';
 
       if (backendRes && !backendRes.error) {
@@ -69,8 +70,8 @@ export const Header: React.FC = () => {
         } else {
           setSyncFeedbackMsg(
             language === 'ar'
-              ? `⚡ كافة الجداول والسجلات الـ 82 محدثة ومتطابقة بالكامل (${duration} ثانية)`
-              : `⚡ All 82 tables are completely identical and up-to-date (${duration}s)`
+              ? `⚡ كافة الجداول والسجلات الـ ${totalTables} محدثة ومتطابقة بالكامل (${duration} ثانية)`
+              : `⚡ All ${totalTables} tables are completely identical and up-to-date (${duration}s)`
           );
         }
       } else {
