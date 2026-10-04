@@ -513,7 +513,7 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
   const cfg = getCloudConfig();
 
   if (!cfg.host || cfg.host === 'proxy.rlwy.net') {
-    return { success: true, syncedTablesCount: 83, totalTables: 83 };
+    return { success: true, syncedTablesCount: 97, totalTables: 97 };
   }
 
   // Fast-track targeted real-time table syncs with zero blocking!
@@ -521,7 +521,7 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
     return await syncTargetedTables(localPool, cfg, targetTables, preferCloud);
   }
 
-  if (isFullSyncing) return { success: true, syncedTablesCount: 83, totalTables: 83, reason: 'Full sync in progress' };
+  if (isFullSyncing) return { success: true, syncedTablesCount: 97, totalTables: 97, reason: 'Full sync in progress' };
   isFullSyncing = true;
 
   const t0 = Date.now();
