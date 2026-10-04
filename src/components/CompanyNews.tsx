@@ -189,23 +189,23 @@ export const CompanyNews: React.FC<CompanyNewsProps> = ({ language, isReadOnly }
 
     if (!isDark) {
       const lightColors: Record<string, string> = {
-        draft: 'bg-white text-slate-700 border border-slate-300 font-bold',
-        published: 'bg-white text-emerald-700 border border-slate-300 font-bold',
-        archived: 'bg-white text-slate-600 border border-slate-300 font-bold'
+        draft: 'bg-white text-amber-800 border-2 border-[#f59e0b] shadow-[0_0_10px_rgba(245,158,11,0.4)] ring-2 ring-amber-400/30 font-extrabold',
+        published: 'bg-white text-emerald-800 border-2 border-[#10b981] shadow-[0_0_12px_rgba(16,185,129,0.5)] ring-2 ring-emerald-400/40 font-extrabold',
+        archived: 'bg-white text-purple-800 border-2 border-[#a855f7] shadow-[0_0_10px_rgba(168,85,247,0.4)] ring-2 ring-purple-400/30 font-extrabold'
       };
       return {
-        color: lightColors[status] || 'bg-white text-slate-700 border border-slate-300 font-bold',
+        color: lightColors[status] || 'bg-white text-slate-800 border-2 border-slate-400 font-extrabold shadow-sm',
         label: labels[status]?.[language] || status
       };
     }
 
     const darkColors: Record<string, string> = {
-      draft: 'bg-slate-700 text-slate-200 border border-slate-600',
-      published: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
-      archived: 'bg-gray-700 text-gray-200 border border-gray-600'
+      draft: 'bg-amber-500/20 text-amber-300 border-2 border-[#f59e0b] shadow-[0_0_10px_rgba(245,158,11,0.6)] font-bold',
+      published: 'bg-emerald-500/20 text-emerald-300 border-2 border-[#10b981] shadow-[0_0_12px_rgba(16,185,129,0.6)] font-bold',
+      archived: 'bg-purple-500/20 text-purple-300 border-2 border-[#a855f7] shadow-[0_0_10px_rgba(168,85,247,0.6)] font-bold'
     };
     return {
-      color: darkColors[status] || 'bg-slate-700 text-slate-200 border border-slate-600',
+      color: darkColors[status] || 'bg-slate-700 text-slate-200 border-2 border-slate-600 font-bold',
       label: labels[status]?.[language] || status
     };
   };
@@ -252,8 +252,14 @@ export const CompanyNews: React.FC<CompanyNewsProps> = ({ language, isReadOnly }
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
-            className={`px-3 py-1.5 rounded-xl border text-xs focus:outline-none ${
-              isDark ? 'bg-slate-800 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold focus:outline-none transition-all cursor-pointer ${
+              filterStatus === 'published'
+                ? 'bg-white text-emerald-800 border-2 border-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.5)] ring-2 ring-emerald-400/30'
+                : filterStatus === 'draft'
+                ? 'bg-white text-amber-800 border-2 border-[#f59e0b] shadow-[0_0_10px_rgba(245,158,11,0.5)] ring-2 ring-amber-400/30'
+                : filterStatus === 'archived'
+                ? 'bg-white text-purple-800 border-2 border-[#a855f7] shadow-[0_0_10px_rgba(168,85,247,0.5)] ring-2 ring-purple-400/30'
+                : isDark ? 'bg-slate-800 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
             }`}
           >
             <option value="all">{language === 'ar' ? 'الكل' : 'All'}</option>
