@@ -497,24 +497,24 @@ html.light thead.payroll-dark-header th.th-action, thead.payroll-dark-header th.
 /* ================================================================
    LIGHT MODE: Cards, Panels, Windows, Sidebar Overrides (Pure White)
    ================================================================ */
-html.light .bg-white,
-html:not(.dark) .bg-white {
+html.light .bg-white:not(aside *):not(header *),
+html:not(.dark) .bg-white:not(aside *):not(header *) {
   background-color: #ffffff !important;
 }
-html.light .bg-slate-800,
-html:not(.dark) .bg-slate-800 {
+html.light .bg-slate-800:not(aside *):not(header *),
+html:not(.dark) .bg-slate-800:not(aside *):not(header *) {
   background-color: #f8fafc !important;
 }
-html.light .bg-slate-800\/80,
-html:not(.dark) .bg-slate-800\/80 {
+html.light .bg-slate-800\/80:not(aside *):not(header *),
+html:not(.dark) .bg-slate-800\/80:not(aside *):not(header *) {
   background-color: rgba(255, 255, 255, 0.95) !important;
 }
 
 /* Keep slate-50 and slate-100 as light grays (not white) */
-html.light .bg-slate-50 {
+html.light .bg-slate-50:not(aside *):not(header *) {
   background-color: #f8fafc !important;
 }
-html.light .bg-slate-100 {
+html.light .bg-slate-100:not(aside *):not(header *) {
   background-color: #f1f5f9 !important;
 }
 
@@ -534,8 +534,8 @@ html:not(.dark) h5:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg
   color: #0f766e !important;
 }
 
-html.light .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(th):not(th *):not(thead *),
-html:not(.dark) .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(th):not(th *):not(thead *) {
+html.light .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(th):not(th *):not(thead *):not(aside *):not(header *),
+html:not(.dark) .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(th):not(th *):not(thead *):not(aside *):not(header *) {
   color: #0f766e !important;
 }
 
@@ -1409,7 +1409,7 @@ html:not(.dark) aside .border-transparent { border-color: transparent !important
 /* Backgrounds — native values */
 html:not(.dark) aside .bg-white\/5 { background-color: rgba(255, 255, 255, 0.05) !important; }
 html:not(.dark) aside .bg-white\/10 { background-color: rgba(255, 255, 255, 0.1) !important; }
-html:not(.dark) aside .bg-\[\#06080d\] { background-color: #06080d !important; }
+html:not(.dark) aside [class*="06080d"] { background-color: #06080d !important; }
 html:not(.dark) aside .bg-teal-500\/10 { background-color: rgba(20, 184, 166, 0.1) !important; }
 html:not(.dark) aside .bg-teal-500\/20 { background-color: rgba(20, 184, 166, 0.2) !important; }
 html:not(.dark) aside .bg-teal-600\/10 { background-color: rgba(13, 148, 136, 0.1) !important; }
@@ -1473,16 +1473,15 @@ html:not(.dark) header [class*="border-white"] {
 }
 
 /* Header button backgrounds */
-html:not(.dark) header button[class*="bg-white\/10"] {
+html:not(.dark) header button[class*="bg-white"] {
   background-color: rgba(255, 255, 255, 0.1) !important;
 }
-html:not(.dark) header [class*="bg-white\/10"] {
+html:not(.dark) header [class*="bg-white"] {
   background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Notification dropdown inside header */
-html:not(.dark) header [class*="bg-\[#0f2044\]"],
-html:not(.dark) header .bg-\[\\#0f2044\] {
+html:not(.dark) header [class*="0f2044"] {
   background-color: #0f2044 !important;
 }
 
