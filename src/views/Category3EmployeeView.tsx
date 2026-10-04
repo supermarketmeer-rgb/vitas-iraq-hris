@@ -1435,6 +1435,7 @@ export const Category3EmployeeView: React.FC = () => {
                           <button
                             onClick={() => {
                               setSelectedEmpId(empTargetId);
+                              setProfileSearchQuery(emp.fullName || emp.full_name || emp.name_ar || emp.fullNameEn || String(empTargetId));
                               setActiveModuleId('emp-profile');
                             }}
                             className="text-xs font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 shrink-0 cursor-pointer"
