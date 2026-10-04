@@ -35,7 +35,18 @@ export const Category3EmployeeView: React.FC = () => {
 
   useEffect(() => {
     setAvatarImgError(false);
-  }, [selectedEmpId]);
+    if (selectedEmpId && employees.length > 0) {
+      const found = employees.find(e => {
+        const targetStr = String(selectedEmpId).toLowerCase().trim();
+        return String(e.id).toLowerCase().trim() === targetStr ||
+               (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
+               (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr);
+      });
+      if (found) {
+        setProfileSearchQuery(getEmpFullName(found));
+      }
+    }
+  }, [selectedEmpId, employees, language]);
 
   // Delete confirmation modal
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; empId: string; empName: string }>({
