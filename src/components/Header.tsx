@@ -285,7 +285,13 @@ export const Header: React.FC = () => {
             <span className={`hidden md:inline-block text-[10px] font-mono px-1 py-0.2 rounded border font-semibold ${
               isDark ? 'bg-teal-500/10 text-teal-300 border-teal-500/30' : 'bg-white/10 text-teal-200 border-white/20'
             }`}>
-              15m
+              {syncEngine.getSchedule() === '1min' ? '1m' :
+               syncEngine.getSchedule() === '5min' ? '5m' :
+               syncEngine.getSchedule() === '10min' ? '10m' :
+               syncEngine.getSchedule() === '15min' ? '15m' :
+               syncEngine.getSchedule() === '30min' ? '30m' :
+               syncEngine.getSchedule() === '1hr' ? '1h' :
+               syncEngine.getSchedule() === 'daily' ? '24h' : 'Off'}
             </span>
           </button>
 

@@ -447,6 +447,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (settingsObj.vitas_custom_users) {
               localStorage.setItem('vitas_custom_users', settingsObj.vitas_custom_users);
             }
+            if (settingsObj.vitas_hris_sync_schedule) {
+              syncEngine.setSchedule(settingsObj.vitas_hris_sync_schedule as any);
+            }
           } catch (e) {}
         }
       } catch (error) {

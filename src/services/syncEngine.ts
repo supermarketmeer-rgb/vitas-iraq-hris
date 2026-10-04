@@ -26,6 +26,15 @@ class SyncEngineService {
     localStorage.setItem(SCHEDULE_KEY, newSchedule);
     logger.info('SYNC_ENGINE', `Sync schedule updated to ${newSchedule}`);
     this.restartScheduleTimer();
+    
+    // Persist to database app_settings so both Local and Cloud nodes sync the schedule
+    try {
+      fetch('/api/settings/app/vitas_hris_sync_schedule', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ setting_value: newSchedule })
+      }).catch(() => {});
+    } catch (e) {}
   }
 
   public restartScheduleTimer() {
