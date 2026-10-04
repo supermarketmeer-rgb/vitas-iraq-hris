@@ -20,6 +20,7 @@ export const Category11SupportHelpView: React.FC = () => {
     currentUser,
     notifications,
     markNotificationRead,
+    markAllNotificationsAsRead,
     resetToZeroData,
     theme,
     t
@@ -640,9 +641,19 @@ export const Category11SupportHelpView: React.FC = () => {
               <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">notifications_active</span>
               {t(`مركز التنبيهات والإشعارات الرسمية (${notifications.length})`, `Official Notifications Center (${notifications.length})`)}
             </h2>
-            <span className="text-xs bg-teal-500/10 text-teal-700 dark:text-teal-400 font-mono font-bold px-3 py-1 rounded-full border border-teal-500/20">
-              {notifications.filter(n => !n.read).length} {t('غير مقروءة', 'unread')}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={markAllNotificationsAsRead}
+                className="flex items-center gap-1.5 text-xs bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm shadow-teal-600/30 active:scale-95 cursor-pointer"
+                title={t('تحديد جميع التنبيهات كمقروءة بضغطة زر واحدة', 'Mark all notifications as read in one click')}
+              >
+                <span className="material-symbols-outlined text-sm">done_all</span>
+                <span>{t('الكل مقروء', 'Mark All Read')}</span>
+              </button>
+              <span className="text-xs bg-teal-500/10 text-teal-700 dark:text-teal-400 font-mono font-bold px-3 py-1 rounded-full border border-teal-500/20">
+                {notifications.filter(n => !n.read).length} {t('غير مقروءة', 'unread')}
+              </span>
+            </div>
           </div>
 
           {notifications.length === 0 ? (

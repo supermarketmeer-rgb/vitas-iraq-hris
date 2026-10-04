@@ -25,6 +25,7 @@ export const Header: React.FC = () => {
     isSidebarOpen,
     setIsSearchOpen,
     notifications,
+    markAllNotificationsAsRead,
     refreshAllData,
     resetToZeroData,
     setActiveModuleId,
@@ -400,13 +401,29 @@ export const Header: React.FC = () => {
                     {t('مركز التنبيهات', 'Notification Center')}
                   </h3>
                 </div>
-                <span className={`text-xs shadow-xs border px-2 py-0.5 rounded-full font-bold ${
-                  isDark 
-                    ? 'bg-[#06080d] text-teal-400 border-teal-500' 
-                    : 'bg-teal-50 text-teal-800 border-teal-300'
-                }`}>
-                  {notifications.length} {t('تنبيهات', 'notifications')}
-                </span>
+                <div className="flex items-center gap-2">
+                  {notifications.some(n => !n.read) && (
+                    <button
+                      onClick={markAllNotificationsAsRead}
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 border cursor-pointer ${
+                        isDark 
+                          ? 'bg-teal-500/10 text-teal-400 border-teal-500/30 hover:bg-teal-500/20' 
+                          : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border-teal-300'
+                      }`}
+                      title={t('تحديد كل التنبيهات كمقروءة', 'Mark all as read')}
+                    >
+                      <span className="material-symbols-outlined text-xs">done_all</span>
+                      <span>{t('الكل مقروء', 'Mark All Read')}</span>
+                    </button>
+                  )}
+                  <span className={`text-xs shadow-xs border px-2 py-0.5 rounded-full font-bold ${
+                    isDark 
+                      ? 'bg-[#06080d] text-teal-400 border-teal-500' 
+                      : 'bg-teal-50 text-teal-800 border-teal-300'
+                  }`}>
+                    {notifications.length} {t('تنبيهات', 'notifications')}
+                  </span>
+                </div>
               </div>
 
               <div className="py-2 max-h-64 overflow-y-auto space-y-2">

@@ -79,6 +79,8 @@ interface AppContextType {
   notifications: SystemNotification[];
   addNotification: (notif: Omit<SystemNotification, 'id' | 'timestamp' | 'read'>) => void;
   markNotificationAsRead: (id: string) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsAsRead: () => void;
 
   // App Settings
   appSettings: Record<string, string>;
@@ -1056,15 +1058,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const markNotificationRead = async (id: string) => {
     try {
       await api.markNotificationRead(id);
-      setNotifications(prev =>
-        prev.map(n => (n.id === id ? { ...n, read: true } : n))
-      );
+      setNotifications(prev => {
+        const updated = prev.map(n => (n.id === id ? { ...n, read: true } : n));
+        try { localStorage.setItem('vitas_notifications', JSON.stringify(updated)); } catch (e) {}
+        return updated;
+      });
     } catch (error) {
       console.error('Error marking notification as read:', error);
       // Fallback to local state
-      setNotifications(prev =>
-        prev.map(n => (n.id === id ? { ...n, read: true } : n))
-      );
+      setNotifications(prev => {
+        const updated = prev.map(n => (n.id === id ? { ...n, read: true } : n));
+        try { localStorage.setItem('vitas_notifications', JSON.stringify(updated)); } catch (e) {}
+        return updated;
+      });
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    setNotifications(prev => {
+      const updated = prev.map(n => ({ ...n, read: true }));
+      try { localStorage.setItem('vitas_notifications', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    try {
+      const unreadList = notifications.filter(n => !n.read);
+      for (const n of unreadList) {
+        api.markNotificationRead(n.id).catch(() => {});
+      }
+    } catch (e) {
+      console.error('Error in markAllNotificationsAsRead API sync:', e);
     }
   };
 
@@ -1194,6 +1216,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addDocumentRecord,
         notifications,
         markNotificationRead,
+        markNotificationAsRead: markNotificationRead,
+        markAllNotificationsAsRead,
         addNotification,
         appSettings,
         canWrite,
