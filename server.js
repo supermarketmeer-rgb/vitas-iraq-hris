@@ -1328,8 +1328,39 @@ app.post('/api/employees/:id/trainings', async (req, res) => {
 
 app.delete('/api/employees/:id', async (req, res) => {
   try {
-    await query('DELETE FROM employees WHERE id = ?', [req.params.id]);
-    res.json({ message: 'Employee deleted' });
+    const id = req.params.id;
+    // 1. Fetch employee info prior to deletion to get both numeric ID and business employee_id
+    const empRows = await query('SELECT id, employee_id FROM employees WHERE id = ? OR employee_id = ?', [id, id]).catch(() => []);
+    const emp = empRows && empRows[0];
+
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    const sourceEnv = isRailway ? 'cloud' : 'local';
+
+    // 2. Perform deletion from employees and associated users
+    await query('DELETE FROM employees WHERE id = ? OR employee_id = ?', [id, id]);
+    if (emp && emp.employee_id) {
+      await query('DELETE FROM users WHERE employee_id = ? OR username = ?', [emp.employee_id, emp.employee_id]).catch(() => {});
+    }
+
+    // 3. Record tombstones for both DB ID and employee_id to guarantee Cloud & Local deletion sync
+    const tombSql = 'INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE source_env = VALUES(source_env), deleted_at = NOW()';
+    
+    db.query(tombSql, ['employees', String(id), sourceEnv], () => {});
+    if (!isRailway) executeCloudQuery(tombSql, ['employees', String(id), 'local']).catch(() => {});
+
+    if (emp && emp.employee_id) {
+      db.query(tombSql, ['employees', String(emp.employee_id), sourceEnv], () => {});
+      db.query(tombSql, ['users', String(emp.employee_id), sourceEnv], () => {});
+      if (!isRailway) {
+        executeCloudQuery(tombSql, ['employees', String(emp.employee_id), 'local']).catch(() => {});
+        executeCloudQuery(tombSql, ['users', String(emp.employee_id), 'local']).catch(() => {});
+      }
+    }
+
+    // Immediate sync triggering
+    syncLocalToCloud(db).catch(() => {});
+
+    res.json({ success: true, message: 'Employee and associated user deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
