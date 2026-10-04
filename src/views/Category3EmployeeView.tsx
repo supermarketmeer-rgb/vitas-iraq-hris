@@ -1243,7 +1243,13 @@ export const Category3EmployeeView: React.FC = () => {
     setActiveModuleId('emp-hr-directory');
   };
 
-  const selectedEmployee = employees.find(e => String(e.id) === String(selectedEmpId)) || employees[0];
+  const selectedEmployee = employees.find(e => {
+    if (!selectedEmpId) return false;
+    const targetStr = String(selectedEmpId).toLowerCase().trim();
+    return String(e.id).toLowerCase().trim() === targetStr ||
+           (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
+           (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr);
+  }) || employees[0];
 
   const TAB_ITEMS = [
     { id: 1, title: t('المعلومات الأساسية', 'Basic Info'), icon: 'badge', desc: t('الاسم، البريد الهواتف والحالة', 'Name, Email, Phone & Status') },
@@ -1422,40 +1428,47 @@ export const Category3EmployeeView: React.FC = () => {
                   <div className={`pt-4 border-t mt-4 flex items-center justify-between gap-1 ${
                     theme === 'dark' ? 'border-white/10' : 'border-slate-200'
                   }`}>
-                    <button
-                      onClick={() => {
-                        setSelectedEmpId(emp.id);
-                        setActiveModuleId('emp-profile');
-                      }}
-                      className="text-xs font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 shrink-0 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-sm">visibility</span>
-                      {t('السجل الشامل', 'Full Profile')}
-                    </button>
+                    {(() => {
+                      const empTargetId = emp.id || emp.employeeId || emp.employee_id;
+                      return (
+                        <>
+                          <button
+                            onClick={() => {
+                              setSelectedEmpId(empTargetId);
+                              setActiveModuleId('emp-profile');
+                            }}
+                            className="text-xs font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 shrink-0 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            {t('السجل الشامل', 'Full Profile')}
+                          </button>
 
-                    {canWrite() && (
-                      <>
-                        <button
-                          onClick={() => {
-                            handleLoadEmployeeData(emp);
-                            setActiveModuleId('emp-add');
-                          }}
-                          className="text-xs font-bold text-teal-500 hover:text-teal-600 flex items-center gap-1 shrink-0 cursor-pointer"
-                          title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
-                        >
-                          <span className="material-symbols-outlined text-sm">edit</span>
-                          {t('تعديل', 'Edit')}
-                        </button>
+                          {canWrite() && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  handleLoadEmployeeData(emp);
+                                  setActiveModuleId('emp-add');
+                                }}
+                                className="text-xs font-bold text-teal-500 hover:text-teal-600 flex items-center gap-1 shrink-0 cursor-pointer"
+                                title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
+                              >
+                                <span className="material-symbols-outlined text-sm">edit</span>
+                                {t('تعديل', 'Edit')}
+                              </button>
 
-                        <button
-                          onClick={() => setDeleteConfirm({ show: true, empId: emp.id, empName: emp.fullName })}
-                          className="text-xs text-rose-500 hover:text-rose-600 p-1 shrink-0 cursor-pointer"
-                          title={t('حذف الموظف', 'Delete Employee')}
-                        >
-                          <span className="material-symbols-outlined text-sm">delete</span>
-                        </button>
-                      </>
-                    )}
+                              <button
+                                onClick={() => setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar })}
+                                className="text-xs text-rose-500 hover:text-rose-600 p-1 shrink-0 cursor-pointer"
+                                title={t('حذف الموظف', 'Delete Employee')}
+                              >
+                                <span className="material-symbols-outlined text-sm">delete</span>
+                              </button>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}
