@@ -652,26 +652,32 @@ export const Category3EmployeeView: React.FC = () => {
     return parts.join(' و') + ' دينار عراقي';
   };
 
-  const handleLoadEmployeeData = (empId: string | number) => {
-    const emp = employees.find(e => String(e.id) === String(empId) || String(e.employeeId) === String(empId) || String(e.employee_id) === String(empId));
+  const handleLoadEmployeeData = (empInput: any) => {
+    let emp: any = null;
+    if (typeof empInput === 'object' && empInput !== null) {
+      emp = empInput;
+    } else {
+      emp = employees.find(e => String(e.id) === String(empInput) || String(e.employeeId) === String(empInput) || String(e.employee_id) === String(empInput));
+    }
     if (!emp) return;
 
-    const clean = (val?: string) => (!val || val === 'N/A' || val === 'غير محدد' ? '' : val);
+    const targetId = emp.id || emp.employeeId || emp.employee_id;
+    const clean = (val?: any) => (!val || val === 'N/A' || val === 'غير محدد' ? '' : String(val));
 
-    setSelectedEmpId(empId);
-    setFullName(clean(emp.fullName));
-    setFullNameEn(clean(emp.fullNameEn));
-    setEmpCode(clean(emp.employeeId) || clean(emp.employee_id) || clean(emp.empCode) || (emp.id ? `VTS-${emp.id}` : ''));
-    setBadgeNo(clean(emp.badgeNo) || clean(emp.badge_no) || '');
-    setDob(clean(emp.dob));
+    setSelectedEmpId(targetId);
+    setFullName(clean(emp.fullName || emp.full_name || emp.name_ar || emp.name));
+    setFullNameEn(clean(emp.fullNameEn || emp.full_name_en || emp.name_en));
+    setEmpCode(clean(emp.employeeId) || clean(emp.employee_id) || clean(emp.empCode) || (targetId ? `VTS-${targetId}` : ''));
+    setBadgeNo(clean(emp.badgeNo) || clean(emp.badge_no));
+    setDob(clean(emp.dob || emp.date_of_birth));
     setEmail(clean(emp.email));
-    setPersonalEmail(clean(emp.personalEmail));
-    setPhone(clean(emp.phone));
-    setEmergencyPhone(clean(emp.emergencyPhone));
-    setNationalId(clean(emp.nationalId));
-    setPassportNo(clean(emp.passportNo));
-    setPassportExpiry(clean(emp.passportExpiry));
-    setSpouseName(clean(emp.spouseName));
+    setPersonalEmail(clean(emp.personalEmail || emp.personal_email));
+    setPhone(clean(emp.phone || emp.mobile_phone || emp.phone_number));
+    setEmergencyPhone(clean(emp.emergencyPhone || emp.emergency_phone));
+    setNationalId(clean(emp.nationalId || emp.national_id));
+    setPassportNo(clean(emp.passportNo || emp.passport_number));
+    setPassportExpiry(clean(emp.passportExpiry || emp.passport_expiry));
+    setSpouseName(clean(emp.spouseName || emp.spouse_name));
     setSpouseEmployedHere(emp.spouseEmployedHere || false);
     setChildrenDetails(emp.childrenList ? JSON.stringify(emp.childrenList) : '');
     setChildrenList(emp.childrenList || []);
@@ -680,10 +686,14 @@ export const Category3EmployeeView: React.FC = () => {
     setEditingChildId(null);
     setTrainingsRecord(clean(emp.trainingsRecord));
     setWarningsRecord(clean(emp.warningsRecord));
-    setExitDate(clean(emp.exitDate));
-    setPositionStartDate(clean(emp.joinDate) || new Date().toISOString().split('T')[0]);
-    setBranchEn(clean(emp.branchEn));
-    setPhotoUrl(clean(emp.photoUrl));
+    setExitDate(clean(emp.exitDate || emp.exit_date));
+    setPositionStartDate(clean(emp.joinDate || emp.hire_date || emp.position_start_date) || new Date().toISOString().split('T')[0]);
+    setBranchEn(clean(emp.branchEn || emp.branch_en));
+    setPhotoUrl(clean(emp.photoUrl || emp.photo_url));
+    setDepartment(clean(emp.department || emp.department_name));
+    setBranch(clean(emp.branch || emp.branch_name));
+    setPositionTitle(clean(emp.position || emp.position_title || emp.job_title));
+    setBasicSalary(clean(emp.salary || emp.basic_salary || emp.basicSalary));
     setActiveTab(1);
     setStatusChanges([]);
     setNewStatusChange({ new_position: '', start_date: '', end_date: '' });
@@ -1427,7 +1437,7 @@ export const Category3EmployeeView: React.FC = () => {
                       <>
                         <button
                           onClick={() => {
-                            handleLoadEmployeeData(emp.id);
+                            handleLoadEmployeeData(emp);
                             setActiveModuleId('emp-add');
                           }}
                           className="text-xs font-bold text-teal-500 hover:text-teal-600 flex items-center gap-1 shrink-0 cursor-pointer"
