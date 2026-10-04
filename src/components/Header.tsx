@@ -107,20 +107,25 @@ export const Header: React.FC = () => {
       header.style.setProperty('background-color', '#06080d', 'important');
 
       header.querySelectorAll('*').forEach(el => {
-        const tag = (el as HTMLElement).tagName?.toLowerCase();
+        const htmlEl = el as HTMLElement;
+        if (htmlEl.closest('.notif-dropdown') || htmlEl.classList.contains('notif-dropdown')) {
+          return;
+        }
+
+        const tag = htmlEl.tagName?.toLowerCase();
         if (!tag) return;
         const isImg = tag === 'img';
         const isInput = tag === 'input' || tag === 'select' || tag === 'textarea';
 
         if (!isImg) {
-          (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+          htmlEl.style.setProperty('color', '#ffffff', 'important');
         }
         if (tag === 'div' || tag === 'nav' || tag === 'section') {
-          (el as HTMLElement).style.setProperty('background-color', 'transparent', 'important');
+          htmlEl.style.setProperty('background-color', 'transparent', 'important');
         }
         if (isInput) {
-          (el as HTMLElement).style.setProperty('background-color', 'rgba(255,255,255,0.08)', 'important');
-          (el as HTMLElement).style.setProperty('border-color', 'rgba(255,255,255,0.2)', 'important');
+          htmlEl.style.setProperty('background-color', 'rgba(255,255,255,0.08)', 'important');
+          htmlEl.style.setProperty('border-color', 'rgba(255,255,255,0.2)', 'important');
         }
       });
 
@@ -383,18 +388,22 @@ export const Header: React.FC = () => {
 
           {/* Notifications Dropdown */}
           {showNotifMenu && (
-            <div className={`absolute ${language === 'ar' ? 'left-0' : 'right-0'} mt-2 w-80 sm:w-96 rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 border ${
-              isDark ? 'bg-[#0a0c10] border-white/10 text-white' : 'bg-[#06080d] border-[#1e2a44] text-white'
+            <div className={`notif-dropdown absolute ${language === 'ar' ? 'left-0' : 'right-0'} mt-2 w-80 sm:w-96 rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 border ${
+              isDark 
+                ? 'bg-[#0a0c10] border-white/10 text-white' 
+                : 'bg-white border-slate-300 text-slate-900 shadow-slate-900/20'
             }`}>
-              <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-white/10' : 'border-white/10'}`}>
+              <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-teal-500">notifications_active</span>
-                  <h3 className={`font-normal text-sm ${isDark ? 'text-white' : 'text-white'}`}>
+                  <span className="material-symbols-outlined text-teal-600">notifications_active</span>
+                  <h3 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {t('مركز التنبيهات', 'Notification Center')}
                   </h3>
                 </div>
-                <span className={`text-xs shadow-xs border px-2 py-0.5 rounded-full font-normal ${
-                  isDark ? 'bg-[#06080d] text-teal-400 border-teal-500' : 'bg-teal-500/20 text-teal-300 border-teal-500/40'
+                <span className={`text-xs shadow-xs border px-2 py-0.5 rounded-full font-bold ${
+                  isDark 
+                    ? 'bg-[#06080d] text-teal-400 border-teal-500' 
+                    : 'bg-teal-50 text-teal-800 border-teal-300'
                 }`}>
                   {notifications.length} {t('تنبيهات', 'notifications')}
                 </span>
@@ -403,10 +412,10 @@ export const Header: React.FC = () => {
               <div className="py-2 max-h-64 overflow-y-auto space-y-2">
                 {notifications.length === 0 ? (
                   <div className="text-center py-6 text-slate-500">
-                    <span className="material-symbols-outlined text-3xl mb-1 text-slate-600">
+                    <span className="material-symbols-outlined text-3xl mb-1 text-slate-400">
                       notifications_off
                     </span>
-                    <p className="text-xs">{t('لا توجد إشعارات جديدة حتى الآن', 'No new notifications yet')}</p>
+                    <p className="text-xs text-slate-600 font-medium">{t('لا توجد إشعارات جديدة حتى الآن', 'No new notifications yet')}</p>
                   </div>
                 ) : (
                   notifications.map(n => (
@@ -414,27 +423,27 @@ export const Header: React.FC = () => {
                       key={n.id}
                       className={`p-3 rounded-xl border text-xs transition-colors ${
                         n.read
-                          ? (isDark ? 'bg-white/[0.02] border-white/5 text-slate-400' : 'bg-white/5 border-white/10 text-slate-400')
-                          : (isDark ? 'bg-teal-500/5 border-teal-500/20 text-slate-200 font-normal' : 'bg-teal-500/10 border-teal-500/30 text-white font-normal')
+                          ? (isDark ? 'bg-white/[0.02] border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-700')
+                          : (isDark ? 'bg-teal-500/5 border-teal-500/20 text-slate-200 font-normal' : 'bg-teal-50/80 border-teal-200 text-slate-900 font-normal')
                       }`}
                     >
                       <div className="flex items-center justify-between font-normal mb-1">
-                        <span className="font-bold">{n.title}</span>
-                        <span className="text-[10px] text-slate-400">{n.timestamp}</span>
+                        <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{n.title}</span>
+                        <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{n.timestamp}</span>
                       </div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-300'}>{n.message}</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-700'}>{n.message}</p>
                     </div>
                   ))
                 )}
               </div>
 
-              <div className={`pt-2 border-t text-center ${isDark ? 'border-white/10' : 'border-white/10'}`}>
+              <div className={`pt-2 border-t text-center ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
                 <button
                   onClick={() => {
                     setActiveModuleId('supp-notif-center');
                     setShowNotifMenu(false);
                   }}
-                  className={`text-xs font-normal hover:underline py-1 transition-colors ${isDark ? 'text-teal-400' : 'text-teal-300'}`}
+                  className={`text-xs font-bold hover:underline py-1 transition-colors ${isDark ? 'text-teal-400' : 'text-teal-700'}`}
                 >
                   {t('عرض كافة الإشعارات والتحكم الإداري ←', 'View all notifications & settings →')}
                 </button>

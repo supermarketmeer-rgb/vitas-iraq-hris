@@ -1571,3 +1571,28 @@ html:not(.dark) body #sidebar-footer-controls > button.border-teal-500 {
 html:not(.dark) body #sidebar-footer-controls > button.border-teal-500 * {
   color: #2dd4bf !important;
 }
+
+/* Notification Dropdown in Light Mode: Solid White BG & High-Contrast Black Text */
+html:not(.dark) header .notif-dropdown,
+html.light header .notif-dropdown {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html:not(.dark) header .notif-dropdown *,
+html.light header .notif-dropdown * {
+  color: #0f172a !important;
+}
+html:not(.dark) header .notif-dropdown h3,
+html.light header .notif-dropdown h3 {
+  color: #0f172a !important;
+}
+html:not(.dark) header .notif-dropdown p,
+html.light header .notif-dropdown p {
+  color: #334155 !important;
+}
+html:not(.dark) header .notif-dropdown button,
+html.light header .notif-dropdown button {
+  color: #0f766e !important;
+}
+
