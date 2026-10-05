@@ -3481,22 +3481,22 @@ export const Category3EmployeeView: React.FC = () => {
                         </span>
                       </div>
                       {canWrite() && (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => handleEditBranch(branch)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-teal-100 hover:bg-teal-200 border border-teal-300 text-teal-800 dark:bg-teal-950/50 dark:border-teal-700 dark:text-teal-300 transition-all cursor-pointer shadow-2xs"
+                            className="p-1.5 bg-transparent border-0 text-emerald-500 hover:text-emerald-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
                             title={t('تعديل الفرع', 'Edit Branch')}
                           >
-                            <span className="material-symbols-outlined text-[15px]">edit</span>
+                            <span className="material-symbols-outlined text-xl">edit_note</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteBranchClick(branch)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-100 hover:bg-rose-200 border border-rose-300 text-rose-800 dark:bg-rose-950/50 dark:border-rose-700 dark:text-rose-300 transition-all cursor-pointer shadow-2xs"
+                            className="p-1.5 bg-transparent border-0 text-red-500 hover:text-red-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
                             title={t('حذف الفرع', 'Delete Branch')}
                           >
-                            <span className="material-symbols-outlined text-[15px]">delete</span>
+                            <span className="material-symbols-outlined text-xl">delete</span>
                           </button>
                         </div>
                       )}
