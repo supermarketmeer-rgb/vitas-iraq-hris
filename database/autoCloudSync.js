@@ -3,6 +3,7 @@ import mysql from 'mysql2/promise';
 import https from 'https';
 
 let isSyncing = false;
+let isFullSyncing = false;
 let lastSyncTimestamp = null;
 let realtimeSyncTimeout = null;
 const pendingTablesToSync = new Set();
@@ -11,13 +12,27 @@ const sseClients = new Set();
 const TABLE_BUSINESS_KEYS = {
   users: 'username',
   app_settings: 'setting_key',
-  system_settings: 'setting_key',
-  dynamic_permissions: 'permission_key',
-  hr_departments: 'code',
-  hr_branches: 'code',
-  job_vacancies: 'job_code',
-  employees: 'employee_id'
+  employees: 'employee_id',
+  drv_drivers: 'driver_number',
+  drv_offices: 'code',
+  drv_trip_routes: 'route_code',
+  positions: 'name_ar',
+  branches: 'name_ar',
+  departments: 'name_ar',
+  roles: 'role_name',
+  shift_types: 'name',
+  contract_types: 'name_ar'
 };
+
+const IMMUTABLE_LOG_TABLES = new Set([
+  'biometric_sync_history',
+  'audit_logs',
+  'drv_audit_logs',
+  'sql_server_sync_log',
+  'raw_attendance_logs',
+  'sync_logs',
+  'tax_audit_logs'
+]);
 
 export function addSseClient(res) {
   sseClients.add(res);
@@ -56,27 +71,33 @@ function getCloudConfig() {
   return { host: cloudHost, port: cloudPort, user: cloudUser, password: cloudPassword, database: cloudDatabase, timezone: '+00:00' };
 }
 
-// ─── Direct Asynchronous Real-Time Cloud Query Execution ───
-export async function executeCloudQuery(sql, params = []) {
+let _cloudPool = null;
+function getCloudPool() {
+  if (_cloudPool) return _cloudPool;
   const cfg = getCloudConfig();
   if (!cfg.host || cfg.host === 'proxy.rlwy.net') return null;
 
-  let conn = null;
+  _cloudPool = mysql.createPool({
+    ...cfg,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    connectTimeout: 10000
+  });
+  return _cloudPool;
+}
+
+// ─── Direct Asynchronous Real-Time Cloud Query Execution ───
+export async function executeCloudQuery(sql, params = []) {
+  const pool = getCloudPool();
+  if (!pool) return null;
+
   try {
-    conn = await mysql.createConnection({
-      ...cfg,
-      connectTimeout: 6000
-    });
-    await conn.query("SET time_zone = '+00:00'").catch(() => {});
-    const [result] = await conn.query(sql, params);
+    const [result] = await pool.query(sql, params);
     return result;
   } catch (err) {
     console.warn('[REALTIME CLOUD MIRROR] Notice executing query on Cloud:', err.message);
     return null;
-  } finally {
-    if (conn) {
-      try { await conn.end(); } catch (e) {}
-    }
   }
 }
 
@@ -203,10 +224,10 @@ export function startCloudRealtimeListener(localPool) {
 }
 
 export async function startAutoCloudSync(localPool) {
-  const TEN_SECONDS_MS = 10 * 1000;
+  const TEN_SECONDS_MS = 15 * 1000;
   
   setInterval(async () => {
-    if (isSyncing) return;
+    if (isSyncing || isFullSyncing) return;
     await syncLocalToCloud(localPool).catch(() => {});
   }, TEN_SECONDS_MS);
 
@@ -222,12 +243,74 @@ function sanitizeVal(v) {
   return v;
 }
 
+// Compare two rows ignoring internal database surrogate ID and timestamps
+function areBusinessRowsEqual(lRow, cRow, commonCols) {
+  const IGNORED_COLS = new Set(['id', 'created_at', 'updated_at']);
+  for (const col of commonCols) {
+    if (IGNORED_COLS.has(col)) continue;
+    let lVal = lRow[col];
+    let cVal = cRow[col];
+
+    if (lVal === cVal) continue;
+    if ((lVal === null || lVal === undefined || lVal === '') && (cVal === null || cVal === undefined || cVal === '')) continue;
+
+    // Boolean or TinyInt normalization (0 vs false, 1 vs true)
+    if (typeof lVal === 'boolean' || typeof cVal === 'boolean') {
+      if (Number(Boolean(lVal)) === Number(Boolean(cVal))) continue;
+      return false;
+    }
+
+    // Dates normalization
+    if (lVal instanceof Date || cVal instanceof Date) {
+      const lTime = lVal ? new Date(lVal).getTime() : 0;
+      const cTime = cVal ? new Date(cVal).getTime() : 0;
+      if (Math.abs(lTime - cTime) < 1500) continue;
+
+      // Handle date-only (YYYY-MM-DD)
+      const lDateStr = lVal ? (lVal instanceof Date ? lVal.toISOString().slice(0, 10) : String(lVal).slice(0, 10)) : '';
+      const cDateStr = cVal ? (cVal instanceof Date ? cVal.toISOString().slice(0, 10) : String(cVal).slice(0, 10)) : '';
+      if (lDateStr && lDateStr === cDateStr) continue;
+
+      // If difference is an integer number of hours (+/- 5 seconds, up to 14 hours), it represents a timezone/DST offset
+      const diff = Math.abs(lTime - cTime);
+      const hoursDiff = diff / (3600 * 1000);
+      const remainder = Math.abs(hoursDiff - Math.round(hoursDiff)) * 3600 * 1000;
+      if (remainder < 5000 && Math.round(hoursDiff) <= 14) continue;
+
+      return false;
+    }
+
+    // Numeric comparison
+    if (typeof lVal === 'number' || typeof cVal === 'number') {
+      if (Number(lVal) === Number(cVal)) continue;
+      return false;
+    }
+
+    // Object or JSON comparison
+    if ((typeof lVal === 'object' && lVal !== null) || (typeof cVal === 'object' && cVal !== null)) {
+      try {
+        const lStr = typeof lVal === 'object' ? JSON.stringify(lVal) : JSON.stringify(JSON.parse(lVal));
+        const cStr = typeof cVal === 'object' ? JSON.stringify(cVal) : JSON.stringify(JSON.parse(cVal));
+        if (lStr === cStr) continue;
+      } catch (e) {}
+      return false;
+    }
+
+    // String comparison (trimmed)
+    if (String(lVal ?? '').trim() !== String(cVal ?? '').trim()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // ─── SMART PER-TABLE BIDIRECTIONAL SYNC ENGINE ───
-async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false) {
+async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, preferCloud = false) {
   const isSystemTable = ['sync_changes', 'sync_logs', 'sync_queue', 'sync_conflicts', 'sync_deleted_records'].includes(table);
+  const isImmutableLog = IMMUTABLE_LOG_TABLES.has(table);
 
   const localCols = await queryLocal(`DESCRIBE \`${table}\``).catch(() => []);
-  const [cloudCols] = await cloudConn.query(`DESCRIBE \`${table}\``).catch(() => [[]]);
+  const [cloudCols] = await cloudPool.query(`DESCRIBE \`${table}\``).catch(() => [[]]);
 
   const localColNames = (Array.isArray(localCols) ? localCols : []).map(c => c.Field);
   const cloudColNames = (Array.isArray(cloudCols) ? cloudCols : []).map(c => c.Field);
@@ -245,12 +328,35 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
   let pulled = 0;
   let deleted = 0;
 
-  // 1. Fetch all rows
-  const localRows = await queryLocal(`SELECT * FROM \`${table}\``).catch(() => []);
-  const [cloudRows] = await cloudConn.query(`SELECT * FROM \`${table}\``).catch(() => [[]]);
+  // 1. Fetch rows (for immutable log tables, limit to recent 200 rows to keep sync instantaneous)
+  const selectQuery = isImmutableLog 
+    ? `SELECT * FROM \`${table}\` ORDER BY id DESC LIMIT 200`
+    : `SELECT * FROM \`${table}\``;
 
-  const localMap = new Map((Array.isArray(localRows) ? localRows : []).filter(r => r[syncKey] !== null && r[syncKey] !== undefined).map(r => [String(r[syncKey]).toLowerCase(), r]));
-  const cloudMap = new Map((Array.isArray(cloudRows) ? cloudRows : []).filter(r => r[syncKey] !== null && r[syncKey] !== undefined).map(r => [String(r[syncKey]).toLowerCase(), r]));
+  const localRows = await queryLocal(selectQuery).catch(() => []);
+  const [cloudRows] = await cloudPool.query(selectQuery).catch(() => [[]]);
+
+  const getRowKey = (r) => {
+    if (r[syncKey] !== null && r[syncKey] !== undefined && String(r[syncKey]).trim() !== '') {
+      return String(r[syncKey]).trim().toLowerCase();
+    }
+    if (r.id !== null && r.id !== undefined) {
+      return `__id_${r.id}`;
+    }
+    return null;
+  };
+
+  const localMap = new Map();
+  for (const r of (Array.isArray(localRows) ? localRows : [])) {
+    const k = getRowKey(r);
+    if (k) localMap.set(k, r);
+  }
+
+  const cloudMap = new Map();
+  for (const r of (Array.isArray(cloudRows) ? cloudRows : [])) {
+    const k = getRowKey(r);
+    if (k) cloudMap.set(k, r);
+  }
 
   // Helper for flexible user matching across username, employee_id, and email
   const findUserMatch = (row, map) => {
@@ -271,14 +377,12 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
     return null;
   };
 
-  // 2. Process Deletions with Re-Creation Detection
+  // 2. Process Deletions from pre-fetched deletions map
   const allKnownDeletions = new Set();
-  if (!isSystemTable) {
-    const localDeletions = await queryLocal('SELECT * FROM sync_deleted_records WHERE table_name = ?', [table]).catch(() => []);
-    const [cloudDeletions] = await cloudConn.query('SELECT * FROM sync_deleted_records WHERE table_name = ?', [table]).catch(() => [[]]);
-    const combinedDeletions = [...(Array.isArray(localDeletions) ? localDeletions : []), ...(Array.isArray(cloudDeletions) ? cloudDeletions : [])];
+  if (!isSystemTable && !isImmutableLog) {
+    const tableDeletions = deletionsByTable.get(table) || [];
 
-    for (const del of combinedDeletions) {
+    for (const del of tableDeletions) {
       if (!del.record_id) continue;
       const recId = String(del.record_id).trim();
       const recKey = recId.toLowerCase();
@@ -292,9 +396,8 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
       const cTime = cRow?.updated_at ? new Date(cRow.updated_at).getTime() : 0;
 
       if ((lRow && lTime > delTime + 1000) || (cRow && cTime > delTime + 1000)) {
-        // Record was re-created after deletion! Expire old tombstone.
         await queryLocal('DELETE FROM sync_deleted_records WHERE table_name = ? AND (record_id = ? OR record_id = ?)', [table, recId, cleanUser]).catch(() => {});
-        await cloudConn.query('DELETE FROM sync_deleted_records WHERE table_name = ? AND (record_id = ? OR record_id = ?)', [table, recId, cleanUser]).catch(() => {});
+        await cloudPool.query('DELETE FROM sync_deleted_records WHERE table_name = ? AND (record_id = ? OR record_id = ?)', [table, recId, cleanUser]).catch(() => {});
         continue;
       }
 
@@ -303,13 +406,12 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
       if (table === 'users') {
         allKnownDeletions.add(cleanUser);
         allKnownDeletions.add(`vts-${cleanUser}`);
-
         const isNum = /^\d+$/.test(recId);
         const userDelSql = isNum
           ? 'DELETE FROM users WHERE id = ?'
-          : 'DELETE FROM users WHERE username = ? OR employee_id = ? OR LOWER(username) = ? OR LOWER(employee_id) = ? OR LOWER(username) = ? OR LOWER(employee_id) = ?';
-        const userDelParams = isNum ? [parseInt(recId)] : [recId, recId, recKey, recKey, cleanUser, `vts-${cleanUser}`];
-        await cloudConn.query(userDelSql, userDelParams).catch(() => {});
+          : 'DELETE FROM users WHERE username = ? OR employee_id = ? OR LOWER(username) = ? OR LOWER(employee_id) = ?';
+        const userDelParams = isNum ? [parseInt(recId)] : [recId, recId, recKey, recKey];
+        await cloudPool.query(userDelSql, userDelParams).catch(() => {});
         await queryLocal(userDelSql, userDelParams).catch(() => {});
       } else if (table === 'employees') {
         const isNum = /^\d+$/.test(recId);
@@ -317,25 +419,24 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
           ? 'DELETE FROM employees WHERE id = ?'
           : 'DELETE FROM employees WHERE employee_id = ? OR badge_no = ? OR LOWER(employee_id) = ?';
         const empDelParams = isNum ? [parseInt(recId)] : [recId, recId, recKey];
-        await cloudConn.query(empDelSql, empDelParams).catch(() => {});
+        await cloudPool.query(empDelSql, empDelParams).catch(() => {});
         await queryLocal(empDelSql, empDelParams).catch(() => {});
       } else {
         const isNum = /^\d+$/.test(recId);
         if (isNum) {
-          await cloudConn.query(`DELETE FROM \`${table}\` WHERE id = ? OR \`${syncKey}\` = ?`, [parseInt(recId), recId]).catch(() => {});
+          await cloudPool.query(`DELETE FROM \`${table}\` WHERE id = ? OR \`${syncKey}\` = ?`, [parseInt(recId), recId]).catch(() => {});
           await queryLocal(`DELETE FROM \`${table}\` WHERE id = ? OR \`${syncKey}\` = ?`, [parseInt(recId), recId]).catch(() => {});
         } else {
-          await cloudConn.query(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ?`, [recId]).catch(() => {});
+          await cloudPool.query(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ?`, [recId]).catch(() => {});
           await queryLocal(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ?`, [recId]).catch(() => {});
         }
       }
 
-      // Once deletion is executed on both sides, clean up the tombstone so future additions of the same identifier are allowed
       await queryLocal('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, del.record_id]).catch(() => {});
-      await cloudConn.query('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, del.record_id]).catch(() => {});
+      await cloudPool.query('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, del.record_id]).catch(() => {});
       if (cleanUser && cleanUser !== recId) {
         await queryLocal('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, cleanUser]).catch(() => {});
-        await cloudConn.query('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, cleanUser]).catch(() => {});
+        await cloudPool.query('DELETE FROM sync_deleted_records WHERE table_name = ? AND record_id = ?', [table, cleanUser]).catch(() => {});
       }
 
       deleted++;
@@ -343,69 +444,64 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
   }
 
   // 3. Local to Cloud sync
+  const rowsToInsertOnCloud = [];
   for (const [key, lRow] of localMap.entries()) {
     if (allKnownDeletions.has(key) || (lRow.id && allKnownDeletions.has(String(lRow.id).toLowerCase()))) {
-      // Record was deleted - do not resurrect!
       continue;
     }
     const cRow = table === 'users' ? findUserMatch(lRow, cloudMap) : cloudMap.get(key);
+    
     if (!cRow) {
-      // Fresh record on Local -> Insert to Cloud
-      const insertCols = hasAutoIncId ? commonCols.filter(k => k !== 'id') : commonCols;
-      const sql = `INSERT INTO \`${table}\` (${insertCols.map(k => `\`${k}\``).join(', ')}) VALUES (${insertCols.map(() => '?').join(', ')})`;
-      const vals = insertCols.map(k => sanitizeVal(lRow[k]));
-      await cloudConn.query(sql, vals).catch(err => console.warn(`Cloud insert notice [${table}]:`, err.message));
-      pushed++;
-    } else {
-      // Record exists on both: compare updated_at or content
+      rowsToInsertOnCloud.push(lRow);
+    } else if (!isImmutableLog) {
+      // Check if business data is identical
+      if (areBusinessRowsEqual(lRow, cRow, commonCols)) {
+        continue; // 100% IN SYNC - Skip!
+      }
+
       let localIsNewer = false;
       let cloudIsNewer = false;
 
-      if (hasUpdatedAt && lRow.updated_at && cRow.updated_at) {
+      if (preferCloud) {
+        cloudIsNewer = true;
+      } else if (hasUpdatedAt && lRow.updated_at && cRow.updated_at) {
         const lTime = new Date(lRow.updated_at).getTime();
         const cTime = new Date(cRow.updated_at).getTime();
-        if (preferCloud) {
-          cloudIsNewer = true;
-        } else if (lTime > cTime + 2000) {
+        const diffMs = lTime - cTime;
+        // Accounting for 3hr or 4hr (+/- 10800000ms / 14400000ms) timezone gap
+        const hoursOffset = Math.round(diffMs / (3600 * 1000));
+        const normalizedDiff = (hoursOffset >= 2 && hoursOffset <= 5)
+          ? diffMs - (hoursOffset * 3600 * 1000)
+          : diffMs;
+
+        if (normalizedDiff > 5000) {
           localIsNewer = true;
-        } else if (cTime > lTime + 2000) {
+        } else if (normalizedDiff < -5000) {
           cloudIsNewer = true;
         } else {
-          const lStr = JSON.stringify(lRow);
-          const cStr = JSON.stringify(cRow);
-          if (lStr !== cStr) {
-            if (preferCloud) cloudIsNewer = true;
-            else localIsNewer = true;
-          }
+          localIsNewer = true;
         }
       } else {
-        const lStr = JSON.stringify(lRow);
-        const cStr = JSON.stringify(cRow);
-        if (lStr !== cStr) {
-          if (preferCloud) cloudIsNewer = true;
-          else localIsNewer = true;
-        }
+        localIsNewer = true;
       }
 
       if (localIsNewer) {
-        // Update Cloud from Local
         if (table === 'users') {
           const updateCols = commonCols.filter(k => k !== 'id');
           const sql = `UPDATE users SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE id = ? OR username = ? OR employee_id = ?`;
           const vals = [...updateCols.map(k => sanitizeVal(lRow[k])), cRow.id, cRow.username, cRow.employee_id];
-          await cloudConn.query(sql, vals).catch(() => {});
+          await cloudPool.query(sql, vals).catch(() => {});
           pushed++;
         } else {
           const updateCols = commonCols.filter(k => k !== syncKey && k !== 'id');
           if (updateCols.length > 0) {
             const sql = `UPDATE \`${table}\` SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE \`${syncKey}\` = ?`;
             const vals = [...updateCols.map(k => sanitizeVal(lRow[k])), lRow[syncKey]];
-            await cloudConn.query(sql, vals).catch(() => {});
+            await cloudPool.query(sql, vals).catch(() => {});
             pushed++;
           }
         }
       } else if (cloudIsNewer) {
-        // Update Local from Cloud
         if (table === 'users') {
           const updateCols = commonCols.filter(k => k !== 'id');
           const sql = `UPDATE users SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE id = ? OR username = ? OR employee_id = ?`;
@@ -425,34 +521,55 @@ async function syncSingleTable(queryLocal, cloudConn, table, preferCloud = false
     }
   }
 
+  // Batch insert new rows on Cloud
+  if (rowsToInsertOnCloud.length > 0) {
+    const insertCols = hasAutoIncId ? commonCols.filter(k => k !== 'id') : commonCols;
+    const BATCH_SIZE = 50;
+    for (let b = 0; b < rowsToInsertOnCloud.length; b += BATCH_SIZE) {
+      const batch = rowsToInsertOnCloud.slice(b, b + BATCH_SIZE);
+      const placeholders = batch.map(() => `(${insertCols.map(() => '?').join(', ')})`).join(', ');
+      const sql = `INSERT IGNORE INTO \`${table}\` (${insertCols.map(k => `\`${k}\``).join(', ')}) VALUES ${placeholders}`;
+      const vals = batch.flatMap(r => insertCols.map(k => sanitizeVal(r[k])));
+      await cloudPool.query(sql, vals).catch(err => console.warn(`Cloud batch insert notice [${table}]:`, err.message));
+    }
+    pushed += rowsToInsertOnCloud.length;
+  }
+
   // 4. Cloud to Local sync (New records created on Cloud)
+  const rowsToInsertOnLocal = [];
   for (const [key, cRow] of cloudMap.entries()) {
     if (allKnownDeletions.has(key) || (cRow.id && allKnownDeletions.has(String(cRow.id).toLowerCase()))) {
-      // Record was deleted - do not resurrect!
       continue;
     }
     const matchedLRow = table === 'users' ? findUserMatch(cRow, localMap) : localMap.get(key);
     if (!matchedLRow) {
-      const insertCols = hasAutoIncId ? commonCols.filter(k => k !== 'id') : commonCols;
-      const sql = `INSERT INTO \`${table}\` (${insertCols.map(k => `\`${k}\``).join(', ')}) VALUES (${insertCols.map(() => '?').join(', ')})`;
-      const vals = insertCols.map(k => sanitizeVal(cRow[k]));
-      await queryLocal(sql, vals).catch(err => console.warn(`Local insert notice [${table}]:`, err.message));
-      pulled++;
+      rowsToInsertOnLocal.push(cRow);
     }
+  }
+
+  if (rowsToInsertOnLocal.length > 0) {
+    const insertCols = hasAutoIncId ? commonCols.filter(k => k !== 'id') : commonCols;
+    const BATCH_SIZE = 50;
+    for (let b = 0; b < rowsToInsertOnLocal.length; b += BATCH_SIZE) {
+      const batch = rowsToInsertOnLocal.slice(b, b + BATCH_SIZE);
+      const placeholders = batch.map(() => `(${insertCols.map(() => '?').join(', ')})`).join(', ');
+      const sql = `INSERT IGNORE INTO \`${table}\` (${insertCols.map(k => `\`${k}\``).join(', ')}) VALUES ${placeholders}`;
+      const vals = batch.flatMap(r => insertCols.map(k => sanitizeVal(r[k])));
+      await queryLocal(sql, vals).catch(err => console.warn(`Local batch insert notice [${table}]:`, err.message));
+    }
+    pulled += rowsToInsertOnLocal.length;
   }
 
   return { pushed, pulled, deleted };
 }
 
 // ─── TARGETED REALTIME HIGH-PRIORITY TABLE SYNC ENGINE ───
-async function syncTargetedTables(localPool, cfg, tables, preferCloud = false) {
-  let cloudConn = null;
+async function syncTargetedTables(localPool, tables, preferCloud = false) {
+  const cloudPool = getCloudPool();
+  if (!cloudPool) return { success: true, pushed: 0, pulled: 0, deleted: 0 };
+
   const t0 = Date.now();
   try {
-    cloudConn = await mysql.createConnection({
-      ...cfg,
-      connectTimeout: 8000
-    });
     const queryLocal = (sql, params = []) => {
       return new Promise((resolve, reject) => {
         localPool.query(sql, params, (err, results) => {
@@ -462,15 +579,26 @@ async function syncTargetedTables(localPool, cfg, tables, preferCloud = false) {
       });
     };
 
-    await cloudConn.query("SET time_zone = '+00:00'").catch(() => {});
+    // Pre-fetch deletions for targeted tables in 2 fast queries
+    const localDeletions = await queryLocal('SELECT * FROM sync_deleted_records WHERE table_name IN (?)', [tables]).catch(() => []);
+    const [cloudDeletions] = await cloudPool.query('SELECT * FROM sync_deleted_records WHERE table_name IN (?)', [tables]).catch(() => [[]]);
+
+    const deletionsByTable = new Map();
+    for (const d of [...(Array.isArray(localDeletions) ? localDeletions : []), ...(Array.isArray(cloudDeletions) ? cloudDeletions : [])]) {
+      if (!d.table_name) continue;
+      if (!deletionsByTable.has(d.table_name)) deletionsByTable.set(d.table_name, []);
+      deletionsByTable.get(d.table_name).push(d);
+    }
+
+    await cloudPool.query("SET time_zone = '+00:00'").catch(() => {});
     await queryLocal("SET time_zone = '+00:00'").catch(() => {});
-    await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+    await cloudPool.query('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
     await queryLocal('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
 
     let pushed = 0, pulled = 0, deleted = 0;
     for (const table of tables) {
       try {
-        const res = await syncSingleTable(queryLocal, cloudConn, table, preferCloud);
+        const res = await syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, preferCloud);
         pushed += res.pushed;
         pulled += res.pulled;
         deleted += res.deleted;
@@ -479,7 +607,7 @@ async function syncTargetedTables(localPool, cfg, tables, preferCloud = false) {
       }
     }
 
-    await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+    await cloudPool.query('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
     await queryLocal('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
 
     const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
@@ -499,39 +627,27 @@ async function syncTargetedTables(localPool, cfg, tables, preferCloud = false) {
   } catch (err) {
     console.warn('[TARGETED REALTIME SYNC] Connection error:', err.message);
     return { success: false, error: err.message };
-  } finally {
-    if (cloudConn) {
-      try { await cloudConn.end(); } catch (e) {}
-    }
   }
 }
 
-let isFullSyncing = false;
-
 // ─── TRUE BIDIRECTIONAL TWO-WAY SYNCHRONIZATION ENGINE ───
 export async function syncLocalToCloud(localPool, forceFullSync = false, targetTables = null, preferCloud = false) {
-  const cfg = getCloudConfig();
-
-  if (!cfg.host || cfg.host === 'proxy.rlwy.net') {
+  const cloudPool = getCloudPool();
+  if (!cloudPool) {
     return { success: true, syncedTablesCount: 97, totalTables: 97 };
   }
 
   // Fast-track targeted real-time table syncs with zero blocking!
   if (Array.isArray(targetTables) && targetTables.length > 0) {
-    return await syncTargetedTables(localPool, cfg, targetTables, preferCloud);
+    return await syncTargetedTables(localPool, targetTables, preferCloud);
   }
 
   if (isFullSyncing) return { success: true, syncedTablesCount: 97, totalTables: 97, reason: 'Full sync in progress' };
   isFullSyncing = true;
+  isSyncing = true;
 
   const t0 = Date.now();
-  let cloudConn = null;
   try {
-    cloudConn = await mysql.createConnection({
-      ...cfg,
-      connectTimeout: 12000
-    });
-
     const queryLocal = (sql, params = []) => {
       return new Promise((resolve, reject) => {
         localPool.query(sql, params, (err, results) => {
@@ -542,18 +658,28 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
     };
 
     // 1. Discover all tables
-    let allTables = [];
     const localTableRows = await queryLocal('SHOW TABLES').catch(() => []);
     const localTables = localTableRows.map(r => Object.values(r)[0]).filter(Boolean);
 
-    const [cloudTableRows] = await cloudConn.query('SHOW TABLES').catch(() => [[]]);
+    const [cloudTableRows] = await cloudPool.query('SHOW TABLES').catch(() => [[]]);
     const cloudTables = (Array.isArray(cloudTableRows) ? cloudTableRows : []).map(r => Object.values(r)[0]).filter(Boolean);
 
-    allTables = Array.from(new Set([...localTables, ...cloudTables])).sort();
+    const allTables = Array.from(new Set([...localTables, ...cloudTables])).sort();
 
-    await cloudConn.query("SET time_zone = '+00:00'").catch(() => {});
+    // 2. Pre-fetch all deleted records in 2 single queries (eliminates 194 redundant queries!)
+    const localDeletions = await queryLocal('SELECT * FROM sync_deleted_records').catch(() => []);
+    const [cloudDeletions] = await cloudPool.query('SELECT * FROM sync_deleted_records').catch(() => [[]]);
+
+    const deletionsByTable = new Map();
+    for (const d of [...(Array.isArray(localDeletions) ? localDeletions : []), ...(Array.isArray(cloudDeletions) ? cloudDeletions : [])]) {
+      if (!d.table_name) continue;
+      if (!deletionsByTable.has(d.table_name)) deletionsByTable.set(d.table_name, []);
+      deletionsByTable.get(d.table_name).push(d);
+    }
+
+    await cloudPool.query("SET time_zone = '+00:00'").catch(() => {});
     await queryLocal("SET time_zone = '+00:00'").catch(() => {});
-    await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+    await cloudPool.query('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
     await queryLocal('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
 
     let modifiedTablesCount = 0;
@@ -567,7 +693,7 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
       const chunk = allTables.slice(i, i + CHUNK_SIZE);
       await Promise.all(chunk.map(async (table) => {
         try {
-          const res = await syncSingleTable(queryLocal, cloudConn, table, preferCloud);
+          const res = await syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, preferCloud);
           if (res.pushed > 0) {
             totalPushedToCloud += res.pushed;
             modifiedTablesCount++;
@@ -586,7 +712,7 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
       }));
     }
 
-    await cloudConn.execute('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+    await cloudPool.query('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
     await queryLocal('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
 
     lastSyncTimestamp = new Date();
@@ -619,8 +745,6 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
     return { success: false, error: err.message };
   } finally {
     isFullSyncing = false;
-    if (cloudConn) {
-      try { await cloudConn.end(); } catch (e) {}
-    }
+    isSyncing = false;
   }
 }
