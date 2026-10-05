@@ -38,7 +38,7 @@ export const apiClient = {
         throw new Error('Request timeout - API server is slow or offline');
       }
       if (error?.name === 'TypeError' && (error?.message === 'Failed to fetch' || error?.message?.includes('fetch'))) {
-        throw new Error('Backend server is offline or unreachable. Please ensure node server.js is running on port 5000.');
+        throw new Error('سيرفر الباك إند المحلي غير متصل (بورت 5000). يرجى التأكد من تشغيل node server.js | Backend server is offline on port 5000');
       }
       throw error;
     }
