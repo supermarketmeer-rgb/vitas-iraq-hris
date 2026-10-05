@@ -85,6 +85,17 @@ export const Sidebar: React.FC = () => {
           if (isBtnActive) {
             btn.style.setProperty('background-color', '#06080d', 'important');
             btn.style.setProperty('border-color', '#14b8a6', 'important');
+          } else {
+            // Clean up lingering active teal styles when button becomes inactive
+            if (btn.classList.contains('border-transparent') || btn.className.includes('border-transparent')) {
+              btn.style.setProperty('border-color', 'transparent', 'important');
+              btn.style.setProperty('background-color', 'transparent', 'important');
+            } else if (btn.classList.contains('border-white/10') || btn.className.includes('border-white/10')) {
+              btn.style.setProperty('border-color', 'rgba(255, 255, 255, 0.1)', 'important');
+              btn.style.setProperty('background-color', 'rgba(255, 255, 255, 0.05)', 'important');
+            } else {
+              btn.style.removeProperty('border-color');
+            }
           }
         }
       };
@@ -348,6 +359,10 @@ export const Sidebar: React.FC = () => {
                         <button
                           key={mod.id}
                           onClick={() => handleSelectModule(mod.id)}
+                          style={{
+                            borderColor: isActive ? '#14b8a6' : 'transparent',
+                            backgroundColor: isActive ? '#06080d' : 'transparent'
+                          }}
                           className={`w-full text-start px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all group cursor-pointer focus:outline-none focus:ring-0 ${
                             isActive
                               ? `bg-[#06080d] text-teal-400 font-bold border border-teal-500 shadow-md shadow-teal-500/10`
