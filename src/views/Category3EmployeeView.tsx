@@ -664,88 +664,122 @@ export const Category3EmployeeView: React.FC = () => {
   };
 
   const handleLoadEmployeeData = (empInput: any) => {
+    console.log('>>> [DEBUG_EMP] handleLoadEmployeeData called with:', empInput);
     let emp: any = null;
     if (typeof empInput === 'object' && empInput !== null) {
       emp = empInput;
     } else {
       emp = employees.find(e => String(e.id) === String(empInput) || String(e.employeeId) === String(empInput) || String(e.employee_id) === String(empInput));
     }
+    console.log('>>> [DEBUG_EMP] Resolved emp:', emp ? { id: emp.id, name: emp.fullName || emp.full_name } : 'NOT FOUND');
     if (!emp) return;
 
     const targetId = emp.id || emp.employeeId || emp.employee_id;
+    if (targetId) {
+      try { sessionStorage.setItem('vitas_editing_emp_id', String(targetId)); } catch (e) {}
+    }
     const clean = (val?: any) => (!val || val === 'N/A' || val === 'غير محدد' ? '' : String(val));
+    const resolvedName = clean(emp.fullName || emp.full_name || emp.full_name_ar || emp.name_ar || emp.name);
+    console.log('>>> [DEBUG_EMP] Setting targetId:', targetId, 'resolvedName:', resolvedName);
 
-    setSelectedEmpId(targetId);
-    setFullName(clean(emp.fullName || emp.full_name || emp.name_ar || emp.name));
+    setSelectedEmpId(String(targetId));
+    setFullName(resolvedName);
     setFullNameEn(clean(emp.fullNameEn || emp.full_name_en || emp.name_en));
-    setEmpCode(clean(emp.employeeId) || clean(emp.employee_id) || clean(emp.empCode) || (targetId ? `VTS-${targetId}` : ''));
-    setBadgeNo(clean(emp.badgeNo) || clean(emp.badge_no));
+    setEmpCode(clean(emp.employeeId || emp.employee_id || emp.empCode || (targetId ? `VTS-${targetId}` : '')));
+    setBadgeNo(clean(emp.badgeNo || emp.badge_no));
     setDob(clean(emp.dob || emp.date_of_birth));
     setEmail(clean(emp.email));
     setPersonalEmail(clean(emp.personalEmail || emp.personal_email));
-    setPhone(clean(emp.phone || emp.mobile_phone || emp.phone_number));
-    setEmergencyPhone(clean(emp.emergencyPhone || emp.emergency_phone));
+    setPhone(clean(emp.phone || emp.mobile || emp.mobile_phone || emp.phone_number));
+    setEmergencyPhone(clean(emp.emergencyPhone || emp.emergency_mobile || emp.emergency_phone));
     setNationalId(clean(emp.nationalId || emp.national_id));
-    setPassportNo(clean(emp.passportNo || emp.passport_number));
+    setPassportNo(clean(emp.passportNo || emp.passport_number || emp.passport_no));
     setPassportExpiry(clean(emp.passportExpiry || emp.passport_expiry));
     setSpouseName(clean(emp.spouseName || emp.spouse_name));
-    setSpouseEmployedHere(emp.spouseEmployedHere || false);
-    setChildrenDetails(emp.childrenList ? JSON.stringify(emp.childrenList) : '');
-    setChildrenList(emp.childrenList || []);
+    setSpouseEmployedHere(Boolean(emp.spouseEmployedHere || emp.spouse_employed_here));
+
+    let parsedChildren: EmployeeChild[] = [];
+    if (Array.isArray(emp.childrenList)) {
+      parsedChildren = emp.childrenList;
+    } else if (emp.children_details) {
+      try { parsedChildren = JSON.parse(emp.children_details); } catch (e) {}
+    } else if (emp.children_json) {
+      try { parsedChildren = JSON.parse(emp.children_json); } catch (e) {}
+    } else if (typeof emp.childrenDetails === 'string' && emp.childrenDetails.startsWith('[')) {
+      try { parsedChildren = JSON.parse(emp.childrenDetails); } catch (e) {}
+    }
+    setChildrenList(parsedChildren);
+    setChildrenDetails(parsedChildren.length > 0 ? JSON.stringify(parsedChildren) : '');
     setNewChildName('');
     setNewChildDob('');
     setEditingChildId(null);
-    setTrainingsRecord(clean(emp.trainingsRecord));
-    setWarningsRecord(clean(emp.warningsRecord));
+
+    setTrainingsRecord(clean(emp.trainingsRecord || emp.trainings_record || emp.trainings_json));
+    setWarningsRecord(clean(emp.warningsRecord || emp.warnings_record || emp.warnings_json));
     setExitDate(clean(emp.exitDate || emp.exit_date));
-    setPositionStartDate(clean(emp.joinDate || emp.hire_date || emp.position_start_date) || new Date().toISOString().split('T')[0]);
-    setBranchEn(clean(emp.branchEn || emp.branch_en));
-    setPhotoUrl(clean(emp.photoUrl || emp.photo_url));
-    setDepartment(clean(emp.department || emp.department_name));
-    setBranch(clean(emp.branch || emp.branch_name));
-    setPositionTitle(clean(emp.position || emp.position_title || emp.job_title));
-    setBasicSalary(clean(emp.salary || emp.basic_salary || emp.basicSalary));
+
+    const startDate = clean(emp.originalStartDate || emp.original_start_date || emp.contract_original_start || emp.joinDate || emp.hire_date) || new Date().toISOString().split('T')[0];
+    setOriginalStartDate(startDate);
+    setPositionStartDate(clean(emp.positionStartDate || emp.position_start_date || startDate));
+    setContractStartDate(clean(emp.contractStartDate || emp.contract_start_date) || startDate);
+    setContractEndDate(clean(emp.contractEndDate || emp.contract_end_date));
+    setProbationEndDate(clean(emp.probationEndDate || emp.probation_end_date));
+    setTermOfContract(emp.termOfContract || emp.term_of_contract || emp.contract_type || 'عقد محدد المدة (سنة واحدة)');
+    setGrade(emp.grade || 'G-4 الدرجة الرابعة');
+
+    setGender(emp.gender === 'أنثى' || emp.gender === 'female' || emp.gender === 'Female' ? 'أنثى' : 'ذكر');
+    setMaritalStatus(
+      emp.maritalStatus === 'متأهل' || emp.marital_status === 'married' ? 'متأهل' :
+      emp.maritalStatus === 'مطلق' || emp.marital_status === 'divorced' ? 'مطلق' :
+      emp.maritalStatus === 'أرمل' || emp.marital_status === 'widow' ? 'أرمل' : 'أعزب'
+    );
+    setNationality(clean(emp.nationality) || 'عراقي');
+
+    setDepartment(clean(emp.department || emp.department_name || emp.department_ar));
+    setDepartmentEn(clean(emp.departmentEn || emp.department_en));
+    setJobTitle(clean(emp.jobTitle || emp.position_ar || emp.position || emp.job_title));
+    setJobTitleEn(clean(emp.jobTitleEn || emp.position_en || emp.job_title_en));
+    setBranch(clean(emp.branch || emp.branch_name || emp.location_ar));
+    setBranchEn(clean(emp.branchEn || emp.branch_en || emp.location_en));
+    setSupervisorName(clean(emp.supervisorName || emp.supervisor_name));
+    setWorkScope(clean(emp.workScope || emp.work_scope) || 'ميداني ومكتبي');
+
+    const salaryVal = Number(emp.basicSalary || emp.basic_salary || emp.salary || 0);
+    setBasicSalary(salaryVal);
+    setWrittenBasicSalaryAr(clean(emp.writtenBasicSalaryAr || emp.written_basic_salary_ar) || (salaryVal > 0 ? numberToArabicWords(salaryVal) : ''));
+    setBankName(clean(emp.bankName || emp.bank_name));
+    setIban(clean(emp.iban));
+
+    setIsSsTaxExempt(Boolean(Number(emp.isSsTaxExempt ?? emp.is_ss_tax_exempt ?? 0) === 1));
+    setSsTaxExemptionReason(clean(emp.ssTaxExemptionReason || emp.ss_tax_exemption_reason));
+    setTransportationFixed(Number(emp.transportationFixed || emp.transportation_fixed || 0));
+    setFixedBonus(Number(emp.fixedBonus || emp.fixed_bonus || 0));
+    setPhoneAllowance(Number(emp.phoneAllowance || emp.phone_allowance || 0));
+    setCertificateAllowance(Number(emp.certificateAllowance || emp.certificate_allowance || 0));
+    setSpouseAllowance(Number(emp.spouseAllowance || emp.spouse_allowance || 0));
+    setChildAllowance(Number(emp.childAllowance || emp.child_allowance || 0));
+
+    setPhotoUrl(clean(emp.photoUrl || emp.photo_url || emp.photo));
     setActiveTab(1);
     setStatusChanges([]);
     setNewStatusChange({ new_position: '', start_date: '', end_date: '' });
     setEmployeeTrainings([]);
     setNewTraining({ course_name: '', start_date: '', end_date: '' });
 
-    // Set other fields
-    setGender(emp.gender === 'ذكر' ? 'ذكر' : 'أنثى');
-    setMaritalStatus(emp.maritalStatus === 'أعزب' ? 'أعزب' :
-                     emp.maritalStatus === 'متأهل' ? 'متأهل' :
-                     emp.maritalStatus === 'مطلق' ? 'مطلق' : 'أرمل');
-    setNationality(emp.nationality || 'عراقي');
-    setDepartment(emp.department || '');
-    setJobTitle(emp.jobTitle || '');
-    setJobTitleEn(emp.jobTitleEn || '');
-    setBranch(emp.branch || '');
-    setBranchEn(emp.branchEn || '');
-    setSupervisorName(emp.supervisorName || '');
-    setWorkScope(emp.workScope || '');
-    setBasicSalary(emp.salary || emp.basicSalary || 0);
-    setWrittenBasicSalaryAr(emp.writtenBasicSalaryAr || '');
-    setBankName(emp.bankName || '');
-    setIban(emp.iban || '');
-    setIsSsTaxExempt(Number(emp.isSsTaxExempt ?? emp.is_ss_tax_exempt ?? 0) === 1);
-    setSsTaxExemptionReason(emp.ssTaxExemptionReason || emp.ss_tax_exemption_reason || '');
-    setTransportationFixed(emp.transportationFixed || 0);
-    setFixedBonus(emp.fixedBonus || 0);
-    setPhoneAllowance(emp.phoneAllowance || 0);
-    setCertificateAllowance(emp.certificateAllowance || 0);
-    setSpouseAllowance(emp.spouseAllowance || 0);
-    setChildAllowance(emp.childAllowance || 0);
-    setContractStartDate(emp.contractStartDate || '');
-    setContractEndDate(emp.contractEndDate || '');
-    setOriginalStartDate(emp.originalStartDate || '');
-    setProbationEndDate(emp.probationEndDate || '');
-    setTermOfContract(emp.termOfContract || '');
-    setGrade(emp.grade || '');
+    if (targetId) {
+      api.getEmployeeStatusChanges(String(targetId)).then((data: any) => {
+        if (Array.isArray(data)) setStatusChanges(data);
+      }).catch(() => {});
+
+      api.getEmployeeTrainings(String(targetId)).then((data: any) => {
+        if (Array.isArray(data)) setEmployeeTrainings(data);
+      }).catch(() => {});
+    }
     setSelectedPolicy('');
   };
 
   const handleResetForm = () => {
+    try { sessionStorage.removeItem('vitas_editing_emp_id'); } catch (e) {}
     setSelectedEmpId(null);
     setFullName('');
     setFullNameEn('');
@@ -776,6 +810,19 @@ export const Category3EmployeeView: React.FC = () => {
     setEmployeeTrainings([]);
     setNewTraining({ course_name: '', start_date: '', end_date: '' });
   };
+
+  useEffect(() => {
+    if (activeModuleId === 'emp-edit') {
+      const editId = (typeof window !== 'undefined' ? sessionStorage.getItem('vitas_editing_emp_id') : null) || selectedEmpId;
+      if (editId && employees.length > 0) {
+        if (!selectedEmpId || selectedEmpId !== String(editId) || !fullName) {
+          handleLoadEmployeeData(editId);
+        }
+      }
+    } else if (activeModuleId === 'emp-add') {
+      try { sessionStorage.removeItem('vitas_editing_emp_id'); } catch (e) {}
+    }
+  }, [activeModuleId, employees, selectedEmpId, fullName]);
 
   // Branch & Location Management Functions
   const handleAddBranch = () => {
@@ -1272,6 +1319,8 @@ export const Category3EmployeeView: React.FC = () => {
     { id: 7, title: t('التدريبات والسجل الإداري', 'Trainings & Record'), icon: 'history_edu', desc: t('الدورات والإنذارات والحالة', 'Courses, Warnings & Status') },
   ];
 
+  console.log('>>> [DEBUG_RENDER] Category3 render:', { activeModuleId, selectedEmpId, fullName, fullNameEn, empCode });
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Top Banner */}
@@ -1291,7 +1340,7 @@ export const Category3EmployeeView: React.FC = () => {
             {activeModuleId === 'emp-directory' && t('دليل الموظفين المؤسسي', 'Corporate Employee Directory')}
             {activeModuleId === 'emp-hr-directory' && t('دليل الموظفين الشامل - إدارة الموارد البشرية', 'Comprehensive Employee Directory - HR')}
             {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
-              selectedEmpId 
+              (activeModuleId === 'emp-edit' || selectedEmpId) 
                 ? t('تعديل بيانات الموظف (نموذج 7 تبويبات)', 'Edit Employee Data (7-Tab Form)')
                 : t('تسجيل وإضافة موظف جديد (نموذج 7 تبويبات)', 'Register & Add New Employee (7-Tab Form)')
             )}
@@ -1446,33 +1495,37 @@ export const Category3EmployeeView: React.FC = () => {
                     {(() => {
                       const empTargetId = emp.id || emp.employeeId || emp.employee_id;
                       return (
-                        <div className="flex items-center justify-end gap-3 w-full">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleLoadEmployeeData(emp);
-                              setActiveModuleId('emp-edit');
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="px-3.5 py-1.5 rounded-xl bg-teal-600/10 hover:bg-teal-600 border border-teal-500/30 hover:border-teal-500 text-teal-400 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm z-10"
-                            title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
-                          >
-                            <span className="material-symbols-outlined text-sm">edit</span>
-                            <span>{t('تعديل', 'Edit')}</span>
-                          </button>
-
+                        <div className="flex items-center justify-between w-full px-1">
+                          {/* Right Side: Delete Icon (Red, No BG, No Border) */}
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar });
                             }}
-                            className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-500 text-rose-400 hover:text-white transition-all cursor-pointer"
+                            className="p-1.5 bg-transparent border-0 text-red-500 hover:text-red-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                            style={{ order: language === 'ar' ? 1 : 2 }}
                             title={t('حذف الموظف', 'Delete Employee')}
                           >
-                            <span className="material-symbols-outlined text-sm">delete</span>
+                            <span className="material-symbols-outlined text-xl">delete</span>
+                          </button>
+
+                          {/* Left Side: Edit Icon (Green, No BG, No Border) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              try { sessionStorage.setItem('vitas_editing_emp_id', String(empTargetId)); } catch (err) {}
+                              handleLoadEmployeeData(emp);
+                              setActiveModuleId('emp-edit');
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="p-1.5 bg-transparent border-0 text-emerald-500 hover:text-emerald-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                            style={{ order: language === 'ar' ? 2 : 1 }}
+                            title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
+                          >
+                            <span className="material-symbols-outlined text-xl">edit</span>
                           </button>
                         </div>
                       );
@@ -1497,10 +1550,10 @@ export const Category3EmployeeView: React.FC = () => {
           <div className="border-b border-white/10 pb-4 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-blue-400">
-                  {selectedEmpId ? 'edit' : 'person_add'}
+                <span className="material-symbols-outlined text-teal-400">
+                  {(activeModuleId === 'emp-edit' || selectedEmpId) ? 'edit' : 'person_add'}
                 </span>
-                {selectedEmpId 
+                {(activeModuleId === 'emp-edit' || selectedEmpId)
                   ? t('نموذج تعديل بيانات الموظف الشامل (7 تبويبات رئيسية)', 'Comprehensive Employee Edit Form (7 Main Tabs)') 
                   : t('نموذج إضافة موظف جديد الشامل (7 تبويبات رئيسية)', 'Comprehensive New Employee Add Form (7 Main Tabs)')}
               </h2>
@@ -3014,11 +3067,14 @@ export const Category3EmployeeView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        handleLoadEmployeeData(selectedEmployee.id);
-                        setActiveModuleId('emp-add');
+                        const tId = selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id;
+                        try { sessionStorage.setItem('vitas_editing_emp_id', String(tId)); } catch (err) {}
+                        handleLoadEmployeeData(selectedEmployee);
+                        setActiveModuleId('emp-edit');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className="absolute bottom-1 left-1 w-10 h-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white border-2 border-white shadow-xl flex items-center justify-center z-20 transition-all hover:scale-110 active:scale-95 group/edit"
-                      title="تعديل بيانات وصورة الموظف / Edit Employee Profile"
+                      className="absolute bottom-1 left-1 w-10 h-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white border-2 border-white shadow-xl flex items-center justify-center z-20 transition-all hover:scale-110 active:scale-95 group/edit cursor-pointer"
+                      title={t('تعديل بيانات وصورة الموظف', 'Edit Employee Profile')}
                     >
                       <span className="material-symbols-outlined text-base">edit</span>
                     </button>
@@ -3053,6 +3109,23 @@ export const Category3EmployeeView: React.FC = () => {
                     <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-purple-600/20 border-purple-500/30 text-purple-400' : 'bg-purple-50 border-purple-200/80 text-purple-700'} font-bold shadow-sm`}>
                       {getEmpBranch(selectedEmployee)}
                     </span>
+                    {canWrite() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const tId = selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id;
+                          try { sessionStorage.setItem('vitas_editing_emp_id', String(tId)); } catch (err) {}
+                          handleLoadEmployeeData(selectedEmployee);
+                          setActiveModuleId('emp-edit');
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="px-4 py-1.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105"
+                        title={t('تعديل بيانات وسجل الموظف', 'Edit Employee Data')}
+                      >
+                        <span className="material-symbols-outlined text-xs">edit</span>
+                        <span>{t('تعديل الموظف', 'Edit Employee')}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </section>

@@ -1202,25 +1202,57 @@ html.light [class*="modal"] {
 }
 
 /* ================================================================
-   LIGHT MODE SIDEBAR BUTTONS & CONTROLS
+   SIDEBAR BUTTONS & ACTIVE STATE (ALWAYS DARK #06080d)
+   Sidebar buttons must stay dark and not turn grey in light mode.
    ================================================================ */
-html.light aside button {
-  background-color: #e5ecf4 !important;
-  background-image: none !important;
-  color: #000000 !important;
-  border: 1px solid #cbd5e1 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+aside button {
+  outline: none !important;
 }
 
-/* Force all text, icons, spans inside sidebar buttons to Black */
-html.light aside button *,
-html.light aside button span,
-html.light aside button p,
-html.light aside button div,
-html.light aside button svg,
-html.light aside button i,
-html.light aside button .material-symbols-outlined {
-  color: #000000 !important;
+/* Force active sidebar module buttons to remain dark with teal borders and text */
+aside button.border-teal-500,
+aside button[class*="border-teal-500"],
+aside button[class*="bg-[#06080d]"],
+html.light aside button.border-teal-500,
+html.light aside button[class*="border-teal-500"],
+html.light aside button[class*="bg-[#06080d]"],
+html:not(.dark) aside button.border-teal-500,
+html:not(.dark) aside button[class*="border-teal-500"],
+html:not(.dark) aside button[class*="bg-[#06080d]"],
+html:not(.dark) body aside button.border-teal-500,
+html:not(.dark) body aside button[class*="border-teal-500"],
+html:not(.dark) body aside button[class*="bg-[#06080d]"] {
+  background-color: #06080d !important;
+  background-image: none !important;
+  border-color: #14b8a6 !important;
+  color: #2dd4bf !important;
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.15) !important;
+}
+
+aside button.border-teal-500:hover,
+aside button[class*="border-teal-500"]:hover,
+aside button[class*="bg-[#06080d]"]:hover,
+html.light aside button.border-teal-500:hover,
+html.light aside button[class*="border-teal-500"]:hover,
+html:not(.dark) aside button[class*="border-teal-500"]:hover,
+html:not(.dark) body aside button[class*="border-teal-500"]:hover {
+  background-color: #06080d !important;
+  border-color: #14b8a6 !important;
+}
+
+aside button.border-teal-500 span:not(.bg-rose-500),
+aside button[class*="border-teal-500"] span:not(.bg-rose-500),
+html.light aside button[class*="border-teal-500"] span:not(.bg-rose-500),
+html:not(.dark) aside button[class*="border-teal-500"] span:not(.bg-rose-500) {
+  color: #2dd4bf !important;
+}
+
+/* Inactive sidebar buttons */
+aside button:not([class*="border-teal-500"]):not(:hover),
+html.light aside button:not([class*="border-teal-500"]):not(:hover),
+html:not(.dark) aside button:not([class*="border-teal-500"]):not(:hover) {
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 /* EXEMPTION: Notification counter text inside red bubble must ALWAYS be PURE WHITE (#ffffff) */
@@ -1235,33 +1267,6 @@ html.light header button span[class*="bg-red"],
 html.light header button [class*="bg-rose"],
 html.light header button [class*="bg-red"] {
   color: #ffffff !important;
-}
-
-/* Hover state for sidebar buttons in Light Mode */
-html.light aside button:hover {
-  background-color: #d8e4f0 !important;
-  color: #000000 !important;
-  border-color: #94a3b8 !important;
-}
-
-html.light aside button:hover * {
-  color: #000000 !important;
-}
-
-/* Active Sidebar Item & Active Module buttons in Light Mode */
-html.light aside button[class*="bg-[#06080d]"],
-html.light aside button[class*="border-teal-500"],
-html.light aside .sidebar-active-item,
-html.light aside button.bg-teal-600 {
-  background-color: #d0e0f0 !important;
-  color: #000000 !important;
-  border: 1.5px solid #0d9488 !important;
-  font-weight: 600 !important;
-}
-
-html.light aside button[class*="bg-[#06080d]"] *,
-html.light aside button[class*="border-teal-500"] * {
-  color: #000000 !important;
 }
 
 

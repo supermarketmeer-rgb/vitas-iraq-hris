@@ -53,8 +53,23 @@ export const Sidebar: React.FC = () => {
         const isInput = tag === 'input' || tag === 'select' || tag === 'textarea';
         const isContainer = tag === 'div' || tag === 'nav' || tag === 'section' || tag === 'ul' || tag === 'li' || tag === 'aside';
 
+        const isTeal = (el as HTMLElement).classList.contains('text-teal-400') ||
+                       (el as HTMLElement).classList.contains('text-teal-300') ||
+                       !!(el as HTMLElement).closest('.border-teal-500');
+        const isRose = (el as HTMLElement).classList.contains('bg-rose-500') ||
+                       !!(el as HTMLElement).closest('.bg-rose-500');
+        const isEmerald = (el as HTMLElement).classList.contains('text-emerald-400');
+
         if (!isImg) {
-          (el as HTMLElement).style.setProperty('color', '#e2e8f0', 'important');
+          if (isTeal) {
+            (el as HTMLElement).style.setProperty('color', '#2dd4bf', 'important');
+          } else if (isRose) {
+            (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+          } else if (isEmerald) {
+            (el as HTMLElement).style.setProperty('color', '#34d399', 'important');
+          } else {
+            (el as HTMLElement).style.setProperty('color', '#e2e8f0', 'important');
+          }
         }
         if (isContainer) {
           const insideButton = !!(el as HTMLElement).closest('button');
@@ -64,7 +79,14 @@ export const Sidebar: React.FC = () => {
           (el as HTMLElement).style.setProperty('background-color', 'rgba(255,255,255,0.08)', 'important');
           (el as HTMLElement).style.setProperty('border-color', 'rgba(255,255,255,0.2)', 'important');
         }
-        // Buttons: keep their own background — only text color is overridden
+        if (tag === 'button') {
+          const btn = el as HTMLElement;
+          const isBtnActive = btn.classList.contains('border-teal-500') || btn.className.includes('border-teal-500');
+          if (isBtnActive) {
+            btn.style.setProperty('background-color', '#06080d', 'important');
+            btn.style.setProperty('border-color', '#14b8a6', 'important');
+          }
+        }
       };
 
       applyEl(aside);
@@ -326,7 +348,7 @@ export const Sidebar: React.FC = () => {
                         <button
                           key={mod.id}
                           onClick={() => handleSelectModule(mod.id)}
-                          className={`w-full text-start px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all group cursor-pointer ${
+                          className={`w-full text-start px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all group cursor-pointer focus:outline-none focus:ring-0 ${
                             isActive
                               ? `bg-[#06080d] text-teal-400 font-bold border border-teal-500 shadow-md shadow-teal-500/10`
                               : 'text-white hover:bg-white/10 hover:text-teal-400 border border-transparent'

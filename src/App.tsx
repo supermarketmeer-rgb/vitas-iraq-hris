@@ -314,7 +314,7 @@ function AppContent() {
         <div className="flex min-h-[calc(100vh-4rem)] relative">
           {isSidebarOpen && <Sidebar />}
           <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-6 pb-24 lg:pb-6 transition-all duration-200">
-            <div key={activeModuleId} className="animate-in fade-in duration-200">
+            <div key={activeModuleId.startsWith('emp-') ? 'cat-3-emp' : activeModuleId} className="animate-in fade-in duration-200">
               {renderActiveView()}
             </div>
           </main>
