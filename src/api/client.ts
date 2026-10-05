@@ -99,6 +99,7 @@ export const api = {
     return await response.json();
   },
   getEmployeePhoto: (id: string) => `${getApiBaseUrl()}/employees/${id}/photo`,
+  deleteEmployeePhoto: (id: string) => apiClient.delete(`/employees/${id}/photo`),
 
   // Leave Requests
   getLeaveRequests: () => apiClient.get('/leave-requests'),

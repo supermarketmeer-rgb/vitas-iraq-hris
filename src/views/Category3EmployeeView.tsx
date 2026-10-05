@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
 import { SearchableComboBox } from '../components/SearchableComboBox';
@@ -360,6 +360,7 @@ export const Category3EmployeeView: React.FC = () => {
   const [passportNo, setPassportNo] = useState('');
   const [passportExpiry, setPassportExpiry] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const photoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Tab 6: Family & Dependents
   const [spouseName, setSpouseName] = useState('');
@@ -804,6 +805,7 @@ export const Category3EmployeeView: React.FC = () => {
     setPositionStartDate(new Date().toISOString().split('T')[0]);
     setBranchEn('');
     setPhotoUrl('');
+    if (photoFileInputRef.current) photoFileInputRef.current.value = '';
     setActiveTab(1);
     setStatusChanges([]);
     setNewStatusChange({ new_position: '', start_date: '', end_date: '' });
@@ -1122,9 +1124,10 @@ export const Category3EmployeeView: React.FC = () => {
                       maritalStatus === 'مطلق' ? 'divorced' : 'widow',
       spouse_name: spouseName,
       spouse_employed_here: spouseEmployedHere ? 1 : 0,
-      photo_url: photoUrl,
-      photoUrl: photoUrl,
-      photo: photoUrl,
+      photo_url: photoUrl ? photoUrl.trim() : null,
+      photoUrl: photoUrl ? photoUrl.trim() : null,
+      photo: photoUrl ? photoUrl.trim() : null,
+      photo_removed: !photoUrl,
       bank_name: bankName,
       iban,
       national_id: nationalId,
@@ -1206,9 +1209,9 @@ export const Category3EmployeeView: React.FC = () => {
       passport_no: passportNo,
       passportExpiry,
       passport_expiry: passportExpiry,
-      photoUrl,
-      photo_url: photoUrl,
-      photo: photoUrl,
+      photoUrl: photoUrl ? photoUrl.trim() : '',
+      photo_url: photoUrl ? photoUrl.trim() : '',
+      photo: photoUrl ? photoUrl.trim() : '',
       dob,
       gender,
       maritalStatus,
@@ -1778,10 +1781,17 @@ export const Category3EmployeeView: React.FC = () => {
                       {photoUrl && (
                         <button
                           type="button"
-                          onClick={() => setPhotoUrl('')}
-                          className="text-rose-400 hover:text-rose-300 text-xs font-bold"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPhotoUrl('');
+                            if (photoFileInputRef.current) photoFileInputRef.current.value = '';
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                          title={t('إزالة الصورة الحالية', 'Remove Photo')}
                         >
-                          {t('إزالة الصورة ✕', 'Remove Photo ✕')}
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                          <span>{t('إزالة الصورة ✕', 'Remove Photo ✕')}</span>
                         </button>
                       )}
                     </div>
@@ -1798,17 +1808,35 @@ export const Category3EmployeeView: React.FC = () => {
 
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            placeholder={t('أدخل رابط الصورة (URL) أو ارفع صورة...', 'Enter image URL or upload image...')}
-                            value={photoUrl}
-                            onChange={e => setPhotoUrl(e.target.value)}
-                            className="flex-1 bg-[#0a0c10] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500 font-mono"
-                          />
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              placeholder={t('أدخل رابط الصورة (URL) أو ارفع صورة...', 'Enter image URL or upload image...')}
+                              value={photoUrl}
+                              onChange={e => setPhotoUrl(e.target.value)}
+                              className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500 font-mono pr-8"
+                            />
+                            {photoUrl && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setPhotoUrl('');
+                                  if (photoFileInputRef.current) photoFileInputRef.current.value = '';
+                                }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/10 hover:bg-rose-500/30 text-slate-400 hover:text-rose-300 flex items-center justify-center text-xs cursor-pointer transition-colors"
+                                title={t('مسح', 'Clear')}
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
                           <label className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs cursor-pointer shadow transition-all flex items-center gap-1 shrink-0">
                             <span className="material-symbols-outlined text-sm">upload_file</span>
                             <span>{t('رفع صورة', 'Upload Photo')}</span>
                             <input
+                              ref={photoFileInputRef}
                               type="file"
                               accept="image/*"
                               className="hidden"
@@ -2426,14 +2454,46 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('رابط الصورة الشخصية', 'Profile Photo URL')}</label>
-                    <input
-                      type="text"
-                      placeholder={t('https://...', 'https://...')}
-                      value={photoUrl}
-                      onChange={e => setPhotoUrl(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-black font-medium">{t('رابط الصورة الشخصية', 'Profile Photo URL')}</label>
+                      {photoUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPhotoUrl('');
+                            if (photoFileInputRef.current) photoFileInputRef.current.value = '';
+                          }}
+                          className="text-rose-400 hover:text-rose-300 text-xs font-bold cursor-pointer"
+                        >
+                          {t('إزالة الصورة ✕', 'Remove Photo ✕')}
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder={t('https://...', 'https://...')}
+                        value={photoUrl}
+                        onChange={e => setPhotoUrl(e.target.value)}
+                        className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none pr-8"
+                      />
+                      {photoUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPhotoUrl('');
+                            if (photoFileInputRef.current) photoFileInputRef.current.value = '';
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-300 text-xs font-bold cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

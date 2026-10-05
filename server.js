@@ -913,12 +913,37 @@ app.post('/api/employees/:id/photo', upload.single('photo'), async (req, res) =>
     const photoData = req.file.buffer;
     await query('UPDATE employees SET photo = ? WHERE id = ?', [photoData, req.params.id]);
     
+    broadcastRealtimeEvent({
+      type: 'DATA_CHANGED',
+      table: 'employees',
+      timestamp: new Date().toISOString()
+    });
+
     res.json({ success: true, message: 'Photo uploaded successfully' });
   } catch (err) {
     console.error('Error uploading photo:', err);
     res.status(500).json({ error: err.message });
   }
 });
+
+// Delete employee photo
+app.delete('/api/employees/:id/photo', async (req, res) => {
+  try {
+    await query('UPDATE employees SET photo = NULL, photo_url = NULL WHERE id = ?', [req.params.id]);
+    
+    broadcastRealtimeEvent({
+      type: 'DATA_CHANGED',
+      table: 'employees',
+      timestamp: new Date().toISOString()
+    });
+
+    res.json({ success: true, message: 'Photo deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting photo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // Get employee photo
 app.get('/api/employees/:id/photo', async (req, res) => {
@@ -1107,12 +1132,25 @@ app.post('/api/employees', async (req, res) => {
     const passportNo = data.passportNo || data.passport_no || null;
     const passportExpiry = formatDate(data.passportExpiry || data.passport_expiry);
 
+    const hasPhotoField = ('photo' in data) || ('photoUrl' in data) || ('photo_url' in data) || ('photo_removed' in data);
     let photoData = null;
-    const rawPhoto = data.photo || data.photoUrl || data.photo_url;
-    if (rawPhoto && typeof rawPhoto === 'string' && rawPhoto.startsWith('data:image')) {
-      const base64Data = rawPhoto.replace(/^data:image\/[^;]+;base64,/, '');
-      photoData = Buffer.from(base64Data, 'base64');
+    let finalPhotoUrl = null;
+    const rawPhoto = (data.photo !== undefined && data.photo !== null) ? data.photo :
+                     ((data.photoUrl !== undefined && data.photoUrl !== null) ? data.photoUrl : data.photo_url);
+    const isPhotoExplicitlyRemoved = data.photo_removed === true || data.photo_removed === 1 || data.photo_removed === '1' ||
+      (hasPhotoField && (rawPhoto === '' || rawPhoto === null || data.photo === '' || data.photoUrl === '' || data.photo_url === ''));
+
+    if (rawPhoto && typeof rawPhoto === 'string' && rawPhoto.trim() !== '' && !isPhotoExplicitlyRemoved) {
+      finalPhotoUrl = rawPhoto.trim();
+      if (finalPhotoUrl.startsWith('data:image')) {
+        const base64Data = finalPhotoUrl.replace(/^data:image\/[^;]+;base64,/, '');
+        photoData = Buffer.from(base64Data, 'base64');
+      }
+    } else if (isPhotoExplicitlyRemoved) {
+      finalPhotoUrl = null;
+      photoData = null;
     }
+
 
     const spouseName = data.spouseName || data.spouse_name || null;
     const spouseEmployedHere = (data.spouseEmployedHere || data.spouse_employed_here) ? 1 : 0;
@@ -1169,7 +1207,7 @@ app.post('/api/employees', async (req, res) => {
       full_name_en: fullNameEn,
       email: email,
       personal_email: personalEmail,
-      photo_url: rawPhoto,
+      photo_url: finalPhotoUrl,
       photo: photoData,
       phone: phone,
       mobile: phone,
@@ -1266,7 +1304,7 @@ app.post('/api/employees', async (req, res) => {
       if (existing && existing.length > 0 && targetDbId) {
         console.log('Updating existing employee ID:', targetDbId);
         let updateCols = validColumns.filter(col => col !== 'id');
-        if (!photoData && !rawPhoto) {
+        if (!hasPhotoField && !photoData && !finalPhotoUrl) {
           updateCols = updateCols.filter(col => col !== 'photo' && col !== 'photo_url');
         }
         const updateVals = updateCols.map(col => candidateData[col]);
@@ -1312,6 +1350,12 @@ app.post('/api/employees', async (req, res) => {
           console.warn('Note on employee_children sync:', childSyncErr.message);
         }
       }
+
+      broadcastRealtimeEvent({
+        type: 'DATA_CHANGED',
+        table: 'employees',
+        timestamp: new Date().toISOString()
+      });
 
       res.json({ success: true, id: String(finalEmpDbId), data, updated: !!(existing && existing.length > 0) });
   } catch (err) {
