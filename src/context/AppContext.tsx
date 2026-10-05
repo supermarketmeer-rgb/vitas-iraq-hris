@@ -475,37 +475,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     connectionManager.initRealtimeEventStream((tableName) => {
       const matchAll = !tableName || tableName === 'all' || tableName === 'general';
 
-      if (matchAll || tableName === 'employees') {
-        api.getEmployees().then(d => { if (Array.isArray(d)) setEmployees(d); }).catch(() => {});
-      }
-      if (matchAll || tableName === 'candidates') {
-        api.getCandidates().then(d => { if (Array.isArray(d)) setCandidates(d); }).catch(() => {});
-      }
-      if (matchAll || tableName === 'job_vacancies') {
-        api.getJobVacancies().then(d => { if (Array.isArray(d)) setJobVacancies(d); }).catch(() => {});
-      }
-      if (matchAll || tableName === 'leave_requests' || tableName === 'leaves') {
-        api.getLeaveRequests().then(d => { if (Array.isArray(d)) setLeaveRequests(d); }).catch(() => {});
-      }
-      if (matchAll || tableName === 'attendance') {
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('vitas:attendance_changed'));
+      if (matchAll) {
+        loadData();
+        syncEngine.loadScheduleFromBackend().catch(() => {});
+      } else {
+        if (tableName === 'employees') {
+          api.getEmployees().then(d => { if (Array.isArray(d)) setEmployees(d); }).catch(() => {});
+        }
+        if (tableName === 'candidates') {
+          api.getCandidates().then(d => { if (Array.isArray(d)) setCandidates(d); }).catch(() => {});
+        }
+        if (tableName === 'job_vacancies') {
+          api.getJobVacancies().then(d => { if (Array.isArray(d)) setJobVacancies(d); }).catch(() => {});
+        }
+        if (tableName === 'leave_requests' || tableName === 'leaves') {
+          api.getLeaveRequests().then(d => { if (Array.isArray(d)) setLeaveRequests(d); }).catch(() => {});
+        }
+        if (tableName === 'app_settings' || tableName === 'users') {
+          api.getAppSettings().then(d => { if (d && typeof d === 'object') setAppSettings(d); }).catch(() => {});
+          syncEngine.loadScheduleFromBackend().catch(() => {});
         }
       }
-      if (matchAll || tableName === 'app_settings' || tableName === 'users') {
-        api.getAppSettings().then(d => { if (d && typeof d === 'object') setAppSettings(d); }).catch(() => {});
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('vitas:users_changed'));
-        }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vitas:data_refreshed', { detail: { table: tableName } }));
+        window.dispatchEvent(new CustomEvent('vitas:attendance_changed'));
+        window.dispatchEvent(new CustomEvent('vitas:users_changed'));
       }
     });
 
     const interval = setInterval(async () => {
       try {
-        const [candData, jobData, empData, setsData] = await Promise.all([
+        const [candData, jobData, empData, leaveData, setsData] = await Promise.all([
           api.getCandidates().catch(() => null),
           api.getJobVacancies().catch(() => null),
           api.getEmployees().catch(() => null),
+          api.getLeaveRequests().catch(() => null),
           api.getAppSettings().catch(() => null)
         ]);
 
@@ -519,8 +524,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (Array.isArray(empData) && empData.length > 0) {
           setEmployees(empData);
         }
+        if (Array.isArray(leaveData) && leaveData.length > 0) {
+          setLeaveRequests(leaveData);
+        }
         if (setsData && typeof setsData === 'object') {
           setAppSettings(setsData);
+          if (setsData.vitas_hris_sync_schedule) {
+            syncEngine.loadScheduleFromBackend().catch(() => {});
+          }
         }
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('vitas:users_changed'));

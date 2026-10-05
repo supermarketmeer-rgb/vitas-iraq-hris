@@ -111,6 +111,16 @@ app.use('/hr_drivers', (req, res) => {
 });
 
 app.use(express.json({ limit: '10mb' }));
+
+// Prevent HTTP caching on all API endpoints to guarantee instant reflection across local and cloud nodes
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'dist')));
 app.use('/assets', express.static(path.join(__dirname, 'dist', 'assets')));
 app.use('/apply/assets', express.static(path.join(__dirname, 'dist', 'assets')));

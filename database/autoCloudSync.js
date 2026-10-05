@@ -721,13 +721,34 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
       console.log(`[AUTO CLOUD SYNC] ⚡ Bidirectional Sync Completed in ${elapsed}s! (Pushed: ${totalPushedToCloud}, Pulled: ${totalPulledToLocal}, Deleted: ${totalRowsDeleted}).`);
     }
     
-    // Broadcast live event to refresh local UI if data was pulled from Cloud to Local
-    if (totalPulledToLocal > 0 || totalRowsDeleted > 0) {
+    // Broadcast live event to refresh local UI and notify remote Cloud node
+    const hasChanges = totalPushedToCloud > 0 || totalPulledToLocal > 0 || totalRowsDeleted > 0 || modifiedTablesCount > 0;
+    if (hasChanges || forceFullSync) {
+      // 1. Refresh local clients
       broadcastRealtimeEvent({
         type: 'DATA_CHANGED',
         table: 'all',
+        pushed: totalPushedToCloud,
+        pulled: totalPulledToLocal,
+        deleted: totalRowsDeleted,
         timestamp: new Date().toISOString()
       });
+
+      // 2. If running locally, notify Cloud Server webhook to broadcast to all Cloud UI browsers
+      const isRailwayEnv = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+      if (!isRailwayEnv) {
+        const cloudUrl = process.env.VITE_CLOUD_API_URL || 'https://vitas-iraq-hris-production.up.railway.app';
+        fetch(`${cloudUrl}/api/sync/notify-change`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table: 'all',
+            source: 'local_sync',
+            pushed: totalPushedToCloud,
+            pulled: totalPulledToLocal
+          })
+        }).catch(() => {});
+      }
     }
 
     return {

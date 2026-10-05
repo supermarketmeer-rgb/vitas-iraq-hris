@@ -187,10 +187,15 @@ class ConnectionManagerService {
     }
 
     try {
-      const isCustomBase = this.state.activeBaseUrl && !this.state.activeBaseUrl.includes(window.location.host);
-      const streamUrl = isCustomBase ? `${this.state.activeBaseUrl}/api/sync/events` : '/api/sync/events';
+      let streamUrl = '/api/sync/events';
+      if (typeof window !== 'undefined' && window.location.protocol === 'file:') {
+        streamUrl = `${this.state.activeBaseUrl || 'http://localhost:5000'}/api/sync/events`;
+      }
 
       this.eventSource = new EventSource(streamUrl);
+      this.eventSource.onopen = () => {
+        logger.info('CONN_MGR', `SSE Realtime event stream connected via ${streamUrl}`);
+      };
       this.eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
