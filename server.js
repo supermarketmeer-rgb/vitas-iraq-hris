@@ -3026,6 +3026,21 @@ app.post(['/api/settings/app/bulk', '/api/app-settings/bulk'], async (req, res) 
   }
 });
 
+app.get('/api/settings/app/:key', async (req, res) => {
+  try {
+    const key = req.params.key;
+    const results = await query('SELECT * FROM app_settings WHERE setting_key = ?', [key]);
+    if (results.length > 0) {
+      res.json(results[0]);
+    } else {
+      res.status(404).json({ error: 'Setting not found' });
+    }
+  } catch (err) {
+    console.error('Error fetching app setting:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.put('/api/settings/app/:key', async (req, res) => {
   try {
     const { setting_value } = req.body;

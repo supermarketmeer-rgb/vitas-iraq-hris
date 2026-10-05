@@ -5,7 +5,7 @@ import { UserRole } from '../types';
 import { useNavigate } from 'react-router-dom';
 import vitasLogo from '../../assets/VitasLogo.jpeg';
 import { ConnectionStatusWidget } from './ConnectionStatusWidget';
-import { syncEngine } from '../services/syncEngine';
+import { syncEngine, SyncScheduleOption } from '../services/syncEngine';
 import { api } from '../api/client';
 import { SystemHelpGuideModal } from './SystemHelpGuideModal';
 
@@ -42,6 +42,13 @@ export const Header: React.FC = () => {
   // Manual Sync states
   const [isManualSyncing, setIsManualSyncing] = useState(false);
   const [syncFeedbackMsg, setSyncFeedbackMsg] = useState<string | null>(null);
+  const [syncSchedule, setSyncSchedule] = useState<SyncScheduleOption>(syncEngine.getSchedule());
+
+  useEffect(() => {
+    const unsub = syncEngine.subscribe(s => setSyncSchedule(s));
+    syncEngine.loadScheduleFromBackend().then(s => setSyncSchedule(s)).catch(() => {});
+    return unsub;
+  }, []);
 
   const handleManualSync = async () => {
     if (isManualSyncing) return;
@@ -54,6 +61,7 @@ export const Header: React.FC = () => {
       
       // 2. Immediately refresh all active data in UI state without page reload
       await refreshAllData().catch(() => {});
+      await syncEngine.loadScheduleFromBackend().catch(() => {});
 
       const modCount = backendRes?.modifiedTablesCount || 0;
       const rowCount = backendRes?.totalRowsSynced || 0;
@@ -285,13 +293,13 @@ export const Header: React.FC = () => {
             <span className={`hidden md:inline-block text-[10px] font-mono px-1 py-0.2 rounded border font-semibold ${
               isDark ? 'bg-teal-500/10 text-teal-300 border-teal-500/30' : 'bg-white/10 text-teal-200 border-white/20'
             }`}>
-              {syncEngine.getSchedule() === '1min' ? '1m' :
-               syncEngine.getSchedule() === '5min' ? '5m' :
-               syncEngine.getSchedule() === '10min' ? '10m' :
-               syncEngine.getSchedule() === '15min' ? '15m' :
-               syncEngine.getSchedule() === '30min' ? '30m' :
-               syncEngine.getSchedule() === '1hr' ? '1h' :
-               syncEngine.getSchedule() === 'daily' ? '24h' : 'Off'}
+              {syncSchedule === '1min' ? '1m' :
+               syncSchedule === '5min' ? '5m' :
+               syncSchedule === '10min' ? '10m' :
+               syncSchedule === '15min' ? '15m' :
+               syncSchedule === '30min' ? '30m' :
+               syncSchedule === '1hr' ? '1h' :
+               syncSchedule === 'daily' ? '24h' : 'Off'}
             </span>
           </button>
 

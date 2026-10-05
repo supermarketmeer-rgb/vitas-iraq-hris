@@ -7,14 +7,54 @@ export type SyncScheduleOption = '1min' | '5min' | '10min' | '15min' | '30min' |
 const SCHEDULE_KEY = 'vitas_hris_sync_schedule';
 const LAST_PULL_TIMESTAMP_KEY = 'vitas_hris_last_pull_timestamp';
 
+type ScheduleListener = (schedule: SyncScheduleOption) => void;
+
 class SyncEngineService {
   private syncTimer: any = null;
   private isSyncing: boolean = false;
   private schedule: SyncScheduleOption = '15min';
+  private listeners: Set<ScheduleListener> = new Set();
 
   constructor() {
     this.schedule = (localStorage.getItem(SCHEDULE_KEY) as SyncScheduleOption) || '15min';
     this.restartScheduleTimer();
+    this.loadScheduleFromBackend().catch(() => {});
+  }
+
+  public subscribe(listener: ScheduleListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private notifyListeners() {
+    for (const listener of this.listeners) {
+      try {
+        listener(this.schedule);
+      } catch (e) {}
+    }
+  }
+
+  public async loadScheduleFromBackend(): Promise<SyncScheduleOption> {
+    try {
+      const connState = connectionManager.getState();
+      const activeUrl = connState.activeBaseUrl || '';
+      const res = await fetch(`${activeUrl}/api/settings/app/vitas_hris_sync_schedule`);
+      if (res.ok) {
+        const data = await res.json();
+        const serverSchedule = data?.setting_value as SyncScheduleOption;
+        if (serverSchedule && serverSchedule !== this.schedule) {
+          this.schedule = serverSchedule;
+          localStorage.setItem(SCHEDULE_KEY, serverSchedule);
+          this.restartScheduleTimer();
+          this.notifyListeners();
+          logger.info('SYNC_ENGINE', `Sync schedule updated from server: ${serverSchedule}`);
+        }
+        return this.schedule;
+      }
+    } catch (e) {
+      // Fallback silently if offline or endpoint not reachable
+    }
+    return this.schedule;
   }
 
   public getSchedule(): SyncScheduleOption {
@@ -26,10 +66,13 @@ class SyncEngineService {
     localStorage.setItem(SCHEDULE_KEY, newSchedule);
     logger.info('SYNC_ENGINE', `Sync schedule updated to ${newSchedule}`);
     this.restartScheduleTimer();
+    this.notifyListeners();
     
     // Persist to database app_settings so both Local and Cloud nodes sync the schedule
     try {
-      fetch('/api/settings/app/vitas_hris_sync_schedule', {
+      const connState = connectionManager.getState();
+      const activeUrl = connState.activeBaseUrl || '';
+      fetch(`${activeUrl}/api/settings/app/vitas_hris_sync_schedule`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ setting_value: newSchedule })
@@ -136,6 +179,9 @@ class SyncEngineService {
       } catch (cloudErr: any) {
         logger.warn('SYNC_ENGINE', `Cloud database sync notice: ${cloudErr.message}`);
       }
+
+      // Reload latest schedule from backend if it changed remotely
+      await this.loadScheduleFromBackend().catch(() => {});
 
       // Update sync timestamps and status
       const nowIso = new Date().toISOString();

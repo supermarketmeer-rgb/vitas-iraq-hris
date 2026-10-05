@@ -35,9 +35,14 @@ export const DesktopSyncSettings: React.FC = () => {
   const [isTesting, setIsTesting] = useState(false);
 
   useEffect(() => {
-    const unsub = connectionManager.subscribe(s => setConnState(s));
+    const unsubConn = connectionManager.subscribe(s => setConnState(s));
+    const unsubSync = syncEngine.subscribe(s => setSyncSchedule(s));
     setLogs(logger.getLogs());
-    return unsub;
+    syncEngine.loadScheduleFromBackend().then(s => setSyncSchedule(s)).catch(() => {});
+    return () => {
+      unsubConn();
+      unsubSync();
+    };
   }, []);
 
   const handleSaveConnectionConfig = (e: React.FormEvent) => {
