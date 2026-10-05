@@ -1787,11 +1787,9 @@ export const Category3EmployeeView: React.FC = () => {
                             setPhotoUrl('');
                             if (photoFileInputRef.current) photoFileInputRef.current.value = '';
                           }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
-                          title={t('إزالة الصورة الحالية', 'Remove Photo')}
+                          className="text-rose-400 hover:text-rose-300 text-xs font-bold cursor-pointer transition-colors"
                         >
-                          <span className="material-symbols-outlined text-sm">delete</span>
-                          <span>{t('إزالة الصورة ✕', 'Remove Photo ✕')}</span>
+                          {t('إزالة الصورة ✕', 'Remove Photo ✕')}
                         </button>
                       )}
                     </div>
