@@ -212,7 +212,7 @@ export const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
                   onClose();
                 }
               }}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-sm transition-all cursor-pointer"
             >
               {t.cancel_request}
             </button>

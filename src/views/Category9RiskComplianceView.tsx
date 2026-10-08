@@ -1494,7 +1494,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <th className="p-3.5 text-start">{t('المستخدم والحساب', 'User & Account')}</th>
                     <th className="p-3.5 text-start">{t('نوع الوظيفة / المسمى الوظيفي', 'Job Title / Position')}</th>
                     <th className="p-3.5 text-start">{t('القسم والفرع', 'Department & Branch')}</th>
-                    <th className="p-3.5 text-start">{t('الموديولات المصرح بها (Tick ✓)', 'Allowed Modules')}</th>
+                    <th className="p-3.5 text-start">{t('الموديولات المصرح بها', 'Allowed Modules')}</th>
                     <th className="p-3.5 text-start">{t('كلمة المرور', 'Password')}</th>
                     <th className="p-3.5 text-center">{t('الإجراءات', 'Actions')}</th>
                   </tr>
@@ -1529,10 +1529,28 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <p className="text-xs text-slate-500">{t('جميع الأقسام والفروع', 'All Departments & Branches')}</p>
                     </td>
                     <td className="p-3.5">
-                      <span className="px-2.5 py-1.5 rounded-lg bg-teal-500/20 text-teal-700 dark:text-teal-300 font-bold text-[11px] flex items-center gap-1.5 w-fit">
-                        <span className="material-symbols-outlined text-sm">all_inclusive</span>
-                        {t('جميع الموديولات الـ 11 (محمي)', 'All 11 Modules (Protected)')}
-                      </span>
+                      <div className="relative inline-block w-full min-w-[220px] max-w-[280px]">
+                        <select
+                          defaultValue="summary"
+                          className={`w-full py-1.5 pe-8 ps-3 rounded-xl border text-xs font-bold appearance-none outline-none cursor-pointer transition-all ${
+                            isDark
+                              ? 'bg-[#111827] border-teal-500/40 text-teal-300 hover:border-teal-400 focus:border-teal-400'
+                              : 'bg-teal-50/80 border-teal-400 text-teal-900 hover:border-teal-600 focus:border-teal-600 shadow-2xs'
+                          }`}
+                        >
+                          <option value="summary" className={isDark ? 'bg-[#111827] text-teal-300 font-bold' : 'bg-slate-50 text-teal-900 font-bold'}>
+                            {t('♾️ جميع الموديولات الـ 11 (محمي)', '♾️ All 11 Modules (Protected)')}
+                          </option>
+                          {CATEGORY_GROUPS.map(g => (
+                            <option key={g.id} value={g.id} className={isDark ? 'bg-[#111827] text-white' : 'bg-white text-slate-800'}>
+                              ✓ {language === 'ar' ? g.title : g.titleEn} ({t('كامل الصلاحيات', 'Full Access')})
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-2 text-teal-600 dark:text-teal-400">
+                          <span className="material-symbols-outlined text-base">expand_more</span>
+                        </div>
+                      </div>
                     </td>
                     <td className="p-3.5">
                       <span className="font-mono text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded text-[11px]">••••••••</span>
@@ -1625,35 +1643,49 @@ export const Category9RiskComplianceView: React.FC = () => {
                         </td>
 
                         <td className="p-3.5">
-                          <div className="flex flex-wrap gap-1.5 max-w-md">
-                            {activeModEntries.length === 0 ? (
-                              <span className="text-slate-400 text-[10px] italic">
-                                {t('لا توجد موديولات مفعلة', 'No modules assigned')}
-                              </span>
-                            ) : (
-                              activeModEntries.map(([mKey, mVal]) => {
-                                const isRead = mVal === 'read';
-                                return (
-                                  <span
-                                    key={mKey}
-                                    className={`px-2 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 shadow-2xs ${
-                                      isRead
-                                        ? 'bg-sky-500/15 border-sky-500/30 text-sky-800 dark:text-sky-300'
-                                        : 'bg-teal-500/15 border-teal-500/30 text-teal-800 dark:text-teal-300'
-                                    }`}
-                                  >
-                                    <span className="material-symbols-outlined text-[11px]">
-                                      {isRead ? 'visibility' : 'edit_note'}
-                                    </span>
-                                    <span>{dynamicModuleLabels[mKey] || mKey}</span>
-                                    <span className="text-[9px] opacity-75 font-normal">
-                                      ({isRead ? t('قراءة', 'Read') : t('تعديل', 'Write')})
-                                    </span>
-                                  </span>
-                                );
-                              })
-                            )}
-                          </div>
+                          {activeModEntries.length === 0 ? (
+                            <div className="relative inline-block w-full min-w-[200px] max-w-[280px]">
+                              <select
+                                disabled
+                                className={`w-full py-1.5 pe-8 ps-3 rounded-xl border text-xs font-semibold appearance-none outline-none opacity-60 cursor-not-allowed ${
+                                  isDark ? 'bg-[#111827] border-white/10 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500'
+                                }`}
+                              >
+                                <option>{t('لا توجد موديولات مصرح بها (0)', 'No Modules Assigned (0)')}</option>
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-2.5 text-slate-400">
+                                <span className="material-symbols-outlined text-base">lock</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="relative inline-block w-full min-w-[210px] max-w-[280px]">
+                              <select
+                                defaultValue="summary"
+                                className={`w-full py-1.5 pe-8 ps-3 rounded-xl border text-xs font-bold appearance-none outline-none cursor-pointer transition-all ${
+                                  isDark
+                                    ? 'bg-[#111827] border-teal-500/30 text-teal-300 hover:border-teal-400 focus:border-teal-400'
+                                    : 'bg-white border-teal-500/40 text-teal-800 hover:border-teal-600 focus:border-teal-600 shadow-2xs'
+                                }`}
+                              >
+                                <option value="summary" className={isDark ? 'bg-[#111827] text-teal-300 font-bold' : 'bg-slate-50 text-teal-800 font-bold'}>
+                                  {t(`📋 ${activeModEntries.length} موديول مصرح به (عرض القائمة)`, `📋 ${activeModEntries.length} Allowed Modules (View List)`)}
+                                </option>
+                                {activeModEntries.map(([mKey, mVal]) => {
+                                  const isRead = mVal === 'read';
+                                  const label = dynamicModuleLabels[mKey] || mKey;
+                                  const permText = isRead ? t('قراءة فقط', 'Read Only') : t('تعديل وصلاحية كاملة', 'Write / Full');
+                                  return (
+                                    <option key={mKey} value={mKey} className={isDark ? 'bg-[#111827] text-white' : 'bg-white text-slate-800'}>
+                                      {isRead ? '👁️' : '✏️'} {label} ({permText})
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-2 text-teal-600 dark:text-teal-400">
+                                <span className="material-symbols-outlined text-base">expand_more</span>
+                              </div>
+                            </div>
+                          )}
                         </td>
 
                         <td className="p-3.5">
@@ -1691,10 +1723,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                                 });
                                 setIsAddUserModalOpen(true);
                               }}
-                              className="p-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/30 dark:hover:bg-teal-900/50 text-teal-600 dark:text-teal-400 transition-colors cursor-pointer"
+                              className="p-1 rounded-lg text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-transparent"
                               title={t('تعديل الوظيفة والصلاحيات', 'Edit Job Title & Permissions')}
                             >
-                              <span className="material-symbols-outlined text-base">edit</span>
+                              <span className="material-symbols-outlined text-lg">edit</span>
                             </button>
 
                             {/* Delete Button */}
@@ -1714,10 +1746,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                                   setTimeout(() => setCustomEmpSavedToast(null), 4000);
                                 }
                               }}
-                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+                              className="p-1 rounded-lg text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-transparent"
                               title={t('حذف المستخدم', 'Delete User')}
                             >
-                              <span className="material-symbols-outlined text-base">delete</span>
+                              <span className="material-symbols-outlined text-lg">delete</span>
                             </button>
                           </div>
                         </td>

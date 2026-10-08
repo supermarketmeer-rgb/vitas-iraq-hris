@@ -169,13 +169,13 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
         text: 'text-gray-900',
         textSecondary: 'text-gray-600',
         inputBg: 'bg-white',
-        inputBorder: 'border-gray-300',
+        inputBorder: 'border-teal-500/50',
         inputText: 'text-gray-900',
         inputPlaceholder: 'placeholder-gray-400',
         cardBg: 'bg-white',
-        cardBorder: 'border-gray-200',
+        cardBorder: 'border-slate-300',
         modalBg: 'bg-white',
-        modalBorder: 'border-gray-200',
+        modalBorder: 'border-slate-300',
         modalOverlay: 'bg-black/50',
         buttonBg: 'bg-gray-100',
         buttonHover: 'hover:bg-gray-200',
@@ -786,28 +786,31 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`${colors.modalBg} ${colors.modalBorder} rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto ${isDark ? '' : 'shadow-xl'}`}
+              className={`${colors.modalBg} ${colors.modalBorder} border-2 rounded-2xl w-full max-w-4xl lg:max-w-5xl max-h-[95vh] overflow-y-auto ${isDark ? '' : 'shadow-2xl'}`}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className={`text-xl font-bold ${colors.text}`}>
-                    {editingEvent 
-                      ? (language === 'ar' ? 'تعديل الحدث' : 'Edit Event')
-                      : (language === 'ar' ? 'إضافة حدث جديد' : 'Add New Event')
-                    }
-                  </h3>
+              <div className="p-5 sm:p-6">
+                <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-teal-400 text-xl">event</span>
+                    <h3 className={`text-lg font-bold ${colors.text}`}>
+                      {editingEvent 
+                        ? (language === 'ar' ? 'تعديل الحدث' : 'Edit Event')
+                        : (language === 'ar' ? 'إضافة حدث جديد' : 'Add New Event')
+                      }
+                    </h3>
+                  </div>
                   <button
                     onClick={() => setShowEventModal(false)}
-                    className={`p-2 rounded-lg ${colors.buttonBg} ${colors.buttonHover} transition-all`}
+                    className={`p-1.5 rounded-lg ${colors.buttonBg} ${colors.buttonHover} transition-all cursor-pointer`}
                   >
-                    <X size={20} />
+                    <X size={18} />
                   </button>
                 </div>
 
                 {/* Event Form */}
                 <form 
-                  className="space-y-4"
+                  className="space-y-3"
                   onSubmit={async (e) => {
                     e.preventDefault();
                     try {
@@ -838,7 +841,7 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
                         location: formData.get('location') as string || '',
                         location_ar: formData.get('location_ar') as string || '',
                         all_day: formData.get('all_day') === 'true',
-                        is_recurring: formData.get('is_recurring') === 'true',
+                        is_recurring: formData.get('is_recurring') === 'true' || formData.get('is_recurring') === 'on',
                         recurrence_pattern: formData.get('recurrence_pattern') as string || null,
                         target_audience: formData.get('target_audience') as string || 'all',
                         priority: formData.get('priority') as string || 'medium',
@@ -868,68 +871,40 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
                     }
                   }}
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Row 1: Titles, Event Type, Priority (4 columns) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
-                        {language === 'ar' ? 'العنوان (عربي)' : 'Title (Arabic)'}
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
+                        {language === 'ar' ? 'العنوان (عربي) *' : 'Title (Arabic) *'}
                       </label>
                       <input
                         type="text"
                         name="title_ar"
                         defaultValue={editingEvent?.title_ar || ''}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
                         placeholder={language === 'ar' ? 'عنوان الحدث' : 'Event title'}
                       />
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
                         {language === 'ar' ? 'العنوان (إنجليزي)' : 'Title (English)'}
                       </label>
                       <input
                         type="text"
                         name="title_en"
                         defaultValue={editingEvent?.title_en || ''}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
                         placeholder={language === 'ar' ? 'Event title' : 'Event title'}
                       />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
-                      {language === 'ar' ? 'الوصف (عربي)' : 'Description (Arabic)'}
-                    </label>
-                    <textarea
-                      name="description_ar"
-                      defaultValue={editingEvent?.description_ar || ''}
-                      rows={3}
-                      className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
-                      placeholder={language === 'ar' ? 'وصف الحدث' : 'Event description'}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
-                      {language === 'ar' ? 'الوصف (إنجليزي)' : 'Description (English)'}
-                    </label>
-                    <textarea
-                      name="description_en"
-                      defaultValue={editingEvent?.description_en || ''}
-                      rows={3}
-                      className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
-                      placeholder={language === 'ar' ? 'Event description' : 'Event description'}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
                         {language === 'ar' ? 'نوع الحدث' : 'Event Type'}
                       </label>
                       <select
                         name="event_type"
                         defaultValue={editingEvent?.event_type || 'other'}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50 cursor-pointer`}
                       >
                         <option value="holiday">{language === 'ar' ? 'عطلة' : 'Holiday'}</option>
                         <option value="meeting">{language === 'ar' ? 'اجتماع' : 'Meeting'}</option>
@@ -942,13 +917,13 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
                       </select>
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
                         {language === 'ar' ? 'الأولوية' : 'Priority'}
                       </label>
                       <select
                         name="priority"
                         defaultValue={editingEvent?.priority || 'medium'}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50 cursor-pointer`}
                       >
                         <option value="low">{language === 'ar' ? 'منخفضة' : 'Low'}</option>
                         <option value="medium">{language === 'ar' ? 'متوسطة' : 'Medium'}</option>
@@ -958,94 +933,118 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Row 2: Descriptions (2 columns) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
-                        {language === 'ar' ? 'التاريخ' : 'Date'}
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
+                        {language === 'ar' ? 'الوصف (عربي)' : 'Description (Arabic)'}
+                      </label>
+                      <textarea
+                        name="description_ar"
+                        defaultValue={editingEvent?.description_ar || ''}
+                        rows={2}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50 resize-none`}
+                        placeholder={language === 'ar' ? 'وصف الحدث' : 'Event description'}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
+                        {language === 'ar' ? 'الوصف (إنجليزي)' : 'Description (English)'}
+                      </label>
+                      <textarea
+                        name="description_en"
+                        defaultValue={editingEvent?.description_en || ''}
+                        rows={2}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50 resize-none`}
+                        placeholder={language === 'ar' ? 'Event description' : 'Event description'}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 3: Date, All Day, Start Time, End Time (4 columns) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
+                        {language === 'ar' ? 'التاريخ *' : 'Date *'}
                       </label>
                       <input
                         type="date"
                         name="event_date"
                         defaultValue={editingEvent?.event_date || selectedDateForModal || formatDateToYYYYMMDD(new Date())}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
                       />
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
                         {language === 'ar' ? 'اليوم بالكامل' : 'All Day'}
                       </label>
                       <select
                         name="all_day"
                         defaultValue={editingEvent?.all_day ? 'true' : 'false'}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50 cursor-pointer`}
                       >
                         <option value="true">{language === 'ar' ? 'نعم' : 'Yes'}</option>
                         <option value="false">{language === 'ar' ? 'لا' : 'No'}</option>
                       </select>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
                         {language === 'ar' ? 'وقت البدء' : 'Start Time'}
                       </label>
                       <input
                         type="time"
                         name="start_time"
                         defaultValue={editingEvent?.start_time || ''}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
                       />
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
                         {language === 'ar' ? 'وقت الانتهاء' : 'End Time'}
                       </label>
                       <input
                         type="time"
                         name="end_time"
                         defaultValue={editingEvent?.end_time || ''}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Row 4: Locations, Target Audience, Status (4 columns) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
                         {language === 'ar' ? 'الموقع (عربي)' : 'Location (Arabic)'}
                       </label>
                       <input
                         type="text"
                         name="location_ar"
                         defaultValue={editingEvent?.location_ar || ''}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
                         placeholder={language === 'ar' ? 'موقع الحدث' : 'Event location'}
                       />
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
                         {language === 'ar' ? 'الموقع (إنجليزي)' : 'Location (English)'}
                       </label>
                       <input
                         type="text"
                         name="location"
                         defaultValue={editingEvent?.location || ''}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
                         placeholder={language === 'ar' ? 'Event location' : 'Event location'}
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
                         {language === 'ar' ? 'الفئة المستهدفة' : 'Target Audience'}
                       </label>
                       <select
                         name="target_audience"
                         defaultValue={editingEvent?.target_audience || 'all'}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50 cursor-pointer`}
                       >
                         <option value="all">{language === 'ar' ? 'الجميع' : 'All'}</option>
                         <option value="management">{language === 'ar' ? 'الإدارة' : 'Management'}</option>
@@ -1055,13 +1054,13 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
                       </select>
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
+                      <label className={`block text-xs font-medium ${colors.labelColor} mb-1`}>
                         {language === 'ar' ? 'الحالة' : 'Status'}
                       </label>
                       <select
                         name="status"
                         defaultValue={editingEvent?.status || 'published'}
-                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                        className={`w-full px-3 py-1.5 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50 cursor-pointer`}
                       >
                         <option value="draft">{language === 'ar' ? 'مسودة' : 'Draft'}</option>
                         <option value="published">{language === 'ar' ? 'منشور' : 'Published'}</option>
@@ -1071,50 +1070,56 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="is_recurring"
-                      id="is_recurring"
-                      defaultChecked={editingEvent?.is_recurring || false}
-                      className={`w-4 h-4 rounded ${colors.checkboxBg} ${colors.checkboxBorder} text-teal-600 focus:ring-teal-500`}
-                    />
-                    <label htmlFor="is_recurring" className={`text-sm font-medium ${colors.labelColor}`}>
-                      {language === 'ar' ? 'حدث متكرر' : 'Recurring Event'}
-                    </label>
-                  </div>
+                  {/* Row 5: Recurrence & Action Buttons (Compact horizontal footer) */}
+                  <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 pt-2.5 border-t ${colors.divider}`}>
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          name="is_recurring"
+                          id="is_recurring"
+                          value="true"
+                          defaultChecked={editingEvent?.is_recurring || false}
+                          className={`w-3.5 h-3.5 rounded ${colors.checkboxBg} ${colors.checkboxBorder} text-teal-600 focus:ring-teal-500 cursor-pointer`}
+                        />
+                        <span className={`text-xs font-medium ${colors.labelColor}`}>
+                          {language === 'ar' ? 'حدث متكرر' : 'Recurring Event'}
+                        </span>
+                      </label>
 
-                  <div>
-                    <label className={`block text-sm font-medium ${colors.labelColor} mb-2`}>
-                      {language === 'ar' ? 'نمط التكرار' : 'Recurrence Pattern'}
-                    </label>
-                    <select
-                      name="recurrence_pattern"
-                      defaultValue={editingEvent?.recurrence_pattern || 'monthly'}
-                      className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
-                    >
-                      <option value="daily">{language === 'ar' ? 'يومي' : 'Daily'}</option>
-                      <option value="weekly">{language === 'ar' ? 'أسبوعي' : 'Weekly'}</option>
-                      <option value="monthly">{language === 'ar' ? 'شهري' : 'Monthly'}</option>
-                      <option value="yearly">{language === 'ar' ? 'سنوي' : 'Yearly'}</option>
-                      <option value="custom">{language === 'ar' ? 'مخصص' : 'Custom'}</option>
-                    </select>
-                  </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs ${colors.secondaryText}`}>
+                          {language === 'ar' ? 'النمط:' : 'Pattern:'}
+                        </span>
+                        <select
+                          name="recurrence_pattern"
+                          defaultValue={editingEvent?.recurrence_pattern || 'monthly'}
+                          className={`px-2.5 py-1 text-xs ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50 cursor-pointer`}
+                        >
+                          <option value="daily">{language === 'ar' ? 'يومي' : 'Daily'}</option>
+                          <option value="weekly">{language === 'ar' ? 'أسبوعي' : 'Weekly'}</option>
+                          <option value="monthly">{language === 'ar' ? 'شهري' : 'Monthly'}</option>
+                          <option value="yearly">{language === 'ar' ? 'سنوي' : 'Yearly'}</option>
+                          <option value="custom">{language === 'ar' ? 'مخصص' : 'Custom'}</option>
+                        </select>
+                      </div>
+                    </div>
 
-                  <div className={`flex justify-end gap-3 pt-4 border-t ${colors.divider}`}>
-                    <button
-                      type="button"
-                      onClick={() => setShowEventModal(false)}
-                      className={`px-4 py-2 rounded-lg ${colors.buttonBg} ${colors.buttonText} ${colors.buttonHover} transition-all`}
-                    >
-                      {language === 'ar' ? 'إلغاء' : 'Cancel'}
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-500 transition-all"
-                    >
-                      {language === 'ar' ? 'حفظ' : 'Save'}
-                    </button>
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowEventModal(false)}
+                        className={`px-3.5 py-1.5 text-xs rounded-lg ${colors.buttonBg} ${colors.buttonText} ${colors.buttonHover} transition-all cursor-pointer`}
+                      >
+                        {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-5 py-1.5 text-xs font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-500 transition-all cursor-pointer shadow-sm shadow-teal-500/20"
+                      >
+                        {language === 'ar' ? 'حفظ' : 'Save'}
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>

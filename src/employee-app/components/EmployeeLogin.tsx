@@ -287,19 +287,19 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
           <div className="flex justify-center gap-1.5 flex-wrap">
             <button
               onClick={() => { setBadgeNumber('1001'); setPassword('123456'); }}
-              className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-400 text-[10px] font-bold border border-teal-500/20 hover:bg-teal-500/20"
+              className="px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-600 text-white text-[10px] font-bold border border-teal-600 shadow-sm transition-all cursor-pointer"
             >
               1001 - أحمد (HR)
             </button>
             <button
               onClick={() => { setBadgeNumber('1002'); setPassword('123456'); }}
-              className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 hover:bg-blue-500/20"
+              className="px-2.5 py-1 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-[10px] font-bold border border-blue-600 shadow-sm transition-all cursor-pointer"
             >
               1002 - فاطمة (مالية)
             </button>
             <button
               onClick={() => { setBadgeNumber('1003'); setPassword('123456'); }}
-              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 hover:bg-emerald-500/20"
+              className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold border border-emerald-600 shadow-sm transition-all cursor-pointer"
             >
               1003 - علي (IT)
             </button>

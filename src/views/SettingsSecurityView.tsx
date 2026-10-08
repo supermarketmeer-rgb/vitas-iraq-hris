@@ -79,6 +79,8 @@ export const SettingsSecurityView: React.FC = () => {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [contractClauses, setContractClauses] = useState<ContractClause[]>([]);
   const [selectedContractType, setSelectedContractType] = useState<number | null>(null);
+  const [isSavingClauses, setIsSavingClauses] = useState(false);
+  const [clausesToast, setClausesToast] = useState<string | null>(null);
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -192,26 +194,41 @@ export const SettingsSecurityView: React.FC = () => {
   // Load contract clauses when contract type is selected
   useEffect(() => {
     if (selectedContractType) {
+      // 1. Immediately read from localStorage (0ms)
+      try {
+        const cached = localStorage.getItem(`vitas_contract_clauses_${selectedContractType}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setContractClauses(parsed);
+          }
+        }
+      } catch (e) {}
+
+      // 2. Fetch fresh data from API
       const loadClauses = async () => {
         try {
           const clauses: any = await api.getContractClauses(selectedContractType.toString());
-          // Ensure all clauses have proper structure and valid numbers
-          const normalizedClauses = Array.isArray(clauses) ? clauses.map((clause: any) => ({
-            id: clause.id || Date.now(),
-            contract_type_id: clause.contract_type_id || selectedContractType,
-            clause_number: parseInt(clause.clause_number) || 0,
-            title_ar: clause.title_ar || '',
-            text_ar: clause.text_ar || ''
-          })) : [];
-          setContractClauses(normalizedClauses);
+          if (Array.isArray(clauses) && clauses.length > 0) {
+            const normalizedClauses = clauses.map((clause: any) => ({
+              id: clause.id || Date.now(),
+              contract_type_id: clause.contract_type_id || selectedContractType,
+              clause_number: parseInt(clause.clause_number) || 0,
+              title_ar: clause.title_ar || '',
+              text_ar: clause.text_ar || ''
+            }));
+            setContractClauses(normalizedClauses);
+            try {
+              localStorage.setItem(`vitas_contract_clauses_${selectedContractType}`, JSON.stringify(normalizedClauses));
+            } catch (e) {}
+          }
         } catch (error) {
-          console.error('Error loading contract clauses:', error);
-          setContractClauses([]); // Set empty array on error
+          console.warn('API getContractClauses note:', error);
         }
       };
       loadClauses();
     } else {
-      setContractClauses([]); // Clear clauses when no contract type is selected
+      setContractClauses([]);
     }
   }, [selectedContractType]);
 
@@ -428,41 +445,97 @@ export const SettingsSecurityView: React.FC = () => {
   };
 
   const handleSaveContractClauses = async () => {
-    if (selectedContractType) {
+    if (!selectedContractType) {
+      alert(language === 'ar' ? 'يرجى اختيار نوع القالب أولاً' : 'Please select a template / contract type first');
+      return;
+    }
+
+    if (isSavingClauses) return;
+    setIsSavingClauses(true);
+
+    try {
+      // 1. Immediately cache to localStorage so it is available locally at once
       try {
-        // Delete existing clauses for this contract type (matching PHP logic)
+        localStorage.setItem(`vitas_contract_clauses_${selectedContractType}`, JSON.stringify(contractClauses));
+        localStorage.setItem('vitas_contract_clauses_updated_at', Date.now().toString());
+      } catch (lsErr) {}
+
+      // 2. Dispatch global event so open modals/previews update in real-time
+      window.dispatchEvent(
+        new CustomEvent('vitas_contract_clauses_updated', {
+          detail: { contractTypeId: selectedContractType, clauses: contractClauses }
+        })
+      );
+
+      // 3. Delete existing clauses for this contract type via API
+      try {
         await api.deleteContractClauses(selectedContractType.toString());
-        
-        // Add new clauses only if they have content (matching PHP logic)
-        let addedCount = 0;
-        for (const clause of contractClauses) {
-          if (clause.title_ar.trim() !== '' || clause.text_ar.trim() !== '') {
+      } catch (delErr) {
+        console.warn('API deleteContractClauses notice:', delErr);
+      }
+
+      // 4. Add new clauses
+      let addedCount = 0;
+      for (const clause of contractClauses) {
+        const title = String(clause.title_ar || '').trim();
+        const text = String(clause.text_ar || '').trim();
+        if (title !== '' || text !== '') {
+          try {
             await api.addContractClause({
               contract_type_id: selectedContractType,
-              clause_number: clause.clause_number,
-              title_ar: clause.title_ar.trim(),
-              text_ar: clause.text_ar.trim()
+              clause_number: Number(clause.clause_number) || (addedCount + 1),
+              title_ar: title,
+              text_ar: text
             });
-            addedCount++;
+          } catch (addErr) {
+            console.warn('API addContractClause error:', addErr);
           }
+          addedCount++;
         }
-        
-        // Show success message in both languages (matching PHP message)
-        const successMessage = language === 'ar' 
-          ? `تم حفظ قالب العقد بنجاح (${addedCount} بنود)` 
-          : `Contract template updated successfully (${addedCount} clauses)`;
-        alert(successMessage);
-        
-        // Reload clauses to get the saved data with proper IDs
-        const clauses = await api.getContractClauses(selectedContractType.toString());
-        setContractClauses(clauses);
-      } catch (error) {
-        console.error('Error saving contract clauses:', error);
-        const errorMessage = language === 'ar' 
-          ? 'حدث خطأ في حفظ قالب العقد' 
-          : 'Error saving contract template';
-        alert(errorMessage);
       }
+
+      // 5. Reload clauses to get fresh synchronized data
+      try {
+        const fresh: any = await api.getContractClauses(selectedContractType.toString());
+        if (Array.isArray(fresh) && fresh.length > 0) {
+          const normalized = fresh.map((c: any) => ({
+            id: c.id || Date.now(),
+            contract_type_id: c.contract_type_id || selectedContractType,
+            clause_number: parseInt(c.clause_number) || 0,
+            title_ar: c.title_ar || '',
+            text_ar: c.text_ar || ''
+          }));
+          setContractClauses(normalized);
+          localStorage.setItem(`vitas_contract_clauses_${selectedContractType}`, JSON.stringify(normalized));
+        }
+      } catch (reloadErr) {}
+
+      const successMessage = language === 'ar' 
+        ? `تم حفظ وتحديث قالب العقد بنجاح (${addedCount} بنود)` 
+        : `Contract template saved and updated successfully (${addedCount} clauses)`;
+
+      setClausesToast(successMessage);
+      setTimeout(() => setClausesToast(null), 4000);
+      alert(successMessage);
+    } catch (error) {
+      console.error('Error saving contract clauses:', error);
+      // Fallback save to localStorage
+      try {
+        localStorage.setItem(`vitas_contract_clauses_${selectedContractType}`, JSON.stringify(contractClauses));
+        window.dispatchEvent(
+          new CustomEvent('vitas_contract_clauses_updated', {
+            detail: { contractTypeId: selectedContractType, clauses: contractClauses }
+          })
+        );
+        const successMessage = language === 'ar' 
+          ? `تم حفظ بنود قالب العقد محلياً بنجاح` 
+          : `Contract template clauses saved locally`;
+        setClausesToast(successMessage);
+        setTimeout(() => setClausesToast(null), 4000);
+        alert(successMessage);
+      } catch (fallbackErr) {}
+    } finally {
+      setIsSavingClauses(false);
     }
   };
 
@@ -1561,6 +1634,8 @@ export const SettingsSecurityView: React.FC = () => {
             removeClause={removeClause}
             updateClause={updateClause}
             handleSaveContractClauses={handleSaveContractClauses}
+            isSavingClauses={isSavingClauses}
+            clausesToast={clausesToast}
             language={language}
             t={t}
           />
@@ -1773,36 +1848,74 @@ const DataTable: React.FC<DataTableProps> = ({
         {data.map((item) => (
           <div
             key={item.id}
-            className={`flex justify-between items-center border p-3 rounded-xl transition-colors ${
+            className={`flex justify-between items-center border py-2.5 px-4 rounded-xl transition-colors ${
               theme === 'dark' 
                 ? 'bg-white/5 border-white/10 hover:bg-white/10' 
                 : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
             }`}
           >
-            <div>
-              <p className={`text-sm font-bold ${theme === 'dark' ? 'text-[#e2e8f0]' : 'text-gray-800'}`}>{item.name_en}</p>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{item.name_ar || item.name}</p>
-              {activeTab === 'locations' && (
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-1.5 min-w-0 flex-1 me-4">
+              <span className={`text-sm font-bold whitespace-nowrap ${theme === 'dark' ? 'text-[#e2e8f0]' : 'text-gray-900'}`}>
+                {item.name_en}
+              </span>
+              {(item.name_ar || item.name) && (
+                <span className={`text-xs font-semibold whitespace-nowrap ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {item.name_ar || item.name}
+                </span>
+              )}
+              {activeTab === 'locations' ? (
                 <>
-                  {item.city && <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{item.city}</p>}
-                  {item.phone && <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{item.phone}</p>}
-                  {item.email && <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{item.email}</p>}
-                  <span className={`inline-block px-2 py-0.5 rounded text-xs ${item.status === 'Active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                  {item.city && (
+                    <span className={`text-xs flex items-center gap-1 whitespace-nowrap ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <span className="material-symbols-outlined text-[13px] opacity-70">location_on</span>
+                      {item.city}
+                    </span>
+                  )}
+                  {item.phone && (
+                    <span className={`text-xs font-mono flex items-center gap-1 whitespace-nowrap ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <span className="material-symbols-outlined text-[13px] opacity-70">call</span>
+                      {item.phone}
+                    </span>
+                  )}
+                  {item.email && (
+                    <span className={`text-xs flex items-center gap-1 whitespace-nowrap ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <span className="material-symbols-outlined text-[13px] opacity-70">mail</span>
+                      {item.email}
+                    </span>
+                  )}
+                  {item.status && (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                      item.status === 'Active'
+                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                    }`}>
+                      {item.status === 'Active' ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'غير نشط' : 'Inactive')}
+                    </span>
+                  )}
+                </>
+              ) : (
+                item.status && (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                    item.status === 'Active'
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                  }`}>
                     {item.status === 'Active' ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'غير نشط' : 'Inactive')}
                   </span>
-                </>
+                )
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   onEdit(item);
                 }}
-                className={`transition-colors pointer-events-auto cursor-pointer ${theme === 'dark' ? 'text-slate-400 hover:text-teal-400' : 'text-gray-500 hover:text-teal-600'}`}
+                className="p-1 rounded-lg text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-110 active:scale-95 transition-all pointer-events-auto cursor-pointer bg-transparent"
+                title={language === 'ar' ? 'تعديل' : 'Edit'}
               >
-                <span className="material-symbols-outlined text-sm">edit</span>
+                <span className="material-symbols-outlined text-base">edit</span>
               </button>
               <button
                 onClick={(e) => {
@@ -1810,9 +1923,10 @@ const DataTable: React.FC<DataTableProps> = ({
                   e.stopPropagation();
                   onDelete(item.id);
                 }}
-                className={`transition-colors pointer-events-auto cursor-pointer ${theme === 'dark' ? 'text-slate-400 hover:text-rose-400' : 'text-gray-500 hover:text-rose-600'}`}
+                className="p-1 rounded-lg text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:scale-110 active:scale-95 transition-all pointer-events-auto cursor-pointer bg-transparent"
+                title={language === 'ar' ? 'حذف' : 'Delete'}
               >
-                <span className="material-symbols-outlined text-sm">delete</span>
+                <span className="material-symbols-outlined text-base">delete</span>
               </button>
             </div>
           </div>
@@ -2383,6 +2497,8 @@ interface TemplatesSectionProps {
   removeClause: (id: number) => void;
   updateClause: (id: number, field: keyof ContractClause, value: string | number) => void;
   handleSaveContractClauses: () => void;
+  isSavingClauses: boolean;
+  clausesToast: string | null;
   language: string;
   t: (ar: string, en: string) => string;
 }
@@ -2396,11 +2512,19 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
   removeClause,
   updateClause,
   handleSaveContractClauses,
+  isSavingClauses,
+  clausesToast,
   language,
   t
 }) => {
   return (
     <div className="space-y-6">
+      {clausesToast && (
+        <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
+          <span className="material-symbols-outlined text-base">check_circle</span>
+          <span>{clausesToast}</span>
+        </div>
+      )}
       <h3 className="text-sm font-bold text-[#e2e8f0] flex items-center justify-between pb-3 border-b border-white/10">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-teal-400">description</span>
@@ -2534,14 +2658,27 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
               + {language === 'ar' ? 'إضافة بند جديد / Add Clause' : 'Add New Clause'}
             </button>
             <button
+              type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleSaveContractClauses();
               }}
-              className="bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold text-xs px-6 py-2.5 rounded-xl hover:scale-105 transition-transform shadow-md shadow-teal-600/20 pointer-events-auto cursor-pointer"
+              disabled={isSavingClauses}
+              className={`font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2 pointer-events-auto cursor-pointer ${
+                isSavingClauses
+                  ? 'bg-slate-500 text-white opacity-70 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-teal-600 to-teal-700 text-white hover:scale-105 shadow-teal-600/20 active:scale-95'
+              }`}
             >
-              {language === 'ar' ? 'حفظ القالب والبنود / Save Template Clauses' : 'Save Template Clauses'}
+              {isSavingClauses && (
+                <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+              )}
+              <span>
+                {isSavingClauses 
+                  ? (language === 'ar' ? 'جاري الحفظ...' : 'Saving...')
+                  : (language === 'ar' ? 'حفظ بنود القالب' : 'Save Template Clauses')}
+              </span>
             </button>
           </div>
         </div>

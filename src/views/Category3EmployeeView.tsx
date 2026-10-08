@@ -6,6 +6,7 @@ import { CompanyCalendar } from '../components/CompanyCalendar';
 import { CompanyNews } from '../components/CompanyNews';
 import { Employee, EmployeeChild } from '../types';
 import { api } from '../api/client';
+import { ContractPreviewModal } from '../components/ContractPreviewModal';
 
 export const Category3EmployeeView: React.FC = () => {
   const {
@@ -32,6 +33,15 @@ export const Category3EmployeeView: React.FC = () => {
   const [profileSearchQuery, setProfileSearchQuery] = useState('');
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [avatarImgError, setAvatarImgError] = useState(false);
+
+  // Contract Preview & Print modal
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [contractModalEmployee, setContractModalEmployee] = useState<any>(null);
+
+  const handleOpenContractPreview = (emp: any) => {
+    setContractModalEmployee(emp);
+    setIsContractModalOpen(true);
+  };
 
   useEffect(() => {
     setAvatarImgError(false);
@@ -1325,21 +1335,21 @@ export const Category3EmployeeView: React.FC = () => {
   console.log('>>> [DEBUG_RENDER] Category3 render:', { activeModuleId, selectedEmpId, fullName, fullNameEn, empCode });
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className={`${(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'space-y-3' : 'space-y-6'} animate-in fade-in duration-300`}>
       {/* Top Banner */}
-      <div className={`p-6 rounded-3xl border transition-all flex flex-wrap items-center justify-between gap-4 ${
+      <div className={`${(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'p-3.5 sm:p-4 rounded-2xl' : 'p-6 rounded-3xl'} border transition-all flex flex-wrap items-center justify-between gap-3 ${
         isDark 
           ? 'bg-[#0a0c10] border-white/10 shadow-xl text-white' 
           : 'bg-white border-slate-200 shadow-sm text-slate-900'
       }`}>
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`material-symbols-outlined ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>group</span>
-            <span className={`text-xs font-mono uppercase tracking-widest font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className={`material-symbols-outlined text-sm ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>group</span>
+            <span className={`text-[11px] font-mono uppercase tracking-widest font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
               EMPLOYEE MANAGEMENT SYSTEM
             </span>
           </div>
-          <h1 className={`text-2xl font-black drop-shadow-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <h1 className={`${(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'text-lg sm:text-xl' : 'text-2xl'} font-black drop-shadow-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {activeModuleId === 'emp-directory' && t('دليل الموظفين المؤسسي', 'Corporate Employee Directory')}
             {activeModuleId === 'emp-hr-directory' && t('دليل الموظفين الشامل - إدارة الموارد البشرية', 'Comprehensive Employee Directory - HR')}
             {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
@@ -1353,7 +1363,7 @@ export const Category3EmployeeView: React.FC = () => {
             {activeModuleId === 'emp-calendar' && t('تقويم الفعاليات والعطل الرسمية', 'Events & Official Holidays Calendar')}
             {activeModuleId === 'emp-news' && t('مركز الأخبار والتنويهات الداخلية', 'Internal News & Announcements Center')}
           </h1>
-          <p className={`text-xs mt-1 font-normal ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+          <p className={`${(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'text-[11px] mt-0.5' : 'text-xs mt-1'} font-normal ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {t('إدارة كاملة للبيانات الوظيفية وسجلات العاملين بفرص خالية من البيانات الافتراضية', 'Comprehensive management of employee records and workforce data')}
           </p>
         </div>
@@ -1507,10 +1517,25 @@ export const Category3EmployeeView: React.FC = () => {
                               setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar });
                             }}
                             className="p-1.5 bg-transparent border-0 text-red-500 hover:text-red-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
-                            style={{ order: language === 'ar' ? 1 : 2 }}
+                            style={{ order: language === 'ar' ? 1 : 3 }}
                             title={t('حذف الموظف', 'Delete Employee')}
                           >
                             <span className="material-symbols-outlined text-xl">delete</span>
+                          </button>
+
+                          {/* Center: Preview & Print Contract Icon (Blue, No BG, No Border) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleOpenContractPreview(emp);
+                            }}
+                            className="p-1.5 bg-transparent border-0 text-blue-500 hover:text-blue-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                            style={{ order: 2 }}
+                            title={t('معاينة وطباعة عقد العمل', 'Preview and Print Employment Contract')}
+                          >
+                            <span className="material-symbols-outlined text-xl">description</span>
                           </button>
 
                           {/* Left Side: Edit Icon (Green, No BG, No Border) */}
@@ -1525,7 +1550,7 @@ export const Category3EmployeeView: React.FC = () => {
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
                             className="p-1.5 bg-transparent border-0 text-emerald-500 hover:text-emerald-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
-                            style={{ order: language === 'ar' ? 2 : 1 }}
+                            style={{ order: language === 'ar' ? 3 : 1 }}
                             title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
                           >
                             <span className="material-symbols-outlined text-xl">edit</span>
@@ -1543,43 +1568,43 @@ export const Category3EmployeeView: React.FC = () => {
 
       {/* 7-TABS ADD/EDIT EMPLOYEE FORM */}
       {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
-        <div className="max-w-4xl mx-auto p-6 rounded-3xl bg-[#111827] border border-white/10 shadow-2xl space-y-6">
+        <div className="max-w-[1500px] w-full mx-auto p-4 sm:p-5 rounded-2xl bg-[#111827] border border-white/10 shadow-2xl space-y-3">
           {isReadOnly() && (
-            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 text-xs font-bold flex items-center gap-2 shadow-sm">
-              <span className="material-symbols-outlined text-base">lock</span>
+            <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs font-bold flex items-center gap-2 shadow-sm">
+              <span className="material-symbols-outlined text-sm">lock</span>
               {t('تنبيه: أنت تتصفح هذا السجل بوضع القراءة فقط (Read-Only). تم تعطيل عمليات الحفظ والتعديل.', 'Notice: You are viewing this record in Read-Only mode. Saving and modifying are disabled.')}
             </div>
           )}
-          <div className="border-b border-white/10 pb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="border-b border-white/10 pb-2.5 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-400">
+              <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-400 text-lg">
                   {(activeModuleId === 'emp-edit' || selectedEmpId) ? 'edit' : 'person_add'}
                 </span>
                 {(activeModuleId === 'emp-edit' || selectedEmpId)
                   ? t('نموذج تعديل بيانات الموظف الشامل (7 تبويبات رئيسية)', 'Comprehensive Employee Edit Form (7 Main Tabs)') 
                   : t('نموذج إضافة موظف جديد الشامل (7 تبويبات رئيسية)', 'Comprehensive New Employee Add Form (7 Main Tabs)')}
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-[11px] text-slate-400">
                 {t('مطابق تماماً لمواصفات جدول employees في قاعدة البيانات hrms_pro_db', 'Fully compliant with employees table specifications in hrms_pro_db database')}
               </p>
             </div>
-            <span className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold font-mono">
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold font-mono">
               {t(`التبويب ${activeTab} من 7`, `Tab ${activeTab} of 7`)}
             </span>
           </div>
 
           {/* Tab Navigation Header (7 Tabs Stepper) */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             {/* Progress bar line */}
-            <div className="w-full bg-[#0a0c10] rounded-full h-1.5 overflow-hidden border border-white/5">
+            <div className="w-full bg-[#0a0c10] rounded-full h-1 overflow-hidden border border-white/5">
               <div 
                 className="bg-gradient-to-r from-teal-500 to-teal-600 h-full transition-all duration-300 ease-out"
                 style={{ width: `${(activeTab / 7) * 100}%` }}
               />
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
               {TAB_ITEMS.map(tab => {
                 const isActive = activeTab === tab.id;
                 const isCompleted = tab.id < activeTab;
@@ -1588,36 +1613,29 @@ export const Category3EmployeeView: React.FC = () => {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`p-3 rounded-2xl text-right transition-all flex flex-col justify-between h-24 border ${
+                    className={`px-2 py-1.5 rounded-xl text-right transition-all flex items-center gap-2 border cursor-pointer min-h-[46px] ${
                       isActive
-                        ? 'bg-teal-600 border-teal-500 text-white shadow-xl shadow-teal-600/30 scale-[1.02] z-10'
+                        ? 'bg-teal-600 border-teal-500 text-white shadow-md shadow-teal-600/30 scale-[1.01] z-10'
                         : isCompleted
                         ? 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50 shadow-sm'
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm'
                     }`}
                   >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold font-mono text-xs transition-all ${
-                        isActive
-                          ? 'bg-white text-teal-700 shadow-md scale-110'
-                          : isCompleted
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold'
-                          : 'bg-slate-100 text-slate-700 border border-slate-200 font-bold'
-                      }`}>
-                        {isCompleted ? '✓' : tab.id}
-                      </span>
-                      <span className={`material-symbols-outlined text-base ${
-                        isActive ? 'text-white' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
-                      }`}>
-                        {tab.icon}
-                      </span>
-                    </div>
-                    <div>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold font-mono text-[10px] shrink-0 transition-all ${
+                      isActive
+                        ? 'bg-white text-teal-700 shadow-xs'
+                        : isCompleted
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}>
+                      {isCompleted ? '✓' : tab.id}
+                    </span>
+                    <div className="min-w-0 flex-1">
                       <span className={`block text-[11px] font-bold leading-tight truncate ${
                         isActive ? 'text-white' : 'text-slate-900'
                       }`}>{tab.title}</span>
-                      <span className={`block text-[9px] truncate mt-0.5 ${
-                        isActive ? 'text-white/90 font-medium' : 'text-slate-500'
+                      <span className={`block text-[9px] truncate ${
+                        isActive ? 'text-white/80 font-normal' : 'text-slate-500'
                       }`}>{tab.desc}</span>
                     </div>
                   </button>
@@ -1627,121 +1645,124 @@ export const Category3EmployeeView: React.FC = () => {
           </div>
 
           {/* Form Content Body */}
-          <form onSubmit={handleAddEmployeeSubmit} className="space-y-6 text-xs">
+          <form onSubmit={handleAddEmployeeSubmit} className="space-y-3 text-xs">
             {/* TAB 1: Basic & Personal Info */}
             {activeTab === 1 && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 border-b border-white/10 pb-2">
-                  <span className="material-symbols-outlined text-blue-400">badge</span>
-                  <h3 className="text-sm font-bold text-white">{t('التبويب 1: المعلومات الأساسية والشخصية', 'Tab 1: Basic & Personal Information')}</h3>
+              <div className="space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 border-b border-white/10 pb-1.5">
+                  <span className="material-symbols-outlined text-teal-400 text-base">badge</span>
+                  <h3 className="text-xs sm:text-sm font-bold text-white">{t('التبويب 1: المعلومات الأساسية والشخصية', 'Tab 1: Basic & Personal Information')}</h3>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                  {/* Row 1: Names & Employee Codes (4 fields) */}
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('الاسم الكامل الثلاثي (بالعربية) *', 'Full Name (Arabic) *')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الاسم الكامل الثلاثي (بالعربية) *', 'Full Name (Arabic) *')}</label>
                     <input
                       type="text"
                       required
                       placeholder={t('مثال: علي حيدر حسن', 'Example: Ali Haider Hassan')}
                       value={fullName}
                       onChange={e => setFullName(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('الاسم الكامل (بالإنجليزية)', 'Full Name (English)')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الاسم الكامل (بالإنجليزية)', 'Full Name (English)')}</label>
                     <input
                       type="text"
                       placeholder={t('Ali Haider Hassan', 'Ali Haider Hassan')}
                       value={fullNameEn}
                       onChange={e => setFullNameEn(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('الرقم الوظيفي', 'Employee ID')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الرقم الوظيفي', 'Employee ID')}</label>
                     <input
                       type="text"
                       placeholder={t('تلقائي: VTS-1008', 'Auto: VTS-1008')}
                       value={empCode}
                       onChange={e => setEmpCode(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-blue-400 font-mono focus:outline-none focus:border-blue-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-blue-400 font-mono focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('رقم باج الدخول', 'Badge Number')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('رقم باج الدخول', 'Badge Number')}</label>
                     <input
                       type="text"
                       placeholder={t('مثال: B-9042', 'Example: B-9042')}
                       value={badgeNo}
                       onChange={e => setBadgeNo(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
+                  {/* Row 2: Communication & Contact Details (4 fields) */}
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('البريد الإلكتروني المؤسسي', 'Corporate Email')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('البريد الإلكتروني المؤسسي', 'Corporate Email')}</label>
                     <input
                       type="email"
                       placeholder={t('ali.haider@vitasiraq.com', 'ali.haider@vitasiraq.com')}
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('البريد الإلكتروني الشخصي', 'Personal Email')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('البريد الإلكتروني الشخصي', 'Personal Email')}</label>
                     <input
                       type="email"
                       placeholder={t('ali.personal@gmail.com', 'ali.personal@gmail.com')}
                       value={personalEmail}
                       onChange={e => setPersonalEmail(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('رقم الهاتف التواصل الرئيسي', 'Primary Contact Phone')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('رقم الهاتف التواصل الرئيسي', 'Primary Contact Phone')}</label>
                     <input
                       type="text"
                       placeholder={t('0770 123 4567', '0770 123 4567')}
                       value={phone}
                       onChange={e => setPhone(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('هاتف الطوارئ والتواصل الحرج', 'Emergency Contact Phone')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('هاتف الطوارئ والتواصل الحرج', 'Emergency Contact Phone')}</label>
                     <input
                       type="text"
                       placeholder={t('0780 987 6543', '0780 987 6543')}
                       value={emergencyPhone}
                       onChange={e => setEmergencyPhone(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
+                  {/* Row 3: Demographics & Personal Attributes (4 fields) */}
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('تاريخ الميلاد', 'Date of Birth')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('تاريخ الميلاد', 'Date of Birth')}</label>
                     <input
                       type="date"
                       value={dob}
                       onChange={e => setDob(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('الجنس', 'Gender')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الجنس', 'Gender')}</label>
                     <select
                       value={gender}
                       onChange={e => setGender(e.target.value as any)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
                     >
                       <option value="ذكر">{t('ذكر', 'Male')}</option>
                       <option value="أنثى">{t('أنثى', 'Female')}</option>
@@ -1749,11 +1770,11 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('الحالة الاجتماعية', 'Marital Status')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الحالة الاجتماعية', 'Marital Status')}</label>
                     <select
                       value={maritalStatus}
                       onChange={e => setMaritalStatus(e.target.value as any)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
                     >
                       <option value="أعزب">{t('أعزب', 'Single')}</option>
                       <option value="متأهل">{t('متأهل', 'Married')}</option>
@@ -1763,99 +1784,98 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('الجنسية', 'Nationality')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الجنسية', 'Nationality')}</label>
                     <input
                       type="text"
                       value={nationality}
                       onChange={e => setNationality(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
                     />
                   </div>
 
-                  <div className="sm:col-span-2 md:col-span-3 bg-white/5 p-4 rounded-2xl border border-white/10 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-teal-400 font-bold text-xs flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm">account_box</span>
-                        {t('صورة الموظف الشخصية', 'Employee Photo')}
-                      </label>
-                      {photoUrl && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setPhotoUrl('');
-                            if (photoFileInputRef.current) photoFileInputRef.current.value = '';
-                          }}
-                          className="text-rose-400 hover:text-rose-300 text-xs font-bold cursor-pointer transition-colors"
-                        >
-                          {t('إزالة الصورة ✕', 'Remove Photo ✕')}
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-4">
-                      {/* Photo preview */}
-                      <div className="w-16 h-16 rounded-2xl bg-[#0a0c10] border border-white/10 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
-                        {photoUrl ? (
-                          <img src={photoUrl} alt="Employee Preview" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="material-symbols-outlined text-slate-600 text-2xl">person</span>
-                        )}
+                  {/* Row 4: Compact Employee Photo bar spanning all 4 columns */}
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 bg-white/5 p-2 rounded-xl border border-white/10">
+                    <div className="flex flex-wrap items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-lg bg-[#0a0c10] border border-white/10 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                          {photoUrl ? (
+                            <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="material-symbols-outlined text-slate-500 text-lg">person</span>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-teal-400 font-bold text-xs flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">account_box</span>
+                            {t('صورة الموظف الشخصية', 'Employee Photo')}
+                          </label>
+                          <span className="text-[10px] text-slate-400">
+                            {t('رفع من الجهاز أو إدخال رابط URL', 'Upload from device or enter URL')}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="relative flex-1">
-                            <input
-                              type="text"
-                              placeholder={t('أدخل رابط الصورة (URL) أو ارفع صورة...', 'Enter image URL or upload image...')}
-                              value={photoUrl}
-                              onChange={e => setPhotoUrl(e.target.value)}
-                              className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500 font-mono pr-8"
-                            />
-                            {photoUrl && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setPhotoUrl('');
-                                  if (photoFileInputRef.current) photoFileInputRef.current.value = '';
-                                }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/10 hover:bg-rose-500/30 text-slate-400 hover:text-rose-300 flex items-center justify-center text-xs cursor-pointer transition-colors"
-                                title={t('مسح', 'Clear')}
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                          <label className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs cursor-pointer shadow transition-all flex items-center gap-1 shrink-0">
-                            <span className="material-symbols-outlined text-sm">upload_file</span>
-                            <span>{t('رفع صورة', 'Upload Photo')}</span>
-                            <input
-                              ref={photoFileInputRef}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={e => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  const reader = new FileReader();
-                                  reader.onloadend = () => {
-                                    if (typeof reader.result === 'string') {
-                                      setPhotoUrl(reader.result);
-                                    }
-                                  };
-                                  reader.readAsDataURL(file);
-                                }
+                      <div className="flex-1 max-w-md flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            placeholder={t('أدخل رابط الصورة (URL)...', 'Enter image URL...')}
+                            value={photoUrl}
+                            onChange={e => setPhotoUrl(e.target.value)}
+                            className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-teal-500 font-mono pr-7"
+                          />
+                          {photoUrl && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setPhotoUrl('');
+                                if (photoFileInputRef.current) photoFileInputRef.current.value = '';
                               }}
-                            />
-                          </label>
+                              className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white/10 hover:bg-rose-500/30 text-slate-400 hover:text-rose-300 flex items-center justify-center text-[10px] cursor-pointer"
+                              title={t('مسح', 'Clear')}
+                            >
+                              ✕
+                            </button>
+                          )}
                         </div>
-                        <p className="text-[11px] text-slate-400">
-                          {t('يمكن رفع صورة مباشرة من الجهاز أو لصق رابط صورة. (يتم حفظ الصورة بصيغة DataURL في السجل).', 'Upload photo directly from device or paste image URL (saved as DataURL).')}
-                        </p>
+                        <label className="px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs cursor-pointer shadow transition-all flex items-center gap-1 shrink-0">
+                          <span className="material-symbols-outlined text-sm">upload_file</span>
+                          <span>{t('رفع', 'Upload')}</span>
+                          <input
+                            ref={photoFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  if (typeof reader.result === 'string') {
+                                    setPhotoUrl(reader.result);
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                        {photoUrl && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setPhotoUrl('');
+                              if (photoFileInputRef.current) photoFileInputRef.current.value = '';
+                            }}
+                            className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold border border-rose-500/20 cursor-pointer transition-colors"
+                          >
+                            {t('إزالة', 'Remove')}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1865,77 +1885,123 @@ export const Category3EmployeeView: React.FC = () => {
 
             {/* TAB 2: Contracts & Service Dates */}
             {activeTab === 2 && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 border-b border-white/10 pb-2">
-                  <span className="material-symbols-outlined text-blue-400">description</span>
-                  <h3 className="text-sm font-bold text-white">{t('التبويب 2: العقود وتواريخ الخدمة والمباشرة وسنوات الخدمة', 'Tab 2: Contracts & Service Dates')}</h3>
+              <div className="space-y-3 animate-in fade-in duration-200">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-teal-400 text-base">description</span>
+                    <h3 className="text-xs sm:text-sm font-bold text-white">{t('التبويب 2: العقود وتواريخ الخدمة والمباشرة وسنوات الخدمة', 'Tab 2: Contracts & Service Dates')}</h3>
+                  </div>
+                  {(activeModuleId === 'emp-edit' || selectedEmpId) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const curEmp = selectedEmployee || employees.find(e => String(e.id) === String(selectedEmpId));
+                        if (curEmp) {
+                          handleOpenContractPreview(curEmp);
+                        } else {
+                          // Assemble current form state as employee preview object
+                          handleOpenContractPreview({
+                            fullName,
+                            fullNameEn,
+                            employeeId: empCode,
+                            jobTitle,
+                            jobTitleEn,
+                            department,
+                            departmentEn,
+                            branch,
+                            branchEn,
+                            termOfContract,
+                            contractStartDate,
+                            contractEndDate,
+                            originalStartDate,
+                            basicSalary,
+                            writtenBasicSalaryAr,
+                            transportationFixed,
+                            fixedBonus,
+                            phoneAllowance,
+                            certificateAllowance,
+                            familyAllowance,
+                            nationalId,
+                            passportNo,
+                            maritalStatus,
+                            bankName,
+                            iban
+                          });
+                        }
+                      }}
+                      className="px-3 py-1 rounded-lg bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow hover:scale-105"
+                      title={t('معاينة وطباعة عقد العمل', 'Preview & Print Contract')}
+                    >
+                      <span className="material-symbols-outlined text-xs">print</span>
+                      <span>{t('معاينة العقد', 'Preview Contract')}</span>
+                    </button>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('تاريخ المباشرة الأولى', 'Original Start Date')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('تاريخ المباشرة الأولى', 'Original Start Date')}</label>
                     <input
                       type="date"
                       value={originalStartDate}
                       onChange={e => setOriginalStartDate(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('تاريخ بدء العقد الحالي', 'Current Contract Start Date')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('تاريخ بدء العقد الحالي', 'Current Contract Start Date')}</label>
                     <input
                       type="date"
                       value={contractStartDate}
                       onChange={e => setContractStartDate(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('تاريخ انتهاء العقد', 'Contract End Date')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('تاريخ انتهاء العقد', 'Contract End Date')}</label>
                     <input
                       type="date"
                       value={contractEndDate}
                       onChange={e => setContractEndDate(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('تاريخ انتهاء فترة التجربة', 'Probation End Date')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('تاريخ انتهاء فترة التجربة', 'Probation End Date')}</label>
                     <input
                       type="date"
                       value={probationEndDate}
                       onChange={e => setProbationEndDate(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('تاريخ إنهاء الخدمة / المغادرة', 'Exit Date / Service Termination')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('تاريخ إنهاء الخدمة / المغادرة', 'Exit Date / Service Termination')}</label>
                     <input
                       type="date"
                       value={exitDate}
                       onChange={e => setExitDate(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
                       {t('سنوات الخدمة الكلية', 'Total Years of Employment')}
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">{t('تلقائي', 'Auto')}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">{t('تلقائي', 'Auto')}</span>
                     </label>
-                    <div className="w-full bg-[#0a0c10] border border-emerald-500/20 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
-                      <span className="text-emerald-400 font-mono font-bold text-lg">{yearsOfEmployment}</span>
-                      <span className="text-slate-500 text-[11px]">{t('سنة — مند تاريخ المباشرة الأولى', 'years — from original start date')}</span>
+                    <div className="w-full bg-[#0a0c10] border border-emerald-500/20 rounded-lg px-3 py-1.5 sm:py-2 flex items-center justify-between gap-2">
+                      <span className="text-emerald-400 font-mono font-bold text-sm">{yearsOfEmployment} {t('سنة', 'years')}</span>
+                      <span className="text-slate-500 text-[10px]">{t('من تاريخ المباشرة', 'from start date')}</span>
                     </div>
-                    <p className="text-[10px] text-slate-600 mt-1">{t('يُحتسب تلقائياً من حقل "تاريخ المباشرة الأولى" أعلاه', 'Automatically calculated from the "Original Start Date" field above')}</p>
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('نوع مدة العقد', 'Term of Contract')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('نوع مدة العقد', 'Term of Contract')}</label>
                     <SearchableComboBox
                       options={contractTypes}
                       value={termOfContract}
@@ -1946,13 +2012,13 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('الدرجة السلمية', 'Grade Level')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الدرجة السلمية', 'Grade Level')}</label>
                     <input
                       type="text"
                       value={grade}
                       onChange={e => setGrade(e.target.value)}
                       placeholder={t('مثال: G-4 الدرجة الرابعة', 'Example: G-4 Fourth Grade')}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
                 </div>
@@ -1961,15 +2027,15 @@ export const Category3EmployeeView: React.FC = () => {
 
             {/* TAB 3: Position, Department & Branch */}
             {activeTab === 3 && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 border-b border-white/10 pb-2">
-                  <span className="material-symbols-outlined text-blue-400">corporate_fare</span>
-                  <h3 className="text-sm font-bold text-white">{t('التبويب 3: التعيين الوظيفي والقسم والفرع', 'Tab 3: Position, Department & Branch')}</h3>
+              <div className="space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 border-b border-white/10 pb-1.5">
+                  <span className="material-symbols-outlined text-teal-400 text-base">corporate_fare</span>
+                  <h3 className="text-xs sm:text-sm font-bold text-white">{t('التبويب 3: التعيين الوظيفي والقسم والفرع', 'Tab 3: Position, Department & Branch')}</h3>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('المسمى الوظيفي (بالعربية)', 'Job Title (Arabic)')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('المسمى الوظيفي (بالعربية)', 'Job Title (Arabic)')}</label>
                     <SearchableComboBox
                       options={positions}
                       value={jobTitle}
@@ -1985,7 +2051,7 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('المسمى الوظيفي (بالإنجليزية)', 'Job Title (English)')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('المسمى الوظيفي (بالإنجليزية)', 'Job Title (English)')}</label>
                     <SearchableComboBox
                       options={positions}
                       value={jobTitleEn}
@@ -2002,10 +2068,10 @@ export const Category3EmployeeView: React.FC = () => {
 
                   {/* positionStartDate + computed yearsInPosition */}
                   <div>
-                    <label className="block text-black font-medium mb-1">
+                    <label className="block text-black font-semibold text-[11px] mb-1">
                       {t('تاريخ آخر تغيير وظيفي / منصب', 'Last Position Change Date')}
                       {statusChanges.length > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold mr-2">{t('تلقائي من التغييرات', 'Auto from changes')}</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold mr-1.5">{t('تلقائي', 'Auto')}</span>
                       )}
                     </label>
                     <input
@@ -2013,29 +2079,23 @@ export const Category3EmployeeView: React.FC = () => {
                       value={positionStartDate}
                       onChange={e => setPositionStartDate(e.target.value)}
                       readOnly={statusChanges.length > 0}
-                      className={`w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500/60 ${statusChanges.length > 0 ? 'opacity-75 cursor-not-allowed' : ''}`}
+                      className={`w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 ${statusChanges.length > 0 ? 'opacity-75 cursor-not-allowed' : ''}`}
                     />
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      {statusChanges.length > 0 
-                        ? t('يُحدد تلقائياً من تاريخ بدء آخر تغيير وظيفي في التبويب 7', 'Auto selected from start date of last position change in Tab 7') 
-                        : t('تاريخ آخر تغيير للوظيفة أو المسمى أو القسم — يبدأ منه احتساب Years in Position', 'Date of last change of job, title or department')}
-                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
                       {t('سنوات في الوظيفة الحالية', 'Years in Current Position')}
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('تلقائي', 'Auto')}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('تلقائي', 'Auto')}</span>
                     </label>
-                    <div className="w-full bg-[#0a0c10] border border-blue-500/20 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
-                      <span className="text-blue-400 font-mono font-bold text-lg">{yearsInPosition}</span>
-                      <span className="text-slate-500 text-[11px]">{t('سنة — من تاريخ آخر تغيير وظيفي', 'Years — from last position change date')}</span>
+                    <div className="w-full bg-[#0a0c10] border border-blue-500/20 rounded-lg px-3 py-1.5 sm:py-2 flex items-center justify-between gap-2">
+                      <span className="text-blue-400 font-mono font-bold text-sm">{yearsInPosition} {t('سنة', 'years')}</span>
+                      <span className="text-slate-500 text-[10px]">{t('من تاريخ التغيير', 'from change date')}</span>
                     </div>
-                    <p className="text-[10px] text-slate-600 mt-1">{t('يُحتسب تلقائياً من حقل "تاريخ آخر تغيير وظيفي" أعلاه', 'Calculated automatically from last position change date above')}</p>
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('القسم / الإدارة التابعة (بالعربية)', 'Department (Arabic)')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('القسم / الإدارة التابعة (بالعربية)', 'Department (Arabic)')}</label>
                     <SearchableComboBox
                       options={departments}
                       value={department}
@@ -2051,7 +2111,7 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('القسم / الإدارة التابعة (بالإنجليزية)', 'Department (English)')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('القسم / الإدارة التابعة (بالإنجليزية)', 'Department (English)')}</label>
                     <SearchableComboBox
                       options={departments}
                       value={departmentEn}
@@ -2067,7 +2127,7 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('فرع العمل الرئيسي في العراق (بالعربية)', 'Branch Name (Arabic)')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('فرع العمل الرئيسي في العراق (بالعربية)', 'Branch Name (Arabic)')}</label>
                     <SearchableComboBox
                       options={locations}
                       value={branch}
@@ -2083,7 +2143,7 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('فرع العمل الرئيسي في العراق (بالإنجليزية)', 'Branch Name (English)')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('فرع العمل الرئيسي في العراق (بالإنجليزية)', 'Branch Name (English)')}</label>
                     <SearchableComboBox
                       options={locations}
                       value={branchEn}
@@ -2098,31 +2158,28 @@ export const Category3EmployeeView: React.FC = () => {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-black font-medium mb-1">{t('اسم المشرف المباشر', 'Direct Supervisor Name')}</label>
+                  <div className="sm:col-span-1 lg:col-span-2">
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('اسم المشرف المباشر', 'Direct Supervisor Name')}</label>
                     <input
                       type="text"
                       placeholder={t('اسم المدير المباشر', 'Direct Manager Name')}
                       value={supervisorName}
                       onChange={e => setSupervisorName(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-black font-medium mb-1">{t('نطاق وطبيعة العمل', 'Work Scope')}</label>
+                  <div className="sm:col-span-1 lg:col-span-2">
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('نطاق وطبيعة العمل', 'Work Scope')}</label>
                     <select
                       value={workScope}
                       onChange={e => setWorkScope(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
                     >
                       <option value="Field">{t('Field – ميداني بالكامل', 'Field – Full Fieldwork')}</option>
                       <option value="Admin">{t('Admin – مكتبي / إداري', 'Admin – Office / Desk')}</option>
                       <option value="Field & Admin">{t('Field & Admin – ميداني وإداري مختلط', 'Field & Admin – Hybrid')}</option>
                     </select>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      {t('Field = ميداني | Admin = مكتبي | Field & Admin = مختلط', 'Field = Fieldwork | Admin = Office | Field & Admin = Hybrid')}
-                    </p>
                   </div>
                 </div>
               </div>
@@ -2136,9 +2193,9 @@ export const Category3EmployeeView: React.FC = () => {
                   <h3 className="text-sm font-bold text-white">{t('التبويب 4: البيانات المالية والراتب والبدلات والحساب المصرفي', 'Tab 4: Financial Data, Salary & Allowances')}</h3>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('الراتب الاسمي الشهري', 'Monthly Basic Salary')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الراتب الاسمي الشهري', 'Monthly Basic Salary')}</label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -2149,25 +2206,25 @@ export const Category3EmployeeView: React.FC = () => {
                         setWrittenBasicSalaryAr(val > 0 ? numberToArabicWords(val) : '');
                       }}
                       placeholder="0"
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('الراتب الاسمي كتابة (بالعربية) — يُولَّد تلقائياً', 'Basic Salary in Writing (Arabic) — Auto-generated')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الراتب الاسمي كتابة (بالعربية)', 'Basic Salary in Writing (Arabic)')}</label>
                     <input
                       type="text"
                       value={writtenBasicSalaryAr}
                       onChange={e => setWrittenBasicSalaryAr(e.target.value)}
                       placeholder={t('يُملأ تلقائياً عند إدخال الراتب...', 'Auto-filled when entering salary...')}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-amber-300 focus:outline-none focus:border-amber-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-amber-300 focus:outline-none focus:border-amber-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
                       {t('بدل النقل الثابت', 'Fixed Transportation Allowance')}
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('من الإعدادات', 'From Settings')}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('من الإعدادات', 'From Settings')}</span>
                     </label>
                     <input
                       type="text"
@@ -2175,14 +2232,14 @@ export const Category3EmployeeView: React.FC = () => {
                       value={transportationFixed > 0 ? formatWithCommas(transportationFixed) : ''}
                       onChange={e => setTransportationFixed(parseFormatted(e.target.value))}
                       placeholder="0"
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
                       {t('المكافأة الثابتة', 'Fixed Bonus')}
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('من الإعدادات', 'From Settings')}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('من الإعدادات', 'From Settings')}</span>
                     </label>
                     <input
                       type="text"
@@ -2190,14 +2247,14 @@ export const Category3EmployeeView: React.FC = () => {
                       value={fixedBonus > 0 ? formatWithCommas(fixedBonus) : ''}
                       onChange={e => setFixedBonus(parseFormatted(e.target.value))}
                       placeholder="0"
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
-                      مخصصات الهاتف (Phone Allowance)
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">من الإعدادات</span>
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
+                      مخصصات الهاتف (Phone)
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">من الإعدادات</span>
                     </label>
                     <input
                       type="text"
@@ -2205,26 +2262,26 @@ export const Category3EmployeeView: React.FC = () => {
                       value={phoneAllowance > 0 ? formatWithCommas(phoneAllowance) : ''}
                       onChange={e => setPhoneAllowance(parseFormatted(e.target.value))}
                       placeholder="0"
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">مخصصات الشهادة (Certificate Allowance)</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">مخصصات الشهادة (Certificate)</label>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={certificateAllowance > 0 ? formatWithCommas(certificateAllowance) : ''}
                       onChange={e => setCertificateAllowance(parseFormatted(e.target.value))}
                       placeholder="0"
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
-                      بدل الزوج/ة (Spouse Allowance)
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">تلقائي من السياسات</span>
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
+                      بدل الزوج/ة (Spouse)
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">تلقائي</span>
                     </label>
                     <input
                       type="text"
@@ -2232,14 +2289,14 @@ export const Category3EmployeeView: React.FC = () => {
                       value={spouseAllowance > 0 ? formatWithCommas(spouseAllowance) : ''}
                       onChange={e => setSpouseAllowance(parseFormatted(e.target.value))}
                       placeholder="0"
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
-                      بدل الطفل الواحد (Child Allowance)
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">تلقائي من السياسات</span>
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
+                      بدل الطفل الواحد (Child)
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">تلقائي</span>
                     </label>
                     <input
                       type="text"
@@ -2247,38 +2304,38 @@ export const Category3EmployeeView: React.FC = () => {
                       value={childAllowance > 0 ? formatWithCommas(childAllowance) : ''}
                       onChange={e => setChildAllowance(parseFormatted(e.target.value))}
                       placeholder="0"
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1 flex items-center gap-1.5">
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
                       {t('إجمالي المخصصات العائلية', 'Total Family Allowance')}
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">{t('تلقائي', 'Auto')}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">{t('تلقائي', 'Auto')}</span>
                     </label>
-                    <div className="w-full bg-[#0a0c10] border border-teal-500/20 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
-                      <span className="text-teal-400 font-mono font-bold text-lg">{familyAllowance > 0 ? formatWithCommas(familyAllowance) : '0'}</span>
-                      <span className="text-slate-500 text-[11px]">د.ع — زوجة + (أطفال دون 18 سنة × بدل الطفل)</span>
+                    <div className="w-full bg-[#0a0c10] border border-teal-500/20 rounded-lg px-3 py-1.5 sm:py-2 flex items-center justify-between gap-2">
+                      <span className="text-teal-400 font-mono font-bold text-sm">{familyAllowance > 0 ? formatWithCommas(familyAllowance) : '0'}</span>
+                      <span className="text-slate-500 text-[10px]">د.ع</span>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('اسم البنك المحول إليه الراتب', 'Bank Name for Salary Transfer')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('اسم البنك المحول إليه الراتب', 'Bank Name for Salary Transfer')}</label>
                     <input
                       type="text"
                       value={bankName}
                       onChange={e => setBankName(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none placeholder:text-slate-500"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-black font-medium mb-1">رقم الحساب المصرفي الدولي (IBAN)</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">رقم الحساب المصرفي الدولي (IBAN)</label>
                     <input
                       type="text"
                       value={iban}
                       onChange={e => setIban(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-blue-400 font-mono focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-blue-400 font-mono focus:outline-none focus:border-teal-500"
                     />
                   </div>
                 </div>
@@ -2412,48 +2469,48 @@ export const Category3EmployeeView: React.FC = () => {
 
             {/* TAB 5: Documents & Identity */}
             {activeTab === 5 && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 border-b border-white/10 pb-2">
-                  <span className="material-symbols-outlined text-blue-400">id_card</span>
-                  <h3 className="text-sm font-bold text-white">{t('التبويب 5: الوثائق الثبوتية ورقم الهوية', 'Tab 5: Identity Documents & ID Number')}</h3>
+              <div className="space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 border-b border-white/10 pb-1.5">
+                  <span className="material-symbols-outlined text-teal-400 text-base">id_card</span>
+                  <h3 className="text-xs sm:text-sm font-bold text-white">{t('التبويب 5: الوثائق الثبوتية ورقم الهوية', 'Tab 5: Identity Documents & ID Number')}</h3>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('رقم البطاقة الوطنية الموحدة / الهوية', 'National ID / Identity Card Number')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('رقم البطاقة الوطنية الموحدة / الهوية', 'National ID / Identity Card Number')}</label>
                     <input
                       type="text"
                       placeholder={t('199012345678', '199012345678')}
                       value={nationalId}
                       onChange={e => setNationalId(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('رقم جواز السفر', 'Passport Number')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('رقم جواز السفر', 'Passport Number')}</label>
                     <input
                       type="text"
                       placeholder={t('A12345678', 'A12345678')}
                       value={passportNo}
                       onChange={e => setPassportNo(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-black font-medium mb-1">{t('تاريخ انتهاء / نفاذ الجواز', 'Passport Expiry Date')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('تاريخ انتهاء / نفاذ الجواز', 'Passport Expiry Date')}</label>
                     <input
                       type="date"
                       value={passportExpiry}
                       onChange={e => setPassportExpiry(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-black font-medium">{t('رابط الصورة الشخصية', 'Profile Photo URL')}</label>
+                      <label className="block text-black font-semibold text-[11px]">{t('رابط الصورة الشخصية', 'Profile Photo URL')}</label>
                       {photoUrl && (
                         <button
                           type="button"
@@ -2465,7 +2522,7 @@ export const Category3EmployeeView: React.FC = () => {
                           }}
                           className="text-rose-400 hover:text-rose-300 text-xs font-bold cursor-pointer"
                         >
-                          {t('إزالة الصورة ✕', 'Remove Photo ✕')}
+                          ✕ {t('إزالة', 'Remove')}
                         </button>
                       )}
                     </div>
@@ -2475,7 +2532,7 @@ export const Category3EmployeeView: React.FC = () => {
                         placeholder={t('https://...', 'https://...')}
                         value={photoUrl}
                         onChange={e => setPhotoUrl(e.target.value)}
-                        className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none pr-8"
+                        className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 pr-8"
                       />
                       {photoUrl && (
                         <button
@@ -2499,38 +2556,38 @@ export const Category3EmployeeView: React.FC = () => {
 
             {/* TAB 6: Family & Dependents */}
             {activeTab === 6 && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 border-b border-white/10 pb-2">
-                  <span className="material-symbols-outlined text-blue-400">family_restroom</span>
-                  <h3 className="text-sm font-bold text-white">{t('التبويب 6: البيانات العائلية والأبناء', 'Tab 6: Family Data & Children')}</h3>
-                  <span className="mr-auto px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold">{t('جميع الحقول اختيارية', 'All fields optional')}</span>
+              <div className="space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 border-b border-white/10 pb-1.5">
+                  <span className="material-symbols-outlined text-teal-400 text-base">family_restroom</span>
+                  <h3 className="text-xs sm:text-sm font-bold text-white">{t('التبويب 6: البيانات العائلية والأبناء', 'Tab 6: Family Data & Children')}</h3>
+                  <span className="mr-auto px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold">{t('جميع الحقول اختيارية', 'All fields optional')}</span>
                 </div>
 
                 {/* Spouse */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-medium mb-1 flex items-center gap-1.5">
-                      <span className="text-slate-400">{t('اسم الزوج / الزوجة', 'Spouse Name')}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-300 font-semibold">{t('اختياري', 'Optional')}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 items-end">
+                  <div className="lg:col-span-2">
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
+                      <span>{t('اسم الزوج / الزوجة', 'Spouse Name')}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-700 border border-slate-300 font-semibold">{t('اختياري', 'Optional')}</span>
                     </label>
                     <input
                       type="text"
                       placeholder={t('اتركه فارغاً إن لم ينطبق / Optional', 'Leave blank if not applicable')}
                       value={spouseName}
                       onChange={e => setSpouseName(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-blue-500/50 placeholder:text-slate-600"
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-600"
                     />
                   </div>
 
-                  <div className="flex items-center gap-3 pt-6">
+                  <div className="lg:col-span-2 flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
                     <input
                       type="checkbox"
                       id="spouseEmp"
                       checked={spouseEmployedHere}
                       onChange={e => setSpouseEmployedHere(e.target.checked)}
-                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 bg-[#0a0c10] border-white/20"
+                      className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 bg-[#0a0c10] border-white/20"
                     />
-                    <label htmlFor="spouseEmp" className="text-slate-300 font-medium cursor-pointer">
+                    <label htmlFor="spouseEmp" className="text-slate-200 text-xs font-semibold cursor-pointer select-none">
                       {t('هل الزوج/الزوجة يعمل في مؤسسة فيتاس العراق؟', 'Does spouse work at VITAS Iraq?')}
                     </label>
                   </div>
@@ -2846,7 +2903,7 @@ export const Category3EmployeeView: React.FC = () => {
                         setEmployeeTrainings([...employeeTrainings, trainingToAdd]);
                         setNewTraining({ course_name: '', start_date: '', end_date: '' });
                       }}
-                      className="px-3 py-1.5 bg-teal-600/20 text-blue-400 rounded-lg text-xs font-bold hover:bg-teal-600/30 flex items-center gap-1"
+                      className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition-all cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-sm">add</span>
                       {t('إضافة دورة', 'Add Course')}
@@ -2920,13 +2977,13 @@ export const Category3EmployeeView: React.FC = () => {
             )}
 
             {/* Footer Form Controls (Previous, Next, Submit) */}
-            <div className="pt-4 flex items-center justify-between border-t border-white/10">
+            <div className="pt-2.5 flex items-center justify-between border-t border-white/10">
               <div className="flex items-center gap-2">
                 {activeTab > 1 && (
                   <button
                     type="button"
                     onClick={() => setActiveTab(activeTab - 1)}
-                    className="px-4 py-2.5 rounded-xl bg-white/5 text-slate-300 font-bold hover:bg-white/10 border border-white/10 flex items-center gap-1"
+                    className="px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold border border-slate-600 flex items-center gap-1 shadow-md transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm">arrow_forward</span>
                     {t('التبويب السابق', 'Previous Tab')}
@@ -2937,7 +2994,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setActiveTab(activeTab + 1)}
-                    className="px-5 py-2.5 rounded-xl bg-teal-600/20 text-blue-400 border border-blue-500/30 font-bold hover:bg-teal-600/30 flex items-center gap-1"
+                    className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white border border-teal-500 font-bold flex items-center gap-1 shadow-md shadow-teal-600/25 transition-all cursor-pointer"
                   >
                     {t('التبويب التالي', 'Next Tab')}
                     <span className="material-symbols-outlined text-sm">arrow_back</span>
@@ -2945,24 +3002,24 @@ export const Category3EmployeeView: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => setActiveModuleId('emp-directory')}
-                  className="px-4 py-2.5 rounded-xl bg-white/5 text-slate-300 font-bold hover:bg-white/10 border border-white/10"
+                  className="px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold border border-slate-600 shadow-md transition-all cursor-pointer"
                 >
                   إلغاء
                 </button>
                 {canWrite() ? (
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 flex items-center gap-2"
+                    className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 flex items-center gap-1.5 cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm">save</span>
                     {t('حفظ وتخزين الموظف (التبويبات الـ 7)', 'Save & Store Employee (All 7 Tabs)')}
                   </button>
                 ) : (
-                  <div className="px-5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold flex items-center gap-2">
+                  <div className="px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-sm">lock</span>
                     {t('الحفظ والتعديل معطل (وضع القراءة فقط)', 'Save & Edit Disabled (Read-Only Access)')}
                   </div>
@@ -3167,6 +3224,15 @@ export const Category3EmployeeView: React.FC = () => {
                     <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-purple-600/20 border-purple-500/30 text-purple-400' : 'bg-purple-50 border-purple-200/80 text-purple-700'} font-bold shadow-sm`}>
                       {getEmpBranch(selectedEmployee)}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenContractPreview(selectedEmployee)}
+                      className="px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105"
+                      title={t('معاينة وطباعة عقد العمل للموظف', 'Preview and Print Employee Contract')}
+                    >
+                      <span className="material-symbols-outlined text-xs">print</span>
+                      <span>{t('طباعة العقد', 'Print Contract')}</span>
+                    </button>
                     {canWrite() && (
                       <button
                         type="button"
@@ -3347,10 +3413,20 @@ export const Category3EmployeeView: React.FC = () => {
                 {/* 4. CONTRACTS TAB */}
                 {profileViewTab === 'contracts' && (
                   <div className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className={`font-bold text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-2 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-2`}>
-                      <span className="material-symbols-outlined text-base">description</span>
-                      {t('تفاصيل العقد والدرجة الوظيفية', 'Contract & Job Grade Details')}
-                    </h3>
+                    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-3`}>
+                      <h3 className={`font-bold text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-2`}>
+                        <span className="material-symbols-outlined text-base">description</span>
+                        {t('تفاصيل العقد والدرجة الوظيفية', 'Contract & Job Grade Details')}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenContractPreview(selectedEmployee)}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-blue-600/25 transition-all flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-98 w-fit"
+                      >
+                        <span className="material-symbols-outlined text-sm">print</span>
+                        <span>{t('معاينة وطباعة عقد العمل', 'Preview & Print Contract')}</span>
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
                         <p className={`${profileColors.textSecondary}`}>{t('نوع وشروط العقد:', 'Contract Type & Terms:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.termOfContract || t('عقد محدد المدة', 'Fixed-term contract')}</span></p>
@@ -4331,6 +4407,16 @@ export const Category3EmployeeView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Contract Preview & Print Modal */}
+      <ContractPreviewModal
+        isOpen={isContractModalOpen}
+        onClose={() => setIsContractModalOpen(false)}
+        employee={contractModalEmployee}
+        contractTypes={contractTypes}
+        language={language}
+        companyProfile={companyProfile}
+      />
     </div>
   );
 };

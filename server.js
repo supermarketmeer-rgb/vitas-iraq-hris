@@ -514,6 +514,16 @@ const ensureSettingsSeededAndSynced = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`).catch(() => {});
 
+    await query(`CREATE TABLE IF NOT EXISTS contract_clauses (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      contract_type_id INT NOT NULL,
+      clause_number INT DEFAULT 1,
+      title_ar VARCHAR(255) NULL,
+      text_ar TEXT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`).catch(() => {});
+
     await query(`CREATE TABLE IF NOT EXISTS status_changes (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name_en VARCHAR(255) NULL,
@@ -2384,6 +2394,68 @@ app.delete('/api/settings/contract-types/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await query('DELETE FROM contract_types WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Settings - Contract Template Clauses CRUD
+app.get('/api/settings/contract-clauses/:contractTypeId', async (req, res) => {
+  try {
+    const { contractTypeId } = req.params;
+    const results = await query(
+      'SELECT * FROM contract_clauses WHERE contract_type_id = ? ORDER BY clause_number ASC, id ASC',
+      [contractTypeId]
+    );
+    res.json(results || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/settings/contract-clauses', async (req, res) => {
+  try {
+    const { contract_type_id, clause_number, title_ar, text_ar } = req.body;
+    const sql = 'INSERT INTO contract_clauses (contract_type_id, clause_number, title_ar, text_ar) VALUES (?, ?, ?, ?)';
+    const params = [contract_type_id, clause_number || 1, title_ar || '', text_ar || ''];
+    const r = await query(sql, params);
+    const result = await query('SELECT * FROM contract_clauses WHERE id = ?', [r.insertId]);
+    res.json(result[0] || { id: r.insertId, contract_type_id, clause_number, title_ar, text_ar });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/settings/contract-clauses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { clause_number, title_ar, text_ar } = req.body;
+    await query(
+      'UPDATE contract_clauses SET clause_number = ?, title_ar = ?, text_ar = ? WHERE id = ?',
+      [clause_number || 1, title_ar || '', text_ar || '', id]
+    );
+    const result = await query('SELECT * FROM contract_clauses WHERE id = ?', [id]);
+    res.json(result[0] || { id, clause_number, title_ar, text_ar });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/settings/contract-clauses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM contract_clauses WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/settings/contract-clauses/contract/:contractTypeId', async (req, res) => {
+  try {
+    const { contractTypeId } = req.params;
+    await query('DELETE FROM contract_clauses WHERE contract_type_id = ?', [contractTypeId]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

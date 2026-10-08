@@ -27,6 +27,20 @@ export async function initDatabase(pool, force = false) {
           const allTables = await query("SHOW TABLES");
           const tableNames = allTables.map(row => Object.values(row)[0]);
           console.log(`[DATABASE INIT] Core tables already exist (${tableNames.length} tables). Skipping full schema creation.`);
+          // Ensure contract_clauses table exists
+          await query(`
+            CREATE TABLE IF NOT EXISTS contract_clauses (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              contract_type_id INT NOT NULL,
+              clause_number INT DEFAULT 1,
+              title_ar VARCHAR(255) DEFAULT '',
+              text_ar TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_contract_type (contract_type_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          `);
+
           return { success: true, message: 'Core tables already exist', tablesCount: tableNames.length, tables: tableNames };
         }
       } catch (e) {

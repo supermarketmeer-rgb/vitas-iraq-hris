@@ -30,14 +30,46 @@
     font-weight: 400;
   }
   
-  th, .font-bold, font-bold, strong, b, [class*="font-bold"] {
+  /* Light Mode font weights */
+  html:not(.dark) th, html.light th,
+  html:not(.dark) .font-bold, html.light .font-bold,
+  html:not(.dark) strong, html.light strong,
+  html:not(.dark) b, html.light b,
+  html:not(.dark) [class*="font-bold"], html.light [class*="font-bold"] {
     font-weight: 700 !important;
   }
-  .font-black, [class*="font-black"], .font-extrabold, [class*="font-extrabold"] {
+  html:not(.dark) .font-black, html.light .font-black,
+  html:not(.dark) [class*="font-black"], html.light [class*="font-black"],
+  html:not(.dark) .font-extrabold, html.light .font-extrabold,
+  html:not(.dark) [class*="font-extrabold"], html.light [class*="font-extrabold"] {
     font-weight: 900 !important;
   }
-  .font-semibold, [class*="font-semibold"] {
+  html:not(.dark) .font-semibold, html.light .font-semibold,
+  html:not(.dark) [class*="font-semibold"], html.light [class*="font-semibold"] {
     font-weight: 600 !important;
+  }
+
+  /* In Dark Mode: bold weights become normal (400) */
+  html.dark th,
+  html.dark .font-bold,
+  html.dark [class*="font-bold"],
+  html.dark strong,
+  html.dark b,
+  html.dark .font-black,
+  html.dark [class*="font-black"],
+  html.dark .font-extrabold,
+  html.dark [class*="font-extrabold"],
+  html.dark .font-semibold,
+  html.dark [class*="font-semibold"],
+  html.dark .font-medium,
+  html.dark [class*="font-medium"],
+  html.dark h1,
+  html.dark h2,
+  html.dark h3,
+  html.dark h4,
+  html.dark h5,
+  html.dark h6 {
+    font-weight: 400 !important;
   }
 
   /* Dark Mode body */
@@ -110,12 +142,13 @@ html.light *::selection {
 /* ================================================================
    INPUTS / SELECTS / TEXTAREAS
    ================================================================ */
-input:not(aside input):not(header input),
+input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
 select:not(aside select):not(header select),
 textarea:not(aside textarea):not(header textarea) {
   background-color: #ffffff;
   color: #0f172a;
-  border-color: #cbd5e1;
+  border: 1.5px solid rgba(20, 184, 166, 0.45);
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.12), 0 1px 2px 0 rgba(20, 184, 166, 0.05);
 }
 
 /* Sidebar & Header inputs keep dark-blue style in light mode */
@@ -474,25 +507,24 @@ html:not(.dark) .payroll-dark-header {
 }
 
 html.light thead.payroll-dark-header th,
-html:not(.dark) thead.payroll-dark-header th,
-thead.payroll-dark-header th {
+html:not(.dark) thead.payroll-dark-header th {
   background-color: #0f172a !important;
   border-color: #334155 !important;
   font-weight: 800 !important;
 }
 
-html.light thead.payroll-dark-header th.th-badge, thead.payroll-dark-header th.th-badge { color: #fbbf24 !important; }
-html.light thead.payroll-dark-header th.th-location, thead.payroll-dark-header th.th-location { color: #38bdf8 !important; }
-html.light thead.payroll-dark-header th.th-name, thead.payroll-dark-header th.th-name { background-color: #1e293b !important; color: #ffffff !important; font-weight: 900 !important; }
-html.light thead.payroll-dark-header th.th-position, thead.payroll-dark-header th.th-position { color: #c084fc !important; }
-html.light thead.payroll-dark-header th.th-salary, thead.payroll-dark-header th.th-salary { background-color: #1e293b !important; color: #67e8f9 !important; font-weight: 900 !important; }
-html.light thead.payroll-dark-header th.th-allowance, thead.payroll-dark-header th.th-allowance { color: #34d399 !important; }
-html.light thead.payroll-dark-header th.th-allowance-green, thead.payroll-dark-header th.th-allowance-green { color: #4ade80 !important; }
-html.light thead.payroll-dark-header th.th-gross, thead.payroll-dark-header th.th-gross { background-color: #1e293b !important; color: #38bdf8 !important; font-weight: 900 !important; }
-html.light thead.payroll-dark-header th.th-deduction, thead.payroll-dark-header th.th-deduction { color: #fb7185 !important; }
-html.light thead.payroll-dark-header th.th-total-ded, thead.payroll-dark-header th.th-total-ded { background-color: #1e293b !important; color: #f43f5e !important; font-weight: 900 !important; }
-html.light thead.payroll-dark-header th.th-net, thead.payroll-dark-header th.th-net { background-color: #1e293b !important; color: #4ade80 !important; font-weight: 900 !important; }
-html.light thead.payroll-dark-header th.th-action, thead.payroll-dark-header th.th-action { color: #ffffff !important; }
+html.light thead.payroll-dark-header th.th-badge, html:not(.dark) thead.payroll-dark-header th.th-badge { color: #fbbf24 !important; }
+html.light thead.payroll-dark-header th.th-location, html:not(.dark) thead.payroll-dark-header th.th-location { color: #38bdf8 !important; }
+html.light thead.payroll-dark-header th.th-name, html:not(.dark) thead.payroll-dark-header th.th-name { background-color: #1e293b !important; color: #ffffff !important; font-weight: 900 !important; }
+html.light thead.payroll-dark-header th.th-position, html:not(.dark) thead.payroll-dark-header th.th-position { color: #c084fc !important; }
+html.light thead.payroll-dark-header th.th-salary, html:not(.dark) thead.payroll-dark-header th.th-salary { background-color: #1e293b !important; color: #67e8f9 !important; font-weight: 900 !important; }
+html.light thead.payroll-dark-header th.th-allowance, html:not(.dark) thead.payroll-dark-header th.th-allowance { color: #34d399 !important; }
+html.light thead.payroll-dark-header th.th-allowance-green, html:not(.dark) thead.payroll-dark-header th.th-allowance-green { color: #4ade80 !important; }
+html.light thead.payroll-dark-header th.th-gross, html:not(.dark) thead.payroll-dark-header th.th-gross { background-color: #1e293b !important; color: #38bdf8 !important; font-weight: 900 !important; }
+html.light thead.payroll-dark-header th.th-deduction, html:not(.dark) thead.payroll-dark-header th.th-deduction { color: #fb7185 !important; }
+html.light thead.payroll-dark-header th.th-total-ded, html:not(.dark) thead.payroll-dark-header th.th-total-ded { background-color: #1e293b !important; color: #f43f5e !important; font-weight: 900 !important; }
+html.light thead.payroll-dark-header th.th-net, html:not(.dark) thead.payroll-dark-header th.th-net { background-color: #1e293b !important; color: #4ade80 !important; font-weight: 900 !important; }
+html.light thead.payroll-dark-header th.th-action, html:not(.dark) thead.payroll-dark-header th.th-action { color: #ffffff !important; }
 
 /* ================================================================
    LIGHT MODE: Cards, Panels, Windows, Sidebar Overrides (Pure White)
@@ -1083,7 +1115,7 @@ html.dark main {
   color: #e2e8f0 !important;
 }
 
-/* Dark Mode Outer Card Containers */
+/* Dark Mode Outer Card Containers (1.5px border) */
 html.dark main div[class*="rounded-3xl"],
 html.dark main div[class*="rounded-2xl"],
 html.dark main div[class*="rounded-xl"],
@@ -1092,7 +1124,7 @@ html.dark [class*="bg-white"]:not(.print\:bg-white),
 html.dark div[class*="bg-white"]:not(.print\:bg-white) {
   background-color: #0a0c10 !important;
   color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.16) !important;
 }
 
 /* Dark Mode Inner Sub-cards, Boxes, Inputs, Selects & Textareas */
@@ -1108,7 +1140,7 @@ html.dark select,
 html.dark textarea {
   background-color: #0a0c10 !important;
   color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
 }
 
 /* Dark Mode Table Rows & Headers */
@@ -1125,16 +1157,16 @@ html.dark table tbody tr[class*="bg-white"] {
   color: #e2e8f0 !important;
 }
 
-/* Dark Mode Modal Windows & Dialog Popups */
-html.dark .fixed > div:not(.bg-transparent),
-html.dark .fixed > div > div,
+/* Dark Mode Modal Windows & Dialog Popups (2px defined border) */
+html.dark .fixed > div:not(.bg-transparent):not(.fixed),
+html.dark .fixed > div > div:not(.bg-transparent),
 html.dark div[role="dialog"],
 html.dark div[role="dialog"] > div,
 html.dark [class*="modal"] > div,
 html.dark [class*="modal"] {
   background-color: #0a0c10 !important;
   color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border: 2px solid rgba(255, 255, 255, 0.22) !important;
 }
 
 /* ================================================================
@@ -1149,31 +1181,62 @@ html.light main {
   color: #0f172a !important;
 }
 
-/* Light Mode Outer & Main Cards - Pure Solid White (#ffffff) */
+/* Light Mode Outer & Main Cards - Pure Solid White (#ffffff) with 1.5px defined border */
 html.light main div[class*="rounded-3xl"],
 html.light main div[class*="rounded-2xl"]:not(div[class*="rounded-3xl"] div[class*="rounded-2xl"]),
-html.light .bg-white,
-html.light [class*="bg-white"] {
+html.light .bg-white:not(aside *):not(header *),
+html.light [class*="bg-white"]:not(aside *):not(header *),
+html:not(.dark) main div[class*="rounded-3xl"],
+html:not(.dark) main div[class*="rounded-2xl"]:not(div[class*="rounded-3xl"] div[class*="rounded-2xl"]),
+html:not(.dark) .bg-white:not(aside *):not(header *),
+html:not(.dark) [class*="bg-white"]:not(aside *):not(header *) {
   background-color: #ffffff !important;
   color: #0f172a !important;
-  border-color: #e2e8f0 !important;
+  border: 1.5px solid #cbd5e1 !important;
 }
 
 /* Light Mode Inner Sub-cards & List Items - Soft Light (#f8fafc) */
 html.light main div[class*="rounded-3xl"] div[class*="rounded-2xl"],
-html.light main div[class*="rounded-2xl"] div[class*="rounded-2xl"] {
+html.light main div[class*="rounded-2xl"] div[class*="rounded-2xl"],
+html:not(.dark) main div[class*="rounded-3xl"] div[class*="rounded-2xl"],
+html:not(.dark) main div[class*="rounded-2xl"] div[class*="rounded-2xl"] {
   background-color: #f8fafc !important;
   color: #0f172a !important;
-  border-color: #e2e8f0 !important;
+  border: 1.5px solid #cbd5e1 !important;
 }
 
-/* Light Mode Inputs, Selects & Textareas */
-html.light input,
-html.light select,
-html.light textarea {
+/* Light Mode Inputs, Selects & Textareas (Light Phosphorescent / Teal Border across all screens & windows) */
+html.light input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+html.light select:not(aside select):not(header select),
+html.light textarea:not(aside textarea):not(header textarea),
+html:not(.dark) body input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+html:not(.dark) body select:not(aside select):not(header select),
+html:not(.dark) body textarea:not(aside textarea):not(header textarea) {
   background-color: #ffffff !important;
   color: #0f172a !important;
-  border-color: #cbd5e1 !important;
+  border: 1.5px solid rgba(20, 184, 166, 0.45) !important;
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.12), 0 1px 2px 0 rgba(20, 184, 166, 0.05) !important;
+}
+
+html.light input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):hover,
+html.light select:not(aside select):not(header select):hover,
+html.light textarea:not(aside textarea):not(header textarea):hover,
+html:not(.dark) body input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):hover,
+html:not(.dark) body select:not(aside select):not(header select):hover,
+html:not(.dark) body textarea:not(aside textarea):not(header textarea):hover {
+  border-color: rgba(20, 184, 166, 0.75) !important;
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2) !important;
+}
+
+html.light input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):focus,
+html.light select:not(aside select):not(header select):focus,
+html.light textarea:not(aside textarea):not(header textarea):focus,
+html:not(.dark) body input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):focus,
+html:not(.dark) body select:not(aside select):not(header select):focus,
+html:not(.dark) body textarea:not(aside textarea):not(header textarea):focus {
+  border-color: #0d9488 !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.28) !important;
+  outline: none !important;
 }
 
 /* Light Mode Tables */
@@ -1191,14 +1254,23 @@ html.light table tbody tr.bg-white {
   border-color: #f1f5f9 !important;
 }
 
-/* Light Mode Modals & Dialogs */
-html.light .fixed > div:not(.bg-transparent),
-html.light .fixed > div > div,
+/* Light Mode Modals & Dialogs (Windows) - 1 degree larger / 2px defined border */
+html.light .fixed > div:not(.bg-transparent):not(.fixed),
+html.light .fixed > div > div:not(.bg-transparent),
 html.light div[role="dialog"],
-html.light [class*="modal"] {
+html.light div[role="dialog"] > div,
+html.light [class*="modal"],
+html.light [class*="modal"] > div,
+html:not(.dark) .fixed > div:not(.bg-transparent):not(.fixed),
+html:not(.dark) .fixed > div > div:not(.bg-transparent),
+html:not(.dark) div[role="dialog"],
+html:not(.dark) div[role="dialog"] > div,
+html:not(.dark) [class*="modal"],
+html:not(.dark) [class*="modal"] > div {
   background-color: #ffffff !important;
   color: #0f172a !important;
-  border-color: #cbd5e1 !important;
+  border: 2px solid #cbd5e1 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 }
 
 /* ================================================================
@@ -1616,4 +1688,477 @@ html:not(.dark) header .sync-toast-popup span,
 html.light header .sync-toast-popup span {
   color: #0f172a !important;
 }
+
+/* ================================================================
+   DARK MODE EXCLUSIVE OVERRIDES (الوضع الليلي فقط):
+   1. الخطوط الـ Bold تكون Normal في جميع الشاشات والنوافذ
+   2. الخطوط السوداء يجب ان تكون بيضاء لتظهر بشكل واضح
+   ================================================================ */
+
+/* --- 1. ALL BOLD FONTS BECOME NORMAL IN DARK MODE --- */
+html.dark,
+html.dark body,
+html.dark body *:not(.material-symbols-outlined):not([class*="material-symbols"]),
+html.dark b,
+html.dark strong,
+html.dark th,
+html.dark thead th,
+html.dark table th,
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6,
+html.dark dt,
+html.dark optgroup,
+html.dark .font-bold,
+html.dark [class*="font-bold"],
+html.dark .font-semibold,
+html.dark [class*="font-semibold"],
+html.dark .font-extrabold,
+html.dark [class*="font-extrabold"],
+html.dark .font-black,
+html.dark [class*="font-black"],
+html.dark .font-medium,
+html.dark [class*="font-medium"],
+html.dark [class*="font-[600]"],
+html.dark [class*="font-[700]"],
+html.dark [class*="font-[800]"],
+html.dark [class*="font-[900]"],
+html.dark [style*="font-weight: bold"],
+html.dark [style*="font-weight:bold"],
+html.dark [style*="font-weight: 600"],
+html.dark [style*="font-weight:600"],
+html.dark [style*="font-weight: 700"],
+html.dark [style*="font-weight:700"],
+html.dark [style*="font-weight: 800"],
+html.dark [style*="font-weight:800"],
+html.dark [style*="font-weight: 900"],
+html.dark [style*="font-weight:900"] {
+  font-weight: 400 !important;
+}
+
+/* Modals, Dialogs, Popups, Drawers, Windows font-weight in dark mode */
+html.dark .fixed *:not(.material-symbols-outlined):not([class*="material-symbols"]),
+html.dark div[role="dialog"] *:not(.material-symbols-outlined):not([class*="material-symbols"]),
+html.dark [class*="modal"] *:not(.material-symbols-outlined):not([class*="material-symbols"]),
+html.dark thead.payroll-dark-header th,
+html.dark thead.payroll-dark-header th * {
+  font-weight: 400 !important;
+}
+
+/* --- 2. BLACK / DARK FONTS BECOME PURE WHITE IN DARK MODE --- */
+html.dark .text-black,
+html.dark [class~="text-black"],
+html.dark [class*="text-black"],
+html.dark label[class*="text-black"],
+html.dark p[class*="text-black"],
+html.dark span[class*="text-black"],
+html.dark h1[class*="text-black"],
+html.dark h2[class*="text-black"],
+html.dark h3[class*="text-black"],
+html.dark h4[class*="text-black"],
+html.dark h5[class*="text-black"],
+html.dark h6[class*="text-black"],
+html.dark div[class*="text-black"],
+html.dark td[class*="text-black"],
+html.dark th[class*="text-black"],
+html.dark button[class*="text-black"],
+html.dark a[class*="text-black"],
+html.dark li[class*="text-black"],
+html.dark [class*="dark:text-black"] {
+  color: #ffffff !important;
+}
+
+/* Children inside a container with text-black become white (unless colored like teal, red, emerald, etc.) */
+html.dark .text-black *:not([class*="text-teal-"]):not([class*="text-emerald-"]):not([class*="text-rose-"]):not([class*="text-red-"]):not([class*="text-amber-"]):not([class*="text-yellow-"]):not([class*="text-sky-"]):not([class*="text-cyan-"]):not([class*="text-blue-"]):not([class*="text-indigo-"]):not([class*="text-purple-"]):not([class*="text-green-"]):not([class*="dark:text-teal"]):not([class*="dark:text-emerald"]):not([class*="dark:text-rose"]):not([class*="dark:text-amber"]),
+html.dark [class~="text-black"] *:not([class*="text-teal-"]):not([class*="text-emerald-"]):not([class*="text-rose-"]):not([class*="text-red-"]):not([class*="text-amber-"]):not([class*="text-yellow-"]):not([class*="text-sky-"]):not([class*="text-cyan-"]):not([class*="text-blue-"]):not([class*="text-indigo-"]):not([class*="text-purple-"]):not([class*="text-green-"]):not([class*="dark:text-teal"]):not([class*="dark:text-emerald"]):not([class*="dark:text-rose"]):not([class*="dark:text-amber"]) {
+  color: #ffffff !important;
+}
+
+/* Dark-tone text classes (slate, gray, zinc, neutral darks) become pure white in dark mode unless explicitly scoped with dark:text- */
+html.dark .text-slate-900:not([class*="dark:text-"]),
+html.dark [class~="text-slate-900"]:not([class*="dark:text-"]),
+html.dark .text-slate-950:not([class*="dark:text-"]),
+html.dark [class~="text-slate-950"]:not([class*="dark:text-"]),
+html.dark .text-slate-800:not([class*="dark:text-"]),
+html.dark [class~="text-slate-800"]:not([class*="dark:text-"]),
+html.dark .text-gray-900:not([class*="dark:text-"]),
+html.dark [class~="text-gray-900"]:not([class*="dark:text-"]),
+html.dark .text-gray-950:not([class*="dark:text-"]),
+html.dark [class~="text-gray-950"]:not([class*="dark:text-"]),
+html.dark .text-gray-800:not([class*="dark:text-"]),
+html.dark [class~="text-gray-800"]:not([class*="dark:text-"]),
+html.dark .text-neutral-900:not([class*="dark:text-"]),
+html.dark [class~="text-neutral-900"]:not([class*="dark:text-"]),
+html.dark .text-neutral-950:not([class*="dark:text-"]),
+html.dark [class~="text-neutral-950"]:not([class*="dark:text-"]),
+html.dark .text-neutral-800:not([class*="dark:text-"]),
+html.dark [class~="text-neutral-800"]:not([class*="dark:text-"]),
+html.dark .text-zinc-900:not([class*="dark:text-"]),
+html.dark [class~="text-zinc-900"]:not([class*="dark:text-"]),
+html.dark .text-zinc-950:not([class*="dark:text-"]),
+html.dark [class~="text-zinc-950"]:not([class*="dark:text-"]),
+html.dark .text-zinc-800:not([class*="dark:text-"]),
+html.dark [class~="text-zinc-800"]:not([class*="dark:text-"]),
+html.dark [class*="text-[#000000]"],
+html.dark [class*="text-[#000]"],
+html.dark [class*="text-[#0f172a]"]:not([class*="dark:text-"]),
+html.dark [class*="text-[#1e293b]"]:not([class*="dark:text-"]),
+html.dark [class*="text-[#111827]"]:not([class*="dark:text-"]),
+html.dark [class*="text-[#1f2937]"]:not([class*="dark:text-"]),
+html.dark [class*="dark:text-slate-900"],
+html.dark [class*="dark:text-gray-900"],
+html.dark [class*="dark:text-neutral-900"] {
+  color: #ffffff !important;
+}
+
+/* Inline style overrides for black text in dark mode */
+html.dark [style*="color: black"],
+html.dark [style*="color:black"],
+html.dark [style*="color: #000000"],
+html.dark [style*="color:#000000"],
+html.dark [style*="color: #000"],
+html.dark [style*="color:#000"],
+html.dark [style*="color: rgb(0, 0, 0)"],
+html.dark [style*="color:rgb(0,0,0)"],
+html.dark [style*="color: #0f172a"],
+html.dark [style*="color:#0f172a"],
+html.dark [style*="color: #1e293b"],
+html.dark [style*="color:#1e293b"],
+html.dark [style*="color: #111827"],
+html.dark [style*="color:#111827"] {
+  color: #ffffff !important;
+}
+
+/* Modals & popup windows in dark mode: labels are clearly white */
+html.dark .fixed label,
+html.dark div[role="dialog"] label,
+html.dark [class*="modal"] label {
+  color: #ffffff !important;
+}
+
+/* Select options & optgroups in dark mode */
+html.dark select option,
+html.dark select optgroup,
+html.dark option {
+  background-color: #0a0c10 !important;
+  color: #ffffff !important;
+}
+
+/* ================================================================
+   LIGHT MODE: LIGHT PHOSPHORESCENT / TEAL BORDER FOR ALL FIELDS
+   (في الوضع النهاري: اطار فسفوري خفيف لكل حقل في جميع النوافذ والشاشات)
+   ================================================================ */
+html.light input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+html.light select:not(aside select):not(header select),
+html.light textarea:not(aside textarea):not(header textarea),
+html:not(.dark) input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+html:not(.dark) select:not(aside select):not(header select),
+html:not(.dark) textarea:not(aside textarea):not(header textarea),
+html:not(.dark) .fixed input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+html:not(.dark) .fixed select,
+html:not(.dark) .fixed textarea,
+html:not(.dark) div[role="dialog"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+html:not(.dark) div[role="dialog"] select,
+html:not(.dark) div[role="dialog"] textarea,
+html:not(.dark) [class*="modal"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+html:not(.dark) [class*="modal"] select,
+html:not(.dark) [class*="modal"] textarea {
+  border: 1.5px solid rgba(20, 184, 166, 0.5) !important;
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.12), 0 1px 2px 0 rgba(20, 184, 166, 0.05) !important;
+}
+
+html.light input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):hover,
+html.light select:not(aside select):not(header select):hover,
+html.light textarea:not(aside textarea):not(header textarea):hover,
+html:not(.dark) input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):hover,
+html:not(.dark) select:not(aside select):not(header select):hover,
+html:not(.dark) textarea:not(aside textarea):not(header textarea):hover {
+  border-color: rgba(20, 184, 166, 0.8) !important;
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.22) !important;
+}
+
+html.light input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):focus,
+html.light select:not(aside select):not(header select):focus,
+html.light textarea:not(aside textarea):not(header textarea):focus,
+html:not(.dark) input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):focus,
+html:not(.dark) select:not(aside select):not(header select):focus,
+html:not(.dark) textarea:not(aside textarea):not(header textarea):focus {
+  border-color: #0d9488 !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.3) !important;
+  outline: none !important;
+}
+
+/* ================================================================
+   PALE / WASHED-OUT BUTTONS OVERRIDE: MAKE THEM DARKER WITH CLEAR CONTRAST
+   (جميع الازرار في التطبيق والتي لون خلفيتها باهت، لتكن اكثر غامق)
+   ================================================================ */
+
+/* Teal pale buttons -> rich solid dark teal */
+button[class*=" bg-teal-600/"],
+button[class^="bg-teal-600/"],
+button[class*=" bg-teal-500/"],
+button[class^="bg-teal-500/"],
+button[class*=" bg-teal-400/"],
+button[class^="bg-teal-400/"],
+button[class*=" bg-teal-50"],
+button[class^="bg-teal-50"],
+button[class*=" bg-teal-100"],
+button[class^="bg-teal-100"],
+button[class*=" bg-teal-200"],
+button[class^="bg-teal-200"],
+button[class*="dark:bg-teal-500/"],
+button[class*="dark:bg-teal-600/"],
+[role="button"][class*=" bg-teal-600/"],
+[role="button"][class^="bg-teal-600/"],
+[role="button"][class*=" bg-teal-500/"],
+[role="button"][class^="bg-teal-500/"],
+[role="button"][class*=" bg-teal-50"],
+[role="button"][class*=" bg-teal-100"],
+[role="button"][class*="dark:bg-teal-500/"] {
+  background-color: #0f766e !important; /* solid dark teal-700 */
+  color: #ffffff !important;
+  border-color: #115e59 !important;
+}
+
+button[class*=" bg-teal-600/"]:hover,
+button[class^="bg-teal-600/"]:hover,
+button[class*=" bg-teal-500/"]:hover,
+button[class^="bg-teal-500/"]:hover,
+button[class*=" bg-teal-400/"]:hover,
+button[class^="bg-teal-400/"]:hover,
+button[class*=" bg-teal-50"]:hover,
+button[class^="bg-teal-50"]:hover,
+button[class*=" bg-teal-100"]:hover,
+button[class^="bg-teal-100"]:hover,
+button[class*=" bg-teal-200"]:hover,
+button[class^="bg-teal-200"]:hover,
+button[class*="dark:bg-teal-500/"]:hover,
+button[class*="dark:bg-teal-600/"]:hover,
+[role="button"][class*=" bg-teal-600/"]:hover,
+[role="button"][class^="bg-teal-600/"]:hover,
+[role="button"][class*=" bg-teal-500/"]:hover,
+[role="button"][class^="bg-teal-500/"]:hover,
+[role="button"][class*=" bg-teal-50"]:hover,
+[role="button"][class*=" bg-teal-100"]:hover,
+[role="button"][class*="dark:bg-teal-500/"]:hover {
+  background-color: #115e59 !important; /* deeper teal-800 on hover */
+  color: #ffffff !important;
+}
+
+button[class*=" bg-teal-600/"] *,
+button[class^="bg-teal-600/"] *,
+button[class*=" bg-teal-500/"] *,
+button[class^="bg-teal-500/"] *,
+button[class*=" bg-teal-400/"] *,
+button[class^="bg-teal-400/"] *,
+button[class*=" bg-teal-50"] *,
+button[class^="bg-teal-50"] *,
+button[class*=" bg-teal-100"] *,
+button[class^="bg-teal-100"] *,
+button[class*=" bg-teal-200"] *,
+button[class^="bg-teal-200"] *,
+button[class*="dark:bg-teal-500/"] *,
+button[class*="dark:bg-teal-600/"] *,
+[role="button"][class*=" bg-teal-600/"] *,
+[role="button"][class^="bg-teal-600/"] *,
+[role="button"][class*=" bg-teal-500/"] *,
+[role="button"][class^="bg-teal-500/"] *,
+[role="button"][class*=" bg-teal-50"] *,
+[role="button"][class*=" bg-teal-100"] *,
+[role="button"][class*="dark:bg-teal-500/"] * {
+  color: #ffffff !important;
+}
+
+/* Emerald pale buttons -> rich solid dark emerald */
+button[class*=" bg-emerald-600/"],
+button[class^="bg-emerald-600/"],
+button[class*=" bg-emerald-500/"],
+button[class^="bg-emerald-500/"],
+button[class*=" bg-emerald-50"],
+button[class^="bg-emerald-50"],
+button[class*=" bg-emerald-100"],
+button[class^="bg-emerald-100"],
+[role="button"][class*=" bg-emerald-600/"],
+[role="button"][class^="bg-emerald-600/"],
+[role="button"][class*=" bg-emerald-500/"],
+[role="button"][class^="bg-emerald-500/"] {
+  background-color: #047857 !important; /* solid dark emerald-700 */
+  color: #ffffff !important;
+  border-color: #065f46 !important;
+}
+
+button[class*=" bg-emerald-600/"]:hover,
+button[class^="bg-emerald-600/"]:hover,
+button[class*=" bg-emerald-500/"]:hover,
+button[class^="bg-emerald-500/"]:hover,
+button[class*=" bg-emerald-50"]:hover,
+button[class^="bg-emerald-50"]:hover,
+button[class*=" bg-emerald-100"]:hover,
+button[class^="bg-emerald-100"]:hover,
+[role="button"][class*=" bg-emerald-600/"]:hover,
+[role="button"][class^="bg-emerald-600/"]:hover,
+[role="button"][class*=" bg-emerald-500/"]:hover,
+[role="button"][class^="bg-emerald-500/"]:hover {
+  background-color: #065f46 !important;
+  color: #ffffff !important;
+}
+
+button[class*=" bg-emerald-600/"] *,
+button[class^="bg-emerald-600/"] *,
+button[class*=" bg-emerald-500/"] *,
+button[class^="bg-emerald-500/"] *,
+button[class*=" bg-emerald-50"] *,
+button[class^="bg-emerald-50"] *,
+button[class*=" bg-emerald-100"] *,
+button[class^="bg-emerald-100"] *,
+[role="button"][class*=" bg-emerald-600/"] *,
+[role="button"][class*=" bg-emerald-500/"] * {
+  color: #ffffff !important;
+}
+
+/* Blue & Cyan pale buttons -> rich solid dark blue / cyan */
+button[class*=" bg-blue-600/"],
+button[class^="bg-blue-600/"],
+button[class*=" bg-blue-500/"],
+button[class^="bg-blue-500/"],
+button[class*=" bg-blue-50"],
+button[class^="bg-blue-50"],
+button[class*=" bg-blue-100"],
+button[class^="bg-blue-100"],
+button[class*=" bg-cyan-600/"],
+button[class^="bg-cyan-600/"],
+button[class*=" bg-cyan-500/"],
+button[class^="bg-cyan-500/"],
+button[class*=" bg-cyan-50"],
+button[class^="bg-cyan-50"],
+button[class*=" bg-cyan-100"],
+button[class^="bg-cyan-100"],
+[role="button"][class*=" bg-blue-600/"],
+[role="button"][class^="bg-blue-600/"],
+[role="button"][class*=" bg-blue-500/"],
+[role="button"][class^="bg-blue-500/"] {
+  background-color: #1d4ed8 !important; /* solid dark blue-700 */
+  color: #ffffff !important;
+  border-color: #1e40af !important;
+}
+
+button[class*=" bg-blue-600/"]:hover,
+button[class^="bg-blue-600/"]:hover,
+button[class*=" bg-blue-500/"]:hover,
+button[class^="bg-blue-500/"]:hover,
+button[class*=" bg-blue-50"]:hover,
+button[class^="bg-blue-50"]:hover,
+button[class*=" bg-blue-100"]:hover,
+button[class^="bg-blue-100"]:hover,
+[role="button"][class*=" bg-blue-600/"]:hover,
+[role="button"][class^="bg-blue-600/"]:hover,
+[role="button"][class*=" bg-blue-500/"]:hover,
+[role="button"][class^="bg-blue-500/"]:hover {
+  background-color: #1e40af !important;
+  color: #ffffff !important;
+}
+
+button[class*=" bg-blue-600/"] *,
+button[class^="bg-blue-600/"] *,
+button[class*=" bg-blue-500/"] *,
+button[class^="bg-blue-500/"] *,
+button[class*=" bg-blue-50"] *,
+button[class^="bg-blue-50"] *,
+button[class*=" bg-blue-100"] *,
+button[class^="bg-blue-100"] *,
+button[class*=" bg-cyan-600/"] *,
+button[class^="bg-cyan-600/"] *,
+button[class*=" bg-cyan-500/"] *,
+button[class^="bg-cyan-500/"] *,
+button[class*=" bg-cyan-50"] *,
+button[class^="bg-cyan-50"] *,
+button[class*=" bg-cyan-100"] *,
+button[class^="bg-cyan-100"] *,
+[role="button"][class*=" bg-blue-600/"] *,
+[role="button"][class*=" bg-blue-500/"] * {
+  color: #ffffff !important;
+}
+
+/* Rose & Red pale buttons (e.g. Reject Request) -> rich solid dark rose/red */
+button[class*=" bg-rose-600/"],
+button[class^="bg-rose-600/"],
+button[class*=" bg-rose-500/"],
+button[class^="bg-rose-500/"],
+button[class*=" bg-rose-50"],
+button[class^="bg-rose-50"],
+button[class*=" bg-rose-100"],
+button[class^="bg-rose-100"],
+button[class*=" bg-red-600/"],
+button[class^="bg-red-600/"],
+button[class*=" bg-red-500/"],
+button[class^="bg-red-500/"],
+button[class*=" bg-red-50"],
+button[class^="bg-red-50"],
+button[class*=" bg-red-100"],
+button[class^="bg-red-100"],
+[role="button"][class*=" bg-rose-600/"],
+[role="button"][class^="bg-rose-600/"],
+[role="button"][class*=" bg-rose-500/"],
+[role="button"][class^="bg-rose-500/"],
+[role="button"][class*=" bg-red-600/"],
+[role="button"][class*=" bg-red-500/"] {
+  background-color: #e11d48 !important; /* solid rose-600 */
+  color: #ffffff !important;
+  border-color: #be123c !important;
+  font-weight: 700;
+}
+
+button[class*=" bg-rose-600/"]:hover,
+button[class^="bg-rose-600/"]:hover,
+button[class*=" bg-rose-500/"]:hover,
+button[class^="bg-rose-500/"]:hover,
+button[class*=" bg-rose-50"]:hover,
+button[class^="bg-rose-50"]:hover,
+button[class*=" bg-rose-100"]:hover,
+button[class^="bg-rose-100"]:hover,
+button[class*=" bg-red-600/"]:hover,
+button[class^="bg-red-600/"]:hover,
+button[class*=" bg-red-500/"]:hover,
+button[class^="bg-red-500/"]:hover,
+button[class*=" bg-red-50"]:hover,
+button[class^="bg-red-50"]:hover,
+button[class*=" bg-red-100"]:hover,
+button[class^="bg-red-100"]:hover,
+[role="button"][class*=" bg-rose-600/"]:hover,
+[role="button"][class^="bg-rose-600/"]:hover,
+[role="button"][class*=" bg-rose-500/"]:hover,
+[role="button"][class^="bg-rose-500/"]:hover,
+[role="button"][class*=" bg-red-600/"]:hover,
+[role="button"][class*=" bg-red-500/"]:hover {
+  background-color: #be123c !important; /* solid rose-700 on hover */
+  color: #ffffff !important;
+}
+
+button[class*=" bg-rose-600/"] *,
+button[class^="bg-rose-600/"] *,
+button[class*=" bg-rose-500/"] *,
+button[class^="bg-rose-500/"] *,
+button[class*=" bg-rose-50"] *,
+button[class^="bg-rose-50"] *,
+button[class*=" bg-rose-100"] *,
+button[class^="bg-rose-100"] *,
+button[class*=" bg-red-600/"] *,
+button[class^="bg-red-600/"] *,
+button[class*=" bg-red-500/"] *,
+button[class^="bg-red-500/"] *,
+button[class*=" bg-red-50"] *,
+button[class^="bg-red-50"] *,
+button[class*=" bg-red-100"] *,
+button[class^="bg-red-100"] *,
+[role="button"][class*=" bg-rose-600/"] *,
+[role="button"][class*=" bg-rose-500/"] *,
+[role="button"][class*=" bg-red-600/"] *,
+[role="button"][class*=" bg-red-500/"] * {
+  color: #ffffff !important;
+}
+
+
 

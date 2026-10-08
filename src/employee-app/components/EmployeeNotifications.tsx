@@ -249,7 +249,7 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                   </p>
 
                   <div className="flex items-center gap-2">
-                    <button className="text-[10px] font-bold text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded-lg border border-teal-500/20">
+                    <button className="text-[10px] font-bold text-white bg-teal-600 hover:bg-teal-700 px-2.5 py-1 rounded-lg shadow-sm transition-all cursor-pointer">
                       {notification.action}
                     </button>
                     {!notification.read && (

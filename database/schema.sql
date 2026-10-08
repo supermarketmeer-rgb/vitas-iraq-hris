@@ -462,6 +462,17 @@ CREATE TABLE IF NOT EXISTS contract_types (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Contract Template Clauses Table (بنود قوالب العقود)
+CREATE TABLE IF NOT EXISTS contract_clauses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    contract_type_id INT NOT NULL,
+    clause_number INT DEFAULT 1,
+    title_ar VARCHAR(255) NULL,
+    text_ar TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Status Changes Table (تغييرات الحالة)
 CREATE TABLE IF NOT EXISTS status_changes (
     id INT AUTO_INCREMENT PRIMARY KEY,
