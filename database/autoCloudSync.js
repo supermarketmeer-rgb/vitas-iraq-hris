@@ -225,12 +225,12 @@ export function startCloudRealtimeListener(localPool) {
 }
 
 export async function startAutoCloudSync(localPool) {
-  const TEN_SECONDS_MS = 15 * 1000;
+  const PERIODIC_FULL_SYNC_MS = 60 * 1000;
   
   setInterval(async () => {
     if (isSyncing || isFullSyncing) return;
     await syncLocalToCloud(localPool).catch(() => {});
-  }, TEN_SECONDS_MS);
+  }, PERIODIC_FULL_SYNC_MS);
 
   setTimeout(() => {
     console.log('[AUTO CLOUD SYNC] Triggering initial startup sync...');
@@ -643,7 +643,19 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
     return await syncTargetedTables(localPool, targetTables, preferCloud);
   }
 
-  if (isFullSyncing) return { success: true, syncedTablesCount: 97, totalTables: 97, reason: 'Full sync in progress' };
+  if (isFullSyncing) {
+    if (forceFullSync) {
+      // If manual force sync requested, wait briefly for current chunk to complete
+      let waited = 0;
+      while (isFullSyncing && waited < 4000) {
+        await new Promise(r => setTimeout(r, 200));
+        waited += 200;
+      }
+      isFullSyncing = false;
+    } else {
+      return { success: true, syncedTablesCount: 97, totalTables: 97, reason: 'Full sync in progress' };
+    }
+  }
   isFullSyncing = true;
   isSyncing = true;
 

@@ -356,6 +356,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         );
         
         setEmployees(finalEmpData || []);
+        if (Array.isArray(finalEmpData) && finalEmpData.length > 0) {
+          try { localStorage.setItem('vitas_employees', JSON.stringify(finalEmpData)); } catch (e) {}
+        }
 
         let finalLeaves = leaveData || localLeaves || [];
         if (!Array.isArray(finalLeaves) || finalLeaves.length === 0) {
@@ -504,7 +507,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         syncEngine.loadScheduleFromBackend().catch(() => {});
       } else {
         if (tableName === 'employees') {
-          api.getEmployees().then(d => { if (Array.isArray(d)) setEmployees(d); }).catch(() => {});
+          api.getEmployees().then(d => {
+            if (Array.isArray(d)) {
+              setEmployees(d);
+              try { localStorage.setItem('vitas_employees', JSON.stringify(d)); } catch (e) {}
+            }
+          }).catch(() => {});
         }
         if (tableName === 'candidates') {
           api.getCandidates().then(d => { if (Array.isArray(d)) setCandidates(d); }).catch(() => {});
@@ -556,6 +564,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         if (Array.isArray(empData) && empData.length > 0) {
           setEmployees(empData);
+          try { localStorage.setItem('vitas_employees', JSON.stringify(empData)); } catch (e) {}
         }
         if (Array.isArray(leaveData) && leaveData.length > 0) {
           setLeaveRequests(leaveData);

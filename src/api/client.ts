@@ -319,6 +319,6 @@ export const api = {
   updateAttendanceSettings: (settings: Record<string, string>) => apiClient.post('/attendance-settings/bulk', settings),
 
   // Cloud & Database Synchronization
-  syncNow: () => apiClient.post('/sync-now', {}, 45000),
+  syncNow: (options?: { force?: boolean }) => apiClient.post('/sync-now', { force: true, ...(options || {}) }, 45000),
 };
 

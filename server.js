@@ -1320,9 +1320,16 @@ app.post('/api/employees', async (req, res) => {
         const updateVals = updateCols.map(col => candidateData[col]);
         updateVals.push(targetDbId);
 
+        const cleanEmpId = candidateData.employee_id || '';
+        let whereClause = 'WHERE id = ?';
+        if (cleanEmpId) {
+          whereClause = 'WHERE id = ? OR employee_id = ?';
+          updateVals.push(cleanEmpId);
+        }
+
         const setClause = updateCols.map(col => `${col} = ?`).join(', ');
         try {
-          await query(`UPDATE employees SET ${setClause}, updated_at = NOW() WHERE id = ?`, updateVals);
+          await query(`UPDATE employees SET ${setClause}, updated_at = NOW() ${whereClause}`, updateVals);
           console.log('Employee updated successfully');
         } catch (updateErr) {
           console.error('MySQL UPDATE error details:', updateErr);
