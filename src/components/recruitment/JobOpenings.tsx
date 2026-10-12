@@ -436,8 +436,12 @@ export const JobOpenings: React.FC = () => {
   const getStatusBadge = (status: JobVacancy['status']) => {
     const isClosed = status === 'Closed' || status === 'مغلقة';
     return (
-      <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-        isClosed ? 'bg-red-500/20 text-red-500 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30'
+      <div className={`px-3 py-1 rounded-full text-xs font-bold transition-all shadow-sm ${
+        isClosed 
+          ? 'bg-rose-600 hover:bg-rose-700 text-white border border-rose-700' 
+          : isDark 
+            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+            : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
       }`}>
         {getStatusName(status)}
       </div>
@@ -543,7 +547,7 @@ export const JobOpenings: React.FC = () => {
               <div>
                 <div className="flex items-start justify-between mb-4 gap-2">
                   <div className="flex-1">
-                    <h3 className="text-lg font-black mb-2" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{displayTitle}</h3>
+                    <h3 className="text-lg font-normal mb-2" style={{ color: isDark ? '#ffffff' : '#0f172a', fontWeight: 400 }}>{displayTitle}</h3>
                     <div className="space-y-1.5 text-xs font-bold" style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>
                       <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-base text-teal-600 dark:text-teal-400">business</span>

@@ -2076,7 +2076,32 @@ app.post('/api/documents', async (req, res) => {
 app.get('/api/notifications', async (req, res) => {
   try {
     const results = await query('SELECT * FROM system_notifications ORDER BY created_at DESC');
-    res.json(results);
+    const mapped = (results || []).map(n => {
+      const isRead = Boolean(n.is_read === 1 || n.is_read === true || n.read === true || n.read === 1);
+      return {
+        ...n,
+        read: isRead,
+        is_read: isRead ? 1 : 0,
+        timestamp: n.timestamp || (n.created_at ? new Date(n.created_at).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }) : 'الآن')
+      };
+    });
+    res.json(mapped);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/notifications', async (req, res) => {
+  try {
+    const data = req.body;
+    const notifId = data.id || `NTF-${Date.now()}`;
+    const sql = `INSERT INTO system_notifications (id, title, message, type, is_read, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`;
+    const isRead = Boolean(data.read || data.is_read);
+    const params = [notifId, data.title, data.message, data.type || 'info', isRead ? 1 : 0];
+    await query(sql, params);
+    executeCloudQuery(sql, params).catch(() => {});
+    triggerRealtimeSync(db, 'system_notifications');
+    res.json({ id: notifId, ...data, read: isRead, is_read: isRead ? 1 : 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2086,6 +2111,9 @@ app.put('/api/notifications/read-all', async (req, res) => {
   try {
     await query('UPDATE system_notifications SET is_read = 1, updated_at = NOW()');
     await query('UPDATE notifications SET is_read = 1, updated_at = NOW()').catch(() => {});
+    executeCloudQuery('UPDATE system_notifications SET is_read = 1, updated_at = NOW()').catch(() => {});
+    executeCloudQuery('UPDATE notifications SET is_read = 1, updated_at = NOW()').catch(() => {});
+    triggerRealtimeSync(db, 'system_notifications');
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2097,6 +2125,9 @@ app.put('/api/notifications/:id/read', async (req, res) => {
     const id = req.params.id;
     await query('UPDATE system_notifications SET is_read = 1, updated_at = NOW() WHERE id = ?', [id]);
     await query('UPDATE notifications SET is_read = 1, updated_at = NOW() WHERE id = ?', [id]).catch(() => {});
+    executeCloudQuery('UPDATE system_notifications SET is_read = 1, updated_at = NOW() WHERE id = ?', [id]).catch(() => {});
+    executeCloudQuery('UPDATE notifications SET is_read = 1, updated_at = NOW() WHERE id = ?', [id]).catch(() => {});
+    triggerRealtimeSync(db, 'system_notifications');
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

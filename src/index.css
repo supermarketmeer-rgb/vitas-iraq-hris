@@ -527,6 +527,51 @@ html.light thead.payroll-dark-header th.th-net, html:not(.dark) thead.payroll-da
 html.light thead.payroll-dark-header th.th-action, html:not(.dark) thead.payroll-dark-header th.th-action { color: #ffffff !important; }
 
 /* ================================================================
+   DYNAMIC REPORT BUILDER (EXCEL GRID) TABLE HEADER
+   Light Mode = Solid Gray (#cbd5e1)
+   Dark Mode = Retains dark mode styles
+   ================================================================ */
+html.light .dynamic-report-excel-grid thead,
+html.light .dynamic-report-excel-grid thead tr,
+html.light .dynamic-report-excel-grid thead th,
+html.light .dynamic-report-excel-thead,
+html.light .dynamic-report-excel-thead tr,
+html.light .dynamic-report-excel-thead th,
+html:not(.dark) .dynamic-report-excel-grid thead,
+html:not(.dark) .dynamic-report-excel-grid thead tr,
+html:not(.dark) .dynamic-report-excel-grid thead th,
+html:not(.dark) .dynamic-report-excel-thead,
+html:not(.dark) .dynamic-report-excel-thead tr,
+html:not(.dark) .dynamic-report-excel-thead th {
+  background-color: #cbd5e1 !important; /* solid clean gray */
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+html.light .dynamic-report-excel-thead th.dynamic-report-th-num,
+html:not(.dark) .dynamic-report-excel-thead th.dynamic-report-th-num {
+  background-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+html.light .dynamic-report-excel-thead th *,
+html.light .dynamic-report-excel-thead th span,
+html.light .dynamic-report-excel-grid thead th *,
+html.light .dynamic-report-excel-grid thead th span,
+html:not(.dark) .dynamic-report-excel-thead th *,
+html:not(.dark) .dynamic-report-excel-thead th span,
+html:not(.dark) .dynamic-report-excel-grid thead th *,
+html:not(.dark) .dynamic-report-excel-grid thead th span {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+html.light .dynamic-report-excel-thead th:hover,
+html:not(.dark) .dynamic-report-excel-thead th:hover {
+  background-color: #94a3b8 !important;
+}
+
+/* ================================================================
    LIGHT MODE: Cards, Panels, Windows, Sidebar Overrides (Pure White)
    ================================================================ */
 html.light .bg-white:not(aside *):not(header *),
@@ -1418,7 +1463,7 @@ html:not(.dark) .dashboard-banner-teal-btn,
 html:not(.dark) .dashboard-banner-teal-btn *,
 html:not(.dark) .dashboard-banner-teal-btn span,
 html:not(.dark) .dashboard-banner-teal-btn .material-symbols-outlined {
-  color: #0d9488 !important;
+  color: #ffffff !important;
 }
 
 html.dark .dashboard-banner-teal-btn,

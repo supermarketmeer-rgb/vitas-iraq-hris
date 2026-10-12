@@ -1941,7 +1941,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                                       <img
                                         src={photo}
                                         alt={mainName}
-                                        className="w-full h-full object-cover"
+                                        className="w-full h-full object-contain p-0.5"
                                         onError={(e) => {
                                           (e.target as HTMLElement).style.display = 'none';
                                         }}

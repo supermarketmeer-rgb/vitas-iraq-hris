@@ -15,6 +15,7 @@ import {
 import { CATEGORY_GROUPS } from '../data/categories';
 import { api } from '../api/client';
 import { connectionManager } from '../services/connectionManager';
+import { syncEngine } from '../services/syncEngine';
 import { canUserWrite, isUserReadOnly, getModuleAccessLevel, getUserEffectivePermissions } from '../utils/permissionHelper';
 
 interface AppContextType {
@@ -109,6 +110,25 @@ const DEFAULT_USER: UserProfile = {
   can_manage_recruitment: 1,
   can_manage_settings: 0,
   can_manage_users: 0
+};
+
+const normalizeNotification = (n: any): SystemNotification => {
+  const isRead = Boolean(n.read === true || n.read === 1 || n.is_read === 1 || n.is_read === true);
+  return {
+    ...n,
+    id: String(n.id || ''),
+    title: n.title || '',
+    message: n.message || '',
+    type: n.type || 'info',
+    read: isRead,
+    is_read: isRead ? 1 : 0,
+    timestamp: n.timestamp || (n.created_at ? new Date(n.created_at).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }) : 'الآن')
+  };
+};
+
+const normalizeNotifications = (list: any[]): SystemNotification[] => {
+  if (!Array.isArray(list)) return [];
+  return list.map(normalizeNotification);
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -220,7 +240,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         try {
           const savedNotifs = localStorage.getItem('vitas_notifications');
-          if (savedNotifs) localNotifs = JSON.parse(savedNotifs);
+          if (savedNotifs) localNotifs = normalizeNotifications(JSON.parse(savedNotifs));
         } catch (e) {}
         
         let localSettings: Record<string, string> = {};
@@ -237,7 +257,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAssetRecords(localAssets || []);
         setRiskRecords(localRisks || []);
         setDocumentRecords(localDocs || []);
-        setNotifications(localNotifs || []);
+        setNotifications(normalizeNotifications(localNotifs || []));
         setAppSettings(localSettings || {});
 
         // Then fetch from API in background
@@ -423,7 +443,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAssetRecords(assetData || localAssets);
         setRiskRecords(riskData || localRisks);
         setDocumentRecords(docData || localDocs);
-        setNotifications(notifData || localNotifs);
+        const normalizedNotifData = normalizeNotifications((Array.isArray(notifData) ? notifData : null) || localNotifs || []);
+        setNotifications(normalizedNotifData);
+        try {
+          localStorage.setItem('vitas_notifications', JSON.stringify(normalizedNotifData));
+        } catch (e) {}
 
         // Process app settings (handles both array and object responses)
         let settingsObj: Record<string, string> = {};
@@ -495,6 +519,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           api.getAppSettings().then(d => { if (d && typeof d === 'object') setAppSettings(d); }).catch(() => {});
           syncEngine.loadScheduleFromBackend().catch(() => {});
         }
+        if (tableName === 'system_notifications' || tableName === 'notifications') {
+          api.getNotifications().then(d => {
+            if (Array.isArray(d)) {
+              const normalized = normalizeNotifications(d);
+              setNotifications(normalized);
+              try { localStorage.setItem('vitas_notifications', JSON.stringify(normalized)); } catch (e) {}
+            }
+          }).catch(() => {});
+        }
       }
 
       if (typeof window !== 'undefined') {
@@ -529,7 +562,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         if (setsData && typeof setsData === 'object') {
           setAppSettings(setsData);
-          if (setsData.vitas_hris_sync_schedule) {
+          if ((setsData as any).vitas_hris_sync_schedule) {
             syncEngine.loadScheduleFromBackend().catch(() => {});
           }
         }
@@ -622,11 +655,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentUser(prev => ({ ...prev, role }));
     }
     localStorage.setItem('vitas_user_role', role);
-    if (role === 'Recruiter') {
-      setActiveModuleId('recruit-dash');
-    } else if (role === 'IT Admin') {
-      setActiveModuleId('cat-9-risk');
-    }
   };
 
   const setCurrentUserHandler = (user: UserProfile | null) => {
@@ -1070,28 +1098,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markNotificationRead = async (id: string) => {
+    setNotifications(prev => {
+      const updated = prev.map(n => (n.id === id ? { ...n, read: true, is_read: 1 } : n));
+      try { localStorage.setItem('vitas_notifications', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
     try {
       await api.markNotificationRead(id).catch(() => {});
       api.syncNow().catch(() => {});
-      setNotifications(prev => {
-        const updated = prev.map(n => (n.id === id ? { ...n, read: true } : n));
-        try { localStorage.setItem('vitas_notifications', JSON.stringify(updated)); } catch (e) {}
-        return updated;
-      });
     } catch (error) {
       console.error('Error marking notification as read:', error);
-      // Fallback to local state
-      setNotifications(prev => {
-        const updated = prev.map(n => (n.id === id ? { ...n, read: true } : n));
-        try { localStorage.setItem('vitas_notifications', JSON.stringify(updated)); } catch (e) {}
-        return updated;
-      });
     }
   };
 
   const markAllNotificationsAsRead = async () => {
     setNotifications(prev => {
-      const updated = prev.map(n => ({ ...n, read: true }));
+      const updated = prev.map(n => ({ ...n, read: true, is_read: 1 }));
       try { localStorage.setItem('vitas_notifications', JSON.stringify(updated)); } catch (e) {}
       return updated;
     });

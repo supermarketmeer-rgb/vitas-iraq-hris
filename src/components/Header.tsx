@@ -26,6 +26,7 @@ export const Header: React.FC = () => {
     setIsSearchOpen,
     notifications,
     markAllNotificationsAsRead,
+    markNotificationRead,
     refreshAllData,
     resetToZeroData,
     setActiveModuleId,
@@ -99,7 +100,8 @@ export const Header: React.FC = () => {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const isNotifUnread = (n: any) => !(n.read === true || n.read === 1 || n.is_read === 1 || n.is_read === true);
+  const unreadCount = notifications.filter(isNotifUnread).length;
 
   const isDark = theme === 'dark';
 
@@ -422,7 +424,7 @@ export const Header: React.FC = () => {
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  {notifications.some(n => !n.read) && (
+                  {notifications.some(isNotifUnread) && (
                     <button
                       onClick={markAllNotificationsAsRead}
                       className={`text-[11px] font-bold px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 border cursor-pointer ${
@@ -455,22 +457,31 @@ export const Header: React.FC = () => {
                     <p className="text-xs text-slate-600 font-medium">{t('لا توجد إشعارات جديدة حتى الآن', 'No new notifications yet')}</p>
                   </div>
                 ) : (
-                  notifications.map(n => (
-                    <div
-                      key={n.id}
-                      className={`p-3 rounded-xl border text-xs transition-colors ${
-                        n.read
-                          ? (isDark ? 'bg-white/[0.02] border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-700')
-                          : (isDark ? 'bg-teal-500/5 border-teal-500/20 text-slate-200 font-normal' : 'bg-teal-50/80 border-teal-200 text-slate-900 font-normal')
-                      }`}
-                    >
-                      <div className="flex items-center justify-between font-normal mb-1">
-                        <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{n.title}</span>
-                        <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{n.timestamp}</span>
+                  notifications.map(n => {
+                    const isRead = !isNotifUnread(n);
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          if (!isRead) markNotificationRead(n.id);
+                        }}
+                        className={`p-3 rounded-xl border text-xs transition-colors cursor-pointer ${
+                          isRead
+                            ? (isDark ? 'bg-white/[0.02] border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-700')
+                            : (isDark ? 'bg-teal-500/10 border-teal-500/30 text-slate-100 font-semibold shadow-xs' : 'bg-teal-50/90 border-teal-300 text-slate-900 font-semibold shadow-xs')
+                        }`}
+                      >
+                        <div className="flex items-center justify-between font-normal mb-1">
+                          <div className="flex items-center gap-1.5">
+                            {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block animate-pulse"></span>}
+                            <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{n.title}</span>
+                          </div>
+                          <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{n.timestamp}</span>
+                        </div>
+                        <p className={isDark ? 'text-slate-400' : 'text-slate-700'}>{n.message}</p>
                       </div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-700'}>{n.message}</p>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 

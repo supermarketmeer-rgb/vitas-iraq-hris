@@ -268,6 +268,8 @@ export interface SystemNotification {
   message: string;
   timestamp: string;
   read: boolean;
+  is_read?: boolean | number;
+  created_at?: string;
   type: 'info' | 'warning' | 'success' | 'alert' | 'news';
   relatedId?: string; // News item ID if type is 'news'
   actionUrl?: string; // URL to navigate to when clicked

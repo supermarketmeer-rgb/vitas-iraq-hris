@@ -137,10 +137,7 @@ export const Login: React.FC = () => {
               allowed_screens: parsedScreens
             };
 
-            let initialModule = isSuperAdmin ? 'dash-overview' : (isAdmin ? 'sec-roles-permissions' : (isHR ? 'emp-hr-directory' : 'dash-overview'));
-            if (parsedScreens['employees'] || parsedScreens['emp-directory'] || parsedScreens['emp-hr-directory']) initialModule = 'emp-hr-directory';
-            else if (parsedScreens['attendance'] || parsedScreens['leave-attendance']) initialModule = 'leave-attendance';
-            else if (isAdmin || parsedScreens['sec-roles-permissions']) initialModule = 'sec-roles-permissions';
+            let initialModule = 'dash-overview';
 
             localStorage.setItem('vitas_current_user', JSON.stringify(userProfile));
             localStorage.setItem('vitas_user_role', assignedRole);
@@ -217,7 +214,7 @@ export const Login: React.FC = () => {
         localStorage.setItem('vitas_user_role', 'HR Manager');
         setCurrentUserRole('HR Manager');
         setCurrentUser(hrManager);
-        setActiveModuleId('emp-hr-directory');
+        setActiveModuleId('dash-overview');
         console.log('Login successful - HR Manager fallback', hrManager);
         setTimeout(() => navigate('/'), 100);
         return;
@@ -245,7 +242,7 @@ export const Login: React.FC = () => {
         localStorage.setItem('vitas_user_role', 'Department Head');
         setCurrentUserRole('Department Head');
         setCurrentUser(deptManager);
-        setActiveModuleId('leave-approvals');
+        setActiveModuleId('dash-overview');
         console.log('Login successful - Department Head', deptManager);
         setTimeout(() => navigate('/'), 100);
         return;
@@ -273,7 +270,7 @@ export const Login: React.FC = () => {
         localStorage.setItem('vitas_user_role', 'Recruiter');
         setCurrentUserRole('Recruiter');
         setCurrentUser(recruiterUser);
-        setActiveModuleId('recruit-dash');
+        setActiveModuleId('dash-overview');
         console.log('Login successful - Recruiter', recruiterUser);
         setTimeout(() => navigate('/'), 100);
         return;
@@ -301,7 +298,7 @@ export const Login: React.FC = () => {
         localStorage.setItem('vitas_user_role', 'IT Admin');
         setCurrentUserRole('IT Admin');
         setCurrentUser(itAdminUser);
-        setActiveModuleId('cat-9-risk');
+        setActiveModuleId('dash-overview');
         console.log('Login successful - IT Admin', itAdminUser);
         setTimeout(() => navigate('/'), 100);
         return;
@@ -372,15 +369,7 @@ export const Login: React.FC = () => {
               ...(Object.keys(modulePerms).length > 0 ? { modulePermissions: modulePerms } : {})
             };
 
-            // Determine initial module based on allowed modules
-            let initialModule = assignedRole === 'HR Manager' ? 'emp-hr-directory' : (isAdminCustom ? 'sec-roles-permissions' : 'dash-overview');
-            if (modulePerms['employees']) initialModule = 'emp-hr-directory';
-            else if (modulePerms['attendance']) initialModule = 'leave-attendance';
-            else if (modulePerms['payroll']) initialModule = 'pay-dashboard';
-            else if (modulePerms['recruitment']) initialModule = 'recruit-dash';
-            else if (modulePerms['reports']) initialModule = 'sys-dynamic-reports';
-            else if (isAdminCustom || modulePerms['sec-roles-permissions']) initialModule = 'sec-roles-permissions';
-            else if (modulePerms['risk']) initialModule = 'risk-assessment';
+            let initialModule = 'dash-overview';
 
             localStorage.setItem('vitas_current_user', JSON.stringify(customUserProfile));
             localStorage.setItem('vitas_user_role', assignedRole);
@@ -489,6 +478,7 @@ export const Login: React.FC = () => {
       localStorage.setItem('vitas_user_role', finalRoleToStore);
       setCurrentUserRole(finalRoleToStore);
       setCurrentUser(employeeUser);
+      setActiveModuleId('dash-overview');
 
       console.log('Login successful - Employee', employeeUser);
 

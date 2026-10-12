@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { CATEGORY_GROUPS } from '../data/categories';
+import { employeeMatchesBilingualQuery } from '../utils/bilingualSearch';
 
 interface AvatarProps {
   photo?: string;
@@ -121,14 +122,8 @@ export const GlobalSearchModal: React.FC = () => {
   );
 
   const matchedEmployees = employees.filter(e => {
-    if (!query) return false;
-    const q = query.toLowerCase().trim();
-    const nameAr = (e.fullName || e.fullNameAr || e.full_name_ar || '').toLowerCase();
-    const nameEn = (e.fullNameEn || e.full_name_en || '').toLowerCase();
-    const empId = (e.employeeId || e.employee_id || e.id || '').toLowerCase();
-    const dept = (e.department || e.departmentEn || '').toLowerCase();
-    const job = (e.jobTitle || e.jobTitleEn || '').toLowerCase();
-    return nameAr.includes(q) || nameEn.includes(q) || empId.includes(q) || dept.includes(q) || job.includes(q);
+    if (!query || !query.trim()) return false;
+    return employeeMatchesBilingualQuery(e, query);
   });
 
   const matchedJobs = jobVacancies.filter(j =>

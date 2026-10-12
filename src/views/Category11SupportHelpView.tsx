@@ -651,7 +651,7 @@ export const Category11SupportHelpView: React.FC = () => {
                 <span>{t('الكل مقروء', 'Mark All Read')}</span>
               </button>
               <span className="text-xs bg-teal-500/10 text-teal-700 dark:text-teal-400 font-mono font-bold px-3 py-1 rounded-full border border-teal-500/20">
-                {notifications.filter(n => !n.read).length} {t('غير مقروءة', 'unread')}
+                {notifications.filter(n => !(n.read === true || n.read === 1 || (n as any).is_read === 1 || (n as any).is_read === true)).length} {t('غير مقروءة', 'unread')}
               </span>
             </div>
           </div>
@@ -664,26 +664,29 @@ export const Category11SupportHelpView: React.FC = () => {
             />
           ) : (
             <div className="space-y-3">
-              {notifications.map(n => (
-                <div
-                  key={n.id}
-                  onClick={() => markNotificationRead(n.id)}
-                  className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                    n.read
-                      ? isDark ? 'bg-[#0a0c10] border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-700'
-                      : isDark ? 'bg-teal-600/10 border-teal-500/30 text-white font-bold' : 'bg-teal-50 border-teal-300 text-slate-900 font-bold shadow-sm'
-                  }`}
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      {!n.read && <span className="w-2 h-2 rounded-full bg-teal-500 inline-block animate-pulse"></span>}
-                      <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{n.title}</p>
-                    </div>
+              {notifications.map(n => {
+                const isRead = Boolean(n.read === true || n.read === 1 || (n as any).is_read === 1 || (n as any).is_read === true);
+                return (
+                  <div
+                    key={n.id}
+                    onClick={() => markNotificationRead(n.id)}
+                    className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                      isRead
+                        ? isDark ? 'bg-[#0a0c10] border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-700'
+                        : isDark ? 'bg-teal-600/10 border-teal-500/30 text-white font-bold' : 'bg-teal-50 border-teal-300 text-slate-900 font-bold shadow-sm'
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        {!isRead && <span className="w-2 h-2 rounded-full bg-teal-500 inline-block animate-pulse"></span>}
+                        <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{n.title}</p>
+                      </div>
                     <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'} font-medium`}>{n.message}</p>
                   </div>
                   <span className="text-xs font-mono font-bold text-slate-500 whitespace-nowrap mr-3">{n.timestamp}</span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

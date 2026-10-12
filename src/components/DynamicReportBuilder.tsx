@@ -999,11 +999,11 @@ export const DynamicReportBuilder: React.FC = () => {
         </div>
 
         {/* Excel Formatted Interactive Table */}
-        <div className="overflow-x-auto rounded-2xl border border-white/10 shadow-inner bg-[#0a0c10]">
-          <table className="w-full text-xs text-right border-collapse">
-            <thead>
-              <tr className="bg-[#1e293b] text-white font-bold border-b border-white/10 select-none">
-                <th className="p-3 text-center border-l border-white/10 w-12 font-mono text-white bg-slate-900">#</th>
+        <div className={`overflow-x-auto rounded-2xl border ${isDark ? 'border-white/10 shadow-inner bg-[#0a0c10]' : 'border-slate-200 shadow-sm bg-white'}`}>
+          <table className="w-full text-xs text-right border-collapse dynamic-report-excel-grid">
+            <thead className="dynamic-report-excel-thead">
+              <tr className="dynamic-report-excel-tr bg-[#1e293b] text-white font-bold border-b border-white/10 select-none">
+                <th className="dynamic-report-th-num p-3 text-center border-l border-white/10 w-12 font-mono text-white bg-slate-900">#</th>
                 {selectedFields.map(fKey => {
                   const meta = availableFields.find(f => f.key === fKey)!;
                   const isSorted = sortBy === fKey;
@@ -1014,10 +1014,10 @@ export const DynamicReportBuilder: React.FC = () => {
                         if (sortBy === fKey) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                         else { setSortBy(fKey); setSortOrder('asc'); }
                       }}
-                      className="p-3 border-l border-white/10 hover:bg-white/5 cursor-pointer whitespace-nowrap transition-colors"
+                      className="dynamic-report-th p-3 border-l border-white/10 hover:bg-white/5 cursor-pointer whitespace-nowrap transition-colors"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-white font-bold">{language === "en" ? (meta?.labelEn || fKey) : (meta?.labelAr || fKey)}</span>
+                        <span className="font-bold">{language === "en" ? (meta?.labelEn || fKey) : (meta?.labelAr || fKey)}</span>
                         {isSorted && (
                           <span className="material-symbols-outlined text-teal-400 text-xs">
                             {sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}

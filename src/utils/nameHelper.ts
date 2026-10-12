@@ -2,8 +2,7 @@
  * Name localization & transliteration utility for HRMS Candidates and Employees
  */
 
-// Comprehensive Arabic <-> English Name Mapping Dictionary
-const NAME_MAP_EN_TO_AR: Record<string, string> = {
+export const NAME_MAP_EN_TO_AR: Record<string, string> = {
   // First & Common Names
   'mustafa': 'مصطفى',
   'moustafa': 'مصطفى',
@@ -233,7 +232,84 @@ const NAME_MAP_EN_TO_AR: Record<string, string> = {
   'wissam': 'وسام',
   'yahya': 'يحيى',
   'ziad': 'زياد',
-  'zeyad': 'زياد'
+  'zeyad': 'زياد',
+  // Additional Iraqi / Regional Names & Surnames
+  'al': 'ال',
+  'el': 'ال',
+  'bayati': 'بياتي',
+  'albayati': 'البياتي',
+  'bayadli': 'بيادلي',
+  'albayadli': 'البيدلي',
+  'toma': 'توما',
+  'thomas': 'توما',
+  'hamoud': 'حمود',
+  'hamood': 'حمود',
+  'khanjar': 'خنجر',
+  'musa': 'موسى',
+  'mousa': 'موسى',
+  'moosa': 'موسى',
+  'jalal': 'جلال',
+  'shler': 'شلر',
+  'shleer': 'شلير',
+  'nazem': 'ناظم',
+  'nadhim': 'ناظم',
+  'hashem': 'هاشم',
+  'hashim': 'هاشم',
+  'rahim': 'رحيم',
+  'raheem': 'رحيم',
+  'sadoun': 'سعدون',
+  'saadoun': 'سعدون',
+  'jalawi': 'جلاوي',
+  'nazif': 'نظيف',
+  'nadheef': 'نظيف',
+  'sadia': 'سعدية',
+  'saadia': 'سعدية',
+  'munshed': 'منشد',
+  'kazzar': 'كزار',
+  'rawad': 'رواد',
+  'dakhel': 'داخل',
+  'dakhil': 'داخل',
+  'abdalmhdy': 'عبد المهدي',
+  'abdelmahdi': 'عبد المهدي',
+  'abdalmahdi': 'عبد المهدي',
+  'radiya': 'راضية',
+  'radhiya': 'راضية',
+  'muhaisen': 'محيسن',
+  'muhsen': 'محسن',
+  'osama': 'أسامة',
+  'ousama': 'أسامة',
+  'usama': 'أسامة',
+  'najm': 'نجم',
+  'najim': 'نجم',
+  'akar': 'اكار',
+  'nema': 'نعمة',
+  'nimah': 'نعمة',
+  'neamah': 'نعمة',
+  'muhi': 'محي',
+  'azzawi': 'عزاوي',
+  'alazzawi': 'العزاوي',
+  'askar': 'عسكر',
+  'jlyl': 'جليل',
+  'aljlyl': 'عبد الجليل',
+  'jawad': 'جواد',
+  'yasiri': 'ياسري',
+  'alyasiri': 'الياسري',
+  'ayat': 'آيات',
+  'saleh': 'صالح',
+  'salih': 'صالح',
+  'shakir': 'شاكر',
+  'shaker': 'شاكر',
+  'dirgham': 'ضرغام',
+  'abdalrda': 'عبد الرضا',
+  'fawzia': 'فوزية',
+  'fawziya': 'فوزية',
+  'ayal': 'عيال',
+  'ferial': 'فريال',
+  'firial': 'فريال',
+  'dawood': 'داود',
+  'dawud': 'داود',
+  'isho': 'ايشو',
+  'ishoo': 'ايشو'
 };
 
 const PHONETIC_LETTER_MAP: Record<string, string> = {
@@ -287,15 +363,29 @@ export function transliterateEnglishNameToArabic(name: string): string {
   if (!name || !name.trim()) return '';
   if (hasArabicCharacters(name)) return name.trim();
 
-  // Split by words/whitespace
-  const words = name.trim().split(/\s+/);
+  // Split by words, whitespace, or hyphens
+  const words = name.trim().replace(/[-_]/g, ' ').split(/\s+/);
   const arabicWords = words.map(word => {
     const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '');
     if (!cleanWord) return word;
 
-    // Check exact dictionary match
+    // Direct match
     if (NAME_MAP_EN_TO_AR[cleanWord]) {
       return NAME_MAP_EN_TO_AR[cleanWord];
+    }
+
+    // Check if starts with 'al' or 'el'
+    if (cleanWord.startsWith('al') && cleanWord.length > 3) {
+      const rest = cleanWord.substring(2);
+      if (NAME_MAP_EN_TO_AR[rest]) {
+        return 'ال' + NAME_MAP_EN_TO_AR[rest];
+      }
+    }
+    if (cleanWord.startsWith('el') && cleanWord.length > 3) {
+      const rest = cleanWord.substring(2);
+      if (NAME_MAP_EN_TO_AR[rest]) {
+        return 'ال' + NAME_MAP_EN_TO_AR[rest];
+      }
     }
 
     // Phonetic fallback

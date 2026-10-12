@@ -7,6 +7,7 @@ import { CompanyNews } from '../components/CompanyNews';
 import { Employee, EmployeeChild } from '../types';
 import { api } from '../api/client';
 import { ContractPreviewModal } from '../components/ContractPreviewModal';
+import { getBranchName } from '../utils/branchHelper';
 
 export const Category3EmployeeView: React.FC = () => {
   const {
@@ -300,16 +301,8 @@ export const Category3EmployeeView: React.FC = () => {
 
   const getEmpBranch = (emp: any) => {
     if (!emp) return '-';
-    if (language === 'en') {
-      const enBranch = emp.branchEn || emp.branch_en || emp.location_en;
-      if (enBranch && enBranch !== 'N/A' && enBranch.trim() !== '') return enBranch;
-      const arBranch = emp.branch || emp.location_ar;
-      const foundLoc = locations.find((l: any) => l.name_ar === arBranch || l.name === arBranch);
-      if (foundLoc?.name_en) return foundLoc.name_en;
-      if (arBranch && dictEn[arBranch]) return dictEn[arBranch];
-      return arBranch || '-';
-    }
-    return emp.branch || emp.location_ar || '-';
+    const localized = getBranchName(emp.branch || emp.location_ar, emp.branchEn || emp.branch_en || emp.location_en, language);
+    return localized || '-';
   };
 
   // 7 Tabs Form State
@@ -1458,12 +1451,12 @@ export const Category3EmployeeView: React.FC = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`w-11 h-11 rounded-xl font-black text-lg flex items-center justify-center shadow overflow-hidden shrink-0 ${
-                          theme === 'dark'
-                            ? 'bg-teal-600/20 text-blue-400 border border-blue-500/30'
-                            : 'bg-blue-50 text-blue-600 border border-blue-200'
+                          emp.photoUrl
+                            ? (theme === 'dark' ? 'bg-[#1a1f2e] border border-blue-500/30' : 'bg-white border border-slate-200')
+                            : (theme === 'dark' ? 'bg-teal-600/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200')
                         }`}>
                           {emp.photoUrl ? (
-                            <img src={emp.photoUrl} alt={getEmpFullName(emp)} className="w-full h-full object-cover" />
+                            <img src={emp.photoUrl} alt={getEmpFullName(emp)} className="w-full h-full object-contain p-0.5" />
                           ) : (
                             getEmpFullName(emp)?.slice(0, 1) || 'U'
                           )}
@@ -1799,7 +1792,7 @@ export const Category3EmployeeView: React.FC = () => {
                       <div className="flex items-center gap-2.5">
                         <div className="w-9 h-9 rounded-lg bg-[#0a0c10] border border-white/10 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                           {photoUrl ? (
-                            <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                            <img src={photoUrl} alt="Preview" className="w-full h-full object-contain p-0.5" />
                           ) : (
                             <span className="material-symbols-outlined text-slate-500 text-lg">person</span>
                           )}
@@ -3081,7 +3074,7 @@ export const Category3EmployeeView: React.FC = () => {
                           <div className="flex items-center gap-2.5">
                             <div className={`w-8 h-8 rounded-full ${profileColors.badgeBg} ${profileColors.badgeText} font-black text-xs flex items-center justify-center overflow-hidden shrink-0`}>
                               {emp.photoUrl ? (
-                                <img src={emp.photoUrl} alt={getEmpFullName(emp)} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src={emp.photoUrl} alt={getEmpFullName(emp)} className="w-full h-full object-contain p-0.5" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                               ) : (
                                 <span className={`material-symbols-outlined text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>person</span>
                               )}
@@ -3154,15 +3147,15 @@ export const Category3EmployeeView: React.FC = () => {
 
                 {/* Avatar with Ring & Status Badge & Edit Photo Overlay Icon */}
                 <div className="relative group mb-5">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-teal-400 via-teal-300 to-teal-500 rounded-full blur-md opacity-50 group-hover:opacity-80 transition-all duration-500" />
+                  <div className="absolute -inset-2 bg-gradient-to-r from-teal-400 via-teal-300 to-teal-500 rounded-2xl blur-md opacity-50 group-hover:opacity-80 transition-all duration-500" />
 
-                  {/* Photo Avatar */}
-                  <div className={`relative w-36 h-36 rounded-full border-4 ${isDark ? 'border-[#1a1f2e]' : 'border-white'} ${isDark ? 'bg-[#1a1f2e]' : 'bg-slate-100'} shadow-2xl overflow-hidden flex items-center justify-center ${isDark ? 'text-blue-400' : 'text-blue-600'} text-4xl font-black shrink-0`}>
+                  {/* Photo Avatar Frame (Matches 3:4 Portrait ID Photos) */}
+                  <div className={`relative w-40 h-52 rounded-2xl border-4 ${isDark ? 'border-[#1a1f2e]' : 'border-white'} ${isDark ? 'bg-[#1a1f2e]' : 'bg-white'} shadow-2xl overflow-hidden flex items-center justify-center ${isDark ? 'text-blue-400' : 'text-blue-600'} text-4xl font-black shrink-0`}>
                     {selectedEmployee.photoUrl && !avatarImgError ? (
                       <img
                         src={selectedEmployee.photoUrl}
                         alt={selectedEmployee.fullName}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain p-1 rounded-xl"
                         onError={() => setAvatarImgError(true)}
                       />
                     ) : (
@@ -3172,8 +3165,8 @@ export const Category3EmployeeView: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Status Indicator Badge (Bottom Right) */}
-                  <span className={`absolute bottom-2 right-2 w-6 h-6 rounded-full border-4 ${isDark ? 'border-[#1a1f2e]' : 'border-white'} z-10 ${
+                  {/* Status Indicator Badge (Bottom Right Corner) */}
+                  <span className={`absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full border-4 ${isDark ? 'border-[#1a1f2e]' : 'border-white'} z-10 ${
                     selectedEmployee.status === 'Active' ? 'bg-emerald-500 shadow-md shadow-emerald-500/40' : 'bg-amber-500'
                   }`} title={selectedEmployee.status} />
 
@@ -3188,7 +3181,7 @@ export const Category3EmployeeView: React.FC = () => {
                         setActiveModuleId('emp-edit');
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className="absolute bottom-1 left-1 w-10 h-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white border-2 border-white shadow-xl flex items-center justify-center z-20 transition-all hover:scale-110 active:scale-95 group/edit cursor-pointer"
+                      className="absolute -bottom-2 -left-2 w-10 h-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white border-2 border-white shadow-xl flex items-center justify-center z-20 transition-all hover:scale-110 active:scale-95 group/edit cursor-pointer"
                       title={t('تعديل بيانات وصورة الموظف', 'Edit Employee Profile')}
                     >
                       <span className="material-symbols-outlined text-base">edit</span>
@@ -4420,3 +4413,5 @@ export const Category3EmployeeView: React.FC = () => {
     </div>
   );
 };
+
+export default Category3EmployeeView;

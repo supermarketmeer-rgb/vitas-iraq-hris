@@ -1,5 +1,81 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { getBranchName } from '../utils/branchHelper';
+
+const POSITION_EN_MAP: Record<string, string> = {
+  'عامل صيانه وسائق': 'Maintenance Worker & Driver',
+  'عامل صيانة وسائق': 'Maintenance Worker & Driver',
+  'عمال نظافة': 'Cleaners',
+  'عامل نظافة': 'Cleaner',
+  'مسؤول قروض': 'Loan Officer',
+  'مسؤول قروض محصل': 'Collector Loan Officer',
+  'مدير مكتب': 'Office Manager',
+  'مدير الفرع': 'Branch Manager',
+  'نائب منسق اقليمي': 'Regional Deputy Coordinator',
+  'نائب منسق إقليمي': 'Regional Deputy Coordinator',
+  'مساعد ائتمان القروض الصغيره': 'Microfinance Loan Assistant',
+  'مساعد ائتمان القروض الصغيرة': 'Microfinance Loan Assistant',
+  'مدير الموارد البشرية': 'HR Manager',
+  'محاسب رئيسي': 'Chief Accountant',
+  'مسؤول تقنية المعلومات': 'IT Officer',
+  'مسؤول الامتثال والمخاطر': 'Risk & Compliance Officer',
+  'مسؤول تدريب وتطوير': 'Training & Development Officer',
+  'مدير العمليات': 'Operations Manager',
+  'مدير التدقيق الداخلي': 'Internal Audit Manager'
+};
+
+const DEPARTMENT_EN_MAP: Record<string, string> = {
+  'قسم الائتمان': 'Credit Department',
+  'الائتمان': 'Credit Department',
+  'قسم الاتئمان': 'Credit Department',
+  'الموارد البشرية': 'Human Resources',
+  'قسم الموارد البشرية': 'Human Resources Department',
+  'المعلوماتية والاتصالات': 'IT & Communications',
+  'تكنولوجيا المعلومات': 'Information Technology',
+  'المالية والمحاسبة': 'Finance & Accounting',
+  'القسم المالي': 'Finance Department',
+  'قسم الخزينة': 'Treasury Department',
+  'الخزينة': 'Treasury Department',
+  'المخاطر والامتثال': 'Risk & Compliance',
+  'المشتريات والتسهيلات': 'Procurement & Facilities',
+  'قسم المشتريات والتسهيلات': 'Procurement & Facilities',
+  'الأمن': 'Security',
+  'قسم الأمن': 'Security Department',
+  'العمليات': 'Operations',
+  'الشؤون القانونية': 'Legal Affairs',
+  'التدقيق الداخلي': 'Internal Audit'
+};
+
+const getLocalizedPosition = (emp: any, lang: string): string => {
+  if (lang === 'en') {
+    const en = emp.jobTitleEn || emp.position_en || emp.job_title_en;
+    if (en && en !== 'N/A' && en.trim() !== '') return en;
+    const ar = emp.jobTitle || emp.position_ar || emp.position || '';
+    if (ar && POSITION_EN_MAP[ar.trim()]) return POSITION_EN_MAP[ar.trim()];
+    return ar || '-';
+  }
+  return emp.jobTitle || emp.position_ar || emp.position || '-';
+};
+
+const getLocalizedDepartment = (emp: any, lang: string): string => {
+  if (lang === 'en') {
+    const en = emp.departmentEn || emp.department_en;
+    if (en && en !== 'N/A' && en.trim() !== '') return en;
+    const ar = emp.department || emp.department_ar || '';
+    if (ar && DEPARTMENT_EN_MAP[ar.trim()]) return DEPARTMENT_EN_MAP[ar.trim()];
+    return ar || '-';
+  }
+  return emp.department || emp.department_ar || '-';
+};
+
+const getLocalizedFullName = (emp: any, lang: string): string => {
+  if (lang === 'en') {
+    const en = emp.fullNameEn || emp.full_name_en;
+    if (en && en !== 'N/A' && en.trim() !== '') return en;
+    return emp.fullName || emp.full_name_ar || '-';
+  }
+  return emp.fullName || emp.full_name_ar || '-';
+};
 
 export const Category7PerformanceView: React.FC = () => {
   const { activeModuleId, currentUser, employees, isDark, t, language } = useApp();
@@ -21,26 +97,46 @@ export const Category7PerformanceView: React.FC = () => {
     return employees.map((emp, idx) => {
       const baseScore = 4.0 + ((idx * 7) % 10) / 10;
       const score = Math.min(5.0, Math.max(3.5, Number(baseScore.toFixed(1))));
-      let grade = 'ممتاز (Excellent)';
-      if (score < 4.2) grade = 'جيد جداً (Very Good)';
-      if (score < 3.8) grade = 'جيد (Good)';
+      let gradeAr = 'ممتاز';
+      let gradeEn = 'Excellent';
+      if (score < 4.2) {
+        gradeAr = 'جيد جداً';
+        gradeEn = 'Very Good';
+      }
+      if (score < 3.8) {
+        gradeAr = 'جيد';
+        gradeEn = 'Good';
+      }
+
+      const isCompleted = idx % 6 !== 0;
+      const statusAr = isCompleted ? 'مكتمل ومعتمد' : 'قيد التقييم';
+      const statusEn = isCompleted ? 'Completed & Approved' : 'Under Review';
 
       return {
         ...emp,
         score,
-        grade,
+        gradeAr,
+        gradeEn,
+        grade: language === 'en' ? gradeEn : gradeAr,
         kpiCompletion: Math.min(100, Math.round(score * 20)),
-        status: idx % 6 === 0 ? 'قيد التقييم' : 'مكتمل ومعتمد'
+        isCompleted,
+        statusAr,
+        statusEn,
+        status: statusAr
       };
     });
-  }, [employees]);
+  }, [employees, language]);
 
   const filteredEvaluations = useMemo(() => {
     if (selectedDeptFilter === 'All') return employeeEvaluations;
-    return employeeEvaluations.filter(e => e.department === selectedDeptFilter);
+    return employeeEvaluations.filter(e => {
+      const dAr = e.department || e.department_ar || '';
+      const dEn = getLocalizedDepartment(e, 'en');
+      return dAr === selectedDeptFilter || dEn === selectedDeptFilter;
+    });
   }, [employeeEvaluations, selectedDeptFilter]);
 
-  const completedAppraisalsCount = employeeEvaluations.filter(e => e.status === 'مكتمل ومعتمد').length;
+  const completedAppraisalsCount = employeeEvaluations.filter(e => e.isCompleted).length;
   const avgScore = (employeeEvaluations.reduce((sum, e) => sum + e.score, 0) / (employees.length || 1)).toFixed(1);
 
   return (
@@ -122,16 +218,16 @@ export const Category7PerformanceView: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-white/10">
-              <table className="w-full text-xs text-right">
+              <table className={`w-full text-xs ${language === 'en' ? 'text-left' : 'text-right'}`}>
                 <thead className="bg-[#06080d] text-slate-200 border-b border-white/10 font-normal">
                   <tr>
                     <th className="p-3">#</th>
                     <th className="p-3">{t('اسم الموظف والرمز', 'Employee & ID')}</th>
-                    <th className="p-3">{t('الفرع والفرع الفرعي', 'Branch / Location')}</th>
+                    <th className="p-3">{t('الفرع والموقع', 'Branch / Location')}</th>
                     <th className="p-3">{t('المسمى والقسم', 'Position & Dept')}</th>
                     <th className="p-3">{t('درجة الإنجاز', 'KPI Target %')}</th>
-                    <th className="p-3">{t('التقييم النهائى (Score)', 'Final Rating')}</th>
-                    <th className="p-3 text-center">{t('الحالة (Status)', 'Status')}</th>
+                    <th className="p-3">{t('التقييم النهائي', 'Final Rating')}</th>
+                    <th className="p-3 text-center">{t('الحالة', 'Status')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-slate-200 bg-[#0a0c10]">
@@ -139,28 +235,30 @@ export const Category7PerformanceView: React.FC = () => {
                     <tr key={emp.id} className="hover:bg-white/5 transition-colors font-normal">
                       <td className="p-3 font-mono text-slate-500">{idx + 1}</td>
                       <td className="p-3">
-                        <span className="font-normal text-white block">{language === 'en' ? emp.fullNameEn || emp.fullName : emp.fullName}</span>
+                        <span className="font-normal text-white block">{getLocalizedFullName(emp, language)}</span>
                         <span className="text-[10px] font-mono text-teal-400">
                           {String(emp.employeeId || emp.badgeNo || '').startsWith('VTS-')
                             ? (emp.employeeId || emp.badgeNo)
                             : `VTS-${emp.employeeId || emp.badgeNo || emp.id}`}
                         </span>
                       </td>
-                      <td className="p-3 text-slate-200">{emp.branch || emp.location_ar || 'السليمانية'}</td>
-                      <td className="p-3 text-slate-200">{emp.jobTitle || emp.position_ar || emp.position}</td>
+                      <td className="p-3 text-slate-200">
+                        {getBranchName(emp.branch || emp.location_ar, emp.branchEn || emp.branch_en || emp.location_en, language)}
+                      </td>
+                      <td className="p-3 text-slate-200">{getLocalizedPosition(emp, language)}</td>
                       <td className="p-3 font-mono text-teal-400">{emp.kpiCompletion}%</td>
                       <td className="p-3">
                         <span className="px-2.5 py-1 rounded-xl text-xs font-mono bg-[#06080d] text-purple-300 border border-purple-500/30 inline-block">
-                          {emp.score} / 5.0 ({emp.grade})
+                          {emp.score} / 5.0 ({language === 'en' ? emp.gradeEn : emp.gradeAr})
                         </span>
                       </td>
                       <td className="p-3 text-center">
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-normal ${
-                          emp.status === 'مكتمل ومعتمد'
+                          emp.isCompleted
                             ? 'bg-[#06080d] text-emerald-400 border border-emerald-500/30'
                             : 'bg-[#06080d] text-amber-400 border border-amber-500/30'
                         }`}>
-                          {emp.status}
+                          {language === 'en' ? emp.statusEn : emp.statusAr}
                         </span>
                       </td>
                     </tr>
@@ -256,7 +354,7 @@ export const Category7PerformanceView: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-white/10">
-            <table className="w-full text-xs text-right">
+            <table className={`w-full text-xs ${language === 'en' ? 'text-left' : 'text-right'}`}>
               <thead className="bg-[#06080d] text-slate-200 border-b border-white/10 font-normal">
                 <tr>
                   <th className="p-3">#</th>
@@ -264,7 +362,7 @@ export const Category7PerformanceView: React.FC = () => {
                   <th className="p-3">{t('القسم والمسمى', 'Dept & Position')}</th>
                   <th className="p-3">{t('التقييم الذاتي', 'Self Rating')}</th>
                   <th className="p-3">{t('تقييم المدير (1 - 5)', 'Manager Rating')}</th>
-                  <th className="p-3 text-center">{t('الإجراء (Action)', 'Action')}</th>
+                  <th className="p-3 text-center">{t('الإجراء', 'Action')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-slate-200 bg-[#0a0c10]">
@@ -272,21 +370,21 @@ export const Category7PerformanceView: React.FC = () => {
                   <tr key={emp.id} className="hover:bg-white/5 transition-colors font-normal">
                     <td className="p-3 font-mono text-slate-500">{idx + 1}</td>
                     <td className="p-3 text-white">
-                      <span className="block font-normal">{emp.fullName}</span>
+                      <span className="block font-normal">{getLocalizedFullName(emp, language)}</span>
                       <span className="text-[10px] font-mono text-teal-400">
                         {String(emp.employeeId || emp.badgeNo || '').startsWith('VTS-')
                           ? (emp.employeeId || emp.badgeNo)
                           : `VTS-${emp.employeeId || emp.badgeNo || emp.id}`}
                       </span>
                     </td>
-                    <td className="p-3 text-slate-200">{emp.jobTitle || emp.position_ar} • {emp.department}</td>
+                    <td className="p-3 text-slate-200">{getLocalizedPosition(emp, language)} • {getLocalizedDepartment(emp, language)}</td>
                     <td className="p-3 font-mono text-teal-400">{emp.score} / 5.0</td>
                     <td className="p-3">
                       <select className="px-2.5 py-1 rounded-xl text-xs font-normal bg-[#06080d] text-white border border-white/15 focus:outline-none">
-                        <option value="5.0">5.0 (ممتاز)</option>
-                        <option value="4.5">4.5 (جيد جداً)</option>
-                        <option value="4.0">4.0 (جيد)</option>
-                        <option value="3.5">3.5 (مقبول)</option>
+                        <option value="5.0">5.0 {language === 'en' ? '(Excellent)' : '(ممتاز)'}</option>
+                        <option value="4.5">4.5 {language === 'en' ? '(Very Good)' : '(جيد جداً)'}</option>
+                        <option value="4.0">4.0 {language === 'en' ? '(Good)' : '(جيد)'}</option>
+                        <option value="3.5">3.5 {language === 'en' ? '(Satisfactory)' : '(مقبول)'}</option>
                       </select>
                     </td>
                     <td className="p-3 text-center">

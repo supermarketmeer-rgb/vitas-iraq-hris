@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
+import { EmployeePortal } from '../components/EmployeePortal';
+import { filterEmployeesBilingual } from '../utils/bilingualSearch';
+import { getBranchName } from '../utils/branchHelper';
 
 export const Category2DashboardView: React.FC = () => {
   const {
@@ -38,23 +41,36 @@ export const Category2DashboardView: React.FC = () => {
 
   const turnoverRateStr = totalEmployeesCount > 0 ? ((resignedStaffCount / totalEmployeesCount) * 100).toFixed(1) : '0.0';
 
-  // Branch breakdown live calculation
+  // Branch breakdown live calculation with bilingual office names
   const branchCounts = useMemo(() => {
-    const map: Record<string, { count: number; totalSalary: number }> = {};
+    const map: Record<string, { count: number; totalSalary: number; rawKey: string; branchAr: string; branchEn: string }> = {};
     employees.forEach(e => {
-      const b = e.branch || e.location_ar || 'السليمانية';
+      const bKey = e.branch || e.location_ar || 'السليمانية';
+      const bEn = e.branchEn || e.location_en;
       const sal = Number(e.basicSalary ?? e.basic_salary ?? e.salary) || 1250000;
-      if (!map[b]) map[b] = { count: 0, totalSalary: 0 };
-      map[b].count += 1;
-      map[b].totalSalary += sal;
+      if (!map[bKey]) {
+        map[bKey] = {
+          count: 0,
+          totalSalary: 0,
+          rawKey: bKey,
+          branchAr: getBranchName(bKey, bEn, 'ar'),
+          branchEn: getBranchName(bKey, bEn, 'en')
+        };
+      }
+      map[bKey].count += 1;
+      map[bKey].totalSalary += sal;
     });
-    return Object.entries(map).map(([branch, data]) => ({
-      branch,
+
+    return Object.values(map).map(data => ({
+      rawKey: data.rawKey,
+      branch: language === 'en' ? data.branchEn : data.branchAr,
+      branchAr: data.branchAr,
+      branchEn: data.branchEn,
       count: data.count,
       totalSalary: data.totalSalary,
       percent: Math.round((data.count / (totalEmployeesCount || 1)) * 100)
     }));
-  }, [employees, totalEmployeesCount]);
+  }, [employees, totalEmployeesCount, language]);
 
   // Dept breakdown live calculation
   const deptCounts = useMemo(() => {
@@ -70,19 +86,9 @@ export const Category2DashboardView: React.FC = () => {
     }));
   }, [employees, totalEmployeesCount]);
 
-  // Search filtered employees for Global Search sub-screen
+  // Search filtered employees for Global Search sub-screen with bilingual Arabic & English support
   const searchFilteredEmployees = useMemo(() => {
-    if (!dashSearchQuery.trim()) return employees;
-    const q = dashSearchQuery.toLowerCase().trim();
-    return employees.filter(e =>
-      (e.fullName && e.fullName.toLowerCase().includes(q)) ||
-      (e.full_name_ar && e.full_name_ar.toLowerCase().includes(q)) ||
-      (e.employeeId && String(e.employeeId).toLowerCase().includes(q)) ||
-      (e.badgeNo && String(e.badgeNo).toLowerCase().includes(q)) ||
-      (e.branch && e.branch.toLowerCase().includes(q)) ||
-      (e.department && e.department.toLowerCase().includes(q)) ||
-      (e.jobTitle && e.jobTitle.toLowerCase().includes(q))
-    );
+    return filterEmployeesBilingual(employees, dashSearchQuery);
   }, [employees, dashSearchQuery]);
 
   const pendingLeavesCount = leaveRequests.filter(r => r.status === 'قيد الانتظار' || r.status === 'Pending').length;
@@ -115,20 +121,21 @@ export const Category2DashboardView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Quick action buttons in top banner (Hidden per user request, code preserved without deletion) */}
+        <div className="hidden items-center gap-2.5 flex-wrap">
           {/* Dynamic Report Builder - Super Admin, HR Manager, or users with reports permission */}
           {(currentUser.role === 'Super Admin' || currentUser.role === 'HR Manager' ||
             currentUser.modulePermissions?.['reports']) && (
             <button
               onClick={() => setActiveModuleId('sys-dynamic-reports')}
-              style={{ color: '#0d9488' }}
+              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
               className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
                   ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
                   : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
                 }`}
             >
-              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>table_chart</span>
-              <span style={{ color: '#0d9488' }}>{t('منشئ التقارير الديناميكية', 'Dynamic Report Builder')}</span>
+              <span className="material-symbols-outlined text-base">table_chart</span>
+              <span>{t('منشئ التقارير الديناميكية', 'Dynamic Report Builder')}</span>
             </button>
           )}
 
@@ -137,14 +144,14 @@ export const Category2DashboardView: React.FC = () => {
             (currentUser.can_manage_employees === 1 && currentUser.role !== 'Recruiter')) && (
             <button
               onClick={() => setActiveModuleId('emp-add')}
-              style={{ color: '#0d9488' }}
+              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
               className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
                   ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
                   : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
                 }`}
             >
-              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>person_add</span>
-              <span style={{ color: '#0d9488' }}>{t('إضافة موظف جديد', 'Add New Employee')}</span>
+              <span className="material-symbols-outlined text-base">person_add</span>
+              <span>{t('إضافة موظف جديد', 'Add New Employee')}</span>
             </button>
           )}
 
@@ -152,14 +159,14 @@ export const Category2DashboardView: React.FC = () => {
           {currentUser.role === 'Recruiter' && (
             <button
               onClick={() => setActiveModuleId('recruit-dash')}
-              style={{ color: '#0d9488' }}
+              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
               className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
                   ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
                   : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
                 }`}
             >
-              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>work</span>
-              <span style={{ color: '#0d9488' }}>{t('نشر وظيفة شاغرة', 'Post Job Vacancy')}</span>
+              <span className="material-symbols-outlined text-base">work</span>
+              <span>{t('نشر وظيفة شاغرة', 'Post Job Vacancy')}</span>
             </button>
           )}
 
@@ -167,14 +174,14 @@ export const Category2DashboardView: React.FC = () => {
           {currentUser.role !== 'IT Admin' && (
             <button
               onClick={() => setActiveModuleId('leave-apply')}
-              style={{ color: '#0d9488' }}
+              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
               className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
                   ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md'
                   : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
                 }`}
             >
-              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>edit_calendar</span>
-              <span style={{ color: '#0d9488' }}>{t('تقديم إجازة', 'Apply for Leave')}</span>
+              <span className="material-symbols-outlined text-base">edit_calendar</span>
+              <span>{t('تقديم إجازة', 'Apply for Leave')}</span>
             </button>
           )}
 
@@ -182,14 +189,14 @@ export const Category2DashboardView: React.FC = () => {
           {currentUser.role === 'IT Admin' && (
             <button
               onClick={() => setActiveModuleId('sys-health-monitor')}
-              style={{ color: '#0d9488' }}
+              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
               className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
                   ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md'
                   : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
                 }`}
             >
-              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>monitor_heart</span>
-              <span style={{ color: '#0d9488' }}>{t('مراقبة صحة النظام', 'System Health Monitor')}</span>
+              <span className="material-symbols-outlined text-base">monitor_heart</span>
+              <span>{t('مراقبة صحة النظام', 'System Health Monitor')}</span>
             </button>
           )}
 
@@ -199,107 +206,109 @@ export const Category2DashboardView: React.FC = () => {
             currentUser.modulePermissions?.['settings']) && (
             <button
               onClick={() => setActiveModuleId('sec-roles-permissions')}
-              style={{ color: '#0d9488' }}
+              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
               className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
                   ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
                   : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
                 }`}
             >
-              <span className="material-symbols-outlined text-base" style={{ color: '#0d9488' }}>manage_accounts</span>
-              <span style={{ color: '#0d9488' }}>{t('إضافة مستخدم جديد', 'Add New User')}</span>
+              <span className="material-symbols-outlined text-base">manage_accounts</span>
+              <span>{t('إضافة مستخدم جديد', 'Add New User')}</span>
             </button>
           )}
         </div>
 
       </div>
 
-      {/* Real Live KPI Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Card 1: Total Employees */}
-        <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
-            ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-            : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
-          }`}>
-          <div>
-            <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('إجمالي الموظفين', 'Total Employees')}</p>
-            <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalEmployeesCount}</p>
-            <p className={`text-xs font-semibold mt-1 flex items-center gap-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
-              <span className="material-symbols-outlined text-xs">check_circle</span>
-              <span>{totalEmployeesCount} {t('موظفاً حياً مسجلاً', 'active registered staff')}</span>
-            </p>
-          </div>
-          <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
-              ? 'bg-[#06080d] border-teal-500/30 text-teal-400'
-              : 'bg-teal-50/80 border-teal-200/80 text-teal-700 shadow-xs'
+      {/* Real Live KPI Stat Cards - Hidden in ESS to match standalone Employee Portal */}
+      {activeModuleId !== 'dash-ess' && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Card 1: Total Employees */}
+          <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
+              ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
+              : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
             }`}>
-            <span className="material-symbols-outlined text-2xl">groups</span>
+            <div>
+              <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('إجمالي الموظفين', 'Total Employees')}</p>
+              <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalEmployeesCount}</p>
+              <p className={`text-xs font-semibold mt-1 flex items-center gap-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                <span className="material-symbols-outlined text-xs">check_circle</span>
+                <span>{totalEmployeesCount} {t('موظفاً حياً مسجلاً', 'active registered staff')}</span>
+              </p>
+            </div>
+            <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
+                ? 'bg-[#06080d] border-teal-500/30 text-teal-400'
+                : 'bg-teal-50/80 border-teal-200/80 text-teal-700 shadow-xs'
+              }`}>
+              <span className="material-symbols-outlined text-2xl">groups</span>
+            </div>
           </div>
-        </div>
 
-        {/* Card 2: Job Vacancies */}
-        <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
-            ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-            : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
-          }`}>
-          <div>
-            <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الوظائف الشاغرة', 'Job Vacancies')}</p>
-            <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{jobVacancies.length}</p>
-            <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
-              {jobVacancies.length > 0
-                ? `${jobVacancies.length} ${t('وظائف متاحة حالياً', 'active vacancies')}`
-                : t('لا توجد وظائف مفتوحة حالياً', 'No open vacancies')}
-            </p>
-          </div>
-          <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
-              ? 'bg-[#06080d] border-teal-500/30 text-teal-400'
-              : 'bg-teal-50/80 border-teal-200/80 text-teal-700 shadow-xs'
+          {/* Card 2: Job Vacancies */}
+          <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
+              ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
+              : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
             }`}>
-            <span className="material-symbols-outlined text-2xl">business_center</span>
+            <div>
+              <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الوظائف الشاغرة', 'Job Vacancies')}</p>
+              <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{jobVacancies.length}</p>
+              <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                {jobVacancies.length > 0
+                  ? `${jobVacancies.length} ${t('وظائف متاحة حالياً', 'active vacancies')}`
+                  : t('لا توجد وظائف مفتوحة حالياً', 'No open vacancies')}
+              </p>
+            </div>
+            <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
+                ? 'bg-[#06080d] border-teal-500/30 text-teal-400'
+                : 'bg-teal-50/80 border-teal-200/80 text-teal-700 shadow-xs'
+              }`}>
+              <span className="material-symbols-outlined text-2xl">business_center</span>
+            </div>
           </div>
-        </div>
 
-        {/* Card 3: Pending Leave Requests */}
-        <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
-            ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-            : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
-          }`}>
-          <div>
-            <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('طلبات الإجازات القائمة', 'Pending Leave Requests')}</p>
-            <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{pendingLeavesCount}</p>
-            <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>
-              {pendingLeavesCount > 0
-                ? `${pendingLeavesCount} ${t('طلبات بانتظار الاعتماد', 'pending HR review')}`
-                : t('لا توجد طلبات معلقة الان', 'No pending requests')}
-            </p>
-          </div>
-          <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
-              ? 'bg-[#06080d] border-purple-500/30 text-purple-400'
-              : 'bg-purple-50/80 border-purple-200/80 text-purple-700 shadow-xs'
+          {/* Card 3: Pending Leave Requests */}
+          <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
+              ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
+              : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
             }`}>
-            <span className="material-symbols-outlined text-2xl">pending_actions</span>
+            <div>
+              <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('طلبات الإجازات القائمة', 'Pending Leave Requests')}</p>
+              <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{pendingLeavesCount}</p>
+              <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>
+                {pendingLeavesCount > 0
+                  ? `${pendingLeavesCount} ${t('طلبات بانتظار الاعتماد', 'pending HR review')}`
+                  : t('لا توجد طلبات معلقة الان', 'No pending requests')}
+              </p>
+            </div>
+            <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
+                ? 'bg-[#06080d] border-purple-500/30 text-purple-400'
+                : 'bg-purple-50/80 border-purple-200/80 text-purple-700 shadow-xs'
+              }`}>
+              <span className="material-symbols-outlined text-2xl">pending_actions</span>
+            </div>
           </div>
-        </div>
 
-        {/* Card 4: Assets & Documents */}
-        <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
-            ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-            : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
-          }`}>
-          <div>
-            <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الأصول والمستندات المسجلة', 'Assets & Documents')}</p>
-            <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalAssetsAndDocs}</p>
-            <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-              {assetRecords?.length || 0} {t('عهدة', 'assets')} • {documentRecords?.length || 0} {t('وثائق', 'docs')}
-            </p>
-          </div>
-          <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
-              ? 'bg-[#06080d] border-emerald-500/30 text-emerald-400'
-              : 'bg-emerald-50/80 border-emerald-200/80 text-emerald-700 shadow-xs'
+          {/* Card 4: Assets & Documents */}
+          <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
+              ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
+              : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
             }`}>
-            <span className="material-symbols-outlined text-2xl">folder_managed</span>
+            <div>
+              <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الأصول والمستندات المسجلة', 'Assets & Documents')}</p>
+              <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalAssetsAndDocs}</p>
+              <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                {assetRecords?.length || 0} {t('عهدة', 'assets')} • {documentRecords?.length || 0} {t('وثائق', 'docs')}
+              </p>
+            </div>
+            <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
+                ? 'bg-[#06080d] border-emerald-500/30 text-emerald-400'
+                : 'bg-emerald-50/80 border-emerald-200/80 text-emerald-700 shadow-xs'
+              }`}>
+              <span className="material-symbols-outlined text-2xl">folder_managed</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* MODULE VIEW 1: SYSTEM OVERVIEW */}
       {activeModuleId === 'dash-overview' && (
@@ -338,12 +347,13 @@ export const Category2DashboardView: React.FC = () => {
                         }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-xl font-bold flex items-center justify-center border overflow-hidden shadow-xs ${isDark
-                            ? 'bg-teal-500/20 text-teal-400 border-teal-500/30'
-                            : 'bg-teal-50 text-teal-700 border-teal-200'
-                          }`}>
+                        <div className={`w-9 h-9 rounded-xl font-bold flex items-center justify-center border overflow-hidden shadow-xs ${
+                          emp.photoUrl
+                            ? (isDark ? 'bg-[#1a1f2e] border-teal-500/30' : 'bg-white border-teal-200')
+                            : (isDark ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200')
+                        }`}>
                           {emp.photoUrl ? (
-                            <img src={emp.photoUrl} alt={emp.fullName} className="w-full h-full object-cover" />
+                            <img src={emp.photoUrl} alt={emp.fullName} className="w-full h-full object-contain p-0.5" />
                           ) : (
                             <span className="text-sm font-bold">{emp.fullName?.slice(0, 1) || 'U'}</span>
                           )}
@@ -573,28 +583,28 @@ export const Category2DashboardView: React.FC = () => {
               {t('جدول توزيع التكاليف والرواتب حسب الفروع حياً', 'Live Branch Payroll Cost Breakdown')}
             </h3>
             <div className={`overflow-x-auto rounded-2xl border ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-              <table className="w-full text-xs text-right">
+              <table className={`w-full text-xs ${language === 'en' ? 'text-left' : 'text-right'}`}>
                 <thead className={`border-b font-bold ${isDark ? 'bg-[#06080d] text-white border-white/10' : 'bg-[#f8fafc] text-slate-900 border-slate-200'
                   }`}>
                   <tr>
-                    <th className="p-3">#</th>
-                    <th className="p-3">{t('اسم الفرع والموقع', 'Branch Location')}</th>
-                    <th className="p-3">{t('عدد الكادر', 'Staff Count')}</th>
-                    <th className="p-3">{t('الراتب الأساسي الكلي', 'Total Basic Payroll')}</th>
-                    <th className="p-3">{t('البدلات التقديرية', 'Est. Allowances')}</th>
-                    <th className="p-3">{t('إجمالي الكلفة التقديرية', 'Est. Total Cost')}</th>
+                    <th className="p-3 w-12 text-center">#</th>
+                    <th className={`p-3 ${language === 'en' ? 'text-left' : 'text-right'}`}>{t('اسم الفرع والموقع', 'Branch Location')}</th>
+                    <th className={`p-3 ${language === 'en' ? 'text-left' : 'text-right'}`}>{t('عدد الكادر', 'Staff Count')}</th>
+                    <th className={`p-3 ${language === 'en' ? 'text-left' : 'text-right'}`}>{t('الراتب الأساسي الكلي', 'Total Basic Payroll')}</th>
+                    <th className={`p-3 ${language === 'en' ? 'text-left' : 'text-right'}`}>{t('البدلات التقديرية', 'Est. Allowances')}</th>
+                    <th className={`p-3 ${language === 'en' ? 'text-left' : 'text-right'}`}>{t('إجمالي الكلفة التقديرية', 'Est. Total Cost')}</th>
                   </tr>
                 </thead>
                 <tbody className={`divide-y font-medium ${isDark ? 'divide-white/5 text-slate-200 bg-[#0a0c10]' : 'divide-slate-200 text-slate-800 bg-white'
                   }`}>
                   {branchCounts.map((b, idx) => (
                     <tr key={b.branch} className={`transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-teal-50/30'}`}>
-                      <td className="p-3 font-mono text-slate-500">{idx + 1}</td>
-                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{b.branch}</td>
-                      <td className="p-3 font-mono text-teal-600 dark:text-teal-400 font-bold">{b.count} {t('موظفاً', 'staff')}</td>
-                      <td className="p-3 font-mono">{b.totalSalary.toLocaleString()} IQD</td>
-                      <td className="p-3 font-mono text-emerald-600 dark:text-emerald-400">{Math.round(b.totalSalary * 0.28).toLocaleString()} IQD</td>
-                      <td className="p-3 font-mono text-cyan-600 dark:text-cyan-400 font-bold">{Math.round(b.totalSalary * 1.28).toLocaleString()} IQD</td>
+                      <td className="p-3 font-mono text-slate-500 text-center">{idx + 1}</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'} ${language === 'en' ? 'text-left' : 'text-right'}`}>{b.branch}</td>
+                      <td className={`p-3 font-mono text-teal-600 dark:text-teal-400 font-bold ${language === 'en' ? 'text-left' : 'text-right'}`}>{b.count} {t('موظفاً', 'staff')}</td>
+                      <td className={`p-3 font-mono ${language === 'en' ? 'text-left' : 'text-right'}`}>{b.totalSalary.toLocaleString()} IQD</td>
+                      <td className={`p-3 font-mono text-emerald-600 dark:text-emerald-400 ${language === 'en' ? 'text-left' : 'text-right'}`}>{Math.round(b.totalSalary * 0.28).toLocaleString()} IQD</td>
+                      <td className={`p-3 font-mono text-cyan-600 dark:text-cyan-400 font-bold ${language === 'en' ? 'text-left' : 'text-right'}`}>{Math.round(b.totalSalary * 1.28).toLocaleString()} IQD</td>
                     </tr>
                   ))}
                 </tbody>
@@ -606,122 +616,7 @@ export const Category2DashboardView: React.FC = () => {
 
       {/* MODULE VIEW 4: EMPLOYEE SELF-SERVICE (ESS) */}
       {activeModuleId === 'dash-ess' && (
-        <div className={`p-6 rounded-3xl border space-y-6 shadow-xl ${isDark ? 'bg-[#0a0c10] border-white/10 text-white' : 'bg-white border-slate-200/90 text-slate-900 shadow-sm'
-          }`}>
-          {/* User Profile Header */}
-          <div className={`flex flex-wrap items-center justify-between gap-4 border-b pb-4 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center text-xl font-bold font-mono shadow-xs ${isDark ? 'bg-teal-500/20 border-teal-500/40 text-teal-400' : 'bg-teal-50 border-teal-200 text-teal-700'
-                }`}>
-                {currentUser.name?.slice(0, 1) || 'U'}
-              </div>
-              <div>
-                <h2 className={`text-base font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  <span>{currentUser.name}</span>
-                  <span className={`text-xs border px-2.5 py-0.5 rounded-full font-mono font-bold ${isDark ? 'bg-[#06080d] text-teal-400 border-teal-500' : 'bg-teal-50 text-teal-700 border-teal-300'
-                    }`}>
-                    VTS-{currentUser.employeeId || '5425'}
-                  </span>
-                </h2>
-                <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {currentUser.role} • {t('قسم الائتمان والفروع', 'Credit & Branches Dept')}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setActiveModuleId('payroll-payslip')}
-                className={`px-4 py-2 rounded-xl border font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 ${isDark ? 'bg-[#06080d] text-teal-400 border-teal-500 hover:bg-[#0a0c10]' : 'bg-teal-50/60 text-teal-800 border-teal-300 hover:bg-teal-100/70'
-                  }`}
-              >
-                <span className="material-symbols-outlined text-base">receipt_long</span>
-                <span>{t('عرض قسيمة الراتب', 'View Payslip')}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* ESS Quick Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            <button
-              onClick={() => setActiveModuleId('leave-apply')}
-              className={`p-4 rounded-2xl border text-start space-y-2 transition-all group shadow-xs ${isDark ? 'bg-[#06080d] border-white/5 hover:border-teal-500/50' : 'bg-[#f8fafc] border-slate-200 hover:bg-teal-50/30 hover:border-teal-400/50'
-                }`}
-            >
-              <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-3xl group-hover:scale-110 transition-transform block">
-                event_note
-              </span>
-              <p className={`font-bold text-sm ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{t('طلب إجازة جديدة', 'Request New Leave')}</p>
-              <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('تقديم طلب إجازة مرضية، سنوية أو طارئة', 'Apply for sick, annual, or emergency leave')}</p>
-            </button>
-
-            <button
-              onClick={() => setActiveModuleId('payroll-payslip')}
-              className={`p-4 rounded-2xl border text-start space-y-2 transition-all group shadow-xs ${isDark ? 'bg-[#06080d] border-white/5 hover:border-teal-500/50' : 'bg-[#f8fafc] border-slate-200 hover:bg-teal-50/30 hover:border-teal-400/50'
-                }`}
-            >
-              <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-3xl group-hover:scale-110 transition-transform block">
-                receipt_long
-              </span>
-              <p className={`font-bold text-sm ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{t('كشف الراتب الشهري', 'Monthly Payslip')}</p>
-              <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('عرض وقراءة تفاصيل راتب الشهر الحالي', 'View and inspect monthly salary details')}</p>
-            </button>
-
-            <button
-              onClick={() => setActiveModuleId('asset-my-requests')}
-              className={`p-4 rounded-2xl border text-start space-y-2 transition-all group shadow-xs ${isDark ? 'bg-[#06080d] border-white/5 hover:border-teal-500/50' : 'bg-[#f8fafc] border-slate-200 hover:bg-teal-50/30 hover:border-teal-400/50'
-                }`}
-            >
-              <span className="material-symbols-outlined text-purple-600 dark:text-purple-400 text-3xl group-hover:scale-110 transition-transform block">
-                devices
-              </span>
-              <p className={`font-bold text-sm ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{t('طلب عهدة / أجهزة', 'Request Asset / Device')}</p>
-              <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('طلب حاسوب، هاتف أو معدات مكتبية', 'Request laptop, phone, or office hardware')}</p>
-            </button>
-
-            <button
-              onClick={() => setActiveModuleId('doc-my-docs')}
-              className={`p-4 rounded-2xl border text-start space-y-2 transition-all group shadow-xs ${isDark ? 'bg-[#06080d] border-white/5 hover:border-teal-500/50' : 'bg-[#f8fafc] border-slate-200 hover:bg-teal-50/30 hover:border-teal-400/50'
-                }`}
-            >
-              <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-3xl group-hover:scale-110 transition-transform block">
-                folder_shared
-              </span>
-              <p className={`font-bold text-sm ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{t('مستنداتي الشخصية', 'My Personal Documents')}</p>
-              <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الهوية، عقد العمل والشهادات', 'National ID, contract, and certificates')}</p>
-            </button>
-          </div>
-
-          {/* Live Leave Balance Widgets */}
-          <div className="space-y-3 pt-2">
-            <h3 className={`font-bold text-sm flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">pie_chart</span>
-              {t('رصيد الإجازات السنوية والرسمية للموظف', 'My Live Leave Balances')}
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className={`p-4 rounded-2xl border space-y-1 font-bold ${isDark ? 'bg-[#06080d] border-white/5' : 'bg-[#f8fafc] border-slate-200 shadow-2xs'
-                }`}>
-                <span className={`font-bold block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الإجازات السنوية (Annual Leave)', 'Annual Leave')}</span>
-                <p className="text-2xl font-bold text-teal-600 dark:text-teal-400 font-mono">21 {t('يوماً', 'days')}</p>
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">{t('المتبقي: 18 يوماً (المستخدم: 3 أيام)', 'Remaining: 18 days (Used: 3)')}</p>
-              </div>
-
-              <div className={`p-4 rounded-2xl border space-y-1 font-bold ${isDark ? 'bg-[#06080d] border-white/5' : 'bg-[#f8fafc] border-slate-200 shadow-2xs'
-                }`}>
-                <span className={`font-bold block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الإجازات المرضية (Sick Leave)', 'Sick Leave')}</span>
-                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 font-mono">30 {t('يوماً', 'days')}</p>
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">{t('المتبقي: 30 يوماً (المستخدم: 0)', 'Remaining: 30 days (Used: 0)')}</p>
-              </div>
-
-              <div className={`p-4 rounded-2xl border space-y-1 font-bold ${isDark ? 'bg-[#06080d] border-white/5' : 'bg-[#f8fafc] border-slate-200 shadow-2xs'
-                }`}>
-                <span className={`font-bold block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الإجازات الطارئة (Emergency)', 'Emergency Leave')}</span>
-                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 font-mono">5 {t('أيام', 'days')}</p>
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">{t('المتبقي: 5 أيام (المستخدم: 0)', 'Remaining: 5 days (Used: 0)')}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <EmployeePortal embedded={true} />
       )}
 
       {/* MODULE VIEW 5: GLOBAL SEARCH CENTER */}
@@ -740,16 +635,36 @@ export const Category2DashboardView: React.FC = () => {
           </div>
 
           {/* Search Box */}
-          <div className="relative max-w-xl">
-            <span className="material-symbols-outlined absolute right-3.5 top-3 text-slate-400 text-lg">search</span>
-            <input
-              type="text"
-              value={dashSearchQuery}
-              onChange={e => setDashSearchQuery(e.target.value)}
-              placeholder={t('ابحث عن أي موظف باسمه، الرقم الوظيفي، الفرع أو المسمى...', 'Search any staff by name, ID, branch or title...')}
-              className={`w-full pr-10 pl-4 py-2.5 text-xs rounded-xl font-bold focus:outline-none focus:border-teal-500 shadow-inner border ${isDark ? 'bg-[#06080d] border-white/10 text-white' : 'bg-[#f8fafc] border-slate-300 text-slate-900'
+          <div className="space-y-2 max-w-xl">
+            <div className="relative">
+              <span className="material-symbols-outlined absolute right-3.5 top-3 text-slate-400 text-lg">search</span>
+              <input
+                type="text"
+                value={dashSearchQuery}
+                onChange={e => setDashSearchQuery(e.target.value)}
+                placeholder={t(
+                  'ابحث عن أي موظف بالاسم، الرقم الوظيفي، الفرع أو المسمى (عربي / English)...',
+                  'Search any staff by name, ID, branch or title (English / Arabic)...'
+                )}
+                className={`w-full pr-10 pl-10 py-2.5 text-xs rounded-xl font-bold focus:outline-none focus:border-teal-500 shadow-inner border transition-all ${
+                  isDark ? 'bg-[#06080d] border-white/10 text-white placeholder-slate-500' : 'bg-[#f8fafc] border-slate-300 text-slate-900 placeholder-slate-400'
                 }`}
-            />
+              />
+              {dashSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setDashSearchQuery('')}
+                  className="absolute left-3 top-2.5 text-slate-400 hover:text-rose-500 transition-colors p-0.5 rounded-full"
+                  title={t('مسح البحث', 'Clear search')}
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 px-1">
+              <span className="material-symbols-outlined text-[13px] text-teal-500">translate</span>
+              <span>{t('البحث الفوري يعمل باللغتين العربية والإنكليزية لجميع الحقول والأسماء', 'Live bilingual instant search active for Arabic & English')}</span>
+            </div>
           </div>
 
           {/* Live Search Results */}
@@ -762,7 +677,7 @@ export const Category2DashboardView: React.FC = () => {
               <EmptyState
                 icon="search_off"
                 title={t('لا توجد نتائج مطابقة لبحثك', 'No Matching Results Found')}
-                description={t('تأكد من كتابة الاسم أو الرقم الوظيفي بشكل صحيح.', 'Try adjusting your query or badge ID.')}
+                description={t('تأكد من كتابة الاسم أو الرقم الوظيفي بشكل صحيح (يمكنك البحث بالعربية أو الإنكليزية).', 'Try adjusting your query or badge ID (you can search in Arabic or English).')}
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -787,11 +702,15 @@ export const Category2DashboardView: React.FC = () => {
                       </span>
                     </div>
                     <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {emp.jobTitle || emp.position_ar || emp.position} • {emp.department}
+                      {language === 'en' && emp.jobTitleEn && emp.jobTitleEn !== 'N/A'
+                        ? emp.jobTitleEn
+                        : (emp.jobTitle || emp.position_ar || emp.position)} • {emp.department}
                     </p>
                     <p className={`text-[11px] font-semibold flex items-center gap-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
                       <span className="material-symbols-outlined text-xs">location_on</span>
-                      <span>{emp.branch || emp.location_ar || 'السليمانية'}</span>
+                      <span>
+                        {getBranchName(emp.branch || emp.location_ar, emp.branchEn || emp.location_en, language)}
+                      </span>
                     </p>
                   </div>
                 ))}
