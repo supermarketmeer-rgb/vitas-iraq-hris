@@ -262,6 +262,15 @@ export interface DocumentRecord {
   description?: string;
 }
 
+export interface NotificationAttachment {
+  id?: string;
+  name: string;
+  url?: string;
+  type?: 'pdf' | 'excel' | 'image' | 'word' | 'file';
+  size?: string;
+  previewUrl?: string;
+}
+
 export interface SystemNotification {
   id: string;
   title: string;
@@ -273,6 +282,7 @@ export interface SystemNotification {
   type: 'info' | 'warning' | 'success' | 'alert' | 'news';
   relatedId?: string; // News item ID if type is 'news'
   actionUrl?: string; // URL to navigate to when clicked
+  attachments?: NotificationAttachment[];
 }
 
 export interface CompanyNewsItem {

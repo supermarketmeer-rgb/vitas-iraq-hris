@@ -320,5 +320,14 @@ export const api = {
 
   // Cloud & Database Synchronization
   syncNow: (options?: { force?: boolean }) => apiClient.post('/sync-now', { force: true, ...(options || {}) }, 45000),
+
+  // Security Audit Logs & Governance
+  getAuditLogs: (params?: { limit?: number }) => apiClient.get(`/audit-logs${params?.limit ? `?limit=${params.limit}` : ''}`),
+  addAuditLog: (log: any) => apiClient.post('/audit-logs', log),
+
+  // API Keys & Access Keys
+  getApiKeys: () => apiClient.get('/security/api-keys'),
+  createApiKey: (data: { name: string; permissions?: string; expires_at?: string }) => apiClient.post('/security/api-keys', data),
+  deleteApiKey: (id: string) => apiClient.delete(`/security/api-keys/${id}`),
 };
 

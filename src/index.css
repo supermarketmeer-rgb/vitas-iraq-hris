@@ -401,6 +401,45 @@ html.dark ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.12);
 }
 
+/* Sidebar vertical scrollbar: ALWAYS matches dark mode (even in daytime / light mode) */
+aside ::-webkit-scrollbar,
+aside::-webkit-scrollbar,
+html:not(.dark) aside ::-webkit-scrollbar,
+html:not(.dark) aside::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+aside ::-webkit-scrollbar-track,
+aside::-webkit-scrollbar-track,
+html:not(.dark) aside ::-webkit-scrollbar-track,
+html:not(.dark) aside::-webkit-scrollbar-track {
+  background: #06080d !important;
+}
+
+aside ::-webkit-scrollbar-thumb,
+aside::-webkit-scrollbar-thumb,
+html:not(.dark) aside ::-webkit-scrollbar-thumb,
+html:not(.dark) aside::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-radius: 9999px;
+}
+
+aside ::-webkit-scrollbar-thumb:hover,
+aside::-webkit-scrollbar-thumb:hover,
+html:not(.dark) aside ::-webkit-scrollbar-thumb:hover,
+html:not(.dark) aside::-webkit-scrollbar-thumb:hover {
+  background: rgba(20, 184, 166, 0.4) !important;
+}
+
+aside,
+aside *,
+html:not(.dark) aside,
+html:not(.dark) aside * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) #06080d;
+}
+
 /* ================================================================
    MATERIAL SYMBOLS
    ================================================================ */
@@ -1038,16 +1077,16 @@ html.dark .global-search-result-card span {
    GLOBAL PURE DARK MODAL WINDOWS & DIALOG POPUPS (#0a0c10)
    Fixes any modal window or popup across the entire application
    ================================================================ */
-html.dark .fixed > div:not(.bg-transparent),
-html.dark .fixed > div > div,
+html.dark .fixed:not(aside) > div:not(.bg-transparent):not(aside *),
+html.dark .fixed:not(aside) > div > div:not(aside *),
 html.dark div[role="dialog"],
 html.dark div[role="dialog"] > div,
 html.dark [class*="modal"] > div,
-html.dark .fixed .bg-white,
-html.dark .fixed .bg-slate-50,
-html.dark .fixed .bg-slate-100,
-html.dark .fixed .bg-slate-800,
-html.dark .fixed .bg-slate-900,
+html.dark .fixed:not(aside) .bg-white:not(aside *),
+html.dark .fixed:not(aside) .bg-slate-50:not(aside *),
+html.dark .fixed:not(aside) .bg-slate-100:not(aside *),
+html.dark .fixed:not(aside) .bg-slate-800:not(aside *),
+html.dark .fixed:not(aside) .bg-slate-900:not(aside *),
 html.dark div[role="dialog"] .bg-white,
 html.dark div[role="dialog"] .bg-slate-50,
 html.dark div[role="dialog"] .bg-slate-100,
@@ -1059,14 +1098,14 @@ html.dark div[role="dialog"] .bg-slate-900 {
 }
 
 /* Modal Inner Sub-panels, Inputs, Selects & Textareas */
-html.dark .fixed input,
-html.dark .fixed select,
-html.dark .fixed textarea,
+html.dark .fixed:not(aside) input:not(aside input),
+html.dark .fixed:not(aside) select:not(aside select),
+html.dark .fixed:not(aside) textarea:not(aside textarea),
 html.dark div[role="dialog"] input,
 html.dark div[role="dialog"] select,
 html.dark div[role="dialog"] textarea,
-html.dark .fixed .bg-slate-100,
-html.dark .fixed .bg-slate-50,
+html.dark .fixed:not(aside) .bg-slate-100:not(aside *),
+html.dark .fixed:not(aside) .bg-slate-50:not(aside *),
 html.dark div[role="dialog"] .bg-slate-100,
 html.dark div[role="dialog"] .bg-slate-50 {
   background-color: #06080d !important;
@@ -1075,9 +1114,9 @@ html.dark div[role="dialog"] .bg-slate-50 {
 }
 
 /* Modal Typography & Labels in Dark Mode */
-html.dark .fixed label,
-html.dark .fixed p,
-html.dark .fixed span,
+html.dark .fixed:not(aside) label:not(aside *),
+html.dark .fixed:not(aside) p:not(aside *),
+html.dark .fixed:not(aside) span:not(aside *),
 html.dark .fixed h1,
 html.dark .fixed h2,
 html.dark .fixed h3,
@@ -1203,8 +1242,8 @@ html.dark table tbody tr[class*="bg-white"] {
 }
 
 /* Dark Mode Modal Windows & Dialog Popups (2px defined border) */
-html.dark .fixed > div:not(.bg-transparent):not(.fixed),
-html.dark .fixed > div > div:not(.bg-transparent),
+html.dark .fixed:not(aside) > div:not(.bg-transparent):not(.fixed):not(aside *),
+html.dark .fixed:not(aside) > div > div:not(.bg-transparent):not(aside *),
 html.dark div[role="dialog"],
 html.dark div[role="dialog"] > div,
 html.dark [class*="modal"] > div,
@@ -1300,14 +1339,14 @@ html.light table tbody tr.bg-white {
 }
 
 /* Light Mode Modals & Dialogs (Windows) - 1 degree larger / 2px defined border */
-html.light .fixed > div:not(.bg-transparent):not(.fixed),
-html.light .fixed > div > div:not(.bg-transparent),
+html.light .fixed:not(aside) > div:not(.bg-transparent):not(.fixed):not(aside *),
+html.light .fixed:not(aside) > div > div:not(.bg-transparent):not(aside *),
 html.light div[role="dialog"],
 html.light div[role="dialog"] > div,
 html.light [class*="modal"],
 html.light [class*="modal"] > div,
-html:not(.dark) .fixed > div:not(.bg-transparent):not(.fixed),
-html:not(.dark) .fixed > div > div:not(.bg-transparent),
+html:not(.dark) .fixed:not(aside) > div:not(.bg-transparent):not(.fixed):not(aside *),
+html:not(.dark) .fixed:not(aside) > div > div:not(.bg-transparent):not(aside *),
 html:not(.dark) div[role="dialog"],
 html:not(.dark) div[role="dialog"] > div,
 html:not(.dark) [class*="modal"],
@@ -1520,27 +1559,62 @@ html:not(.dark) aside h2,
 html:not(.dark) aside h3,
 html:not(.dark) aside h4 { color: #ffffff !important; }
 
-/* Borders — native values */
-html:not(.dark) aside .border-white\/5 { border-color: rgba(255, 255, 255, 0.05) !important; }
-html:not(.dark) aside .border-white\/10 { border-color: rgba(255, 255, 255, 0.1) !important; }
+/* Borders — subtle dark borders, eliminate white borders */
+aside,
+aside * {
+  outline: none !important;
+}
+
+/* Sidebar Containers (Header, search wrapper, controls) NEVER have rectangular frame borders */
+aside div:not(.rounded-2xl):not([class*="border-b"]):not([class*="border-t"]):not([class*="border-teal"]):not([class*="badge"]),
+aside .flex:not(button):not(input):not([class*="border-b"]):not([class*="border-t"]),
+aside .relative:not(button):not(input),
+aside > div > div {
+  border: none !important;
+  border-width: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+aside .border-white\/5,
+html:not(.dark) aside .border-white\/5,
+html.dark aside .border-white\/5 { border-color: rgba(30, 41, 59, 0.6) !important; }
+
+aside .border-white\/10,
+html:not(.dark) aside .border-white\/10,
+html.dark aside .border-white\/10 { border-color: #1e293b !important; }
+
+aside .border-teal-500,
 html:not(.dark) aside .border-teal-500 { border-color: #14b8a6 !important; }
+aside .border-teal-500\/20,
 html:not(.dark) aside .border-teal-500\/20 { border-color: rgba(20, 184, 166, 0.2) !important; }
+aside .border-teal-500\/40,
 html:not(.dark) aside .border-teal-500\/40 { border-color: rgba(20, 184, 166, 0.4) !important; }
+aside .border-transparent,
 html:not(.dark) aside .border-transparent { border-color: transparent !important; }
 
-/* Backgrounds — native values */
-html:not(.dark) aside .bg-white\/5 { background-color: rgba(255, 255, 255, 0.05) !important; }
-html:not(.dark) aside .bg-white\/10 { background-color: rgba(255, 255, 255, 0.1) !important; }
+/* Backgrounds — dark backgrounds */
+aside .bg-white\/5,
+html:not(.dark) aside .bg-white\/5 { background-color: rgba(15, 23, 42, 0.6) !important; }
+aside .bg-white\/10,
+html:not(.dark) aside .bg-white\/10 { background-color: rgba(15, 23, 42, 0.8) !important; }
+aside [class*="06080d"],
 html:not(.dark) aside [class*="06080d"] { background-color: #06080d !important; }
+aside .bg-teal-500\/10,
 html:not(.dark) aside .bg-teal-500\/10 { background-color: rgba(20, 184, 166, 0.1) !important; }
+aside .bg-teal-500\/20,
 html:not(.dark) aside .bg-teal-500\/20 { background-color: rgba(20, 184, 166, 0.2) !important; }
+aside .bg-teal-600\/10,
 html:not(.dark) aside .bg-teal-600\/10 { background-color: rgba(13, 148, 136, 0.1) !important; }
+aside .bg-teal-600\/20,
 html:not(.dark) aside .bg-teal-600\/20 { background-color: rgba(13, 148, 136, 0.2) !important; }
+aside .bg-rose-500,
 html:not(.dark) aside .bg-rose-500 { background-color: #f43f5e !important; }
 
-/* Category cards — no navy, no border */
+/* Category cards — dark, no border */
+aside .rounded-2xl,
 html:not(.dark) aside .rounded-2xl {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: rgba(10, 13, 20, 0.7) !important;
   border-color: transparent !important;
 }
 
@@ -1902,9 +1976,9 @@ html.light textarea:not(aside textarea):not(header textarea),
 html:not(.dark) input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
 html:not(.dark) select:not(aside select):not(header select),
 html:not(.dark) textarea:not(aside textarea):not(header textarea),
-html:not(.dark) .fixed input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
-html:not(.dark) .fixed select,
-html:not(.dark) .fixed textarea,
+html:not(.dark) .fixed:not(aside) input:not(aside input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+html:not(.dark) .fixed:not(aside) select:not(aside select),
+html:not(.dark) .fixed:not(aside) textarea:not(aside textarea),
 html:not(.dark) div[role="dialog"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
 html:not(.dark) div[role="dialog"] select,
 html:not(.dark) div[role="dialog"] textarea,

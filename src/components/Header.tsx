@@ -8,6 +8,12 @@ import { ConnectionStatusWidget } from './ConnectionStatusWidget';
 import { syncEngine, SyncScheduleOption } from '../services/syncEngine';
 import { api } from '../api/client';
 import { SystemHelpGuideModal } from './SystemHelpGuideModal';
+import {
+  getEmployeeLocalizedName,
+  localizeNotificationTitle,
+  localizeNotificationMessage,
+  localizeTimestamp
+} from '../utils/nameHelper';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -191,9 +197,7 @@ export const Header: React.FC = () => {
     'Compliance Officer'
   ];
 
-  const currentUserName = language === 'en' && currentUser.name === 'مدير الموارد البشرية'
-    ? 'HR Manager'
-    : currentUser.name || 'User';
+  const currentUserName = getEmployeeLocalizedName(currentUser, language) || 'User';
 
   return (
     <>
@@ -462,6 +466,7 @@ export const Header: React.FC = () => {
                     return (
                       <div
                         key={n.id}
+                        dir={language === 'en' ? 'ltr' : 'rtl'}
                         onClick={() => {
                           if (!isRead) markNotificationRead(n.id);
                         }}
@@ -474,11 +479,17 @@ export const Header: React.FC = () => {
                         <div className="flex items-center justify-between font-normal mb-1">
                           <div className="flex items-center gap-1.5">
                             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block animate-pulse"></span>}
-                            <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{n.title}</span>
+                            <span className={`font-bold ${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                              {localizeNotificationTitle(n.title, language)}
+                            </span>
                           </div>
-                          <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{n.timestamp}</span>
+                          <span className={`text-[10px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            {localizeTimestamp(n.timestamp, language)}
+                          </span>
                         </div>
-                        <p className={isDark ? 'text-slate-400' : 'text-slate-700'}>{n.message}</p>
+                        <p className={`${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
+                          {localizeNotificationMessage(n.message, language)}
+                        </p>
                       </div>
                     );
                   })

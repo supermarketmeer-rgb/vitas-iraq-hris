@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
+import {
+  localizeNotificationTitle,
+  localizeNotificationMessage,
+  localizeTimestamp
+} from '../utils/nameHelper';
 
 interface HandbookDoc {
   id: string;
@@ -23,6 +28,7 @@ export const Category11SupportHelpView: React.FC = () => {
     markAllNotificationsAsRead,
     resetToZeroData,
     theme,
+    language,
     t
   } = useApp();
 
@@ -669,6 +675,7 @@ export const Category11SupportHelpView: React.FC = () => {
                 return (
                   <div
                     key={n.id}
+                    dir={language === 'en' ? 'ltr' : 'rtl'}
                     onClick={() => markNotificationRead(n.id)}
                     className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
                       isRead
@@ -676,15 +683,21 @@ export const Category11SupportHelpView: React.FC = () => {
                         : isDark ? 'bg-teal-600/10 border-teal-500/30 text-white font-bold' : 'bg-teal-50 border-teal-300 text-slate-900 font-bold shadow-sm'
                     }`}
                   >
-                    <div className="space-y-1">
+                    <div className={`space-y-1 ${language === 'en' ? 'text-left' : 'text-right'}`}>
                       <div className="flex items-center gap-2">
                         {!isRead && <span className="w-2 h-2 rounded-full bg-teal-500 inline-block animate-pulse"></span>}
-                        <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{n.title}</p>
+                        <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          {localizeNotificationTitle(n.title, language)}
+                        </p>
                       </div>
-                    <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'} font-medium`}>{n.message}</p>
+                      <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'} font-medium`}>
+                        {localizeNotificationMessage(n.message, language)}
+                      </p>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-slate-500 whitespace-nowrap mx-3">
+                      {localizeTimestamp(n.timestamp, language)}
+                    </span>
                   </div>
-                  <span className="text-xs font-mono font-bold text-slate-500 whitespace-nowrap mr-3">{n.timestamp}</span>
-                </div>
                 );
               })}
             </div>

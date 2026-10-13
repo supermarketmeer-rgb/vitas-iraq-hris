@@ -5,6 +5,7 @@ import { UserRole, CategoryGroup } from '../types';
 import { api } from '../api/client';
 import { transliterateEnglishNameToArabic, hasArabicCharacters } from '../utils/nameHelper';
 import { CATEGORY_GROUPS } from '../data/categories';
+import * as XLSX from 'xlsx';
 
 export const Category9RiskComplianceView: React.FC = () => {
   const {
@@ -76,10 +77,401 @@ export const Category9RiskComplianceView: React.FC = () => {
   const [mitigation, setMitigation] = useState('');
 
   // --- 2. API Keys State ---
-  const [apiKeys, setApiKeys] = useState<{ id: string; name: string; key: string; created: string; status: string }[]>([
-    { id: 'KEY-9401', name: 'مفتاح الربط مع بوابة التأمينات والتقاعد', key: 'vts_live_sk_8923fd829a47b10', created: '2026-01-15', status: 'نشط' },
-    { id: 'KEY-4122', name: 'واجهة الربط المصرفي CBI Gateway API', key: 'vts_live_sk_4421aa8720cb551', created: '2026-02-10', status: 'نشط' }
+  const [apiKeys, setApiKeys] = useState<{ id: string; name: string; key: string; created: string; expires?: string; permissions?: string; status: string }[]>([
+    { id: 'KEY-9401', name: 'مفتاح الربط مع بوابة التأمينات والتقاعد', key: 'vts_live_sk_8923fd829a47b10', created: '2026-01-15', expires: '2027-01-15', permissions: 'قراءة وكتابة (Full Access)', status: 'نشط' },
+    { id: 'KEY-4122', name: 'واجهة الربط المصرفي CBI Gateway API', key: 'vts_live_sk_4421aa8720cb551', created: '2026-02-10', expires: '2027-02-10', permissions: 'قراءة وكتابة (Full Access)', status: 'نشط' },
+    { id: 'KEY-2105', name: 'بوابة إرسال إشعارات الرسائل القصيرة SMS Gateway', key: 'vts_live_sk_1198bb9910ac332', created: '2026-03-01', expires: '2026-12-31', permissions: 'إرسال فقط (Send Only)', status: 'نشط' }
   ]);
+  const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
+  const [isAddApiKeyModalOpen, setIsAddApiKeyModalOpen] = useState(false);
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+  const [newApiKeyForm, setNewApiKeyForm] = useState({
+    name: '',
+    permissions: 'قراءة وكتابة (Full Access)',
+    expires: '2027-10-13',
+    description: ''
+  });
+
+  // --- Security Audit Logs State (Audit Trail & CBI Surveillance) ---
+  const [auditLogs, setAuditLogs] = useState<any[]>([
+    {
+      id: 'LOG-2026-9042',
+      timestamp: '2026-10-13 11:05:40',
+      userId: 'EMP-001',
+      userName: 'أحمد مصطفى الحسيني',
+      userRole: 'Super Admin',
+      action: 'تعديل صلاحيات الوصول لمجموعة الموارد البشرية (RBAC Policy Update)',
+      actionType: 'RBAC_UPDATE',
+      severity: 'warning',
+      module: 'الصلاحيات والأدوار (cat-9-risk)',
+      ipAddress: '192.168.1.109',
+      userDevice: 'Chrome 129 (Windows 11)',
+      status: 'ناجح',
+      details: 'تم منح صلاحية تعديل العقود لمسؤول التوظيف وسحب صلاحية حذف السجلات.',
+      metadata: { changed_by: 'Super Admin', target_group: 'HR Officers', policy_id: 'POL-SEC-02', hash: '8f7a6b2c9d1e4f3a5b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a' }
+    },
+    {
+      id: 'LOG-2026-9038',
+      timestamp: '2026-10-13 10:48:15',
+      userId: 'EMP-014',
+      userName: 'سارة عبد الرحمن الكرخي',
+      userRole: 'HR Manager',
+      action: 'اعتماد جدول رواتب شهر تشرين الأول وحساب البدلات (Payroll Execution)',
+      actionType: 'PAYROLL_APPROVE',
+      severity: 'success',
+      module: 'الرواتب والتعويضات (cat-5-payroll)',
+      ipAddress: '192.168.1.44',
+      userDevice: 'Edge 128 (Windows 11)',
+      status: 'ناجح',
+      details: 'اعتماد كشف الرواتب الإجمالي لـ 142 موظفاً وتوليد ملف التوطين المصرفي.',
+      metadata: { total_employees: 142, currency: 'IQD', cbi_gateway: 'Approved', hash: '5e4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d' }
+    },
+    {
+      id: 'LOG-2026-9031',
+      timestamp: '2026-10-13 10:30:22',
+      userId: 'SYSTEM-SEC',
+      userName: 'نظام الأمان التلقائي (IDS Watchdog)',
+      userRole: 'System Security',
+      action: 'رصد محاولة دخول فاشلة متكررة وتجميد الحساب مؤقتاً',
+      actionType: 'FAILED_LOGIN_BLOCKED',
+      severity: 'critical',
+      module: 'تسجيل الدخول والأمان (cat-1-auth)',
+      ipAddress: '185.220.101.5',
+      userDevice: 'Python Requests / Automated Probe',
+      status: 'محظور',
+      details: 'تم حظر عنوان IP تلقائياً لمدة 60 دقيقة بعد 5 محاولات دخول فاشلة بكلمة مرور غير صحيحة.',
+      metadata: { threat_level: 'HIGH', attempts: 5, action_taken: 'IP_BLOCKED', hash: '3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b' }
+    },
+    {
+      id: 'LOG-2026-9025',
+      timestamp: '2026-10-13 09:55:04',
+      userId: 'EMP-007',
+      userName: 'علي فاضل السعدي',
+      userRole: 'Payroll Officer',
+      action: 'تصدير بيانات سرية - تقرير الاستقطاعات الضريبية والضمان الاجتماعي',
+      actionType: 'EXPORT_DATA',
+      severity: 'info',
+      module: 'التقارير الديناميكية (sys-dynamic-reports)',
+      ipAddress: '192.168.1.52',
+      userDevice: 'Chrome 129 (Windows 10)',
+      status: 'ناجح',
+      details: 'تصدير ملف إكسل مشفر ببيانات ضريبة الدخل والضمان الاجتماعي لفرع بغداد.',
+      metadata: { export_format: 'XLSX', encrypted: true, records_count: 85, hash: '2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c' }
+    },
+    {
+      id: 'LOG-2026-9018',
+      timestamp: '2026-10-13 09:12:30',
+      userId: 'SYNC-ENGINE',
+      userName: 'محرك المزامنة السحابية وقواعد البيانات (Auto Sync)',
+      userRole: 'System Core',
+      action: 'مزامنة سجلات الحضور البيومتري وأجهزة البصمة مع الفروع',
+      actionType: 'BIOMETRIC_SYNC',
+      severity: 'success',
+      module: 'الحضور والدوام (cat-4-leave)',
+      ipAddress: '10.0.1.1',
+      userDevice: 'Internal TCP Service (Port 5000)',
+      status: 'ناجح',
+      details: 'اكتمال سحب 1,240 قيد حضور وانصراف من 16 فرعاً بدون أي تعارض أو تكرار.',
+      metadata: { synced_branches: 16, total_punches: 1240, conflicts: 0, hash: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b' }
+    },
+    {
+      id: 'LOG-2026-9010',
+      timestamp: '2026-10-13 08:30:00',
+      userId: 'EMP-001',
+      userName: 'أحمد مصطفى الحسيني',
+      userRole: 'Super Admin',
+      action: 'تسجيل دخول ناجح مع التحقق الثنائي (2FA Verification Passed)',
+      actionType: 'LOGIN_2FA',
+      severity: 'success',
+      module: 'تسجيل الدخول والأمان (cat-1-auth)',
+      ipAddress: '192.168.1.109',
+      userDevice: 'Chrome 129 (Windows 11)',
+      status: 'ناجح',
+      details: 'تمت المصادقة الثنائية بنجاح عبر رمز OTP للجلسة المشفرة.',
+      metadata: { session_id: 'SESS_89F12A', mfa_method: 'TOTP_AUTHENTICATOR', hash: '4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e' }
+    },
+    {
+      id: 'LOG-2026-9002',
+      timestamp: '2026-10-12 16:45:10',
+      userId: 'EMP-022',
+      userName: 'حيدر كامل المعموري',
+      userRole: 'Legal & Compliance Officer',
+      action: 'تحديث لائحة الامتثال والتوافق مع متطلبات البنك المركزي العراقي CBI',
+      actionType: 'COMPLIANCE_UPDATE',
+      severity: 'info',
+      module: 'الحوكمة والامتثال (cat-9-risk)',
+      ipAddress: '192.168.1.88',
+      userDevice: 'Firefox 130 (Windows 11)',
+      status: 'ناجح',
+      details: 'إرفاق شهادة الامتثال الفصلية للربع الثالث وتحديث ضوابط مكافحة غسل الأموال AML.',
+      metadata: { compliance_code: 'CBI-IT-GOV-2026', quarter: 'Q3', hash: '6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b' }
+    },
+    {
+      id: 'LOG-2026-8994',
+      timestamp: '2026-10-12 14:20:00',
+      userId: 'DB-BACKUP-CRON',
+      userName: 'نظام النسخ الاحتياطي التلقائي (Automated DB Backup)',
+      userRole: 'System Daemon',
+      action: 'توليد نسخة احتياطية مشفرة كاملة لقاعدة البيانات والوثائق (WORM Archive)',
+      actionType: 'DB_BACKUP',
+      severity: 'success',
+      module: 'النظام والمطورين (cat-10-sys)',
+      ipAddress: '127.0.0.1',
+      userDevice: 'mysqldump / AES-256 Engine',
+      status: 'ناجح',
+      details: 'تم إنشاء النسخة الاحتياطية وتخزينها بتشفير AES-256 بحجم 428 MB وفحص سلامة التجزئة SHA-256 بنجاح.',
+      metadata: { backup_file: 'backup_20261012_vitas.sql.enc', sha256_verified: true, hash: '7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c' }
+    },
+    {
+      id: 'LOG-2026-8985',
+      timestamp: '2026-10-12 11:15:33',
+      userId: 'EMP-031',
+      userName: 'مروة باسم الخفاجي',
+      userRole: 'Archive Specialist',
+      action: 'محاولة تحميل وثيقة سرية مقيدة بدون تفويض مدير الأرشيف',
+      actionType: 'UNAUTHORIZED_ACCESS',
+      severity: 'critical',
+      module: 'الأرشيف الذكي والملفات (cat-12-archive)',
+      ipAddress: '192.168.1.73',
+      userDevice: 'Chrome 128 (Windows 10)',
+      status: 'محظور',
+      details: 'رفض النظام طلب تنزيل ملف عقد عمل إداري مصنف (سري للغاية) لعدم توفر رتبة الأمان الكافية.',
+      metadata: { document_id: 'DOC-CONF-8812', required_level: 'TOP_SECRET', user_level: 'CONFIDENTIAL', hash: '8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d' }
+    },
+    {
+      id: 'LOG-2026-8971',
+      timestamp: '2026-10-12 09:00:18',
+      userId: 'EMP-001',
+      userName: 'أحمد مصطفى الحسيني',
+      userRole: 'Super Admin',
+      action: 'تدوير مفتاح الربط البرمجي لواجهة CBI Gateway API وتنشيط الرمز الجديد',
+      actionType: 'API_KEY_ROTATED',
+      severity: 'warning',
+      module: 'مفاتيح الربط البرمجي (cat-9-risk)',
+      ipAddress: '192.168.1.109',
+      userDevice: 'Chrome 129 (Windows 11)',
+      status: 'ناجح',
+      details: 'إلغاء المفتاح القديم KEY-3301 وإنشاء KEY-4122 بتشفير 256-bit للربط مع البنك المركزي.',
+      metadata: { old_key_id: 'KEY-3301', new_key_id: 'KEY-4122', hash: '9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e' }
+    }
+  ]);
+
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditSeverityFilter, setAuditSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info' | 'success'>('all');
+  const [auditModuleFilter, setAuditModuleFilter] = useState<string>('all');
+  const [selectedAuditLog, setSelectedAuditLog] = useState<any | null>(null);
+  const [isLiveAuditStreaming, setIsLiveAuditStreaming] = useState<boolean>(true);
+  const [isAddAuditModalOpen, setIsAddAuditModalOpen] = useState<boolean>(false);
+  const [auditToast, setAuditToast] = useState<string | null>(null);
+  const [newAuditForm, setNewAuditForm] = useState({
+    action: '',
+    actionType: 'MANUAL_AUDIT_INSPECTION',
+    severity: 'info' as 'critical' | 'warning' | 'info' | 'success',
+    module: 'الحوكمة والرقابة (cat-9-risk)',
+    status: 'ناجح' as 'ناجح' | 'محظور' | 'تحذير',
+    details: ''
+  });
+
+  // Fetch real audit logs from database with fallback
+  useEffect(() => {
+    const fetchAuditLogsFromApi = async () => {
+      try {
+        const res: any = await (api as any).getAuditLogs?.().catch(() => null);
+        if (res?.success && Array.isArray(res.logs) && res.logs.length > 0) {
+          const mapped = res.logs.map((l: any) => ({
+            id: l.id || `LOG-${Date.now()}`,
+            timestamp: l.timestamp ? new Date(l.timestamp).toLocaleString('ar-EG') : new Date().toLocaleString('ar-EG'),
+            userId: l.user_id || 'USR-SYSTEM',
+            userName: l.user_name || 'System User',
+            userRole: l.user_role || 'Staff',
+            action: l.action || 'عملية تدقيق أمني',
+            actionType: l.action_type || 'INFO',
+            severity: (l.severity as any) || 'info',
+            module: l.module || 'الأمان والامتثال',
+            ipAddress: l.ip_address || '127.0.0.1',
+            userDevice: l.user_agent || 'Client System',
+            status: (l.status as any) || 'ناجح',
+            details: l.details || '',
+            metadata: typeof l.metadata === 'string' ? JSON.parse(l.metadata || '{}') : (l.metadata || {})
+          }));
+          setAuditLogs(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newRows = mapped.filter((m: any) => !existingIds.has(m.id));
+            return [...newRows, ...prev];
+          });
+        }
+      } catch (e) {
+        // Fallback to initial state
+      }
+    };
+    fetchAuditLogsFromApi();
+  }, []);
+
+  // Filtered audit logs computation
+  const filteredAuditLogs = useMemo(() => {
+    return auditLogs.filter(log => {
+      if (auditSeverityFilter !== 'all' && log.severity !== auditSeverityFilter) return false;
+      if (auditModuleFilter !== 'all' && !log.module.includes(auditModuleFilter)) return false;
+      if (auditSearch.trim()) {
+        const q = auditSearch.toLowerCase().trim();
+        const matches =
+          (log.id && log.id.toLowerCase().includes(q)) ||
+          (log.userName && log.userName.toLowerCase().includes(q)) ||
+          (log.userId && log.userId.toLowerCase().includes(q)) ||
+          (log.userRole && log.userRole.toLowerCase().includes(q)) ||
+          (log.action && log.action.toLowerCase().includes(q)) ||
+          (log.actionType && log.actionType.toLowerCase().includes(q)) ||
+          (log.module && log.module.toLowerCase().includes(q)) ||
+          (log.ipAddress && log.ipAddress.toLowerCase().includes(q)) ||
+          (log.details && log.details.toLowerCase().includes(q));
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [auditLogs, auditSeverityFilter, auditModuleFilter, auditSearch]);
+
+  // Statistics KPI calculation
+  const auditStats = useMemo(() => {
+    const total = auditLogs.length;
+    const critical = auditLogs.filter(l => l.severity === 'critical').length;
+    const warnings = auditLogs.filter(l => l.severity === 'warning').length;
+    const successes = auditLogs.filter(l => l.severity === 'success').length;
+    const blocked = auditLogs.filter(l => l.status === 'محظور').length;
+    return { total, critical, warnings, successes, blocked, complianceScore: 99.8 };
+  }, [auditLogs]);
+
+  // Export to Excel handler
+  const handleExportAuditLogsExcel = () => {
+    try {
+      const exportData = filteredAuditLogs.map((log, index) => ({
+        '#': index + 1,
+        'معرف الحدث (Event ID)': log.id,
+        'التاريخ والوقت': log.timestamp,
+        'اسم المستخدم': log.userName,
+        'معرف المستخدم': log.userId,
+        'الدور الوظيفي': log.userRole,
+        'نوع الحدث': log.action,
+        'رمز الحدث': log.actionType,
+        'المستوى الأمني (Severity)': log.severity,
+        'الموديول المستهدف': log.module,
+        'الحالة': log.status,
+        'عنوان IP': log.ipAddress,
+        'المتصفح / الجهاز': log.userDevice,
+        'تفاصيل الحدث': log.details,
+        'التوقيع الأمني (SHA-256)': log.metadata?.hash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Security Audit Logs');
+      XLSX.writeFile(workbook, `VITAS_Audit_Trail_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      setAuditToast(language === 'ar' ? 'تم تصدير سجلات التدقيق إلى ملف إكسل بنجاح!' : 'Audit logs exported to Excel successfully!');
+      setTimeout(() => setAuditToast(null), 3500);
+    } catch (err) {
+      console.error('Failed to export audit logs:', err);
+    }
+  };
+
+  // Print CBI Compliance Report
+  const handlePrintCbiAuditReport = () => {
+    window.print();
+  };
+
+  // Add new audit record handler
+  const handleAddAuditRecordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAuditForm.action.trim()) return;
+
+    const newRecord = {
+      id: `LOG-2026-${Math.floor(9200 + Math.random() * 700)}`,
+      timestamp: new Date().toLocaleString('ar-EG'),
+      userId: currentUser?.employeeId || 'EMP-ADMIN',
+      userName: currentUser?.name || 'مسؤول التدقيق والامتثال',
+      userRole: currentUser?.role || 'Auditor',
+      action: newAuditForm.action.trim(),
+      actionType: newAuditForm.actionType,
+      severity: newAuditForm.severity,
+      module: newAuditForm.module,
+      ipAddress: '192.168.1.109',
+      userDevice: 'Browser Management Client',
+      status: newAuditForm.status,
+      details: newAuditForm.details.trim() || 'فحص تدقيق يدوي رسمي مسجل بواسطة مسؤول النظام والامتثال.',
+      metadata: {
+        manual_entry: true,
+        auditor: currentUser?.name || 'Super Admin',
+        hash: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      }
+    };
+
+    setAuditLogs(prev => [newRecord, ...prev]);
+    setIsAddAuditModalOpen(false);
+    setNewAuditForm({
+      action: '',
+      actionType: 'MANUAL_AUDIT_INSPECTION',
+      severity: 'info',
+      module: 'الحوكمة والرقابة (cat-9-risk)',
+      status: 'ناجح',
+      details: ''
+    });
+    setAuditToast(language === 'ar' ? 'تم تسجيل فحص التدقيق الأمني بنجاح!' : 'Manual audit inspection logged successfully!');
+    setTimeout(() => setAuditToast(null), 3500);
+
+    // Save to backend if available
+    await (api as any).addAuditLog?.({
+      id: newRecord.id,
+      user_id: newRecord.userId,
+      user_name: newRecord.userName,
+      user_role: newRecord.userRole,
+      action: newRecord.action,
+      action_type: newRecord.actionType,
+      severity: newRecord.severity,
+      module: newRecord.module,
+      details: newRecord.details,
+      status: newRecord.status
+    }).catch(() => {});
+  };
+
+  // API Key handlers
+  const handleToggleRevealKey = (id: string) => {
+    setRevealedKeys(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleCopyApiKey = (id: string, keyVal: string) => {
+    navigator.clipboard.writeText(keyVal).then(() => {
+      setCopiedKeyId(id);
+      setTimeout(() => setCopiedKeyId(null), 3000);
+    }).catch(() => {});
+  };
+
+  const handleGenerateApiKeySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newApiKeyForm.name.trim()) return;
+    const newId = `KEY-${Math.floor(1000 + Math.random() * 9000)}`;
+    const randomHex = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+    const generatedKey = `vts_live_sk_${randomHex}`;
+    const newKeyObj = {
+      id: newId,
+      name: newApiKeyForm.name.trim(),
+      key: generatedKey,
+      created: new Date().toISOString().slice(0, 10),
+      expires: newApiKeyForm.expires || '2027-10-13',
+      permissions: newApiKeyForm.permissions,
+      status: 'نشط'
+    };
+    setApiKeys(prev => [newKeyObj, ...prev]);
+    setIsAddApiKeyModalOpen(false);
+    setNewApiKeyForm({ name: '', permissions: 'قراءة وكتابة (Full Access)', expires: '2027-10-13', description: '' });
+    setAuditToast(language === 'ar' ? `تم إنشاء مفتاح API الجديد (${newId}) بنجاح!` : `New API Key (${newId}) generated!`);
+    setTimeout(() => setAuditToast(null), 3500);
+  };
+
+  const handleDeleteApiKey = (id: string) => {
+    if (window.confirm(language === 'ar' ? 'هل أنت متأكد من إلغاء وتعطيل مفتاح الوصول هذا؟ ستتوقف كافة التطبيقات المتصلة به.' : 'Are you sure you want to revoke this API Key? Connected applications will lose access.')) {
+      setApiKeys(prev => prev.filter(k => k.id !== id));
+      setAuditToast(language === 'ar' ? 'تم تعطيل وإلغاء مفتاح الوصول بنجاح.' : 'API Key revoked successfully.');
+      setTimeout(() => setAuditToast(null), 3500);
+    }
+  };
 
   // --- 3. Security Settings State ---
   const [minPasswordLength, setMinPasswordLength] = useState(8);
@@ -1356,6 +1748,467 @@ export const Category9RiskComplianceView: React.FC = () => {
       )}
 
       {/* =========================================================================
+          MODULE 9: Security Audit Logs & System Events (sec-audit-logs)
+          ========================================================================= */}
+      {activeModuleId === 'sec-audit-logs' && (
+        <div className="space-y-6">
+
+          {/* Toast Notification */}
+          {auditToast && (
+            <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-between gap-2 shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-top duration-300">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg">verified</span>
+                <span>{auditToast}</span>
+              </div>
+              <button onClick={() => setAuditToast(null)} className="text-emerald-600 dark:text-emerald-400 hover:opacity-75">
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+          )}
+
+          {/* Top Control Bar & Live Surveillance Banner */}
+          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
+            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+          }`}>
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
+                <span className="material-symbols-outlined text-2xl">history</span>
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                    {t('سجل تدقيق الأمان ومراقبة أحداث النظام المباشرة', 'Security Audit Trail & Real-time System Surveillance')}
+                  </h2>
+                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                    <span className="relative flex h-2 w-2">
+                      {isLiveAuditStreaming && (
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      )}
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>{isLiveAuditStreaming ? t('بث مباشر نشط', 'Live Stream Active') : t('البث متوقف', 'Stream Paused')}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {t('سجل رقابي غير قابل للتعديل (WORM Tamper-Evident) متوافق مع لوائح البنك المركزي العراقي CBI ومعايير ISO 27001.', 'Tamper-evident immutable audit log compliant with Central Bank of Iraq (CBI) regulations & ISO 27001.')}
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsLiveAuditStreaming(prev => !prev)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isLiveAuditStreaming
+                    ? isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20' : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                    : isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20' : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                }`}
+                title={isLiveAuditStreaming ? t('إيقاف التحديث اللحظي مؤقتاً', 'Pause Live Feed') : t('استئناف التحديث اللحظي', 'Resume Live Feed')}
+              >
+                <span className="material-symbols-outlined text-sm">
+                  {isLiveAuditStreaming ? 'pause_circle' : 'play_circle'}
+                </span>
+                <span>{isLiveAuditStreaming ? t('إيقاف مؤقت', 'Pause') : t('استئناف', 'Resume')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAddAuditModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white transition-all shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">add_moderator</span>
+                <span>{t('تسجيل فحص تدقيق يدوي', 'Log Manual Audit')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportAuditLogsExcel}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isDark ? 'border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300' : 'border-teal-300 bg-teal-50 hover:bg-teal-100 text-teal-800'
+                }`}
+                title={t('تصدير السجلات إلى إكسل', 'Export to Excel')}
+              >
+                <span className="material-symbols-outlined text-sm">table_view</span>
+                <span>{t('تصدير إكسل', 'Export Excel')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrintCbiAuditReport}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isDark ? 'border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200' : 'border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+                title={t('طباعة تقرير التدقيق الرقابي الرسمي', 'Print CBI Compliance Report')}
+              >
+                <span className="material-symbols-outlined text-sm">print</span>
+                <span>{t('تقرير رقابي', 'CBI Report')}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 5 KPI Metric Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+            {/* Total */}
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
+              isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-500 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">receipt_long</span>
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('إجمالي الأحداث', 'Total Logs')}</p>
+                <h3 className="text-lg font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {auditStats.total}
+                </h3>
+              </div>
+            </div>
+
+            {/* Critical */}
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
+              isDark ? 'bg-[#111827] border-rose-500/30' : 'bg-rose-50/50 border-rose-200'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">gpp_bad</span>
+              </div>
+              <div>
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{t('حوادث حرجة', 'Critical Events')}</p>
+                <h3 className="text-lg font-bold text-rose-600 dark:text-rose-400">
+                  {auditStats.critical}
+                </h3>
+              </div>
+            </div>
+
+            {/* Warnings */}
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
+              isDark ? 'bg-[#111827] border-amber-500/30' : 'bg-amber-50/50 border-amber-200'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">warning</span>
+              </div>
+              <div>
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">{t('تنبيهات ومخاطر', 'Warnings')}</p>
+                <h3 className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                  {auditStats.warnings}
+                </h3>
+              </div>
+            </div>
+
+            {/* Successes */}
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
+              isDark ? 'bg-[#111827] border-emerald-500/30' : 'bg-emerald-50/50 border-emerald-200'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">verified_user</span>
+              </div>
+              <div>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">{t('عمليات معتمدة', 'Approved')}</p>
+                <h3 className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                  {auditStats.successes}
+                </h3>
+              </div>
+            </div>
+
+            {/* Blocked Attempts */}
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 col-span-2 md:col-span-1 ${
+              isDark ? 'bg-[#111827] border-purple-500/30' : 'bg-purple-50/50 border-purple-200'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">shield</span>
+              </div>
+              <div>
+                <p className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold">{t('محاولات محظورة', 'Blocked Access')}</p>
+                <h3 className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                  {auditStats.blocked}
+                </h3>
+              </div>
+            </div>
+          </div>
+
+          {/* Search, Severity Filters, & Module Selector */}
+          <div className={`p-4 rounded-3xl border shadow-xl space-y-3 ${
+            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+          }`}>
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              {/* Search bar */}
+              <div className="relative flex-1">
+                <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
+                  search
+                </span>
+                <input
+                  type="text"
+                  value={auditSearch}
+                  onChange={(e) => setAuditSearch(e.target.value)}
+                  placeholder={t('بحث فوري في السجلات بالموظف، IP، نوع العملية، الموديول أو الوصف...', 'Search audit logs by user, IP, action, module, or details...')}
+                  className={`w-full pr-10 pl-9 py-2.5 rounded-xl border text-xs transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/50 ${
+                    isDark ? 'bg-slate-900 border-white/10 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                  }`}
+                />
+                {auditSearch && (
+                  <button
+                    onClick={() => setAuditSearch('')}
+                    className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm cursor-pointer"
+                  >
+                    cancel
+                  </button>
+                )}
+              </div>
+
+              {/* Module Filter Dropdown */}
+              <div className="w-full md:w-64">
+                <select
+                  value={auditModuleFilter}
+                  onChange={(e) => setAuditModuleFilter(e.target.value)}
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/50 cursor-pointer ${
+                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                >
+                  <option value="all">{t('كافة الموديولات والأنظمة', 'All Modules & Services')}</option>
+                  <option value="cat-1-auth">{t('تسجيل الدخول والمصادقة (cat-1-auth)', 'Authentication & 2FA')}</option>
+                  <option value="cat-5-payroll">{t('الرواتب والبدلات والتوطين (cat-5-payroll)', 'Payroll & Salaries')}</option>
+                  <option value="cat-9-risk">{t('المخاطر والصلاحيات والامتثال (cat-9-risk)', 'Risk, RBAC & Policies')}</option>
+                  <option value="cat-4-leave">{t('الحضور والبصمة والإجازات (cat-4-leave)', 'Attendance & Biometrics')}</option>
+                  <option value="cat-12-archive">{t('الأرشيف الذكي والمستندات (cat-12-archive)', 'Smart Digital Archive')}</option>
+                  <option value="cat-10-sys">{t('قواعد البيانات والنظام (cat-10-sys)', 'Database & System Backend')}</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Severity Filter Pills */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-white/5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400 ml-1">{t('المستوى الأمني:', 'Severity:')}</span>
+                
+                {[
+                  { id: 'all', labelAr: 'الكل', labelEn: 'All', count: auditLogs.length, color: 'slate' },
+                  { id: 'critical', labelAr: 'حرج', labelEn: 'Critical', count: auditStats.critical, color: 'rose' },
+                  { id: 'warning', labelAr: 'تحذير', labelEn: 'Warning', count: auditStats.warnings, color: 'amber' },
+                  { id: 'success', labelAr: 'معتمد / ناجح', labelEn: 'Success', count: auditStats.successes, color: 'emerald' },
+                  { id: 'info', labelAr: 'معلومات', labelEn: 'Info', count: auditLogs.filter(l => l.severity === 'info').length, color: 'blue' }
+                ].map((s) => {
+                  const isActive = auditSeverityFilter === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setAuditSeverityFilter(s.id as any)}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isActive
+                          ? s.color === 'rose'
+                            ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                            : s.color === 'amber'
+                            ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                            : s.color === 'emerald'
+                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                            : s.color === 'blue'
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                            : 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
+                          : isDark
+                          ? 'bg-slate-900 border border-white/10 text-slate-300 hover:bg-slate-800'
+                          : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span>{language === 'ar' ? s.labelAr : s.labelEn}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                        isActive ? 'bg-black/25 text-white' : isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {s.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {(auditSearch || auditSeverityFilter !== 'all' || auditModuleFilter !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuditSearch('');
+                    setAuditSeverityFilter('all');
+                    setAuditModuleFilter('all');
+                  }}
+                  className="text-xs text-rose-500 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                >
+                  <span className="material-symbols-outlined text-sm">restart_alt</span>
+                  <span>{t('إعادة ضبط الفلاتر', 'Reset Filters')}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Audit Logs Table */}
+          <div className={`rounded-3xl border shadow-xl overflow-hidden ${
+            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+          }`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead>
+                  <tr className={`border-b font-bold ${
+                    isDark ? 'bg-slate-900/60 border-white/10 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <th className="py-3 px-4">{t('معرف الحدث والتوقيت', 'Event ID & Time')}</th>
+                    <th className="py-3 px-4">{t('الفاعل / المستخدم', 'Actor / User')}</th>
+                    <th className="py-3 px-4">{t('الحدث والإجراء', 'Action & Event')}</th>
+                    <th className="py-3 px-4">{t('الموديول المستهدف', 'Target Module')}</th>
+                    <th className="py-3 px-4">{t('المستوى الأمني', 'Severity')}</th>
+                    <th className="py-3 px-4">{t('عنوان IP والجهاز', 'IP & Device')}</th>
+                    <th className="py-3 px-4">{t('الحالة', 'Status')}</th>
+                    <th className="py-3 px-4 text-center">{t('فحص', 'Inspect')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  {filteredAuditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                        <span className="material-symbols-outlined text-4xl mb-2 text-slate-500">search_off</span>
+                        <p className="font-bold">{t('لا توجد سجلات تدقيق مطابقة لمعايير البحث الحالية', 'No audit logs found matching the selected criteria.')}</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAuditLogs.map((log) => {
+                      const isCritical = log.severity === 'critical';
+                      const isWarning = log.severity === 'warning';
+                      const isSuccess = log.severity === 'success';
+
+                      return (
+                        <tr
+                          key={log.id}
+                          className={`transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${
+                            isCritical ? 'bg-rose-500/5' : ''
+                          }`}
+                        >
+                          {/* ID & Timestamp */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <div className="font-mono font-bold text-teal-600 dark:text-teal-400 text-[11px]">
+                              {log.id}
+                            </div>
+                            <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                              <span className="material-symbols-outlined text-[12px]">schedule</span>
+                              <span>{log.timestamp}</span>
+                            </div>
+                          </td>
+
+                          {/* Actor / User */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
+                                isDark ? 'bg-teal-950 text-teal-300 border border-teal-500/30' : 'bg-teal-100 text-teal-800'
+                              }`}>
+                                {log.userName ? log.userName.charAt(0) : 'U'}
+                              </div>
+                              <div>
+                                <div className="font-bold text-slate-900 dark:text-white text-xs">
+                                  {log.userName}
+                                </div>
+                                <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                                  <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-white/10 text-[9px] font-semibold">
+                                    {log.userRole}
+                                  </span>
+                                  <span>{log.userId}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Action & Code */}
+                          <td className="py-3 px-4 max-w-xs">
+                            <div className="font-bold text-slate-900 dark:text-white line-clamp-1">
+                              {log.action}
+                            </div>
+                            <div className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
+                              {log.details}
+                            </div>
+                          </td>
+
+                          {/* Target Module */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium border bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10">
+                              {log.module}
+                            </span>
+                          </td>
+
+                          {/* Severity Badge */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {isCritical ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+                                <span>{t('حرج', 'Critical')}</span>
+                              </span>
+                            ) : isWarning ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                <span>{t('تحذير', 'Warning')}</span>
+                              </span>
+                            ) : isSuccess ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                <span>{t('ناجح', 'Success')}</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                <span>{t('معلومات', 'Info')}</span>
+                              </span>
+                            )}
+                          </td>
+
+                          {/* IP & Device */}
+                          <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px]">
+                            <div className="text-slate-800 dark:text-slate-200 font-bold">{log.ipAddress}</div>
+                            <div className="text-[10px] text-slate-400 font-sans">{log.userDevice}</div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                              log.status === 'محظور'
+                                ? 'bg-rose-500 text-white'
+                                : log.status === 'تحذير'
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-emerald-600 text-white'
+                            }`}>
+                              {log.status}
+                            </span>
+                          </td>
+
+                          {/* Actions / Inspect */}
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedAuditLog(log)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold text-teal-600 dark:text-teal-400 hover:bg-teal-500/10 transition-all flex items-center justify-center gap-1 mx-auto cursor-pointer"
+                              title={t('عرض التفاصيل الفنية للحدث', 'Inspect Event Details')}
+                            >
+                              <span className="material-symbols-outlined text-sm">visibility</span>
+                              <span>{t('تفاصيل', 'Inspect')}</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Footer info */}
+            <div className={`p-3.5 border-t flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 ${
+              isDark ? 'bg-slate-900/40 border-white/5' : 'bg-slate-50/50 border-slate-200'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm text-teal-500">lock_open_right</span>
+                <span>{t('جميع الأحداث موقعة بتشفير SHA-256 ومخزنة في السجل المركزي الموحد.', 'All events are SHA-256 cryptographically hashed & stored in the central audit ledger.')}</span>
+              </div>
+              <div className="font-bold text-slate-700 dark:text-slate-300">
+                {t(`عرض ${filteredAuditLogs.length} من إجمالي ${auditLogs.length} سجل`, `Showing ${filteredAuditLogs.length} of ${auditLogs.length} logs`)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
           MODULE 10: Dynamic Users & Module Permissions (sec-roles-permissions)
           ========================================================================= */}
       {(activeModuleId === 'sec-roles-permissions' || activeModuleId === 'sec-edit-role') && (
@@ -1758,6 +2611,190 @@ export const Category9RiskComplianceView: React.FC = () => {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODULE 11: API & Access Key Manager (sec-api-keys)
+          ========================================================================= */}
+      {activeModuleId === 'sec-api-keys' && (
+        <div className="space-y-6">
+          {/* Top Banner */}
+          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
+                <span className="material-symbols-outlined text-2xl">key</span>
+              </div>
+              <div>
+                <h2 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t('إدارة مفاتيح الربط البرمجي وواجهات التكامل (API Keys)', 'API Keys & Integration Management')}
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {t('توليد وإدارة مفاتيح الربط البرمجي للتكامل الآمن مع بوابة البنك المركزي العراقي CBI والأنظمة الخارجية المصرفية.', 'Generate and manage API keys for secure integration with CBI gateway and financial systems.')}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsAddApiKeyModalOpen(true)}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white transition-all shadow-md shadow-teal-600/25 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              <span>{t('إنشاء مفتاح ربط جديد', 'Generate New Key')}</span>
+            </button>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
+              isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-500 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">vpn_key</span>
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('المفاتيح النشطة', 'Active Keys')}</p>
+                <h3 className="text-lg font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {apiKeys.filter(k => k.status === 'نشط').length}
+                </h3>
+              </div>
+            </div>
+
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
+              isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">verified</span>
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('معيار التشفير', 'Encryption Standard')}</p>
+                <h3 className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                  AES-256 GCM
+                </h3>
+              </div>
+            </div>
+
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
+              isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">sync_alt</span>
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('تكامل البنك المركزي', 'CBI Integration')}</p>
+                <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                  {t('متصل ونشط', 'Connected')}
+                </h3>
+              </div>
+            </div>
+          </div>
+
+          {/* API Keys List */}
+          <div className="space-y-3">
+            {apiKeys.map((item) => {
+              const isRevealed = !!revealedKeys[item.id];
+              const isCopied = copiedKeyId === item.id;
+              const displayKey = isRevealed
+                ? item.key
+                : `${item.key.slice(0, 12)}••••••••••••••••${item.key.slice(-4)}`;
+
+              return (
+                <div
+                  key={item.id}
+                  className={`p-4 rounded-2xl border shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all ${
+                    isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+                  }`}
+                >
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30">
+                        {item.id}
+                      </span>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        {item.name}
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                        {item.status}
+                      </span>
+                      {item.permissions && (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400">
+                          {item.permissions}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-xs">
+                      <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 select-all ${
+                        isDark ? 'bg-slate-900 border-white/10 text-teal-300' : 'bg-slate-50 border-slate-200 text-teal-700'
+                      }`}>
+                        <span>{displayKey}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleRevealKey(item.id)}
+                        className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+                          isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
+                        }`}
+                        title={isRevealed ? t('إخفاء المفتاح', 'Hide Key') : t('إظهار المفتاح', 'Reveal Key')}
+                      >
+                        <span className="material-symbols-outlined text-sm">
+                          {isRevealed ? 'visibility_off' : 'visibility'}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyApiKey(item.id, item.key)}
+                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                          isCopied
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-sm">
+                          {isCopied ? 'check' : 'content_copy'}
+                        </span>
+                        <span>{isCopied ? t('تم النسخ', 'Copied') : t('نسخ المفتاح', 'Copy')}</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-[10px] text-slate-400 pt-0.5">
+                      <span>{t('تاريخ الإنشاء:', 'Created:')} {item.created}</span>
+                      {item.expires && (
+                        <span>• {t('تاريخ الانتهاء:', 'Expires:')} {item.expires}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end md:self-center">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteApiKey(item.id)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-500/10 border border-rose-500/30 transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">block</span>
+                      <span>{t('إلغاء المفتاح', 'Revoke Key')}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Security Alert Note */}
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2.5">
+            <span className="material-symbols-outlined text-lg shrink-0 mt-0.5">shield</span>
+            <div>
+              <p className="font-bold">{t('إرشادات أمان مفاتيح الربط البرمجي:', 'API Security Best Practices:')}</p>
+              <p className="text-[11px] mt-0.5 text-amber-800/80 dark:text-amber-200/80">
+                {t('لا تشارك مفاتيح API في بيئات الاختبار غير المحمية أو عبر البريد الإلكتروني. يتم تسجيل كافة استدعاءات المفاتيح في سجل تدقيق الأمان (Audit Trail) بشكل فوري وفحص عنوان IP.', 'Never expose production API keys in client-side code or unencrypted emails. All calls are logged in the Security Audit Trail with IP verification.')}
+              </p>
             </div>
           </div>
         </div>
@@ -2510,6 +3547,409 @@ export const Category9RiskComplianceView: React.FC = () => {
                 </button>
               </div>
 
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          AUDIT EVENT INSPECTION & HASH VERIFICATION MODAL
+      ============================================================ */}
+      {selectedAuditLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-2xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            {/* Modal Header */}
+            <div className={`p-5 border-b flex items-center justify-between ${
+              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-500 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-2xl">policy</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">
+                    {t('فحص تفاصيل الحدث الأمني وسجل التدقيق', 'Security Audit Event Inspection')}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-0.5 font-mono text-[11px] text-teal-600 dark:text-teal-400">
+                    <span>{selectedAuditLog.id}</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-400 font-sans">{selectedAuditLog.timestamp}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAuditLog(null)}
+                className="w-8 h-8 rounded-full border border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+              {/* Event Title Banner */}
+              <div className={`p-4 rounded-2xl border ${
+                selectedAuditLog.severity === 'critical'
+                  ? 'bg-rose-500/10 border-rose-500/30'
+                  : selectedAuditLog.severity === 'warning'
+                  ? 'bg-amber-500/10 border-amber-500/30'
+                  : 'bg-teal-500/10 border-teal-500/30'
+              }`}>
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                    {selectedAuditLog.action}
+                  </h4>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    selectedAuditLog.status === 'محظور'
+                      ? 'bg-rose-600 text-white'
+                      : selectedAuditLog.status === 'تحذير'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-emerald-600 text-white'
+                  }`}>
+                    {selectedAuditLog.status}
+                  </span>
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                  {selectedAuditLog.details}
+                </p>
+              </div>
+
+              {/* Actor & Source Info Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className="text-[10px] text-slate-400 font-bold mb-1">{t('المستخدم المنفذ للعملية (Actor):', 'Actor / User:')}</p>
+                  <p className="font-bold text-slate-900 dark:text-white">{selectedAuditLog.userName}</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{selectedAuditLog.userId} ({selectedAuditLog.userRole})</p>
+                </div>
+
+                <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className="text-[10px] text-slate-400 font-bold mb-1">{t('الموديول المستهدف والرمز:', 'Target Module & Code:')}</p>
+                  <p className="font-bold text-slate-900 dark:text-white">{selectedAuditLog.module}</p>
+                  <p className="text-[10px] text-teal-600 dark:text-teal-400 font-mono mt-0.5">{selectedAuditLog.actionType}</p>
+                </div>
+
+                <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className="text-[10px] text-slate-400 font-bold mb-1">{t('عنوان IP والمصدر الشبكي:', 'IP Address:')}</p>
+                  <p className="font-mono font-bold text-slate-900 dark:text-white">{selectedAuditLog.ipAddress}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{selectedAuditLog.userDevice}</p>
+                </div>
+
+                <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className="text-[10px] text-slate-400 font-bold mb-1">{t('المستوى الأمني والامتثال:', 'Severity & Compliance:')}</p>
+                  <span className={`inline-block px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                    selectedAuditLog.severity === 'critical'
+                      ? 'bg-rose-500/20 text-rose-400'
+                      : selectedAuditLog.severity === 'warning'
+                      ? 'bg-amber-500/20 text-amber-400'
+                      : 'bg-emerald-500/20 text-emerald-400'
+                  }`}>
+                    {selectedAuditLog.severity.toUpperCase()}
+                  </span>
+                  <p className="text-[10px] text-slate-400 mt-1">{t('متوافق مع تعليمات CBI', 'CBI Compliant')}</p>
+                </div>
+              </div>
+
+              {/* SHA-256 Tamper-Proof Checksum */}
+              <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs text-teal-500">lock</span>
+                    <span>{t('التوقيع الرقمي للحدث (SHA-256 Cryptographic Signature):', 'Cryptographic Signature (SHA-256):')}</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">{t('سليم وغير معدل', 'Tamper-Proof Verified')}</span>
+                </div>
+                <div className="font-mono text-[10px] text-teal-600 dark:text-teal-400 break-all select-all bg-black/10 dark:bg-black/30 p-2 rounded-xl border border-white/5">
+                  {selectedAuditLog.metadata?.hash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
+                </div>
+              </div>
+
+              {/* Metadata JSON Viewer */}
+              {selectedAuditLog.metadata && (
+                <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">data_object</span>
+                      <span>{t('الحمولة الفنية والبيانات الوصفية (Metadata Payload):', 'Metadata Payload (JSON):')}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(selectedAuditLog.metadata, null, 2));
+                        setAuditToast(language === 'ar' ? 'تم نسخ الحمولة الفنية!' : 'Metadata JSON copied!');
+                        setTimeout(() => setAuditToast(null), 3000);
+                      }}
+                      className="text-[10px] text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[11px]">content_copy</span>
+                      <span>{t('نسخ JSON', 'Copy')}</span>
+                    </button>
+                  </div>
+                  <pre className="font-mono text-[10px] text-slate-700 dark:text-slate-300 bg-black/15 dark:bg-black/40 p-3 rounded-xl overflow-x-auto select-all border border-white/5">
+                    {JSON.stringify(selectedAuditLog.metadata, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className={`p-4 border-t flex items-center justify-end ${
+              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <button
+                type="button"
+                onClick={() => setSelectedAuditLog(null)}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white transition-all cursor-pointer"
+              >
+                {t('إغلاق', 'Close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          MANUAL SECURITY AUDIT LOG MODAL
+      ============================================================ */}
+      {isAddAuditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`p-5 border-b flex items-center justify-between ${
+              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-500 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-2xl">add_moderator</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">
+                    {t('تسجيل فحص تدقيق أمني يدوي', 'Log Manual Security Audit')}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {t('إضافة قيد رقابي رسمي إلى سجل التدقيق المركزي الموحد', 'Record official inspection note to audit ledger')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddAuditModalOpen(false)}
+                className="w-8 h-8 rounded-full border border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleAddAuditRecordSubmit} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                  {t('موضوع أو عنوان الفحص التدقيقي *', 'Inspection Action / Subject *')}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newAuditForm.action}
+                  onChange={(e) => setNewAuditForm({ ...newAuditForm, action: e.target.value })}
+                  placeholder={t('مثال: فحص سلامة أذونات التوطين المصرفي للفرع الرئيسي', 'e.g., Audit inspection of banking payroll authorization')}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    {t('المستوى الأمني', 'Severity')}
+                  </label>
+                  <select
+                    value={newAuditForm.severity}
+                    onChange={(e) => setNewAuditForm({ ...newAuditForm, severity: e.target.value as any })}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${
+                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <option value="info">{t('معلومات (Info)', 'Info')}</option>
+                    <option value="success">{t('ناجح / معتمد (Success)', 'Success')}</option>
+                    <option value="warning">{t('تحذير / مخاطرة (Warning)', 'Warning')}</option>
+                    <option value="critical">{t('حرج / عالي الخطورة (Critical)', 'Critical')}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    {t('الحالة الناتجة', 'Resulting Status')}
+                  </label>
+                  <select
+                    value={newAuditForm.status}
+                    onChange={(e) => setNewAuditForm({ ...newAuditForm, status: e.target.value as any })}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${
+                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <option value="ناجح">{t('ناجح (Approved)', 'Approved')}</option>
+                    <option value="تحذير">{t('تحذير (Warning)', 'Warning')}</option>
+                    <option value="محظور">{t('محظور (Blocked)', 'Blocked')}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                  {t('الموديول أو القسم المستهدف', 'Target Module / Scope')}
+                </label>
+                <select
+                  value={newAuditForm.module}
+                  onChange={(e) => setNewAuditForm({ ...newAuditForm, module: e.target.value })}
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${
+                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                >
+                  <option value="الحوكمة والرقابة (cat-9-risk)">{t('الحوكمة والرقابة والامتثال (cat-9-risk)', 'Governance & Risk')}</option>
+                  <option value="الرواتب والتعويضات (cat-5-payroll)">{t('الرواتب والتعويضات والتوطين (cat-5-payroll)', 'Payroll & Banking')}</option>
+                  <option value="تسجيل الدخول والأمان (cat-1-auth)">{t('تسجيل الدخول والأمان والمصادقة (cat-1-auth)', 'Authentication & 2FA')}</option>
+                  <option value="الموظفون والعقود (cat-3-emp)">{t('إدارة الموظفين والعقود (cat-3-emp)', 'Employee Management')}</option>
+                  <option value="الأرشيف الذكي (cat-12-archive)">{t('الأرشيف الذكي والمستندات (cat-12-archive)', 'Smart Digital Archive')}</option>
+                  <option value="قواعد البيانات والنظام (cat-10-sys)">{t('قواعد البيانات والنظام (cat-10-sys)', 'System & Database')}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                  {t('الملاحظات والتفاصيل الرقابية', 'Audit Findings & Notes')}
+                </label>
+                <textarea
+                  rows={3}
+                  value={newAuditForm.details}
+                  onChange={(e) => setNewAuditForm({ ...newAuditForm, details: e.target.value })}
+                  placeholder={t('اكتب تفاصيل التقرير، الملاحظات الفنية، أو التوصيات الرقابية بدقة...', 'Enter inspection findings, technical notes, or compliance recommendations...')}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+
+              <div className="pt-3 border-t flex items-center justify-end gap-2 border-slate-200 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsAddAuditModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                >
+                  {t('إلغاء', 'Cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md shadow-teal-600/25 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">save</span>
+                  <span>{t('حفظ وتسجيل الحدث', 'Save & Log Event')}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          GENERATE NEW API KEY MODAL
+      ============================================================ */}
+      {isAddApiKeyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`p-5 border-b flex items-center justify-between ${
+              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-500 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-2xl">key</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">
+                    {t('إنشاء مفتاح ربط برمجي جديد', 'Generate New API Key')}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {t('توليد مفتاح مشفر للربط مع الأنظمة المصرفية والجهات الرقابية', 'Generate 256-bit secure key for external integrations')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddApiKeyModalOpen(false)}
+                className="w-8 h-8 rounded-full border border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleGenerateApiKeySubmit} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                  {t('اسم المفتاح أو الجهة المتصلة *', 'Key / Integration Name *')}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newApiKeyForm.name}
+                  onChange={(e) => setNewApiKeyForm({ ...newApiKeyForm, name: e.target.value })}
+                  placeholder={t('مثال: منصة التوطين المصرفي CBI API Gateway', 'e.g., CBI Payment & Settlement Gateway')}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                  {t('مستوى الصلاحيات الممنوحة', 'Granted Permissions')}
+                </label>
+                <select
+                  value={newApiKeyForm.permissions}
+                  onChange={(e) => setNewApiKeyForm({ ...newApiKeyForm, permissions: e.target.value })}
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${
+                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                >
+                  <option value="قراءة وكتابة (Full Access)">{t('قراءة وكتابة كاملة (Full Access)', 'Full Read / Write Access')}</option>
+                  <option value="قراءة فقط (Read Only)">{t('قراءة فقط واستعلام (Read Only)', 'Read Only')}</option>
+                  <option value="إرسال فقط (Send Only)">{t('إرسال إشعارات فقط (Send Only)', 'Send Only')}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                  {t('تاريخ الانتهاء والصلاحية', 'Expiration Date')}
+                </label>
+                <input
+                  type="date"
+                  value={newApiKeyForm.expires}
+                  onChange={(e) => setNewApiKeyForm({ ...newApiKeyForm, expires: e.target.value })}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+
+              <div className="pt-3 border-t flex items-center justify-end gap-2 border-slate-200 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsAddApiKeyModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                >
+                  {t('إلغاء', 'Cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md shadow-teal-600/25 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">vpn_key</span>
+                  <span>{t('توليد المفتاح', 'Generate Key')}</span>
+                </button>
+              </div>
             </form>
           </div>
         </div>

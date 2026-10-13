@@ -74,10 +74,17 @@ export const Sidebar: React.FC = () => {
         if (isContainer) {
           const insideButton = !!(el as HTMLElement).closest('button');
           (el as HTMLElement).style.setProperty('background-color', insideButton ? 'transparent' : '#06080d', 'important');
+          const hasOwnBorder = el.classList.contains('border-b') || el.classList.contains('border-t') || el.classList.contains('border-teal-500') || el.classList.contains('border-x');
+          if (!hasOwnBorder) {
+            (el as HTMLElement).style.setProperty('border', 'none', 'important');
+            (el as HTMLElement).style.setProperty('outline', 'none', 'important');
+            (el as HTMLElement).style.setProperty('box-shadow', 'none', 'important');
+          }
         }
         if (isInput) {
-          (el as HTMLElement).style.setProperty('background-color', 'rgba(255,255,255,0.08)', 'important');
-          (el as HTMLElement).style.setProperty('border-color', 'rgba(255,255,255,0.2)', 'important');
+          (el as HTMLElement).style.setProperty('background-color', '#0a0d14', 'important');
+          (el as HTMLElement).style.setProperty('border-color', '#1e293b', 'important');
+          (el as HTMLElement).style.setProperty('outline', 'none', 'important');
         }
         if (tag === 'button') {
           const btn = el as HTMLElement;
@@ -90,11 +97,9 @@ export const Sidebar: React.FC = () => {
             if (btn.classList.contains('border-transparent') || btn.className.includes('border-transparent')) {
               btn.style.setProperty('border-color', 'transparent', 'important');
               btn.style.setProperty('background-color', 'transparent', 'important');
-            } else if (btn.classList.contains('border-white/10') || btn.className.includes('border-white/10')) {
-              btn.style.setProperty('border-color', 'rgba(255, 255, 255, 0.1)', 'important');
-              btn.style.setProperty('background-color', 'rgba(255, 255, 255, 0.05)', 'important');
             } else {
-              btn.style.removeProperty('border-color');
+              btn.style.setProperty('border-color', '#1e293b', 'important');
+              btn.style.setProperty('background-color', '#0f172a', 'important');
             }
           }
         }
@@ -152,7 +157,7 @@ export const Sidebar: React.FC = () => {
       case 'leave-approvals':
         return leaveRequests.filter(r => r.status === 'قيد الانتظار').length;
       case 'recruit-dash':
-        return jobVacancies.length;
+        return jobVacancies.filter(j => j.status === 'مفتوحة' || j.status === 'Open').length;
       case 'recruit-ats':
       case 'recruit-candidate-profile':
         return candidates.length;
@@ -204,7 +209,7 @@ export const Sidebar: React.FC = () => {
 
       <aside
         ref={sidebarRef}
-        className="fixed inset-y-0 start-0 z-50 w-80 max-w-[85vw] lg:static lg:w-80 h-full lg:h-screen lg:sticky lg:top-0 border-x flex flex-col shrink-0 select-none transition-all duration-300 shadow-2xl lg:shadow-none print:hidden bg-[#06080d] border-[#1e2a44] text-slate-300"
+        className="max-lg:fixed inset-y-0 start-0 z-50 w-80 max-w-[85vw] lg:static lg:w-80 h-full lg:h-screen lg:sticky lg:top-0 border-x flex flex-col shrink-0 select-none transition-all duration-300 shadow-2xl lg:shadow-none print:hidden bg-[#06080d] border-[#1e2a44] text-slate-300"
       >
 
 
@@ -259,7 +264,7 @@ export const Sidebar: React.FC = () => {
             <div className="flex items-center gap-1">
               <button
                 onClick={collapseAll}
-                className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-teal-400 text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                className="px-2 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800/80 text-slate-300 hover:text-teal-400 text-[11px] flex items-center gap-1 transition-all cursor-pointer"
                 title={t('طوي كافة القوائم', 'Collapse all categories')}
               >
                 <span className="material-symbols-outlined text-sm">unfold_less</span>
@@ -267,7 +272,7 @@ export const Sidebar: React.FC = () => {
               </button>
               <button
                 onClick={expandAll}
-                className="p-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-teal-400 transition-all cursor-pointer"
+                className="p-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800/80 text-slate-400 hover:text-teal-400 transition-all cursor-pointer"
                 title={t('توسيع كافة القوائم', 'Expand all categories')}
               >
                 <span className="material-symbols-outlined text-sm">unfold_more</span>
@@ -284,7 +289,7 @@ export const Sidebar: React.FC = () => {
               placeholder={t('ابحث في الموديولات المتاحة لك...', 'Filter your permitted modules...')}
               value={sidebarFilter}
               onChange={e => setSidebarFilter(e.target.value)}
-              className={`w-full bg-white/5 border border-white/10 rounded-xl ${language === 'ar' ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500/60 transition-colors placeholder:text-slate-500`}
+              className={`w-full bg-[#0a0d14] border border-slate-800/80 rounded-xl ${language === 'ar' ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500/60 transition-colors placeholder:text-slate-500`}
             />
 
             {sidebarFilter && (
@@ -435,9 +440,7 @@ export const Sidebar: React.FC = () => {
               className={`flex-1 px-2.5 h-8 rounded-xl flex items-center gap-2 transition-all text-[11px] font-normal cursor-pointer ${
                 activeModuleId === 'sys-settings-security'
                   ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
-                  : isDark
-                    ? 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
+                  : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-teal-400 border border-slate-800/80'
               }`}
               title={t('الإعدادات والأمان', 'Settings & Security')}
             >
@@ -450,9 +453,7 @@ export const Sidebar: React.FC = () => {
               className={`flex-1 px-2.5 h-8 rounded-xl flex items-center gap-2 transition-all text-[11px] font-normal cursor-pointer ${
                 activeModuleId === 'emp-profile'
                   ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
-                  : isDark
-                    ? 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-teal-400 border border-white/10'
+                  : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-teal-400 border border-slate-800/80'
               }`}
               title={t('ملفي الوظيفي', 'My Profile')}
             >
@@ -464,7 +465,7 @@ export const Sidebar: React.FC = () => {
           {/* Language AR/EN Toggle Button */}
           <button
             onClick={toggleLanguage}
-            className="h-8 px-3 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50"
+            className="h-8 px-3 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer bg-slate-900/80 border-slate-800/80 text-white hover:bg-slate-800 hover:border-teal-500/50"
             title={language === 'ar' ? 'Switch to English' : 'التحويل للعربية'}
           >
             <span className="text-xs tracking-wider font-normal text-white">
@@ -475,7 +476,7 @@ export const Sidebar: React.FC = () => {
           {/* Theme Day/Night Toggle Button */}
           <button
             onClick={toggleTheme}
-            className="h-8 px-2.5 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-teal-500/50"
+            className="h-8 px-2.5 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer bg-slate-900/80 border-slate-800/80 text-white hover:bg-slate-800 hover:border-teal-500/50"
             title={theme === 'dark' ? t('الوضع الفاتح', 'Light Mode') : t('الوضع الداكن', 'Dark Mode')}
           >
             <span className="text-sm">{isDark ? '☀️' : '🌙'}</span>

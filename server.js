@@ -444,6 +444,85 @@ app.get('/api/sync/logs', async (req, res) => {
   }
 });
 
+// --- Security Audit Logs Endpoints ---
+app.get('/api/audit-logs', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 200;
+    const rows = await query(`SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ?`, [limit]).catch(() => []);
+    res.json({ success: true, logs: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/audit-logs', async (req, res) => {
+  try {
+    const { id, user_id, user_name, user_role, action, action_type, severity, module, details, ip_address, user_agent, status, metadata } = req.body;
+    const logId = id || `LOG-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+    const ip = ip_address || req.ip || '192.168.1.109';
+    const ua = user_agent || req.headers['user-agent'] || 'Web Browser';
+    
+    await query(
+      `INSERT INTO audit_logs (id, user_id, user_name, user_role, action, action_type, severity, module, details, ip_address, user_agent, status, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        logId,
+        user_id || 'USR-ADMIN',
+        user_name || 'System Admin',
+        user_role || 'Super Admin',
+        action || 'عملية تدقيق أمني',
+        action_type || 'SECURITY_AUDIT',
+        severity || 'info',
+        module || 'الأمان والامتثال',
+        details || '',
+        ip,
+        ua,
+        status || 'نجاح',
+        typeof metadata === 'object' ? JSON.stringify(metadata) : (metadata || '')
+      ]
+    ).catch(() => {});
+    
+    res.json({ success: true, id: logId });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- API Keys Endpoints ---
+app.get('/api/security/api-keys', async (req, res) => {
+  try {
+    const rows = await query(`SELECT * FROM api_keys ORDER BY created_at DESC`).catch(() => []);
+    res.json({ success: true, keys: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/security/api-keys', async (req, res) => {
+  try {
+    const { name, permissions, expires_at } = req.body;
+    const id = `KEY-${Math.floor(1000 + Math.random() * 9000)}`;
+    const key = `vts_live_sk_${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}`;
+    await query(
+      `INSERT INTO api_keys (id, name, api_key, status, permissions, expires_at) VALUES (?, ?, ?, 'نشط', ?, ?)`,
+      [id, name || 'New API Key', key, permissions || 'read_write', expires_at || null]
+    ).catch(() => {});
+    res.json({ success: true, key: { id, name, key, status: 'نشط', permissions, created_at: new Date().toISOString() } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/security/api-keys/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query(`DELETE FROM api_keys WHERE id = ?`, [id]).catch(() => {});
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.get('/api/init-db', async (req, res) => {
   try {
     const force = req.query.force === 'true';

@@ -4,6 +4,14 @@ import { EmptyState } from '../components/EmptyState';
 import { EmployeePortal } from '../components/EmployeePortal';
 import { filterEmployeesBilingual } from '../utils/bilingualSearch';
 import { getBranchName } from '../utils/branchHelper';
+import {
+  getEmployeeLocalizedName,
+  getLocalizedDepartment,
+  getLocalizedJobTitle,
+  localizeNotificationTitle,
+  localizeNotificationMessage,
+  localizeTimestamp
+} from '../utils/nameHelper';
 
 export const Category2DashboardView: React.FC = () => {
   const {
@@ -72,11 +80,11 @@ export const Category2DashboardView: React.FC = () => {
     }));
   }, [employees, totalEmployeesCount, language]);
 
-  // Dept breakdown live calculation
+  // Dept breakdown live calculation with bilingual support
   const deptCounts = useMemo(() => {
     const map: Record<string, number> = {};
     employees.forEach(e => {
-      const d = e.department || 'قسم الائتمان';
+      const d = getLocalizedDepartment(e.department || 'قسم الائتمان', language);
       map[d] = (map[d] || 0) + 1;
     });
     return Object.entries(map).map(([dept, count]) => ({
@@ -84,7 +92,7 @@ export const Category2DashboardView: React.FC = () => {
       count,
       percent: Math.round((count / (totalEmployeesCount || 1)) * 100)
     }));
-  }, [employees, totalEmployeesCount]);
+  }, [employees, totalEmployeesCount, language]);
 
   // Search filtered employees for Global Search sub-screen with bilingual Arabic & English support
   const searchFilteredEmployees = useMemo(() => {
@@ -92,6 +100,9 @@ export const Category2DashboardView: React.FC = () => {
   }, [employees, dashSearchQuery]);
 
   const pendingLeavesCount = leaveRequests.filter(r => r.status === 'قيد الانتظار' || r.status === 'Pending').length;
+  const openVacanciesCount = useMemo(() => {
+    return jobVacancies.filter(j => j.status === 'مفتوحة' || j.status === 'Open').length;
+  }, [jobVacancies]);
   const totalAssetsAndDocs = (assetRecords?.length || 0) + (documentRecords?.length || 0);
 
   return (
@@ -117,7 +128,11 @@ export const Category2DashboardView: React.FC = () => {
           </h1>
           <p className={`text-xs font-medium mt-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-            <span>{t(`مرحباً بعودتك، ${currentUser.name} (${currentUser.role}) • النظام نشط ومحدث ببيانات مؤسسة فيتاس العراق الحقيقية`, `Welcome back, ${currentUser.name} (${currentUser.role}) • System live with production data`)}</span>
+            <span>
+              {language === 'en'
+                ? `Welcome back, ${getEmployeeLocalizedName(currentUser?.name || 'HR System Admin', 'en')} (${currentUser?.role || 'Super Admin'}) • System live with production data`
+                : `مرحباً بعودتك، ${currentUser?.name || 'المستخدم'} (${currentUser?.role === 'Super Admin' ? 'المشرف العام' : currentUser?.role}) • النظام نشط ومحدث ببيانات مؤسسة فيتاس العراق الحقيقية`}
+            </span>
           </p>
         </div>
 
@@ -251,11 +266,13 @@ export const Category2DashboardView: React.FC = () => {
             }`}>
             <div>
               <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الوظائف الشاغرة', 'Job Vacancies')}</p>
-              <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{jobVacancies.length}</p>
+              <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{openVacanciesCount}</p>
               <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
-                {jobVacancies.length > 0
-                  ? `${jobVacancies.length} ${t('وظائف متاحة حالياً', 'active vacancies')}`
-                  : t('لا توجد وظائف مفتوحة حالياً', 'No open vacancies')}
+                {openVacanciesCount > 0
+                  ? `${openVacanciesCount} ${t('وظائف متاحة حالياً', 'active vacancies')}`
+                  : jobVacancies.length > 0
+                    ? `${t('لا توجد وظائف مفتوحة حالياً', 'No open vacancies')} (${jobVacancies.length} ${t('مغلقة', 'closed')})`
+                    : t('لا توجد وظائف مفتوحة حالياً', 'No open vacancies')}
               </p>
             </div>
             <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
@@ -341,29 +358,34 @@ export const Category2DashboardView: React.FC = () => {
                   {employees?.slice(0, 5).map(emp => (
                     <div
                       key={emp.id}
+                      dir={language === 'en' ? 'ltr' : 'rtl'}
                       className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs transition-all ${isDark
                           ? 'bg-[#06080d] border-white/5 hover:border-teal-500/40 text-slate-200'
                           : 'bg-[#f8fafc] border-slate-200/80 hover:bg-teal-50/40 hover:border-teal-400/50 text-slate-900 shadow-2xs'
                         }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-xl font-bold flex items-center justify-center border overflow-hidden shadow-xs ${
+                        <div className={`w-9 h-9 rounded-xl font-bold flex items-center justify-center border overflow-hidden shadow-xs shrink-0 ${
                           emp.photoUrl
                             ? (isDark ? 'bg-[#1a1f2e] border-teal-500/30' : 'bg-white border-teal-200')
                             : (isDark ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200')
                         }`}>
                           {emp.photoUrl ? (
-                            <img src={emp.photoUrl} alt={emp.fullName} className="w-full h-full object-contain p-0.5" />
+                            <img src={emp.photoUrl} alt={getEmployeeLocalizedName(emp, language)} className="w-full h-full object-contain p-0.5" />
                           ) : (
-                            <span className="text-sm font-bold">{emp.fullName?.slice(0, 1) || 'U'}</span>
+                            <span className="text-sm font-bold">{getEmployeeLocalizedName(emp, language)?.slice(0, 1) || 'U'}</span>
                           )}
                         </div>
-                        <div>
-                          <p className={`font-bold text-sm ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{emp.fullName || emp.full_name_ar}</p>
-                          <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{emp.jobTitle || emp.position_ar || emp.position} • {emp.department}</p>
+                        <div className={language === 'en' ? 'text-left' : 'text-right'}>
+                          <p className={`font-bold text-sm ${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+                            {getEmployeeLocalizedName(emp, language)}
+                          </p>
+                          <p className={`text-xs font-medium ${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            {getLocalizedJobTitle(emp.jobTitle || emp.position_ar || emp.position, language)} • {getLocalizedDepartment(emp.department, language)}
+                          </p>
                         </div>
                       </div>
-                      <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${isDark
+                      <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border shrink-0 ${isDark
                           ? 'bg-[#06080d] text-teal-400 border-teal-500/40'
                           : 'bg-white text-teal-800 border-teal-300 shadow-2xs'
                         }`}>
@@ -406,6 +428,7 @@ export const Category2DashboardView: React.FC = () => {
                 {notifications.map(n => (
                   <div
                     key={n.id}
+                    dir={language === 'en' ? 'ltr' : 'rtl'}
                     className={`p-3 rounded-2xl border space-y-1 transition-all shadow-2xs ${isDark
                         ? 'bg-[#06080d] border-white/10 text-slate-200 hover:border-teal-500/40'
                         : 'bg-[#f8fafc] border-slate-200/80 text-slate-900 hover:bg-teal-50/40 hover:border-teal-400/50'
@@ -414,11 +437,15 @@ export const Category2DashboardView: React.FC = () => {
                     <div className="flex items-center justify-between font-bold text-xs">
                       <span className={`flex items-center gap-1.5 ${isDark ? 'text-teal-400' : 'text-teal-800'}`}>
                         <span className="material-symbols-outlined text-base">notifications</span>
-                        <span>{n.title}</span>
+                        <span>{localizeNotificationTitle(n.title, language)}</span>
                       </span>
-                      <span className={`text-[10px] font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{n.timestamp}</span>
+                      <span className={`text-[10px] font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {localizeTimestamp(n.timestamp, language)}
+                      </span>
                     </div>
-                    <p className={`text-xs font-normal ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{n.message}</p>
+                    <p className={`text-xs font-normal ${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      {localizeNotificationMessage(n.message, language)}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -691,8 +718,8 @@ export const Category2DashboardView: React.FC = () => {
                       }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`font-bold text-sm block ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        {language === 'en' ? emp.fullNameEn || emp.fullName : emp.fullName || emp.full_name_ar}
+                      <span className={`font-bold text-sm block ${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        {getEmployeeLocalizedName(emp, language)}
                       </span>
                       <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${isDark ? 'bg-[#06080d] text-teal-400 border-teal-500' : 'bg-white text-teal-800 border-teal-300'
                         }`}>
@@ -701,10 +728,8 @@ export const Category2DashboardView: React.FC = () => {
                           : `VTS-${emp.employeeId || emp.badgeNo || emp.employee_id || emp.id}`}
                       </span>
                     </div>
-                    <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {language === 'en' && emp.jobTitleEn && emp.jobTitleEn !== 'N/A'
-                        ? emp.jobTitleEn
-                        : (emp.jobTitle || emp.position_ar || emp.position)} • {emp.department}
+                    <p className={`text-xs font-medium ${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {getLocalizedJobTitle(emp.jobTitleEn && emp.jobTitleEn !== 'N/A' ? emp.jobTitleEn : (emp.jobTitle || emp.position_ar || emp.position), language)} • {getLocalizedDepartment(emp.department, language)}
                     </p>
                     <p className={`text-[11px] font-semibold flex items-center gap-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
                       <span className="material-symbols-outlined text-xs">location_on</span>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
+import * as XLSX from 'xlsx';
 
 // Database Schema Field Metadata definition
 interface FieldMeta {
@@ -178,7 +179,7 @@ const DB_TABLES_CATALOG: TableMeta[] = [
 ];
 
 export const DynamicReportBuilder: React.FC = () => {
-  const { employees, leaveRequests, candidates, assetRecords, t, currentUser, language, theme } = useApp();
+  const { employees, leaveRequests, candidates, assetRecords, t, currentUser, language, theme, addNotification } = useApp();
   const isDark = theme === 'dark';
 
   // Primary and Joined Tables Selection
@@ -252,16 +253,129 @@ export const DynamicReportBuilder: React.FC = () => {
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
   const [showPrintPreviewModal, setShowPrintPreviewModal] = useState<boolean>(false);
+  const [previewModalMode, setPreviewModalMode] = useState<'print' | 'excel'>('print');
 
   // Sharing form inputs
   const [newReportName, setNewReportName] = useState<string>('');
   const [newReportDesc, setNewReportDesc] = useState<string>('');
   const [shareRecipientRole, setShareRecipientRole] = useState<string>('HR Manager');
   const [shareCustomNote, setShareCustomNote] = useState<string>('');
+  const [shareSearchTerm, setShareSearchTerm] = useState<string>('');
+  const [selectedRecipient, setSelectedRecipient] = useState<{
+    id: string;
+    label: string;
+    labelEn: string;
+    category: 'branch' | 'department' | 'employee' | 'role';
+    categoryLabel: string;
+    subtext?: string;
+    icon: string;
+  } | null>(null);
+  const [isShareDropdownOpen, setIsShareDropdownOpen] = useState<boolean>(false);
   const [emailTo, setEmailTo] = useState<string>('');
   const [emailSubject, setEmailSubject] = useState<string>('');
   const [emailBody, setEmailBody] = useState<string>('');
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
+
+  // Compile unique lists of Branches, Departments, Employees, and Roles for Share Recipient Combobox
+  const recipientOptions = useMemo(() => {
+    const list: Array<{
+      id: string;
+      label: string;
+      labelEn: string;
+      category: 'branch' | 'department' | 'employee' | 'role';
+      categoryLabel: string;
+      subtext?: string;
+      icon: string;
+    }> = [];
+
+    // 1. Roles (أدوار إدارية)
+    const roles = [
+      { id: 'role-super-admin', label: 'الإدارة العليا (Executive Board)', labelEn: 'Executive Board', subtext: 'كافة صلاحيات الإدارة العليا' },
+      { id: 'role-hr-manager', label: 'مدير الموارد البشرية (HR Manager)', labelEn: 'HR Manager', subtext: 'إدارة الموارد البشرية والرواتب' },
+      { id: 'role-dept-head', label: 'رؤساء الأقسام الإدارية (Department Heads)', labelEn: 'Department Heads', subtext: 'إشراف الأقسام والإدارات' },
+      { id: 'role-it-admin', label: 'مسؤولي تقنية المعلومات والأنظمة (IT Admin)', labelEn: 'IT Admin', subtext: 'إدارة السيرفرات وقواعد البيانات' },
+    ];
+    roles.forEach(r => list.push({
+      id: r.id,
+      label: r.label,
+      labelEn: r.labelEn,
+      category: 'role',
+      categoryLabel: language === 'en' ? 'Administrative Role' : 'دور إداري',
+      subtext: r.subtext,
+      icon: 'admin_panel_settings'
+    }));
+
+    // 2. Branches / Offices (مكاتب وفروع المؤسسة)
+    const branchSet = new Set<string>();
+    employees.forEach(e => {
+      const b = e.branch || (e as any).location_ar;
+      if (b && typeof b === 'string') branchSet.add(b.trim());
+    });
+    ['الإدارة العامة - بغداد', 'فرع أربيل', 'فرع السليمانية', 'فرع دهوك', 'فرع بغداد الرصافة', 'فرع بغداد الكرخ', 'فرع بابل_الحلة', 'فرع كربلاء', 'فرع النجف', 'فرع البصرة', 'فرع الكوت', 'فرع ميسان', 'فرع الديوانية', 'فرع كركوك'].forEach(b => branchSet.add(b));
+    
+    branchSet.forEach(b => {
+      list.push({
+        id: `branch-${b}`,
+        label: b.startsWith('فرع') || b.startsWith('مكتب') || b.startsWith('الإدارة') ? b : `فرع ${b}`,
+        labelEn: `Branch: ${b}`,
+        category: 'branch',
+        categoryLabel: language === 'en' ? 'Branch / Office' : 'مكتب / فرع',
+        subtext: language === 'en' ? 'All branch staff' : 'كافة موظفي وكادر الفرع',
+        icon: 'domain'
+      });
+    });
+
+    // 3. Departments (الأقسام والإدارات)
+    const deptSet = new Set<string>();
+    employees.forEach(e => {
+      if (e.department && typeof e.department === 'string') deptSet.add(e.department.trim());
+    });
+    ['قسم الائتمان', 'قسم الموارد البشرية', 'قسم تكنولوجيا المعلومات', 'قسم العمليات والتدقيق', 'قسم المالية والمحاسبة', 'قسم الشؤون القانونية', 'قسم إدارة المخاطر والامتثال', 'قسم خدمة العملاء والتسويق'].forEach(d => deptSet.add(d));
+
+    deptSet.forEach(d => {
+      list.push({
+        id: `dept-${d}`,
+        label: d.startsWith('قسم') ? d : `قسم ${d}`,
+        labelEn: `Department: ${d}`,
+        category: 'department',
+        categoryLabel: language === 'en' ? 'Department' : 'قسم / إدارة',
+        subtext: language === 'en' ? 'Department team' : 'كادر وفريق القسم',
+        icon: 'account_tree'
+      });
+    });
+
+    // 4. Employees (كافة الموظفين فردياً)
+    employees.forEach(emp => {
+      const empName = emp.fullName || (emp as any).fullNameAr || (emp as any).name || 'موظف';
+      const badge = emp.employeeId || (emp as any).badgeNo || emp.id;
+      const dept = emp.department || '';
+      const branch = emp.branch || '';
+      const title = emp.jobTitle || '';
+      list.push({
+        id: `emp-${emp.id}`,
+        label: `${empName} (${badge})`,
+        labelEn: `${empName} (ID: ${badge})`,
+        category: 'employee',
+        categoryLabel: language === 'en' ? 'Employee' : 'موظف',
+        subtext: `${title} • ${dept} • ${branch}`.replace(/^ • | • $/g, ''),
+        icon: 'person'
+      });
+    });
+
+    return list;
+  }, [employees, language]);
+
+  const filteredRecipients = useMemo(() => {
+    const term = shareSearchTerm.trim().toLowerCase();
+    if (!term) {
+      return recipientOptions.slice(0, 15);
+    }
+    return recipientOptions.filter(item => {
+      return item.label.toLowerCase().includes(term) ||
+             item.labelEn.toLowerCase().includes(term) ||
+             (item.subtext && item.subtext.toLowerCase().includes(term));
+    }).slice(0, 30);
+  }, [recipientOptions, shareSearchTerm]);
 
   const handleSaveTemplate = () => {
     if (!newReportName.trim()) return;
@@ -533,7 +647,52 @@ export const DynamicReportBuilder: React.FC = () => {
     triggerSuccessToast('تم حفظ نموذج التقرير بنجاح واستخراجه للوصول المستقبلي!');
   };
 
-  // Export to Excel / CSV File Download
+  // Export to Excel (.xlsx) with automatic fallback to CSV
+  const handleSaveExcel = () => {
+    try {
+      const isEn = language === 'en';
+      const selectedMetas = selectedFields.map(fKey => availableFields.find(f => f.key === fKey)!).filter(Boolean);
+      
+      const exportRows = filteredData.map(row => {
+        const obj: Record<string, any> = {};
+        selectedMetas.forEach(m => {
+          const colLabel = isEn ? (m.labelEn || m.key) : (m.labelAr || m.key);
+          const rawVal = (row as any)[m.key];
+          if (m.type === 'currency') {
+            obj[colLabel] = Number(rawVal || 0);
+          } else {
+            obj[colLabel] = rawVal ?? '';
+          }
+        });
+        return obj;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+      
+      // Auto column widths
+      const colWidths = selectedMetas.map(m => {
+        const colLabel = isEn ? (m.labelEn || m.key) : (m.labelAr || m.key);
+        return { wch: Math.max(colLabel.length * 2, 16) };
+      });
+      ws['!cols'] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      const sheetName = isEn ? 'Report Data' : 'بيانات التقرير';
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      
+      const fileName = `${reportTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      triggerSuccessToast(isEn 
+        ? 'Excel file (.xlsx) exported and saved successfully!' 
+        : 'تم حفظ وتصدير ملف إكسل (.xlsx) بنجاح!');
+    } catch (e: any) {
+      console.error('Error exporting excel:', e);
+      handleExportCSV();
+    }
+  };
+
+  // Export to CSV fallback
   const handleExportCSV = () => {
     const selectedMetas = selectedFields.map(fKey => availableFields.find(f => f.key === fKey)!).filter(Boolean);
     const headers = selectedMetas.map(m => `"${m.labelAr}"`).join(',');
@@ -556,6 +715,229 @@ export const DynamicReportBuilder: React.FC = () => {
     link.click();
     document.body.removeChild(link);
     triggerSuccessToast('تم تصدير تقرير إكسل (.CSV formatted) وحفظه في جهازك!');
+  };
+
+  // Print complete table in external dedicated window on A4 across all pages naturally
+  const handlePrintExternalWindow = () => {
+    const isEn = language === 'en';
+    const dir = isEn ? 'ltr' : 'rtl';
+    const printWindow = window.open('', '_blank', 'width=1280,height=900');
+    
+    const selectedMetas = selectedFields.map(fKey => availableFields.find(f => f.key === fKey)!).filter(Boolean);
+    
+    const tableHeaders = selectedMetas.map(meta => {
+      const label = isEn ? (meta.labelEn || meta.key) : (meta.labelAr || meta.key);
+      return `<th style="padding: 7px 9px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #0f172a; font-weight: 700; text-align: ${isEn ? 'left' : 'right'}; white-space: nowrap; font-size: 10px;">${label}</th>`;
+    }).join('');
+
+    const tableRows = filteredData.map((row, idx) => {
+      const cells = selectedMetas.map(meta => {
+        const val = (row as any)[meta.key];
+        const displayVal = meta.type === 'currency' 
+          ? `${Number(val || 0).toLocaleString(isEn ? 'en-US' : 'ar-IQ')} ${isEn ? 'IQD' : 'د.ع'}`
+          : (val ?? '-');
+        return `<td style="padding: 5px 9px; border: 1px solid #e2e8f0; white-space: nowrap; text-align: ${isEn ? 'left' : 'right'}; font-size: 10px;">${displayVal}</td>`;
+      }).join('');
+      const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+      return `<tr style="background: ${bg};"><td style="padding: 5px 8px; border: 1px solid #e2e8f0; text-align: center; font-family: monospace; font-size: 10px; color: #64748b;">${idx + 1}</td>${cells}</tr>`;
+    }).join('');
+
+    const dateStr = new Date().toLocaleDateString(isEn ? 'en-US' : 'ar-IQ');
+    const docRef = `VR-REP-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="${isEn ? 'en' : 'ar'}" dir="${dir}">
+<head>
+  <meta charset="UTF-8">
+  <title>${reportTitle} - VITAS IRAQ HRMS</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 10mm 10mm 12mm 10mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: #0f172a;
+      direction: ${dir};
+    }
+    .no-print-bar {
+      position: sticky;
+      top: 0;
+      background: #0f172a;
+      color: white;
+      padding: 10px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+      z-index: 9999;
+    }
+    .btn {
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-print { background: #0d9488; color: white; margin-inline-end: 8px; }
+    .btn-print:hover { background: #0f766e; }
+    .btn-close { background: #334155; color: white; }
+    .btn-close:hover { background: #475569; }
+    .header-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .org-sub { font-size: 11px; font-weight: 700; color: #475569; }
+    .rep-head { font-size: 20px; font-weight: 900; color: #0f172a; margin: 4px 0; }
+    .rep-meta { font-size: 10.5px; color: #64748b; font-family: monospace; }
+    .meta-rt { text-align: ${isEn ? 'right' : 'left'}; font-family: monospace; font-size: 10.5px; color: #475569; }
+    .table-wrap { width: 100%; overflow: visible; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      page-break-inside: auto;
+    }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    .signatures-block {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 28px;
+      gap: 16px;
+      page-break-inside: avoid;
+    }
+    .sig-card {
+      flex: 1;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #334155;
+    }
+    .sig-dots {
+      margin-top: 24px;
+      color: #94a3b8;
+      font-family: monospace;
+    }
+    @media print {
+      .no-print-bar { display: none !important; }
+      body { padding: 0; background: transparent; }
+      @page { margin: 10mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print-bar">
+    <div style="font-weight: 800; font-size: 13px;">
+      ${reportTitle} • ${filteredData.length} ${isEn ? 'Records' : 'سجل'}
+    </div>
+    <div>
+      <button class="btn btn-print" onclick="window.print()">${isEn ? '🖨️ Print / Save PDF' : '🖨️ طباعة / حفظ PDF'}</button>
+      <button class="btn btn-close" onclick="window.close()">${isEn ? '✕ Close' : '✕ إغلاق'}</button>
+    </div>
+  </div>
+
+  <div class="header-box">
+    <div>
+      <div class="org-sub">${isEn ? 'Republic of Iraq • VITAS Iraq Microfinance Institution' : 'جمهورية العراق • مؤسسة فيتاس العراق للتمويل الأصغر'}</div>
+      <div class="rep-head">${reportTitle}</div>
+      <div class="rep-meta">
+        ${isEn ? 'Extraction Date:' : 'تاريخ الاستخراج:'} ${dateStr} • 
+        ${isEn ? 'Officer:' : 'بواسطة:'} ${currentUser?.name || 'HR Admin'} (${currentUser?.role || 'Super Admin'})
+      </div>
+    </div>
+    <div class="meta-rt">
+      <div style="font-weight: 800; color: #0d9488;">VITAS IRAQ HRMS</div>
+      <div>Ref: ${docRef}</div>
+      <div>${isEn ? 'Total Records:' : 'إجمالي السجلات:'} ${filteredData.length}</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="padding: 7px 9px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #0f172a; text-align: center; width: 36px; font-size: 10px;">#</th>
+          ${tableHeaders}
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRows}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="signatures-block">
+    <div class="sig-card">
+      <div>${isEn ? 'Prepared by HR Officer' : 'إعداد مسؤول الموارد البشرية'}</div>
+      <div class="sig-dots">${isEn ? 'Signature: ....................' : 'التوقيع: ....................'}</div>
+    </div>
+    <div class="sig-card">
+      <div>${isEn ? 'Audited by IT Systems Head' : 'تدقيق رئيس قسم IT والأنظمة'}</div>
+      <div class="sig-dots">${isEn ? 'Signature: ....................' : 'التوقيع: ....................'}</div>
+    </div>
+    <div class="sig-card">
+      <div>${isEn ? 'Approved by Executive Director' : 'مصادقة واعتماد المدير التنفيذي'}</div>
+      <div class="sig-dots">${isEn ? 'Signature: ....................' : 'التوقيع: ....................'}</div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 350);
+    };
+  </script>
+</body>
+</html>`;
+
+    if (printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+    } else {
+      window.print();
+    }
+  };
+
+  // Open and send report via Microsoft Outlook natively
+  const handleOpenInOutlook = () => {
+    const to = emailTo.trim() || 'hr-executive@vitasiraq.org';
+    const subject = encodeURIComponent(emailSubject.trim() || `تقرير الموارد البشرية: ${reportTitle}`);
+    const bodyText = `${emailBody.trim() || 'تحية طيبة،\nيرجى التفضل بالاطلاع على تقرير الموارد البشرية المعتمد.'}
+
+--------------------------------------------------
+تفاصيل التقرير الرسمي:
+• اسم التقرير: ${reportTitle}
+• تاريخ الاستخراج: ${new Date().toLocaleDateString(language === 'en' ? 'en-US' : 'ar-IQ')}
+• مستخرج التقرير: ${currentUser?.name || 'HR Admin'} (${currentUser?.role || 'Super Admin'})
+• إجمالي عدد السجلات: ${filteredData.length} سجل
+• المنظومة: VITAS IRAQ HRMS Enterprise Portal
+--------------------------------------------------`;
+    const body = encodeURIComponent(bodyText);
+    const mailtoUrl = `mailto:${to}?subject=${subject}&body=${body}`;
+    window.location.href = mailtoUrl;
+    setShowEmailModal(false);
+    triggerSuccessToast(language === 'en'
+      ? 'Opening Microsoft Outlook with pre-filled report details...'
+      : 'جاري فتح برنامج Microsoft Outlook وتعبئة بيانات التقرير...');
   };
 
   // Helper trigger Toast
@@ -595,9 +977,6 @@ export const DynamicReportBuilder: React.FC = () => {
             </div>
             <h1 className={`text-2xl font-black drop-shadow-sm flex items-center gap-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {t(reportTitle, reportTitle === 'تقرير الموظفين الشامل مع الرواتب والبدلات' ? 'Comprehensive Employee Directory & Payroll Report' : reportTitle)}
-              <span className="text-xs font-normal px-2.5 py-1 rounded-full bg-teal-600 text-white shadow-md border border-teal-500/20 font-mono">
-                XAMPP MySQL Live Sync
-              </span>
             </h1>
             <p className={`text-xs mt-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
               {t('منشئ استعلامات الجداول المتعددة، التصفية الذكية، التحديث التلقائي والعرض بصيغة إكسل تفاعلية', 'Multi-table Query Builder, Smart Filtering, Auto-Refresh & Formatted Excel Sheet Grid')}
@@ -607,22 +986,12 @@ export const DynamicReportBuilder: React.FC = () => {
           {/* Quick Actions Header Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setShowPrintPreviewModal(true)}
-              className={`px-3.5 py-2 rounded-xl font-bold text-xs border transition-all flex items-center gap-2 ${
-                isDark 
-                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/10 shadow' 
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300 shadow-xs'
-              }`}
-              title={t('طباعة أو معاينة PDF مع الهيدر والتوقيع', 'Print or PDF Preview')}
-            >
-              <span className="material-symbols-outlined text-sm">print</span>
-              <span>{t('طباعة / PDF', 'Print / PDF')}</span>
-            </button>
-
-            <button
-              onClick={handleExportCSV}
-              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2"
-              title={t('تصدير الملف إلى إكسل', 'Export to Excel')}
+              onClick={() => {
+                setPreviewModalMode('excel');
+                setShowPrintPreviewModal(true);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2 cursor-pointer"
+              title={t('عرض التقرير وتصديره إلى إكسل', 'Preview & Export to Excel')}
             >
               <span className="material-symbols-outlined text-sm">download</span>
               <span>{t('تصدير إكسل', 'Export Excel')}</span>
@@ -667,7 +1036,7 @@ export const DynamicReportBuilder: React.FC = () => {
             }`}>
               <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-amber-400 animate-ping' : 'bg-emerald-500'}`}></span>
               <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-                {isSyncing ? t('جاري مزامنة قواعد XAMPP...', 'Syncing MySQL...') : t('متصل مع سيرفر MySQL (XAMPP)', 'Connected to XAMPP MySQL')}
+                {isSyncing ? t('جاري مزامنة قاعدة البيانات...', 'Syncing Database...') : t('متصل مع قاعدة البيانات', 'Connected to Database')}
               </span>
               <span className="text-[10px] text-slate-500 font-mono">({lastSyncTime})</span>
             </div>
@@ -1153,55 +1522,193 @@ export const DynamicReportBuilder: React.FC = () => {
         document.body
       )}
 
-      {/* MODAL 2: Share via In-App Notification Modal */}
+      {/* MODAL 2: Share via In-App Notification Modal (Dynamic Combobox) */}
       {showShareModal && createPortal(
         <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-900 dark:text-white">
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/15 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-slate-900 dark:text-white">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
               <h3 className="text-base font-bold flex items-center gap-2">
                 <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">share</span>
                 {t('مشاركة التقرير داخل النظام', 'Share Report In-App')}
               </h3>
-              <button onClick={() => setShowShareModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">✕</button>
+              <button 
+                onClick={() => {
+                  setShowShareModal(false);
+                  setIsShareDropdownOpen(false);
+                }} 
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-4 text-xs">
+              {/* Dynamic Combobox Selector */}
               <div>
-                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('مشاركة مع الدور الإداري:', 'Share with Role:')}</label>
-                <select
-                  value={shareRecipientRole}
-                  onChange={(e) => setShareRecipientRole(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
-                >
-                  <option value="HR Manager">مدير الموارد البشرية (HR Manager)</option>
-                  <option value="Department Head">رئيس القسم الإداري (Department Head)</option>
-                  <option value="IT Admin">مسؤول تقنية المعلومات (IT Admin)</option>
-                  <option value="Super Admin">الإدارة العليا (Executive Board)</option>
-                </select>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5">
+                  {t('تحديد الجهة المستلمة (مكتب، قسم، موظف، أو دور إداري):', 'Select Destination (Office, Department, Staff, or Role):')}
+                </label>
+
+                {selectedRecipient ? (
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-300 dark:border-teal-500/40 text-teal-900 dark:text-teal-200 shadow-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-teal-600/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-lg">{selectedRecipient.icon}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-xs truncate">
+                            {language === 'en' ? (selectedRecipient.labelEn || selectedRecipient.label) : selectedRecipient.label}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-teal-200/60 dark:bg-teal-800/60 text-teal-800 dark:text-teal-200 shrink-0">
+                            {selectedRecipient.categoryLabel}
+                          </span>
+                        </div>
+                        {selectedRecipient.subtext && (
+                          <p className="text-[10px] text-teal-700/80 dark:text-teal-300/80 truncate mt-0.5">
+                            {selectedRecipient.subtext}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRecipient(null);
+                        setShareSearchTerm('');
+                        setIsShareDropdownOpen(true);
+                      }}
+                      className="text-xs px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold transition-colors cursor-pointer shrink-0 ml-2"
+                    >
+                      {t('تغيير', 'Change')}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 text-lg">search</span>
+                      <input
+                        type="text"
+                        value={shareSearchTerm}
+                        onChange={(e) => {
+                          setShareSearchTerm(e.target.value);
+                          setIsShareDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsShareDropdownOpen(true)}
+                        placeholder={t('اكتب حرفين أو ثلاثة للبحث (اسم الموظف، الفرع، أو القسم)...', 'Type 2-3 letters to search (Name, Branch, Department)...')}
+                        className="w-full pr-10 pl-8 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 text-xs font-semibold"
+                      />
+                      {shareSearchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setShareSearchTerm('')}
+                          className="absolute left-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Instant Combobox Suggestions Dropdown */}
+                    {isShareDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1.5 max-h-56 overflow-y-auto bg-white dark:bg-[#0a0c10] border border-slate-300 dark:border-white/15 rounded-2xl shadow-2xl z-50 p-1.5 divide-y divide-slate-100 dark:divide-white/5 custom-scrollbar">
+                        {filteredRecipients.length === 0 ? (
+                          <div className="p-4 text-center text-xs text-slate-400">
+                            {t('لا توجد نتائج مطابقة لبحثك، جرب كتابة مسمى أو فرع آخر', 'No matching results found')}
+                          </div>
+                        ) : (
+                          filteredRecipients.map((item) => (
+                            <div
+                              key={item.id}
+                              onClick={() => {
+                                setSelectedRecipient(item);
+                                setShareSearchTerm('');
+                                setIsShareDropdownOpen(false);
+                              }}
+                              className="p-2 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer transition-colors flex items-center justify-between gap-2"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span className={`material-symbols-outlined text-base ${
+                                  item.category === 'branch' ? 'text-blue-500' :
+                                  item.category === 'department' ? 'text-purple-500' :
+                                  item.category === 'employee' ? 'text-teal-500' : 'text-amber-500'
+                                }`}>
+                                  {item.icon}
+                                </span>
+                                <div className="truncate">
+                                  <p className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                    {language === 'en' ? (item.labelEn || item.label) : item.label}
+                                  </p>
+                                  {item.subtext && (
+                                    <p className="text-[10px] text-slate-500 truncate">{item.subtext}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                                item.category === 'branch' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' :
+                                item.category === 'department' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' :
+                                item.category === 'employee' ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300' :
+                                'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                              }`}>
+                                {item.categoryLabel}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
-                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">{t('ملاحظات وإرشادات مرفقة:', 'Attached Notes:')}</label>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">
+                  {t('ملاحظات وإرشادات مرفقة:', 'Attached Notes & Directives:')}
+                </label>
                 <textarea
                   value={shareCustomNote}
                   onChange={(e) => setShareCustomNote(e.target.value)}
                   rows={3}
-                  placeholder={t('يرجى الاطلاع على تقرير المسير المرفق للاعتماد...', 'Notes for recipient...')}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                  placeholder={t('يرجى الاطلاع على تقرير المسير المستخرج للاعتماد الرسمي...', 'Notes for recipient...')}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-teal-500"
                 />
               </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
-              <button onClick={() => setShowShareModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold">
+              <button 
+                onClick={() => {
+                  setShowShareModal(false);
+                  setIsShareDropdownOpen(false);
+                }} 
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+              >
                 {t('إلغاء', 'Cancel')}
               </button>
               <button
                 onClick={() => {
+                  if (!selectedRecipient) {
+                    alert(language === 'en' ? 'Please select a recipient (branch, department, or employee) first.' : 'يرجى اختيار الجهة أو الموظف المستلم أولاً.');
+                    return;
+                  }
+                  if (addNotification) {
+                    addNotification({
+                      title: language === 'en' ? `Report Shared: ${reportTitle}` : `مشاركة تقرير: ${reportTitle}`,
+                      message: language === 'en'
+                        ? `Report shared with [${selectedRecipient.labelEn || selectedRecipient.label}] by ${currentUser.name}. Notes: "${shareCustomNote || 'For review.'}"`
+                        : `تمت مشاركة التقرير مع [${selectedRecipient.label}] بواسطة ${currentUser.name}. ملاحظات: "${shareCustomNote || 'يرجى الاطلاع والاعتماد.'}"`,
+                      type: 'info'
+                    });
+                  }
                   setShowShareModal(false);
-                  triggerSuccessToast(`تم إرسال التقرير بنجاح إلى ${shareRecipientRole} عبر إشعارات النظام الداخلية!`);
+                  triggerSuccessToast(language === 'en'
+                    ? `Report shared successfully with [${selectedRecipient.labelEn || selectedRecipient.label}]!`
+                    : `تم إرسال التقرير بنجاح إلى [${selectedRecipient.label}] عبر تنبيهات النظام الداخلية!`
+                  );
+                  setSelectedRecipient(null);
+                  setShareCustomNote('');
                 }}
-                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg"
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg cursor-pointer"
               >
                 {t('إرسال التنبيه', 'Send Notification')}
               </button>
@@ -1211,16 +1718,16 @@ export const DynamicReportBuilder: React.FC = () => {
         document.body
       )}
 
-      {/* MODAL 3: Send via Email Modal */}
+      {/* MODAL 3: Send via Email & Outlook Modal */}
       {showEmailModal && createPortal(
         <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-900 dark:text-white">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
               <h3 className="text-base font-bold flex items-center gap-2">
                 <span className="material-symbols-outlined text-blue-500">mail</span>
-                {t('إرسال التقرير عبر البريد الإلكتروني (Email)', 'Send Report via Email')}
+                {t('إرسال التقرير عبر البريد الإلكتروني (Email / Outlook)', 'Send Report via Email / Outlook')}
               </h3>
-              <button onClick={() => setShowEmailModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">✕</button>
+              <button onClick={() => setShowEmailModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer">✕</button>
             </div>
 
             <div className="space-y-3 text-xs">
@@ -1257,76 +1764,123 @@ export const DynamicReportBuilder: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
-              <button onClick={() => setShowEmailModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold">
+            <div className="flex flex-wrap justify-between items-center gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
+              <button onClick={() => setShowEmailModal(false)} className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer">
                 {t('إلغاء', 'Cancel')}
               </button>
-              <button
-                onClick={() => {
-                  setShowEmailModal(false);
-                  triggerSuccessToast(`تم إرسال الإيميل مع مرفق إكسل التقرير إلى ${emailTo || 'المستلم'} بنجاح!`);
-                }}
-                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg"
-              >
-                {t('إرسال الإيميل', 'Send Email')}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenInOutlook}
+                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer transition-colors"
+                  title={t('فتح التقرير وتفاصيله فوراً في برنامج مايكروسوفت أوتلوك لسطح المكتب', 'Open in Microsoft Outlook Desktop')}
+                >
+                  <span className="material-symbols-outlined text-sm">outgoing_mail</span>
+                  <span>{t('فتح في Outlook', 'Open in Outlook')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmailModal(false);
+                    triggerSuccessToast(`تم إرسال الإيميل مع مرفق إكسل التقرير إلى ${emailTo || 'المستلم'} بنجاح!`);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">send</span>
+                  <span>{t('إرسال مباشر', 'Send Direct')}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>,
         document.body
       )}
 
-      {/* MODAL 4: Formal Print / PDF View Modal (Portal + Smooth Scrollable) */}
+      {/* MODAL 4: Formal Print / PDF & Excel Preview Modal */}
       {showPrintPreviewModal && createPortal(
         <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md overflow-y-auto overflow-x-hidden flex justify-center items-start p-3 sm:p-6 md:p-8 animate-in fade-in duration-200">
-          <div className="bg-white text-slate-900 rounded-3xl max-w-5xl w-full p-6 sm:p-8 space-y-6 shadow-2xl my-auto border border-slate-200 relative">
+          <div className="bg-white text-slate-900 rounded-3xl max-w-6xl w-full p-6 sm:p-8 space-y-6 shadow-2xl my-auto border border-slate-200 relative">
             
             {/* Top Close & Quick Action Floating Bar */}
-            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-slate-900 pb-4">
               <div className="space-y-1">
-                <p className="text-xs font-bold text-slate-600">جمهورية العراق • مؤسسة فيتاس العراق للتمويل الأصغر</p>
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900">{reportTitle}</h1>
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-teal-700 text-lg">
+                    {previewModalMode === 'excel' ? 'table_view' : 'print'}
+                  </span>
+                  <p className="text-xs font-bold text-slate-600">
+                    {t('جمهورية العراق • مؤسسة فيتاس العراق للتمويل الأصغر', 'Republic of Iraq • VITAS Iraq Microfinance')}
+                  </p>
+                </div>
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900">
+                  {t(reportTitle, reportTitle)}
+                </h1>
                 <p className="text-xs text-slate-500 font-mono">
-                  تاريخ الاستخراج: {new Date().toLocaleDateString('ar-IQ')} • بواسطة: {currentUser.name} ({currentUser.role})
+                  {t('تاريخ الاستخراج:', 'Extracted:')} {new Date().toLocaleDateString(language === 'en' ? 'en-US' : 'ar-IQ')} • 
+                  {t('بواسطة:', 'By:')} {currentUser.name} ({currentUser.role}) • 
+                  {t('إجمالي السجلات:', 'Total Records:')} {filteredData.length}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="text-left font-mono text-xs text-slate-600 hidden sm:block">
-                  <p className="font-bold text-teal-700">VITAS IRAQ HRMS</p>
-                  <p>Doc Ref: VR-REP-{Math.floor(1000 + Math.random() * 9000)}</p>
-                  <p>XAMPP MySQL Sync: Verified</p>
-                </div>
+
+              {/* Action Buttons Header (إلغاء / طباعة / حفظ) */}
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   onClick={() => setShowPrintPreviewModal(false)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 transition-colors flex items-center justify-center border border-slate-200"
-                  title={t('إغلاق', 'Close')}
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title={t('إلغاء وإغلاق المعاينة', 'Cancel & Close')}
                 >
-                  <span className="material-symbols-outlined text-xl">close</span>
+                  <span className="material-symbols-outlined text-base">close</span>
+                  <span>{t('إلغاء', 'Cancel')}</span>
+                </button>
+
+                <button
+                  onClick={handlePrintExternalWindow}
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  title={t('طباعة الجدول بالكامل خارج النافذة على ورق A4', 'Print complete table on A4 pages in new window')}
+                >
+                  <span className="material-symbols-outlined text-base">print</span>
+                  <span>{t('طباعة (Print / PDF)', 'Print / PDF')}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    handleSaveExcel();
+                    setShowPrintPreviewModal(false);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  title={t('حفظ وتصدير التقرير كملف إكسل', 'Save & Export to Excel')}
+                >
+                  <span className="material-symbols-outlined text-base">download</span>
+                  <span>{t('حفظ (Save Excel)', 'Save (Excel)')}</span>
                 </button>
               </div>
             </div>
 
-            {/* Printable Formatted Data Table with Internal Smooth Scrolling */}
-            <div className="overflow-x-auto overflow-y-auto max-h-[55vh] border border-slate-300 rounded-2xl shadow-inner scrollbar-thin">
-              <table className="w-full text-xs text-right border-collapse border border-slate-300 bg-white">
-                <thead className="sticky top-0 bg-slate-100 shadow-xs z-10">
+            {/* Printable Formatted Data Table - Full Natural Height, No Vertical Scrollbar in Preview Box */}
+            <div className="w-full overflow-x-auto border border-slate-300 rounded-2xl shadow-inner bg-white">
+              <table className={`w-full text-xs ${language === 'en' ? 'text-left' : 'text-right'} border-collapse border border-slate-300 bg-white`}>
+                <thead className="bg-slate-100 shadow-xs">
                   <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-300">
-                    <th className="p-2.5 border border-slate-300 text-center w-10 bg-slate-100">#</th>
+                    <th className="p-2.5 border border-slate-300 text-center w-12 bg-slate-100">#</th>
                     {selectedFields.map(fKey => {
                       const meta = availableFields.find(f => f.key === fKey);
-                      return <th key={fKey} className="p-2.5 border border-slate-300 bg-slate-100 whitespace-nowrap">{language === 'en' ? (meta?.labelEn || fKey) : (meta?.labelAr || fKey)}</th>;
+                      return (
+                        <th key={fKey} className={`p-2.5 border border-slate-300 bg-slate-100 whitespace-nowrap ${language === 'en' ? 'text-left' : 'text-right'}`}>
+                          {language === 'en' ? (meta?.labelEn || fKey) : (meta?.labelAr || fKey)}
+                        </th>
+                      );
                     })}
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredData?.slice(0, 100).map((row, idx) => (
+                <tbody className="divide-y divide-slate-200">
+                  {filteredData.map((row, idx) => (
                     <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
                       <td className="p-2 border border-slate-300 text-center font-mono text-slate-600">{idx + 1}</td>
                       {selectedFields.map(fKey => {
                         const meta = availableFields.find(f => f.key === fKey);
                         const val = (row as any)[fKey];
                         return (
-                          <td key={fKey} className="p-2 border border-slate-300 font-sans whitespace-nowrap">
+                          <td key={fKey} className={`p-2 border border-slate-300 font-sans whitespace-nowrap ${language === 'en' ? 'text-left' : 'text-right'}`}>
                             {meta?.type === 'currency' ? `${Number(val || 0).toLocaleString(language === 'en' ? 'en-US' : 'ar-IQ')} ${t('د.ع', 'IQD')}` : String(val ?? '-')}
                           </td>
                         );
@@ -1339,38 +1893,51 @@ export const DynamicReportBuilder: React.FC = () => {
 
             {/* Formal Signature Footer */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 text-center text-xs font-bold text-slate-700">
-              <div className="space-y-6 p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="space-y-6 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                 <p>{t('إعداد مسؤول الموارد البشرية', 'Prepared by HR Officer')}</p>
                 <p className="font-mono text-slate-400">{t('التوقيع:', 'Signature:')} ....................</p>
               </div>
-              <div className="space-y-6 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <p>{t('تدقيق رئيس قسم IT والأنظمة', 'Audited by IT Manager')}</p>
+              <div className="space-y-6 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <p>{t('تدقيق رئيس قسم IT والأنظمة', 'Audited by IT Systems Head')}</p>
                 <p className="font-mono text-slate-400">{t('التوقيع:', 'Signature:')} ....................</p>
               </div>
-              <div className="space-y-6 p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="space-y-6 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                 <p>{t('مصادقة واعتماد المدير التنفيذي', 'Approved by Executive Director')}</p>
                 <p className="font-mono text-slate-400">{t('التوقيع:', 'Signature:')} ....................</p>
               </div>
             </div>
 
-            {/* Modal Bottom Controls */}
+            {/* Modal Bottom Controls (Footer Toolbar) */}
             <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-slate-200 no-print">
               <div className="text-xs text-slate-500 font-mono">
-                {t('إجمالي الصفوف المستعرضة:', 'Total rows previewed:')} {Math.min(filteredData?.length || 0, 100)} {t('سجل', 'records')}
+                {t('إجمالي السجلات المستعرضة:', 'Total records displayed:')} <span className="font-bold text-slate-800">{filteredData.length}</span> {t('سجل', 'records')}
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={() => setShowPrintPreviewModal(false)}
-                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 transition-colors"
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  {t('إغلاق', 'Close')}
+                  <span className="material-symbols-outlined text-sm">close</span>
+                  <span>{t('إلغاء', 'Cancel')}</span>
                 </button>
                 <button
-                  onClick={() => window.print()}
-                  className="px-5 py-2.5 rounded-xl bg-teal-600 text-white font-bold text-xs hover:bg-teal-500 shadow-lg transition-colors flex items-center gap-2"
+                  onClick={handlePrintExternalWindow}
+                  className="px-5 py-2.5 rounded-xl bg-teal-600 text-white font-bold text-xs hover:bg-teal-500 shadow-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title={t('طباعة في نافذة A4 كاملة ومستقلة', 'Print in full external A4 window')}
                 >
                   <span className="material-symbols-outlined text-sm">print</span>
-                  <span>{t('طباعة التقرير (Print / PDF)', 'Print Report / PDF')}</span>
+                  <span>{t('طباعة (Print / PDF)', 'Print / PDF')}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handleSaveExcel();
+                    setShowPrintPreviewModal(false);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-500 shadow-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title={t('حفظ التقرير بصيغة إكسل', 'Save report as Excel')}
+                >
+                  <span className="material-symbols-outlined text-sm">download</span>
+                  <span>{t('حفظ (Save Excel)', 'Save (Excel)')}</span>
                 </button>
               </div>
             </div>
