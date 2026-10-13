@@ -1792,6 +1792,20 @@ html.light header .notif-dropdown button {
   color: #0f766e !important;
 }
 
+/* Mark all as read button must ALWAYS have white font color & white icon */
+header .notif-dropdown button.mark-all-read-btn,
+header .notif-dropdown button.mark-all-read-btn *,
+header .notif-dropdown button.mark-all-read-btn span,
+html:not(.dark) header .notif-dropdown button.mark-all-read-btn,
+html:not(.dark) header .notif-dropdown button.mark-all-read-btn *,
+html:not(.dark) header .notif-dropdown button.mark-all-read-btn span,
+html.light header .notif-dropdown button.mark-all-read-btn,
+html.light header .notif-dropdown button.mark-all-read-btn *,
+html.light header .notif-dropdown button.mark-all-read-btn span {
+  color: #ffffff !important;
+  background-color: #0d7a6e !important;
+}
+
 /* Sync Toast Popup in Light Mode: Solid White BG & High-Contrast Black Text */
 html:not(.dark) header .sync-toast-popup,
 html.light header .sync-toast-popup {

@@ -431,15 +431,12 @@ export const Header: React.FC = () => {
                   {notifications.some(isNotifUnread) && (
                     <button
                       onClick={markAllNotificationsAsRead}
-                      className={`text-[11px] font-bold px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 border cursor-pointer ${
-                        isDark 
-                          ? 'bg-teal-500/10 text-teal-400 border-teal-500/30 hover:bg-teal-500/20' 
-                          : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border-teal-300'
-                      }`}
+                      style={{ color: '#ffffff', backgroundColor: '#0d7a6e' }}
+                      className="mark-all-read-btn text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shadow-sm bg-teal-700 hover:bg-teal-800 text-white border border-teal-800 cursor-pointer"
                       title={t('تحديد كل التنبيهات كمقروءة', 'Mark all as read')}
                     >
-                      <span className="material-symbols-outlined text-xs">done_all</span>
-                      <span>{t('الكل مقروء', 'Mark All Read')}</span>
+                      <span className="material-symbols-outlined text-sm" style={{ color: '#ffffff' }}>done_all</span>
+                      <span style={{ color: '#ffffff' }}>{t('الكل مقروء', 'Mark All Read')}</span>
                     </button>
                   )}
                   <span className={`text-xs shadow-xs border px-2 py-0.5 rounded-full font-bold ${
