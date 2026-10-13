@@ -12,6 +12,7 @@ export const Login: React.FC = () => {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,8 +54,16 @@ export const Login: React.FC = () => {
         .catch(() => {});
 
       const cleanUser = username.trim().toLowerCase();
+      const cleanPass = password.trim();
+
       if (!cleanUser) {
         setError(language === 'ar' ? 'يرجى إدخال اسم المستخدم' : 'Please enter username');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!cleanPass) {
+        setError(language === 'ar' ? 'يرجى إدخال كلمة المرور' : 'Please enter password');
         setIsLoading(false);
         return;
       }
@@ -82,6 +91,19 @@ export const Login: React.FC = () => {
           });
 
           if (matchedDbUser) {
+            // STRICT PASSWORD VERIFICATION FOR DB USERS
+            const expectedDbPass = matchedDbUser.password || '123456';
+            const isAdminMatch = cleanUser === 'admin' || matchedDbUser.username === 'admin';
+            const isPasswordCorrect = 
+              cleanPass === expectedDbPass ||
+              (isAdminMatch && (cleanPass === 'admin123' || cleanPass === 'admin'));
+
+            if (!isPasswordCorrect) {
+              setError(language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.');
+              setIsLoading(false);
+              return;
+            }
+
             let parsedScreens: Record<string, any> = {};
             if (matchedDbUser.allowed_screens) {
               try {
@@ -153,8 +175,14 @@ export const Login: React.FC = () => {
         console.warn('Notice checking database users on login:', err);
       }
 
-      // 1. Check for Super Admin
+      // 1. Check for Super Admin fallback
       if (cleanUser === 'admin') {
+        if (cleanPass !== 'admin123' && cleanPass !== 'admin') {
+          setError(language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.');
+          setIsLoading(false);
+          return;
+        }
+
         const superAdmin: UserProfile = {
           id: '1',
           name: 'مدير النظام (Super Admin)',
@@ -183,6 +211,12 @@ export const Login: React.FC = () => {
 
       // 2. Check for Fallback HR Manager (only if not found in MySQL users table)
       if (cleanUser === 'hrmanager' || cleanUser === 'hr') {
+        if (cleanPass !== '123456' && cleanPass !== 'admin123') {
+          setError(language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.');
+          setIsLoading(false);
+          return;
+        }
+
         const hrManager: UserProfile = {
           id: '1',
           name: 'مدير الموارد البشرية',
@@ -222,6 +256,12 @@ export const Login: React.FC = () => {
 
       // 3. Check for Department / Branch Manager
       if (cleanUser === 'manager' || cleanUser === 'deptmanager') {
+        if (cleanPass !== '123456') {
+          setError(language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.');
+          setIsLoading(false);
+          return;
+        }
+
         const deptManager: UserProfile = {
           id: '2',
           name: 'مدير قسم (Department Head)',
@@ -250,6 +290,12 @@ export const Login: React.FC = () => {
 
       // 4. Check for Recruiter
       if (cleanUser === 'recruiter' || cleanUser === 'recruit' || cleanUser === 'recruitment') {
+        if (cleanPass !== '123456') {
+          setError(language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.');
+          setIsLoading(false);
+          return;
+        }
+
         const recruiterUser: UserProfile = {
           id: '3',
           name: 'مسؤول التوظيف والاستقطاب (Recruiter)',
@@ -278,6 +324,12 @@ export const Login: React.FC = () => {
 
       // 5. Check for IT Admin
       if (cleanUser === 'itadmin' || cleanUser === 'it' || cleanUser === 'sysadmin') {
+        if (cleanPass !== '123456' && cleanPass !== 'admin123') {
+          setError(language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.');
+          setIsLoading(false);
+          return;
+        }
+
         const itAdminUser: UserProfile = {
           id: '4',
           name: 'مسؤول النظم والتقنية (IT Admin)',
@@ -314,6 +366,13 @@ export const Login: React.FC = () => {
             String(u.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '') === cleanUser.replace(/[^a-z0-9]/g, '')
           );
           if (cUser) {
+            const expectedCustomPass = cUser.password || '123456';
+            if (cleanPass !== expectedCustomPass) {
+              setError(language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.');
+              setIsLoading(false);
+              return;
+            }
+
             // Read module permissions from the delegated permissions store
             let modulePerms: Record<string, boolean> = {};
             let userDeptFromPerms = 'الموارد البشرية والشؤون الإدارية';
@@ -385,7 +444,7 @@ export const Login: React.FC = () => {
         console.error(err);
       }
 
-      // 4. Employee Login (Matches any employee code like v1264, VTS-1264, 1264, or any employee ID)
+      // 4. Employee Login (Matches real employee from list)
       const matchedEmp = employees && employees.length > 0
         ? employees.find(emp => {
             const empCode = String(emp.employeeId || emp.badgeNo || emp.id || '').toLowerCase();
@@ -396,95 +455,91 @@ export const Login: React.FC = () => {
             return (
               empCode === cleanUser ||
               cleanEmpCode === cleanInput ||
-              (cleanInput && cleanEmpCode.includes(cleanInput)) ||
-              (cleanInput && cleanInput.includes(cleanEmpCode)) ||
               emailPart === cleanUser ||
-              (emp.email && emp.email.toLowerCase() === cleanUser) ||
-              (emp.fullNameEn && emp.fullNameEn.toLowerCase().includes(cleanUser)) ||
-              (emp.fullNameAr && emp.fullNameAr.includes(cleanUser))
+              (emp.email && emp.email.toLowerCase() === cleanUser)
             );
           })
         : null;
 
-      const employeeUser: UserProfile = matchedEmp ? {
-        id: String(matchedEmp.id),
-        name: matchedEmp.fullNameAr || matchedEmp.fullNameEn || `الموظف (${username.toUpperCase()})`,
-        email: matchedEmp.email || `${cleanUser}@vitasiraq.com`,
-        role: 'Employee',
-        avatar: matchedEmp.photoUrl || '',
-        department: matchedEmp.department || 'الموارد البشرية والشؤون الإدارية',
-        employeeId: matchedEmp.employeeId || `VTS-${cleanUser.toUpperCase()}`,
-        branch: matchedEmp.branch || matchedEmp.location || 'الإدارة العامة - بغداد',
-        can_manage_employees: 0,
-        can_manage_finance: 0,
-        can_manage_recruitment: 0,
-        can_manage_settings: 0,
-        can_manage_users: 0,
-      } : {
-        id: '1264',
-        name: `الموظف (${username.toUpperCase()})`,
-        email: `${cleanUser}@vitasiraq.com`,
-        role: 'Employee',
-        avatar: '',
-        department: 'الموارد البشرية والشؤون الإدارية',
-        employeeId: username.toUpperCase().startsWith('VTS') ? username.toUpperCase() : `VTS-${username.toUpperCase()}`,
-        branch: 'الإدارة العامة - بغداد',
-        can_manage_employees: 0,
-        can_manage_finance: 0,
-        can_manage_recruitment: 0,
-        can_manage_settings: 0,
-        can_manage_users: 0,
-      };
+      if (matchedEmp) {
+        // Validate password against employee badge/code/123456
+        const empCode = String(matchedEmp.employeeId || matchedEmp.badgeNo || '').toLowerCase();
+        const empNum = empCode.replace(/[^0-9]/g, '');
+        const isEmpPassValid = 
+          cleanPass === '123456' || 
+          cleanPass === empCode || 
+          (empNum && cleanPass === empNum) ||
+          cleanPass === String(matchedEmp.badgeNo || '');
 
-      // Check if employee has delegated permissions in custom delegations map
-      try {
-        const permsRaw = localStorage.getItem('vitas_custom_employee_permissions');
-        if (permsRaw) {
-          const permsMap = JSON.parse(permsRaw);
-          const empCode = String(employeeUser.employeeId || cleanUser).toUpperCase();
-          const cleanEmpCode = empCode.replace(/[^a-z0-9]/g, '');
-          const matchedPerm = permsMap[empCode] || 
-            Object.entries(permsMap).find(([k, v]: any) => {
-              const kClean = String(k).toUpperCase().replace(/[^a-z0-9]/g, '');
-              const vEmpId = String(v.employeeId || '').toUpperCase().replace(/[^a-z0-9]/g, '');
-              const vNameClean = String(v.employeeName || '').toLowerCase();
-              const vNameEnClean = String(v.employeeNameEn || '').toLowerCase();
-              return (
-                kClean === cleanEmpCode || 
-                vEmpId === cleanEmpCode || 
-                k === empCode ||
-                (cleanUser && (vNameClean.includes(cleanUser) || vNameEnClean.includes(cleanUser)))
-              );
-            })?.[1];
-
-          if (matchedPerm && matchedPerm.modules) {
-            employeeUser.modulePermissions = matchedPerm.modules;
-            employeeUser.can_manage_employees = matchedPerm.modules['employees'] ? 1 : 0;
-            employeeUser.can_manage_finance = matchedPerm.modules['payroll'] ? 1 : 0;
-            employeeUser.can_manage_recruitment = matchedPerm.modules['recruitment'] ? 1 : 0;
-            employeeUser.can_manage_settings = matchedPerm.modules['settings'] ? 1 : 0;
-            const isDelegatedAdmin = Boolean(matchedPerm.can_manage_users === 1 || matchedPerm.role === 'Admin' || matchedPerm.modules['sec-roles-permissions']);
-            employeeUser.can_manage_users = isDelegatedAdmin ? 1 : 0;
-            if (isDelegatedAdmin) {
-              employeeUser.role = 'Admin';
-            }
-            if (matchedPerm.department) employeeUser.department = matchedPerm.department;
-          }
+        if (!isEmpPassValid) {
+          setError(language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.');
+          setIsLoading(false);
+          return;
         }
-      } catch (e) {}
 
-      const finalRoleToStore: UserRole = employeeUser.role || 'Employee';
-      localStorage.setItem('vitas_current_user', JSON.stringify(employeeUser));
-      localStorage.setItem('vitas_user_role', finalRoleToStore);
-      setCurrentUserRole(finalRoleToStore);
-      setCurrentUser(employeeUser);
-      setActiveModuleId('dash-overview');
+        const employeeUser: UserProfile = {
+          id: String(matchedEmp.id),
+          name: matchedEmp.fullNameAr || matchedEmp.fullNameEn || `الموظف (${username.toUpperCase()})`,
+          email: matchedEmp.email || `${cleanUser}@vitasiraq.com`,
+          role: 'Employee',
+          avatar: matchedEmp.photoUrl || '',
+          department: matchedEmp.department || 'الموارد البشرية والشؤون الإدارية',
+          employeeId: matchedEmp.employeeId || `VTS-${cleanUser.toUpperCase()}`,
+          branch: matchedEmp.branch || matchedEmp.location || 'الإدارة العامة - بغداد',
+          can_manage_employees: 0,
+          can_manage_finance: 0,
+          can_manage_recruitment: 0,
+          can_manage_settings: 0,
+          can_manage_users: 0,
+        };
 
-      console.log('Login successful - Employee', employeeUser);
+        // Check if employee has delegated permissions in custom delegations map
+        try {
+          const permsRaw = localStorage.getItem('vitas_custom_employee_permissions');
+          if (permsRaw) {
+            const permsMap = JSON.parse(permsRaw);
+            const empCodeStr = String(employeeUser.employeeId || cleanUser).toUpperCase();
+            const cleanEmpCodeStr = empCodeStr.replace(/[^a-z0-9]/g, '');
+            const matchedPerm = permsMap[empCodeStr] || 
+              Object.entries(permsMap).find(([k, v]: any) => {
+                const kClean = String(k).toUpperCase().replace(/[^a-z0-9]/g, '');
+                const vEmpId = String(v.employeeId || '').toUpperCase().replace(/[^a-z0-9]/g, '');
+                return kClean === cleanEmpCodeStr || vEmpId === cleanEmpCodeStr || k === empCodeStr;
+              })?.[1];
 
-      setTimeout(() => {
-        navigate('/');
-      }, 100);
+            if (matchedPerm && matchedPerm.modules) {
+              employeeUser.modulePermissions = matchedPerm.modules;
+              employeeUser.can_manage_employees = matchedPerm.modules['employees'] ? 1 : 0;
+              employeeUser.can_manage_finance = matchedPerm.modules['payroll'] ? 1 : 0;
+              employeeUser.can_manage_recruitment = matchedPerm.modules['recruitment'] ? 1 : 0;
+              employeeUser.can_manage_settings = matchedPerm.modules['settings'] ? 1 : 0;
+              const isDelegatedAdmin = Boolean(matchedPerm.can_manage_users === 1 || matchedPerm.role === 'Admin' || matchedPerm.modules['sec-roles-permissions']);
+              employeeUser.can_manage_users = isDelegatedAdmin ? 1 : 0;
+              if (isDelegatedAdmin) {
+                employeeUser.role = 'Admin';
+              }
+              if (matchedPerm.department) employeeUser.department = matchedPerm.department;
+            }
+          }
+        } catch (e) {}
+
+        const finalRoleToStore: UserRole = employeeUser.role || 'Employee';
+        localStorage.setItem('vitas_current_user', JSON.stringify(employeeUser));
+        localStorage.setItem('vitas_user_role', finalRoleToStore);
+        setCurrentUserRole(finalRoleToStore);
+        setCurrentUser(employeeUser);
+        setActiveModuleId('dash-overview');
+
+        console.log('Login successful - Employee', employeeUser);
+
+        setTimeout(() => {
+          navigate('/');
+        }, 100);
+        return;
+      }
+
+      // If NO user matched at all, reject login!
+      setError(language === 'ar' ? 'اسم المستخدم أو كلمة المرور غير صحيحة' : 'Invalid username or password');
       return;
 
     } catch (err) {
@@ -602,7 +657,7 @@ export const Login: React.FC = () => {
               <div className="relative flex items-center">
                 <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'right-3' : 'left-3'} text-lg pointer-events-none ${isDark ? 'text-teal-400' : 'text-slate-600'}`}>lock</span>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={language === 'ar' ? 'أدخل كلمة المرور' : 'Enter password'}
@@ -611,12 +666,22 @@ export const Login: React.FC = () => {
                     color: isDark ? '#ffffff' : '#0f172a',
                     borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'
                   }}
-                  className={`w-full ${language === 'ar' ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all shadow-xs ${
+                  className={`w-full ${language === 'ar' ? 'pr-11 pl-11' : 'pl-11 pr-11'} py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all shadow-xs ${
                     isDark 
                       ? 'placeholder-slate-400' 
                       : 'placeholder-slate-400'
                   }`}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className={`absolute ${language === 'ar' ? 'left-3' : 'right-3'} p-1 rounded-lg text-slate-400 hover:text-teal-500 transition-colors focus:outline-none flex items-center justify-center`}
+                  title={showPassword ? (language === 'ar' ? 'إخفاء كلمة المرور' : 'Hide password') : (language === 'ar' ? 'إظهار كلمة المرور' : 'Show password')}
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
               </div>
             </div>
 

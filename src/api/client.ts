@@ -80,6 +80,9 @@ export const api = {
   // Health check
   health: () => apiClient.get('/health'),
 
+  // Authentication
+  login: (credentials: { username: string; password: string }) => apiClient.post('/login', credentials),
+
   // Employees
   getEmployees: () => apiClient.get('/employees'),
   addEmployee: (employee: any) => apiClient.post('/employees', employee),
