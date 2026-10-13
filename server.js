@@ -870,14 +870,43 @@ const syncSettingsFromEmployees = async () => {
     `).catch(() => []);
     const existingDepts = await query('SELECT * FROM departments').catch(() => []);
 
+    const DEPT_EN_MAP = {
+      'إدارة التمويل الأصغر والعمليات': 'Microfinance & Operations',
+      'الموارد البشرية والشؤون الإدارية': 'Human Resources & Administration',
+      'إدارة الموارد البشرية والعمليات': 'Human Resources & Operations',
+      'الموارد البشرية': 'Human Resources',
+      'قسم الائتمان': 'Credit',
+      'القروض والائتمان': 'Loans & Credit',
+      'تكنولوجيا المعلوماات': 'IT',
+      'تكنولوجيا المعلومات': 'Information Technology',
+      'قسم تقنية المعلومات': 'Information Technology',
+      'الأمن': 'Security',
+      'المشتريات والتسهيلات': 'Procurement & Facilities',
+      'قسم الخزينة': 'Treasury',
+      'قسم المالية والمحاسبة': 'Finance & Accounting',
+      'المالية والمحاسبة': 'Finance & Accounting',
+      'الشؤون المالية والتحصيل': 'Finance & Collection',
+      'الاستحصال والتحصيل': 'Collection & Recovery',
+      'المخاطر والامتثال والتدقيق': 'Risk, Compliance & Audit',
+      'قسم المبيعات والتسويق': 'Sales & Marketing',
+      'التسويق والمبيعات': 'Marketing & Sales',
+      'العمليات': 'Operations'
+    };
+
     if (Array.isArray(empDepts) && Array.isArray(existingDepts)) {
       for (const d of empDepts) {
-        const nameAr = d.department;
-        if (nameAr && !existingDepts.some(dep => dep.name_ar === nameAr || dep.name === nameAr)) {
+        const nameAr = String(d.department || '').trim();
+        const nameEn = DEPT_EN_MAP[nameAr] || nameAr;
+        if (nameAr && !existingDepts.some(dep => 
+          String(dep.name_ar || '').trim() === nameAr || 
+          String(dep.name || '').trim() === nameAr ||
+          (dep.name_en && String(dep.name_en || '').trim() === nameEn)
+        )) {
           await query(
             'INSERT INTO departments (name_en, name_ar, name, status, sort_order) VALUES (?, ?, ?, ?, ?)',
-            [nameAr, nameAr, nameAr, 'Active', existingDepts.length + 1]
+            [nameEn, nameAr, nameAr, 'Active', existingDepts.length + 1]
           ).catch(() => {});
+          existingDepts.push({ name_ar: nameAr, name_en: nameEn, name: nameAr });
         }
       }
     }
@@ -2365,8 +2394,46 @@ app.delete(['/api/settings/branches/:id', '/api/branches/:id'], async (req, res)
 app.get(['/api/settings/departments', '/api/departments'], async (req, res) => {
   try {
     await syncSettingsFromEmployees().catch(() => {});
-    const results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id DESC');
-    res.json(results);
+    const results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
+    
+    const DEPT_EN_MAP = {
+      'إدارة التمويل الأصغر والعمليات': 'Microfinance & Operations',
+      'الموارد البشرية والشؤون الإدارية': 'Human Resources & Administration',
+      'إدارة الموارد البشرية والعمليات': 'Human Resources & Operations',
+      'الموارد البشرية': 'Human Resources',
+      'قسم الائتمان': 'Credit',
+      'القروض والائتمان': 'Loans & Credit',
+      'تكنولوجيا المعلوماات': 'IT',
+      'تكنولوجيا المعلومات': 'Information Technology',
+      'قسم تقنية المعلومات': 'Information Technology',
+      'الأمن': 'Security',
+      'المشتريات والتسهيلات': 'Procurement & Facilities',
+      'قسم الخزينة': 'Treasury',
+      'قسم المالية والمحاسبة': 'Finance & Accounting',
+      'المالية والمحاسبة': 'Finance & Accounting',
+      'الشؤون المالية والتحصيل': 'Finance & Collection',
+      'الاستحصال والتحصيل': 'Collection & Recovery',
+      'المخاطر والامتثال والتدقيق': 'Risk, Compliance & Audit',
+      'قسم المبيعات والتسويق': 'Sales & Marketing',
+      'التسويق والمبيعات': 'Marketing & Sales',
+      'العمليات': 'Operations'
+    };
+
+    const seen = new Set();
+    const cleanResults = [];
+    for (const d of (results || [])) {
+      const arKey = String(d.name_ar || d.name || '').trim();
+      if (!arKey || seen.has(arKey)) continue;
+      seen.add(arKey);
+
+      let nameEn = String(d.name_en || '').trim();
+      if (!nameEn || /[\u0600-\u06FF]/.test(nameEn)) {
+        nameEn = DEPT_EN_MAP[arKey] || nameEn || arKey;
+      }
+      cleanResults.push({ ...d, name_en: nameEn });
+    }
+
+    res.json(cleanResults);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

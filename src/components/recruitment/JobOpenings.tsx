@@ -6,20 +6,41 @@ import { api } from '../../api/client';
 const DEPT_MAP: Record<string, { ar: string; en: string }> = {
   'إدارة التمويل الأصغر والعمليات': { ar: 'إدارة التمويل الأصغر والعمليات', en: 'Microfinance & Operations' },
   'Microfinance & Operations': { ar: 'إدارة التمويل الأصغر والعمليات', en: 'Microfinance & Operations' },
-  'القروض والائتمان': { ar: 'القروض والائتمان', en: 'Loans & Credit' },
-  'Loans & Credit': { ar: 'القروض والائتمان', en: 'Loans & Credit' },
-  'الاستحصال والتحصيل': { ar: 'الاستحصال والتحصيل', en: 'Collection & Recovery' },
-  'Collection & Recovery': { ar: 'الاستحصال والتحصيل', en: 'Collection & Recovery' },
+  'الموارد البشرية والشؤون الإدارية': { ar: 'الموارد البشرية والشؤون الإدارية', en: 'Human Resources & Administration' },
+  'Human Resources & Administration': { ar: 'الموارد البشرية والشؤون الإدارية', en: 'Human Resources & Administration' },
+  'إدارة الموارد البشرية والعمليات': { ar: 'إدارة الموارد البشرية والعمليات', en: 'Human Resources & Operations' },
+  'Human Resources & Operations': { ar: 'إدارة الموارد البشرية والعمليات', en: 'Human Resources & Operations' },
   'الموارد البشرية': { ar: 'الموارد البشرية', en: 'Human Resources' },
   'Human Resources': { ar: 'الموارد البشرية', en: 'Human Resources' },
+  'قسم الائتمان': { ar: 'قسم الائتمان', en: 'Credit' },
+  'Credit': { ar: 'قسم الائتمان', en: 'Credit' },
+  'القروض والائتمان': { ar: 'القروض والائتمان', en: 'Loans & Credit' },
+  'Loans & Credit': { ar: 'القروض والائتمان', en: 'Loans & Credit' },
+  'الأمن': { ar: 'الأمن', en: 'Security' },
+  'Security': { ar: 'الأمن', en: 'Security' },
+  'المشتريات والتسهيلات': { ar: 'المشتريات والتسهيلات', en: 'Procurement & Facilities' },
+  'Procurement & Facilities': { ar: 'المشتريات والتسهيلات', en: 'Procurement & Facilities' },
+  'Procurement&Facilities': { ar: 'المشتريات والتسهيلات', en: 'Procurement & Facilities' },
+  'قسم الخزينة': { ar: 'قسم الخزينة', en: 'Treasury' },
+  'Treasury': { ar: 'قسم الخزينة', en: 'Treasury' },
+  'تكنولوجيا المعلوماات': { ar: 'تكنولوجيا المعلوماات', en: 'IT' },
+  'تكنولوجيا المعلومات': { ar: 'تكنولوجيا المعلومات', en: 'IT' },
+  'IT': { ar: 'تكنولوجيا المعلوماات', en: 'IT' },
   'التقنية والأنظمة': { ar: 'التقنية والأنظمة', en: 'IT & Systems' },
   'IT & Systems': { ar: 'التقنية والأنظمة', en: 'IT & Systems' },
+  'الاستحصال والتحصيل': { ar: 'الاستحصال والتحصيل', en: 'Collection & Recovery' },
+  'Collection & Recovery': { ar: 'الاستحصال والتحصيل', en: 'Collection & Recovery' },
+  'قسم المالية والمحاسبة': { ar: 'قسم المالية والمحاسبة', en: 'Finance & Accounting' },
   'المالية والمحاسبة': { ar: 'المالية والمحاسبة', en: 'Finance & Accounting' },
   'Finance & Accounting': { ar: 'المالية والمحاسبة', en: 'Finance & Accounting' },
   'العمليات': { ar: 'العمليات', en: 'Operations' },
   'Operations': { ar: 'العمليات', en: 'Operations' },
   'التسويق والمبيعات': { ar: 'التسويق والمبيعات', en: 'Marketing & Sales' },
   'Marketing & Sales': { ar: 'التسويق والمبيعات', en: 'Marketing & Sales' },
+  'المخاطر والامتثال والتدقيق': { ar: 'المخاطر والامتثال والتدقيق', en: 'Risk, Compliance & Audit' },
+  'Risk, Compliance & Audit': { ar: 'المخاطر والامتثال والتدقيق', en: 'Risk, Compliance & Audit' },
+  'الشؤون المالية والتحصيل': { ar: 'الشؤون المالية والتحصيل', en: 'Finance & Collection' },
+  'Finance & Collection': { ar: 'الشؤون المالية والتحصيل', en: 'Finance & Collection' },
 };
 
 const BRANCH_MAP: Record<string, { ar: string; en: string }> = {
@@ -123,20 +144,44 @@ export const JobOpenings: React.FC = () => {
         { id: 5, ar: 'كربلاء', en: 'Karbala' }
       ];
 
-  // Dynamic Departments from Settings
-  const departmentsList = departments.length > 0
-    ? departments.map(d => ({
-        id: d.id,
-        ar: d.name_ar || d.name,
-        en: d.name_en || d.name_ar || d.name
-      }))
-    : [
-        { id: 1, ar: 'قسم الائتمان', en: 'Credit' },
-        { id: 2, ar: 'تكنولوجيا المعلوماات', en: 'IT' },
-        { id: 3, ar: 'الأمن', en: 'Security' },
-        { id: 4, ar: 'المشتريات والتسهيلات', en: 'Procurement&Facilities' },
-        { id: 5, ar: 'قسم الخزينة', en: 'Treasury' }
-      ];
+  // Helper to ensure genuine English name for departments
+  const resolveDeptEn = (nameEn?: string, nameAr?: string) => {
+    if (nameEn && !/[\u0600-\u06FF]/.test(nameEn)) return nameEn;
+    if (nameAr && DEPT_MAP[nameAr]?.en) return DEPT_MAP[nameAr].en;
+    if (nameEn && DEPT_MAP[nameEn]?.en) return DEPT_MAP[nameEn].en;
+    return nameEn || nameAr || '';
+  };
+
+  // Dynamic Departments from Settings with deduplication & English resolution
+  const departmentsList = React.useMemo(() => {
+    const list = departments.length > 0
+      ? departments.map(d => {
+          const ar = d.name_ar || d.name || '';
+          const en = resolveDeptEn(d.name_en, ar);
+          return {
+            id: d.id,
+            ar: ar,
+            en: en || ar
+          };
+        })
+      : [
+          { id: 1, ar: 'قسم الائتمان', en: 'Credit' },
+          { id: 2, ar: 'تكنولوجيا المعلوماات', en: 'IT' },
+          { id: 3, ar: 'الأمن', en: 'Security' },
+          { id: 4, ar: 'المشتريات والتسهيلات', en: 'Procurement & Facilities' },
+          { id: 5, ar: 'قسم الخزينة', en: 'Treasury' },
+          { id: 6, ar: 'الموارد البشرية والشؤون الإدارية', en: 'Human Resources & Administration' },
+          { id: 7, ar: 'إدارة التمويل الأصغر والعمليات', en: 'Microfinance & Operations' }
+        ];
+
+    const seen = new Set<string>();
+    return list.filter(item => {
+      const normKey = (item.ar || '').trim();
+      if (!normKey || seen.has(normKey)) return false;
+      seen.add(normKey);
+      return true;
+    });
+  }, [departments]);
 
   // Helper localization functions
   const getBranchName = (val: string) => {
@@ -157,10 +202,10 @@ export const JobOpenings: React.FC = () => {
       d.name_ar === val || d.name_en === val || d.name === val || String(d.id) === String(val)
     );
     if (match) {
-      if (language === 'en') return match.name_en || match.name_ar || match.name || val;
+      if (language === 'en') return resolveDeptEn(match.name_en, match.name_ar || match.name) || val;
       return match.name_ar || match.name || match.name_en || val;
     }
-    return DEPT_MAP[val]?.[language] || val;
+    return DEPT_MAP[val]?.[language] || (language === 'en' ? resolveDeptEn(val, val) : val);
   };
 
   const getTypeName = (val: string) => TYPE_MAP[val]?.[language] || val;
@@ -391,10 +436,20 @@ export const JobOpenings: React.FC = () => {
     );
     const resolvedTitle = matchedPos ? (matchedPos.name_ar || matchedPos.name) : job.title;
 
+    const matchedDept = departmentsList.find(d => 
+      d.ar === job.department || d.en === job.department || d.ar.trim() === (job.department || '').trim() || d.en.trim() === (job.department || '').trim()
+    );
+    const resolvedDept = matchedDept ? matchedDept.ar : (job.department || departmentsList[0]?.ar || 'قسم الائتمان');
+
+    const matchedBranch = branchesList.find(b =>
+      b.ar === job.location || b.en === job.location || b.ar.trim() === (job.location || '').trim() || b.en.trim() === (job.location || '').trim()
+    );
+    const resolvedLoc = matchedBranch ? matchedBranch.ar : (job.location || branchesList[0]?.ar || 'بغداد_المنصور');
+
     setJobForm({
       title: resolvedTitle,
-      department: job.department || departmentsList[0]?.ar || 'قسم الائتمان',
-      location: job.location || branchesList[0]?.ar || 'بغداد_المنصور',
+      department: resolvedDept,
+      location: resolvedLoc,
       type: (job.type || 'دوام كامل') as JobVacancy['type'],
       status: (job.status || 'مغلقة') as JobVacancy['status'],
       experienceYears: job.experienceYears || 0,
@@ -694,7 +749,9 @@ export const JobOpenings: React.FC = () => {
               <div>
                 <label className={`block text-xs font-bold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t('القسم (الأقسام المعرفة بالإعدادات)', 'Department (Departments in Settings)')}</label>
                 <select
-                  value={jobForm.department}
+                  value={
+                    departmentsList.find(d => d.en === jobForm.department || d.ar === jobForm.department || d.ar.trim() === (jobForm.department || '').trim())?.ar || jobForm.department
+                  }
                   onChange={(e) => setJobForm({...jobForm, department: e.target.value})}
                   className={`w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all border ${
                     isDark 
@@ -708,6 +765,9 @@ export const JobOpenings: React.FC = () => {
                       {language === 'en' ? dept.en : dept.ar}
                     </option>
                   ))}
+                  {jobForm.department && !departmentsList.some(d => d.ar === jobForm.department || d.en === jobForm.department) && (
+                    <option value={jobForm.department}>{getDeptName(jobForm.department)}</option>
+                  )}
                 </select>
               </div>
 
@@ -895,7 +955,9 @@ export const JobOpenings: React.FC = () => {
               <div>
                 <label className={`block text-xs font-bold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t('القسم', 'Department')}</label>
                 <select
-                  value={jobForm.department}
+                  value={
+                    departmentsList.find(d => d.en === jobForm.department || d.ar === jobForm.department || d.ar.trim() === (jobForm.department || '').trim())?.ar || jobForm.department
+                  }
                   onChange={(e) => setJobForm({...jobForm, department: e.target.value})}
                   className={`w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all border ${
                     isDark 
@@ -910,7 +972,7 @@ export const JobOpenings: React.FC = () => {
                     </option>
                   ))}
                   {jobForm.department && !departmentsList.some(d => d.ar === jobForm.department || d.en === jobForm.department) && (
-                    <option value={jobForm.department}>{jobForm.department}</option>
+                    <option value={jobForm.department}>{getDeptName(jobForm.department)}</option>
                   )}
                 </select>
               </div>
