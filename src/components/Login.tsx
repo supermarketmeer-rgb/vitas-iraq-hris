@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { UserProfile, UserRole } from '../types';
 import vitasLogo from '../../assets/VitasLogo.jpeg';
+import meersonLogo from '../../assets/meerson_logo_transparent.png';
 import { api } from '../api/client';
 
 export const Login: React.FC = () => {
@@ -569,12 +570,29 @@ export const Login: React.FC = () => {
         ? 'bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white' 
         : 'bg-slate-100 text-slate-900'
     }`}>
-      {/* Animated Orbs - Always visible since outer background is always dark */}
-      <>
-        <div className="absolute top-20 left-20 w-72 h-72 bg-teal-500 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-teal-600 rounded-full blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-teal-700 rounded-full blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </>
+      {/* Animated Orbs with MeerSon Watermarks */}
+      <div className="absolute top-16 left-8 sm:left-20 w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center pointer-events-none animate-pulse select-none">
+        <div className="absolute inset-0 bg-teal-500 rounded-full blur-3xl opacity-20 dark:opacity-25"></div>
+        <img 
+          src={meersonLogo} 
+          alt="MeerSon Watermark" 
+          className="relative z-0 w-44 sm:w-56 object-contain opacity-35 dark:opacity-45 filter drop-shadow-[0_0_20px_rgba(20,184,166,0.35)] dark:brightness-175 dark:contrast-125 dark:drop-shadow-[0_0_25px_rgba(45,212,191,0.45)] select-none pointer-events-none"
+        />
+      </div>
+
+      <div 
+        className="absolute bottom-12 right-8 sm:right-20 w-80 h-80 sm:w-96 sm:h-96 flex items-center justify-center pointer-events-none animate-pulse select-none" 
+        style={{ animationDelay: '1s' }}
+      >
+        <div className="absolute inset-0 bg-teal-600 rounded-full blur-3xl opacity-20 dark:opacity-25"></div>
+        <img 
+          src={meersonLogo} 
+          alt="MeerSon Watermark" 
+          className="relative z-0 w-52 sm:w-68 object-contain opacity-35 dark:opacity-45 filter drop-shadow-[0_0_20px_rgba(13,148,136,0.35)] dark:brightness-175 dark:contrast-125 dark:drop-shadow-[0_0_25px_rgba(45,212,191,0.45)] select-none pointer-events-none"
+        />
+      </div>
+
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-teal-700 rounded-full blur-3xl opacity-15 animate-pulse pointer-events-none" style={{ animationDelay: '2s' }}></div>
 
       <div className="relative z-10 w-full max-w-md">
         {/* Language & Theme Toggle */}

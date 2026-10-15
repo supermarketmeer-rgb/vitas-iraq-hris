@@ -27,6 +27,7 @@ import {
   syncBiometricData, 
   startBiometricScheduler 
 } from './database/biometricSyncEngine.js';
+import { ensureDefaultContractsAndClauses } from './database/seedDefaultContracts.js';
 
 import http from 'http';
 import { spawn } from 'child_process';
@@ -627,17 +628,8 @@ const ensureSettingsSeededAndSynced = async () => {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`).catch(() => {});
 
-    // 2. Seed default contract_types if empty
-    const ctRows = await query('SELECT COUNT(*) as cnt FROM contract_types').catch(() => [{ cnt: 0 }]);
-    if (ctRows && ctRows[0] && ctRows[0].cnt === 0) {
-      await query(`
-        INSERT INTO contract_types (name_en, name_ar, sort_order, status) VALUES
-        ('Full Time Contract', 'عقد دوام كامل', 1, 'Active'),
-        ('Part Time Contract', 'عقد دوام جزئي', 2, 'Active'),
-        ('Temporary Contract', 'عقد مؤقت', 3, 'Active'),
-        ('Consultancy Contract', 'عقد استشاري', 4, 'Active')
-      `).catch(() => {});
-    }
+    // 2. Ensure default contract types and 13 clauses for New Employee and Permanent contracts
+    await ensureDefaultContractsAndClauses(query);
 
     // 3. Seed default status_changes if empty
     const scRows = await query('SELECT COUNT(*) as cnt FROM status_changes').catch(() => [{ cnt: 0 }]);

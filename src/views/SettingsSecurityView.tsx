@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { api } from '../api/client';
 import * as XLSX from 'xlsx';
 import { DesktopSyncSettings } from '../components/DesktopSyncSettings';
+import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 
 interface TabConfig {
   id: string;
@@ -90,12 +91,13 @@ export const SettingsSecurityView: React.FC = () => {
   
   // Excel import/export states
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Track which tab the modal is operating on (for cross-tab modal operations)
+  const modalTargetTab = useRef<string | null>(null);
 
   const tabs: TabConfig[] = [
     { id: 'locations', icon: 'location_city', labelAr: 'الفروع', labelEn: 'Locations' },
     { id: 'positions', icon: 'work', labelAr: 'المسميات', labelEn: 'Positions' },
     { id: 'departments', icon: 'business', labelAr: 'الأقسام', labelEn: 'Departments' },
-    { id: 'contract-types', icon: 'description', labelAr: 'أنواع القوالب', labelEn: 'Template Types' },
     { id: 'employees', icon: 'badge', labelAr: 'الموظفين', labelEn: 'Employees' },
     { id: 'status-changes', icon: 'published_with_changes', labelAr: 'تغيير الحالة', labelEn: 'Status Change' },
     { id: 'trainings', icon: 'school', labelAr: 'التدريبات', labelEn: 'Trainings' },
@@ -233,7 +235,8 @@ export const SettingsSecurityView: React.FC = () => {
   }, [selectedContractType]);
 
   const getCurrentData = (): DataItem[] => {
-    switch (activeTab) {
+    const tab = modalTargetTab.current || activeTab;
+    switch (tab) {
       case 'locations': return locations;
       case 'positions': return positions;
       case 'departments': return departments;
@@ -245,7 +248,8 @@ export const SettingsSecurityView: React.FC = () => {
   };
 
   const setCurrentData = (data: DataItem[]) => {
-    switch (activeTab) {
+    const tab = modalTargetTab.current || activeTab;
+    switch (tab) {
       case 'locations': setLocations(data); break;
       case 'positions': setPositions(data); break;
       case 'departments': setDepartments(data); break;
@@ -256,16 +260,16 @@ export const SettingsSecurityView: React.FC = () => {
   };
 
   const handleAdd = async () => {
-    if (!formData.name_en || (activeTab === 'locations' && !formData.name_ar)) {
+    const tab = modalTargetTab.current || activeTab;
+    if (!formData.name_en || (tab === 'locations' && !formData.name_ar)) {
       alert(language === 'ar' ? 'يرجى ملء جميع الحقول المطلوبة' : 'Please fill all required fields');
       return;
     }
 
     try {
       let result;
-      switch (activeTab) {
+      switch (tab) {
         case 'locations':
-          // Map name_ar to name for server compatibility
           result = await api.addBranch({
             name: formData.name_ar,
             name_en: formData.name_en,
@@ -297,6 +301,7 @@ export const SettingsSecurityView: React.FC = () => {
       await loadData();
       setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' });
       setShowAddModal(false);
+      modalTargetTab.current = null;
     } catch (error) {
       console.error('Error adding item:', error);
       alert(language === 'ar' ? 'حدث خطأ أثناء الإضافة' : 'Error adding item');
@@ -309,13 +314,15 @@ export const SettingsSecurityView: React.FC = () => {
       return;
     }
 
-    if (!formData.name_en || (activeTab === 'locations' && !formData.name_ar)) {
+    const tab = modalTargetTab.current || activeTab;
+
+    if (!formData.name_en || (tab === 'locations' && !formData.name_ar)) {
       alert(language === 'ar' ? 'يرجى ملء جميع الحقول المطلوبة' : 'Please fill all required fields');
       return;
     }
 
     try {
-      switch (activeTab) {
+      switch (tab) {
         case 'locations':
           // Map name_ar to name for server compatibility
           await api.updateBranch(editingItem.id.toString(), {
@@ -353,6 +360,8 @@ export const SettingsSecurityView: React.FC = () => {
     } catch (error) {
       console.error('Error updating item:', error);
       alert(language === 'ar' ? 'حدث خطأ أثناء التعديل' : 'Error updating item');
+    } finally {
+      modalTargetTab.current = null;
     }
   };
 
@@ -362,8 +371,9 @@ export const SettingsSecurityView: React.FC = () => {
       : 'Are you sure you want to delete this item?';
     
     if (window.confirm(confirmMessage)) {
+      const tab = modalTargetTab.current || activeTab;
       try {
-        switch (activeTab) {
+        switch (tab) {
           case 'locations':
             await api.deleteBranch(id.toString());
             break;
@@ -375,6 +385,9 @@ export const SettingsSecurityView: React.FC = () => {
             break;
           case 'contract-types':
             await api.deleteContractType(id.toString());
+            if (selectedContractType === id || selectedContractType === parseInt(id.toString())) {
+              setSelectedContractType(null);
+            }
             break;
           case 'status-changes':
             await api.deleteStatusChange(id.toString());
@@ -388,7 +401,11 @@ export const SettingsSecurityView: React.FC = () => {
         await loadData();
       } catch (error) {
         console.error('Error deleting item:', error);
+      } finally {
+        modalTargetTab.current = null;
       }
+    } else {
+      modalTargetTab.current = null;
     }
   };
 
@@ -1280,8 +1297,8 @@ export const SettingsSecurityView: React.FC = () => {
             const dob = parseExcelDate(getVal(row, ['Date of Birth', 'dob', 'تاريخ الميلاد', 'تاريخ ولادة', 'DOB', 'Birth Date']));
             const email = getVal(row, ['Email', 'email', 'البريد الإلكتروني المؤسسي', 'البريد الإلكتروني', 'البريد الالكتروني', 'الإيميل', 'الايميل', 'البريد المؤسسي']);
             const personalEmail = getVal(row, ['Personal Email', 'personalEmail', 'personal_email', 'البريد الإلكتروني الشخصي', 'البريد الشخصي', 'الايميل الشخصي']);
-            const phone = getVal(row, ['Phone', 'phone', 'mobile', 'Mobile', 'الهاتف', 'رقم الهاتف', 'الموبايل', 'رقم الجوال', 'الجوال']);
-            const emergencyPhone = getVal(row, ['Emergency Phone', 'emergencyPhone', 'emergency_phone', 'هاتف الطوارئ', 'رقم الطوارئ']);
+            const phone = formatIraqiPhoneNumber(getVal(row, ['Phone', 'phone', 'mobile', 'Mobile', 'الهاتف', 'رقم الهاتف', 'الموبايل', 'رقم الجوال', 'الجوال']));
+            const emergencyPhone = formatIraqiPhoneNumber(getVal(row, ['Emergency Phone', 'emergencyPhone', 'emergency_phone', 'هاتف الطوارئ', 'رقم الطوارئ']));
             const gender = getVal(row, ['Gender', 'gender', 'الجنس', 'النوع']) || 'ذكر';
             const maritalStatus = getVal(row, ['Marital Status', 'maritalStatus', 'marital_status', 'الحالة الاجتماعية', 'الحالة الزوجية']) || 'أعزب';
             const nationality = getVal(row, ['Nationality', 'nationality', 'الجنسية']) || 'عراقي';
@@ -1563,22 +1580,7 @@ export const SettingsSecurityView: React.FC = () => {
             activeTab={activeTab}
           />
         )}
-        {activeTab === 'contract-types' && (
-          <DataTable
-            title={t('أنواع العقود', 'Contract Types')}
-            icon="description"
-            data={contractTypes}
-            onAdd={() => { setShowAddModal(true); setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' }); }}
-            onEdit={openEditModal}
-            onDelete={handleDelete}
-            language={language}
-            showExcelButtons={true}
-            onGenerateTemplate={() => generateExcelTemplate('contract-types')}
-            onImportExcel={(e) => handleExcelImport(e, 'contract-types')}
-            fileInputRef={fileInputRef}
-            activeTab={activeTab}
-          />
-        )}
+
         {activeTab === 'desktop-sync' && (
           <DesktopSyncSettings />
         )}
@@ -1638,6 +1640,19 @@ export const SettingsSecurityView: React.FC = () => {
             clausesToast={clausesToast}
             language={language}
             t={t}
+            onAddContractType={() => {
+              modalTargetTab.current = 'contract-types';
+              setShowAddModal(true);
+              setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' });
+            }}
+            onEditContractType={(item) => {
+              modalTargetTab.current = 'contract-types';
+              openEditModal(item);
+            }}
+            onDeleteContractType={(id) => {
+              modalTargetTab.current = 'contract-types';
+              handleDelete(id);
+            }}
           />
         )}
         {activeTab === 'employees' && (
@@ -1684,26 +1699,41 @@ export const SettingsSecurityView: React.FC = () => {
       {/* Add Modal */}
       {showAddModal && (
         <Modal
-          title={t('إضافة عنصر جديد', 'Add New Item')}
-          onClose={() => setShowAddModal(false)}
+          title={
+            (modalTargetTab.current || activeTab) === 'contract-types'
+              ? (language === 'ar' ? 'إضافة نوع عقد جديد' : 'Add New Contract Type')
+              : t('إضافة عنصر جديد', 'Add New Item')
+          }
+          onClose={() => {
+            setShowAddModal(false);
+            modalTargetTab.current = null;
+          }}
           onSave={handleAdd}
           formData={formData}
           setFormData={setFormData}
           language={language}
-          activeTab={activeTab}
+          activeTab={modalTargetTab.current || activeTab}
         />
       )}
 
       {/* Edit Modal */}
       {showEditModal && (
         <Modal
-          title={t('تعديل العنصر', 'Edit Item')}
-          onClose={() => { setShowEditModal(false); setEditingItem(null); }}
+          title={
+            (modalTargetTab.current || activeTab) === 'contract-types'
+              ? (language === 'ar' ? 'تعديل نوع العقد' : 'Edit Contract Type')
+              : t('تعديل العنصر', 'Edit Item')
+          }
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingItem(null);
+            modalTargetTab.current = null;
+          }}
           onSave={handleEdit}
           formData={formData}
           setFormData={setFormData}
           language={language}
-          activeTab={activeTab}
+          activeTab={modalTargetTab.current || activeTab}
         />
       )}
     </div>
@@ -2100,25 +2130,27 @@ const Modal: React.FC<ModalProps> = ({ title, onClose, onSave, formData, setForm
                   placeholder="branch@vitas.iq"
                 />
               </div>
-
-              <div>
-                <label className={`block text-xs mb-1 ${
-                  theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                }`}>{language === 'ar' ? 'الحالة' : 'Status'}</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 ${
-                    theme === 'dark'
-                      ? 'bg-white/5 border-white/10 text-[#e2e8f0]'
-                      : 'bg-gray-50 border-gray-300 text-gray-800'
-                  }`}
-                >
-                  <option value="Active">{language === 'ar' ? 'نشط' : 'Active'}</option>
-                  <option value="Inactive">{language === 'ar' ? 'غير نشط' : 'Inactive'}</option>
-                </select>
-              </div>
             </>
+          )}
+
+          {(isLocationsTab || activeTab === 'contract-types') && (
+            <div>
+              <label className={`block text-xs mb-1 ${
+                theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+              }`}>{language === 'ar' ? 'الحالة' : 'Status'}</label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 ${
+                  theme === 'dark'
+                    ? 'bg-white/5 border-white/10 text-[#e2e8f0]'
+                    : 'bg-gray-50 border-gray-300 text-gray-800'
+                }`}
+              >
+                <option value="Active">{language === 'ar' ? 'نشط' : 'Active'}</option>
+                <option value="Inactive">{language === 'ar' ? 'غير نشط' : 'Inactive'}</option>
+              </select>
+            </div>
           )}
           <div className="flex justify-end gap-2 mt-6">
             <button
@@ -2501,6 +2533,9 @@ interface TemplatesSectionProps {
   clausesToast: string | null;
   language: string;
   t: (ar: string, en: string) => string;
+  onAddContractType: () => void;
+  onEditContractType: (item: DataItem) => void;
+  onDeleteContractType: (id: number | string) => void;
 }
 
 const TemplatesSection: React.FC<TemplatesSectionProps> = ({
@@ -2515,7 +2550,10 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
   isSavingClauses,
   clausesToast,
   language,
-  t
+  t,
+  onAddContractType,
+  onEditContractType,
+  onDeleteContractType
 }) => {
   return (
     <div className="space-y-6">
@@ -2532,8 +2570,8 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
             {language === 'ar' ? 'إدارة القوالب (عقود، تقييمات، وغيرها)' : 'Templates Manager'}
           </span>
         </div>
-        {/* Contract Type Selector */}
-        <div className="flex items-center gap-2">
+        {/* Contract Type Selector + Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-slate-400">
             {language === 'ar' ? 'نوع القالب:' : 'Template Type:'}
           </span>
@@ -2549,8 +2587,152 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
               </option>
             ))}
           </select>
+
+          {/* Add Contract Type Button */}
+          <button
+            type="button"
+            onClick={onAddContractType}
+            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-500 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-md hover:shadow-teal-500/30 hover:scale-105"
+          >
+            <span className="material-symbols-outlined text-sm">add</span>
+            <span>{language === 'ar' ? 'إضافة نوع العقد' : 'Add Contract Type'}</span>
+          </button>
         </div>
       </h3>
+
+      {/* Contract Types Table */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-lg">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-white/[0.02]">
+          <div className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-teal-400 text-lg">description</span>
+            <span className="text-xs font-bold text-[#e2e8f0] uppercase tracking-wider">
+              {language === 'ar' ? 'جدول أنواع العقود المضافة' : 'Added Contract Types'}
+            </span>
+            <span className="bg-teal-500/20 border border-teal-500/30 text-teal-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+              {contractTypes.length} {language === 'ar' ? 'عقد' : 'types'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onAddContractType}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-md hover:shadow-teal-500/30"
+          >
+            <span className="material-symbols-outlined text-sm">add</span>
+            <span>{language === 'ar' ? 'إضافة نوع العقد' : 'Add Contract Type'}</span>
+          </button>
+        </div>
+
+        {contractTypes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-500 gap-3">
+            <span className="material-symbols-outlined text-4xl text-slate-600">description</span>
+            <p className="text-xs">
+              {language === 'ar' ? 'لا توجد أنواع عقود مضافة بعد. اضغط على زر "إضافة نوع العقد" للبدء.' : 'No contract types added yet. Click "Add Contract Type" to start.'}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-start border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/[0.02] text-[11px] font-bold text-slate-400">
+                  <th className="py-3 px-4 text-center w-12">#</th>
+                  <th className="py-3 px-4 text-start">{language === 'ar' ? 'نوع العقد (عربي)' : 'Contract Type (Arabic)'}</th>
+                  <th className="py-3 px-4 text-start">{language === 'ar' ? 'اسم العقد (إنجليزي)' : 'Contract Type (English)'}</th>
+                  <th className="py-3 px-4 text-center w-20">{language === 'ar' ? 'الترتيب' : 'Order'}</th>
+                  <th className="py-3 px-4 text-center w-24">{language === 'ar' ? 'الحالة' : 'Status'}</th>
+                  <th className="py-3 px-4 text-center w-36">{language === 'ar' ? 'بنود العقد' : 'Clauses'}</th>
+                  <th className="py-3 px-4 text-center w-28">{language === 'ar' ? 'الإجراءات' : 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-xs">
+                {contractTypes.map((type, index) => {
+                  const isSelected = selectedContractType === (typeof type.id === 'number' ? type.id : parseInt(type.id as string));
+                  return (
+                    <tr
+                      key={type.id}
+                      className={`transition-colors hover:bg-white/[0.04] ${
+                        isSelected ? 'bg-teal-500/10 border-l-4 border-l-teal-500 rtl:border-l-0 rtl:border-r-4 rtl:border-r-teal-500' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4 text-center text-slate-500 font-mono text-[11px]">
+                        {index + 1}
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-[#e2e8f0]">
+                        <span 
+                          className="hover:text-teal-400 cursor-pointer" 
+                          onClick={() => setSelectedContractType(typeof type.id === 'number' ? type.id : parseInt(type.id as string))}
+                          title={language === 'ar' ? 'اضغط لتحديد هذا العقد وتحرير بنوده' : 'Click to select this contract'}
+                        >
+                          {type.name_ar || type.name || '—'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-slate-300">
+                        {type.name_en || '—'}
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono text-slate-400">
+                        {type.sort_order ?? 0}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          type.status === 'Active'
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-slate-500/15 text-slate-400 border border-slate-500/30'
+                        }`}>
+                          {type.status === 'Active'
+                            ? (language === 'ar' ? 'نشط' : 'Active')
+                            : (language === 'ar' ? 'غير نشط' : 'Inactive')}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {isSelected ? (
+                          <span className="inline-flex items-center gap-1 bg-teal-500/20 text-teal-300 border border-teal-500/40 text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                            <span className="material-symbols-outlined text-xs">check</span>
+                            <span>{language === 'ar' ? 'مُحدد حالياً' : 'Selected'}</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedContractType(typeof type.id === 'number' ? type.id : parseInt(type.id as string));
+                            }}
+                            className="inline-flex items-center gap-1 bg-white/5 hover:bg-teal-500/20 text-slate-300 hover:text-teal-300 border border-white/10 hover:border-teal-500/30 text-[10px] font-semibold px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                            title={language === 'ar' ? 'اختيار هذا العقد لعرض وصياغة بنوده' : 'Select this contract to edit clauses'}
+                          >
+                            <span className="material-symbols-outlined text-xs">edit_note</span>
+                            <span>{language === 'ar' ? 'صياغة البنود' : 'Edit Clauses'}</span>
+                          </button>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onEditContractType(type);
+                            }}
+                            className="p-1.5 rounded-lg text-teal-400 hover:bg-teal-500/20 hover:text-teal-200 transition-all active:scale-95 cursor-pointer"
+                            title={language === 'ar' ? 'تعديل نوع العقد' : 'Edit Contract Type'}
+                          >
+                            <span className="material-symbols-outlined text-base">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteContractType(type.id)}
+                            className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/20 hover:text-rose-200 transition-all active:scale-95 cursor-pointer"
+                            title={language === 'ar' ? 'حذف نوع العقد' : 'Delete Contract Type'}
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Dynamic Placeholders Guide */}
       <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-2">
@@ -2583,7 +2765,31 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
 
       {/* Contract Clauses */}
       {selectedContractType && (
-        <div className="space-y-4">
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center justify-between p-3.5 bg-teal-500/10 border border-teal-500/30 rounded-xl">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-teal-400">gavel</span>
+              <span className="text-xs font-bold text-teal-300">
+                {language === 'ar' ? 'بنود العقد المُحدد:' : 'Selected Contract Clauses:'}{' '}
+                <span className="text-white font-semibold underline decoration-teal-400/50">
+                  {contractTypes.find(c => c.id === selectedContractType)?.name_ar || contractTypes.find(c => c.id === selectedContractType)?.name_en || ''}
+                </span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-teal-400 font-mono font-bold bg-teal-500/20 px-2.5 py-0.5 rounded-full">
+                {contractClauses.length} {language === 'ar' ? 'بند' : 'clauses'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedContractType(null)}
+                className="text-slate-400 hover:text-slate-200 text-xs p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                title={language === 'ar' ? 'إغلاق المحرر' : 'Close Editor'}
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+          </div>
           <div id="clausesContainer" className="space-y-4">
             {contractClauses.length === 0 ? (
               <div className="text-xs text-slate-400 text-center py-6 border border-dashed border-white/20 rounded-xl">

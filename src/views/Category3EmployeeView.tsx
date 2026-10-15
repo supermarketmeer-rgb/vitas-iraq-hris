@@ -8,6 +8,7 @@ import { Employee, EmployeeChild } from '../types';
 import { api } from '../api/client';
 import { ContractPreviewModal } from '../components/ContractPreviewModal';
 import { getBranchName } from '../utils/branchHelper';
+import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 
 export const Category3EmployeeView: React.FC = () => {
   const {
@@ -694,8 +695,8 @@ export const Category3EmployeeView: React.FC = () => {
     setDob(clean(emp.dob || emp.date_of_birth));
     setEmail(clean(emp.email));
     setPersonalEmail(clean(emp.personalEmail || emp.personal_email));
-    setPhone(clean(emp.phone || emp.mobile || emp.mobile_phone || emp.phone_number));
-    setEmergencyPhone(clean(emp.emergencyPhone || emp.emergency_mobile || emp.emergency_phone));
+    setPhone(clean(formatIraqiPhoneNumber(emp.phone || emp.mobile || emp.mobile_phone || emp.phone_number)));
+    setEmergencyPhone(clean(formatIraqiPhoneNumber(emp.emergencyPhone || emp.emergency_mobile || emp.emergency_phone)));
     setNationalId(clean(emp.nationalId || emp.national_id));
     setPassportNo(clean(emp.passportNo || emp.passport_number || emp.passport_no));
     setPassportExpiry(clean(emp.passportExpiry || emp.passport_expiry));
@@ -3373,7 +3374,8 @@ export const Category3EmployeeView: React.FC = () => {
                         <p className={`${profileColors.textSecondary}`}>{t('الجنس:', 'Gender:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee.gender || t('غير محدد', 'Not specified')}</span></p>
                         <p className={`${profileColors.textSecondary}`}>{t('الحالة الاجتماعية:', 'Marital Status:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee.maritalStatus || t('غير محدد', 'Not specified')}</span></p>
                         <p className={`${profileColors.textSecondary}`}>{t('البريد الشخصي:', 'Personal Email:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.personalEmail && selectedEmployee.personalEmail !== 'N/A' ? selectedEmployee.personalEmail : '-'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('هاتف الطوارئ:', 'Emergency Phone:')} <span className={`${isDark ? 'text-rose-400' : 'text-rose-600'} font-mono font-bold`}>{selectedEmployee.emergencyPhone && selectedEmployee.emergencyPhone !== 'N/A' ? selectedEmployee.emergencyPhone : '-'}</span></p>
+                        <p className={`${profileColors.textSecondary}`}>{t('رقم الهاتف:', 'Phone Number:')} <span className={`${isDark ? 'text-emerald-400' : 'text-emerald-600'} font-mono font-bold`}>{selectedEmployee.phone && selectedEmployee.phone !== 'N/A' ? formatIraqiPhoneNumber(selectedEmployee.phone) : (selectedEmployee.mobile ? formatIraqiPhoneNumber(selectedEmployee.mobile) : '-')}</span></p>
+                        <p className={`${profileColors.textSecondary}`}>{t('هاتف الطوارئ:', 'Emergency Phone:')} <span className={`${isDark ? 'text-rose-400' : 'text-rose-600'} font-mono font-bold`}>{selectedEmployee.emergencyPhone && selectedEmployee.emergencyPhone !== 'N/A' ? formatIraqiPhoneNumber(selectedEmployee.emergencyPhone) : '-'}</span></p>
                       </div>
                     </div>
                   </div>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
+import { CHF_IRAQ_LOGO_BASE64 } from '../data/contractHeaderLogo';
+import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 
 interface ContractClause {
   id?: number | string;
@@ -66,9 +68,22 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
     return getCachedClauses(typeId).length;
   };
 
+  // Sorted contract types prioritizing official contracts (عقد موظف جديد first, then عقد دائمي)
+  const sortedContractTypes = useMemo(() => {
+    return [...contractTypes].sort((a, b) => {
+      const getPriority = (item: any) => {
+        const name = String(item.name_ar || item.name_en || '').trim();
+        if (name === 'عقد موظف جديد' || name === 'New Employee Contract') return 1;
+        if (name === 'عقد دائمي' || name === 'Permanent Contract') return 2;
+        return 10;
+      };
+      return getPriority(a) - getPriority(b);
+    });
+  }, [contractTypes]);
+
   // Match initial contract type from employee data
   useEffect(() => {
-    if (employee && contractTypes.length > 0) {
+    if (employee && sortedContractTypes.length > 0) {
       const empTypeStr = String(
         employee.termOfContract ||
         employee.term_of_contract ||
@@ -78,31 +93,31 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
       ).trim().toLowerCase();
 
       // Find all types matching employee's contract name or id
-      const matchingTypes = contractTypes.filter((ct: any) => {
+      const matchingType = sortedContractTypes.find((ct: any) => {
         const nameAr = String(ct.name_ar || '').trim().toLowerCase();
         const nameEn = String(ct.name_en || '').trim().toLowerCase();
         const name = String(ct.name || '').trim().toLowerCase();
         const idMatches = employee.contract_type_id && (ct.id === employee.contract_type_id || ct.id === Number(employee.contract_type_id));
-        return idMatches || nameAr === empTypeStr || nameEn === empTypeStr || name === empTypeStr;
+        return idMatches || (empTypeStr && (nameAr === empTypeStr || nameEn === empTypeStr || name === empTypeStr));
       });
 
-      // Prefer type with clauses
-      if (matchingTypes.length > 0) {
-        const withClauses = matchingTypes.find((ct: any) => getCachedClauseCount(ct.id) > 0);
-        setSelectedTypeId(withClauses ? withClauses.id : matchingTypes[0].id);
+      if (matchingType) {
+        setSelectedTypeId(matchingType.id);
         return;
       }
 
-      // Check if any contract type in system has clauses
-      const anyWithClauses = contractTypes.find((ct: any) => getCachedClauseCount(ct.id) > 0);
-      if (anyWithClauses) {
-        setSelectedTypeId(anyWithClauses.id);
+      // Prefer official contract types
+      const preferred = sortedContractTypes.find((ct: any) => ct.name_ar === 'عقد موظف جديد' || ct.name_en === 'New Employee Contract')
+        || sortedContractTypes.find((ct: any) => ct.name_ar === 'عقد دائمي' || ct.name_en === 'Permanent Contract');
+
+      if (preferred) {
+        setSelectedTypeId(preferred.id);
         return;
       }
 
-      setSelectedTypeId(contractTypes[0]?.id || null);
+      setSelectedTypeId(sortedContractTypes[0]?.id || null);
     }
-  }, [isOpen, employee, contractTypes]);
+  }, [isOpen, employee, sortedContractTypes]);
 
   // Listen for real-time contract clause updates from Settings Templates tab
   useEffect(() => {
@@ -211,7 +226,8 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
   };
 
   // Safe string helper for replacing placeholders in clauses
-  const replacePlaceholders = (text: string): string => {
+  // Safe string helper for replacing placeholders in clauses with exact Word bold & underline styling
+  const replacePlaceholders = (text: string, rich: boolean = true): string => {
     if (!text || !employee) return text || '';
 
     const empNameAr = employee.fullName || employee.full_name_ar || employee.name_ar || employee.name || '';
@@ -221,13 +237,18 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
     const jobTitleAr = employee.jobTitle || employee.position_ar || employee.position || '';
     const deptAr = employee.department || employee.department_ar || '';
     const branchAr = employee.branch || employee.location_ar || '';
+    const city = employee.city || employee.branch || employee.location_ar || 'بغداد';
+    const rawPhone = employee.phone || employee.mobile || employee.phone_number || employee.phoneNumber || employee.mobileNo || employee.emergencyPhone || '';
+    const phone = formatIraqiPhoneNumber(rawPhone) || rawPhone || '';
+    const email = employee.personalEmail || employee.personal_email || employee.email || '';
+    const birthDate = employee.dob || employee.birthDate || employee.birth_date || '';
 
     const basicSalaryNum = Number(employee.basicSalary || employee.salary || 0);
-    const basicSalaryFormatted = basicSalaryNum > 0 ? `${basicSalaryNum.toLocaleString()} د.ع` : '0 د.ع';
+    const basicSalaryPlain = basicSalaryNum > 0 ? `${basicSalaryNum.toLocaleString()}` : '0';
     
     // Check written salary from employee record first
     const rawWritten = employee.writtenBasicSalaryAr || employee.written_basic_salary_ar;
-    const writtenSalary = (rawWritten && rawWritten !== 'N/A' && rawWritten.trim() !== '')
+    const writtenSalaryPlain = (rawWritten && rawWritten !== 'N/A' && rawWritten.trim() !== '')
       ? rawWritten
       : (basicSalaryNum > 0 ? `${numberToArabicWords(basicSalaryNum)} دينار عراقي` : 'صفر دينار');
 
@@ -239,28 +260,417 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
     const term = currentContractType?.name_ar || employee.termOfContract || 'عقد محدد المدة';
     const grade = employee.grade || 'G-4';
     const nationalId = employee.nationalId || employee.national_id || employee.passportNo || '';
-    const companyName = companyProfile?.company_name || 'شركة فيتاس العراق للتمويل الأصغر';
+    const companyName = 'مؤسسة الإسكان التعاونية CHF';
 
-    return text
-      .replace(/{employee_name_ar}/g, empNameAr)
+    // Rich HTML formatted values (Bold + Underline where Word has them)
+    const styledEmpName = rich ? `<u><strong class="font-bold underline text-slate-900">${empNameAr}</strong></u>` : empNameAr;
+    const styledJobTitle = rich ? `<u><strong class="font-bold underline text-slate-900">${jobTitleAr}</strong></u>` : jobTitleAr;
+    const styledBranch = rich ? `<u><strong class="font-bold underline text-slate-900">${branchAr}</strong></u>` : branchAr;
+    const styledSalary = rich ? `<u><strong class="font-bold underline text-slate-900">${basicSalaryPlain}</strong></u>` : `${basicSalaryPlain} د.ع`;
+    const styledWrittenSalary = rich ? `<u><strong class="font-bold underline text-slate-900">${writtenSalaryPlain}</strong></u>` : writtenSalaryPlain;
+    const styledStartDate = rich ? `<strong class="font-bold text-slate-900">${startDate}</strong>` : startDate;
+    const styledEndDate = rich ? `<strong class="font-bold text-slate-900">${endDate}</strong>` : endDate;
+
+    // In العنوان الكامل and الطرف الثاني headers, address and name are plain text matching the Word document (no underline)
+    let textToProcess = text;
+    if (rich) {
+      if (textToProcess.includes('العنوان الكامل:')) {
+        textToProcess = textToProcess.replace(/العنوان الكامل:[^\n]+/g, (match) => {
+          return match
+            .replace(/{location_ar}/g, branchAr)
+            .replace(/{branch_ar}/g, branchAr)
+            .replace(/{city}/g, city)
+            .replace(/{phone}/g, phone);
+        });
+      }
+      if (textToProcess.includes('الطرف الثاني:')) {
+        textToProcess = textToProcess.replace(/الطرف الثاني:[^\n]+/g, (match) => {
+          return match.replace(/{employee_name_ar}/g, empNameAr);
+        });
+      }
+    }
+
+    let res = textToProcess
+      .replace(/{employee_name_ar}/g, styledEmpName)
       .replace(/{employee_name_en}/g, empNameEn)
       .replace(/{employee_id}/g, empId)
       .replace(/{badge_no}/g, badgeNo)
-      .replace(/{position_ar}/g, jobTitleAr)
-      .replace(/{job_title_ar}/g, jobTitleAr)
+      .replace(/{position_ar}/g, styledJobTitle)
+      .replace(/{job_title_ar}/g, styledJobTitle)
       .replace(/{department_ar}/g, deptAr)
-      .replace(/{location_ar}/g, branchAr)
-      .replace(/{branch_ar}/g, branchAr)
-      .replace(/{basic_salary}/g, basicSalaryFormatted)
-      .replace(/{written_basic_salary_ar}/g, writtenSalary)
+      .replace(/{location_ar}/g, styledBranch)
+      .replace(/{branch_ar}/g, styledBranch)
+      .replace(/{city}/g, city)
+      .replace(/{phone}/g, phone)
+      .replace(/{email}/g, email)
+      .replace(/{birth_date}/g, birthDate)
+      .replace(/{basic_salary}/g, styledSalary)
+      .replace(/{written_basic_salary_ar}/g, styledWrittenSalary)
       .replace(/{transportation_fixed}/g, transAllowance)
       .replace(/{phone_allowance}/g, phoneAllowance)
-      .replace(/{contract_start_date}/g, startDate)
-      .replace(/{contract_end_date}/g, endDate)
+      .replace(/{contract_start_date}/g, styledStartDate)
+      .replace(/{contract_end_date}/g, styledEndDate)
       .replace(/{term_of_contract}/g, term)
       .replace(/{grade}/g, grade)
       .replace(/{national_id_no}/g, nationalId)
       .replace(/{institution_name}/g, companyName);
+
+    if (rich) {
+      // 1. اتفق الطرفان المتعاقدان على ما يلي: (Bold + Underline in Word)
+      res = res.replace(/اتفق الطرفان المتعاقدان على ما يلي:/g, '<u><strong class="font-bold underline text-slate-900">اتفق الطرفان المتعاقدان على ما يلي:</strong></u>');
+
+      // 2. Format salary amounts in parentheses if already hardcoded in text
+      res = res.replace(/رقما\s*\(([^)]+)\)/g, (match, p1) => {
+        if (p1.includes('<u')) return match;
+        return `رقما (<u><strong class="font-bold underline text-slate-900">${p1}</strong></u>)`;
+      });
+      res = res.replace(/كتابة\s*\(([^)]+)\)/g, (match, p1) => {
+        if (p1.includes('<u')) return match;
+        return `كتابة (<u><strong class="font-bold underline text-slate-900">${p1}</strong></u>)`;
+      });
+
+      // 3. سادساً subheadings (Bold + Underline in Word)
+      res = res.replace(/المعلومات السرية\s*:/g, '<u><strong class="font-bold underline text-slate-900">المعلومات السرية :</strong></u>');
+      res = res.replace(/عدم المنافسة\s*:/g, '<u><strong class="font-bold underline text-slate-900">عدم المنافسة:</strong></u>');
+      res = res.replace(/(?:3\.\s*)?الملكية الفكرية\s*:/g, '<u><strong class="font-bold underline text-slate-900">3. الملكية الفكرية :</strong></u>');
+
+      // 4. Ensure any phone number displayed in clause text has leading 0
+      res = res.replace(/(رقم الهاتف النقال\s*\()\s*([^\)]+)\)/g, (match, prefix, p1) => {
+        const formatted = formatIraqiPhoneNumber(p1.trim());
+        return `${prefix}${formatted || p1})`;
+      });
+      res = res.replace(/(رقم الموبايل:?\s*)([0-9\+\s\-]+)/g, (match, prefix, p1) => {
+        const formatted = formatIraqiPhoneNumber(p1.trim());
+        return `${prefix}${formatted || p1}`;
+      });
+    }
+
+    return res;
+  };
+
+  // Helper to split clauses into exact 4 pages matching Word desktop documents
+  const splitClause4 = (text: string) => {
+    const idx = text.indexOf('6. ');
+    if (idx !== -1) return [text.slice(0, idx).trim(), text.slice(idx).trim()];
+    const lines = text.split('\n');
+    if (lines.length > 5) return [lines.slice(0, 5).join('\n').trim(), lines.slice(5).join('\n').trim()];
+    return [text, ''];
+  };
+
+  const splitClause5 = (text: string) => {
+    const hasProbation = text.includes('فترة اختبار') || text.includes('90 يوما');
+    if (hasProbation) {
+      const idx = text.indexOf('12. ');
+      if (idx !== -1) return [text.slice(0, idx).trim(), text.slice(idx).trim()];
+    } else {
+      const matchGov = text.match(/(?=13\.\s)|(?=يجوز للطرف الاول)/);
+      if (matchGov && matchGov.index !== undefined) {
+        return [text.slice(0, matchGov.index).trim(), text.slice(matchGov.index).trim()];
+      }
+    }
+    const idx12 = text.indexOf('12. ');
+    if (idx12 !== -1) return [text.slice(0, idx12).trim(), text.slice(idx12).trim()];
+    return [text, ''];
+  };
+
+  const splitClause7 = (text: string) => {
+    const match = text.match(/(?=(?:3\.\s*|3\.)?الملكية الفكرية)/);
+    if (match && match.index !== undefined) {
+      return [text.slice(0, match.index).trim(), text.slice(match.index).trim()];
+    }
+    return [text, ''];
+  };
+
+  // Helper to render preamble with bold labels and underlined data matching Word formatting
+  const renderPreamble = (rawText: string) => {
+    const text = replacePlaceholders(rawText, true);
+    const lines = text.split('\n');
+
+    return (
+      <div className="preamble-container space-y-1.5 text-xs sm:text-[13.5px] leading-relaxed mb-3">
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (!trimmed) return <div key={idx} className="h-1"></div>;
+
+          if (trimmed.startsWith('الطرف الاول:')) {
+            const rest = trimmed.replace('الطرف الاول:', '').trim();
+            return (
+              <p key={idx} className="preamble-line m-0 text-justify">
+                <span className="font-bold text-slate-900">الطرف الاول:</span>{' '}
+                <span dangerouslySetInnerHTML={{ __html: rest }} />
+              </p>
+            );
+          }
+
+          if (trimmed.startsWith('الطرف الثاني:')) {
+            const rest = trimmed.replace('الطرف الثاني:', '').trim();
+            return (
+              <p key={idx} className="preamble-line m-0 text-justify">
+                <span className="font-bold text-slate-900">الطرف الثاني:</span>{' '}
+                <span dangerouslySetInnerHTML={{ __html: rest }} />
+              </p>
+            );
+          }
+
+          if (trimmed.startsWith('العنوان الكامل:')) {
+            const rest = trimmed.replace('العنوان الكامل:', '').trim();
+            const formattedRest = rest.replace(/(رقم الهاتف النقال\s*\()\s*([^\)]+)\)/g, (match, prefix, p1) => {
+              const formatted = formatIraqiPhoneNumber(p1.trim());
+              return `${prefix}${formatted || p1})`;
+            });
+            return (
+              <p key={idx} className="preamble-line m-0 text-justify">
+                <span className="font-bold text-slate-900">العنوان الكامل:</span>{' '}
+                <span dangerouslySetInnerHTML={{ __html: formattedRest }} />
+              </p>
+            );
+          }
+
+          if (trimmed.startsWith('البريد الالكتروني')) {
+            const colonIdx = trimmed.indexOf(':');
+            const label = colonIdx !== -1 ? trimmed.slice(0, colonIdx + 1) : 'البريد الالكتروني الشخصي المعتمد للمراسلات:';
+            const val = colonIdx !== -1 ? trimmed.slice(colonIdx + 1).trim() : trimmed.replace(/البريد الالكتروني\s*(الشخصي)?\s*(المعتمد)?\s*(للمراسلات)?/g, '').trim();
+            return (
+              <p key={idx} className="preamble-line m-0">
+                <span className="font-bold text-slate-900">{label}</span>{' '}
+                <span dangerouslySetInnerHTML={{ __html: val }} />
+              </p>
+            );
+          }
+
+          if (trimmed.startsWith('رقم الموبايل:')) {
+            const rest = trimmed.replace('رقم الموبايل:', '').trim();
+            const formattedPhone = formatIraqiPhoneNumber(rest) || rest;
+            return (
+              <p key={idx} className="preamble-line m-0">
+                <span className="font-bold text-slate-900">رقم الموبايل:</span>{' '}
+                <span dangerouslySetInnerHTML={{ __html: formattedPhone }} />
+              </p>
+            );
+          }
+
+          if (trimmed.startsWith('تاريخ الميلاد:') || trimmed.startsWith('تاريخ الميلاد')) {
+            const rest = trimmed.replace(/تاريخ الميلاد:?/g, '').trim();
+            return (
+              <p key={idx} className="preamble-line m-0">
+                <span className="font-bold text-slate-900">تاريخ الميلاد:</span>{' '}
+                <span dangerouslySetInnerHTML={{ __html: rest }} />
+              </p>
+            );
+          }
+
+          if (trimmed.startsWith('رقم البطاقة الوطنية:') || trimmed.startsWith('رقم البطاقة الوطنية')) {
+            const rest = trimmed.replace(/رقم البطاقة الوطنية:?/g, '').trim();
+            return (
+              <p key={idx} className="preamble-line m-0">
+                <span className="font-bold text-slate-900">رقم البطاقة الوطنية:</span>{' '}
+                <span dangerouslySetInnerHTML={{ __html: rest }} />
+              </p>
+            );
+          }
+
+          if (trimmed === 'محل العقد:' || trimmed.startsWith('محل العقد:')) {
+            const rest = trimmed.replace('محل العقد:', '').trim();
+            return (
+              <div key={idx} className="mt-2">
+                <span className="font-bold text-slate-900 block mb-0.5">محل العقد:</span>
+                {rest && (
+                  <div 
+                    className="clause-text text-justify m-0"
+                    dangerouslySetInnerHTML={{ __html: rest }}
+                  />
+                )}
+              </div>
+            );
+          }
+
+          if (trimmed.includes('اتفق الطرفان المتعاقدان على ما يلي')) {
+            return (
+              <p key={idx} className="my-2.5">
+                <u className="font-bold underline text-slate-900">
+                  اتفق الطرفان المتعاقدان على ما يلي:
+                </u>
+              </p>
+            );
+          }
+
+          return (
+            <div 
+              key={idx} 
+              className="clause-text text-justify m-0"
+              dangerouslySetInnerHTML={{ __html: trimmed }}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Helper to render standard clause with HTML formatting (Bold & Underline)
+  const renderClause = (clause: ContractClause) => {
+    const hasTitle = Boolean(clause.title_ar && clause.title_ar.trim() !== '');
+    const renderedTitle = hasTitle ? replacePlaceholders(clause.title_ar!.trim(), false) : '';
+    const renderedText = replacePlaceholders(clause.text_ar || '', true);
+
+    return (
+      <div key={clause.id || clause.clause_number} className="clause-block mb-3">
+        {hasTitle && (
+          <h4 className="clause-title font-bold text-slate-900 text-xs sm:text-[14px] mb-1 leading-snug">
+            {renderedTitle}
+          </h4>
+        )}
+        <div 
+          className="clause-text text-justify text-slate-800 m-0 leading-relaxed whitespace-pre-line text-xs sm:text-[13.5px]"
+          dangerouslySetInnerHTML={{ __html: renderedText }}
+        />
+      </div>
+    );
+  };
+
+  // Helper to compute 4 structured pages matching Word docx
+  const getContractPages = () => {
+    if (clauses.length === 0) return [];
+
+    // Map clauses by clause_number
+    const c1 = clauses.find(c => c.clause_number === 1) || clauses[0];
+    const c2 = clauses.find(c => c.clause_number === 2) || clauses[1];
+    const c3 = clauses.find(c => c.clause_number === 3) || clauses[2];
+    const c4 = clauses.find(c => c.clause_number === 4) || clauses[3];
+    const c5 = clauses.find(c => c.clause_number === 5) || clauses[4];
+    const c6 = clauses.find(c => c.clause_number === 6) || clauses[5];
+    const c7 = clauses.find(c => c.clause_number === 7) || clauses[6];
+    const c8 = clauses.find(c => c.clause_number === 8) || clauses[7];
+    const c9 = clauses.find(c => c.clause_number === 9) || clauses[8];
+    const c10 = clauses.find(c => c.clause_number === 10) || clauses[9];
+    const c11 = clauses.find(c => c.clause_number === 11) || clauses[10];
+    const c12 = clauses.find(c => c.clause_number === 12) || clauses[11];
+    const c13 = clauses.find(c => c.clause_number === 13) || clauses[12];
+
+    // Split Clause 4 (third clause) into Part 1 (items 1-5) and Part 2 (items 6-13)
+    const [c4_part1, c4_part2] = splitClause4(c4?.text_ar || '');
+
+    // Split Clause 5 (fourth clause) into Part 1 and Part 2
+    const [c5_part1, c5_part2] = splitClause5(c5?.text_ar || '');
+
+    // Split Clause 7 (sixth clause) into Part 1 (Confidentiality & Non-compete) and Part 2 (Intellectual Property)
+    const [c7_part1, c7_part2] = splitClause7(c7?.text_ar || '');
+
+    return [
+      {
+        pageNumber: 1,
+        isFirstPage: true,
+        isLastPage: false,
+        hasStamp: true,
+        hasSignatures: false,
+        content: (
+          <>
+            {c1 && renderPreamble(c1.text_ar || '')}
+            {c2 && renderClause(c2)}
+            {c3 && renderClause(c3)}
+            {c4 && (
+              <div className="clause-block mb-3">
+                <h4 className="clause-title font-bold text-slate-900 text-xs sm:text-[14px] mb-1">
+                  {replacePlaceholders(c4.title_ar || 'ثالثا: - التزامات الطرف الثاني:', false)}
+                </h4>
+                <div 
+                  className="clause-text text-justify text-slate-800 m-0 leading-relaxed whitespace-pre-line text-xs sm:text-[13.5px]"
+                  dangerouslySetInnerHTML={{ __html: replacePlaceholders(c4_part1, true) }}
+                />
+              </div>
+            )}
+          </>
+        )
+      },
+      {
+        pageNumber: 2,
+        isFirstPage: false,
+        isLastPage: false,
+        hasStamp: true,
+        hasSignatures: false,
+        content: (
+          <>
+            {c4_part2 && (
+              <div className="clause-block mb-3">
+                <div 
+                  className="clause-text text-justify text-slate-800 m-0 leading-relaxed whitespace-pre-line text-xs sm:text-[13.5px]"
+                  dangerouslySetInnerHTML={{ __html: replacePlaceholders(c4_part2, true) }}
+                />
+              </div>
+            )}
+            {c5 && (
+              <div className="clause-block mb-3">
+                <h4 className="clause-title font-bold text-slate-900 text-xs sm:text-[14px] mb-1">
+                  {replacePlaceholders(c5.title_ar || 'رابعا: الاحكام العامة :', false)}
+                </h4>
+                <div 
+                  className="clause-text text-justify text-slate-800 m-0 leading-relaxed whitespace-pre-line text-xs sm:text-[13.5px]"
+                  dangerouslySetInnerHTML={{ __html: replacePlaceholders(c5_part1, true) }}
+                />
+              </div>
+            )}
+          </>
+        )
+      },
+      {
+        pageNumber: 3,
+        isFirstPage: false,
+        isLastPage: false,
+        hasStamp: true,
+        hasSignatures: false,
+        content: (
+          <>
+            {c5_part2 && (
+              <div className="clause-block mb-3">
+                <div 
+                  className="clause-text text-justify text-slate-800 m-0 leading-relaxed whitespace-pre-line text-xs sm:text-[13.5px]"
+                  dangerouslySetInnerHTML={{ __html: replacePlaceholders(c5_part2, true) }}
+                />
+              </div>
+            )}
+            {c6 && renderClause(c6)}
+            {c7 && (
+              <div className="clause-block mb-3">
+                <h4 className="clause-title font-bold text-slate-900 text-xs sm:text-[14px] mb-1">
+                  {replacePlaceholders(c7.title_ar || 'سادسا: السرية وعدم المنافسة وحقوق الملكية الفكرية :', false)}
+                </h4>
+                <div 
+                  className="clause-text text-justify text-slate-800 m-0 leading-relaxed whitespace-pre-line text-xs sm:text-[13.5px]"
+                  dangerouslySetInnerHTML={{ __html: replacePlaceholders(c7_part1, true) }}
+                />
+              </div>
+            )}
+          </>
+        )
+      },
+      {
+        pageNumber: 4,
+        isFirstPage: false,
+        isLastPage: true,
+        hasStamp: false,
+        hasSignatures: true,
+        content: (
+          <>
+            {c7_part2 && (
+              <div className="clause-block mb-3">
+                <h4 className="clause-subtitle font-bold text-slate-900 text-xs sm:text-[14px] mb-1">
+                  <u className="underline font-bold">3. الملكية الفكرية :</u>
+                </h4>
+                <div 
+                  className="clause-text text-justify text-slate-800 m-0 leading-relaxed whitespace-pre-line text-xs sm:text-[13.5px]"
+                  dangerouslySetInnerHTML={{ __html: replacePlaceholders(c7_part2.replace(/^(?:3\.\s*|3\.)?الملكية الفكرية\s*:?\s*/, ''), true) }}
+                />
+              </div>
+            )}
+            {c8 && renderClause(c8)}
+            {c9 && renderClause(c9)}
+            {c10 && renderClause(c10)}
+            {c11 && renderClause(c11)}
+            {c12 && renderClause(c12)}
+            {c13 && renderClause(c13)}
+          </>
+        )
+      }
+    ];
   };
 
   // Print function
@@ -274,91 +684,217 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
       return;
     }
 
+    try {
+      printWindow.document.title = "";
+    } catch (e) {}
+
     const htmlContent = `
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
         <head>
           <meta charset="utf-8" />
-          <title>عقد عمل رسمي - ${employee?.fullName || employee?.name_ar || 'موظف'}</title>
+          <title></title>
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
           <style>
             @page {
               size: A4 portrait;
-              margin: 18mm 20mm 18mm 20mm;
+              margin: 0 !important;
             }
-            body {
-              font-family: 'Cairo', 'Amiri', Tahoma, sans-serif;
-              color: #0f172a;
-              background: #ffffff;
-              margin: 0;
-              padding: 0;
-              font-size: 13.5px;
-              line-height: 1.8;
+            * {
+              box-sizing: border-box !important;
+              font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
             }
-            .header-table {
-              width: 100%;
-              border-bottom: 2px solid #0d9488;
-              padding-bottom: 12px;
-              margin-bottom: 24px;
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              direction: rtl;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
             }
-            .title-box {
+            u, .underline {
+              text-decoration: underline !important;
+              text-underline-offset: 3px;
+            }
+            strong, b, .font-bold {
+              font-weight: 700 !important;
+            }
+            .contract-page-wrapper {
+              margin: 0 !important;
+              padding: 0 !important;
+              page-break-after: always !important;
+              break-after: page !important;
+            }
+            .contract-page-wrapper:last-child {
+              page-break-after: avoid !important;
+              break-after: avoid !important;
+            }
+            .page-number-indicator, .no-print {
+              display: none !important;
+            }
+            .contract-page {
+              page-break-after: always !important;
+              break-after: page !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              width: 210mm !important;
+              min-height: 295mm !important;
+              max-height: 296.5mm !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              box-sizing: border-box !important;
+              padding: 10mm 16mm 10mm 16mm !important;
+              margin: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+              background: #ffffff !important;
+              overflow: hidden !important;
+            }
+            .contract-page.last-page,
+            .contract-page-last,
+            .contract-page:last-child,
+            .contract-page-wrapper:last-child .contract-page {
+              page-break-after: avoid !important;
+              break-after: auto !important;
+            }
+            .contract-page-header {
               text-align: center;
-              margin: 20px 0;
-              padding: 10px 14px;
-              background-color: #f0fdfa;
-              border: 1px solid #99f6e4;
-              border-radius: 8px;
+              margin-bottom: 6px;
             }
-            .title-box h1 {
-              margin: 0;
-              color: #115e59;
-              font-size: 18px;
+            .contract-header-logo {
+              display: block;
+              margin: 0 auto;
+              height: 54px;
+              max-width: 230px;
+              object-fit: contain;
+            }
+            .contract-main-title {
+              text-align: center;
+              font-size: 15pt;
               font-weight: 800;
+              margin: 3px 0 8px 0;
+              color: #000000;
+              font-family: 'Cairo', sans-serif !important;
             }
-            .clause {
-              margin-bottom: 20px;
-              page-break-inside: avoid;
+            .clause-block {
+              margin-bottom: 5px;
             }
             .clause-title {
-              font-weight: 800;
-              color: #0f766e;
-              font-size: 14.5px;
-              margin-bottom: 6px;
+              font-weight: 700;
+              font-size: 11pt;
+              color: #000000;
+              margin-top: 4px;
+              margin-bottom: 2px;
+              line-height: 1.4;
+              font-family: 'Cairo', sans-serif !important;
+            }
+            .clause-subtitle {
+              font-weight: 700;
+              font-size: 11pt;
+              color: #000000;
+              margin-top: 4px;
+              margin-bottom: 2px;
+              font-family: 'Cairo', sans-serif !important;
             }
             .clause-text {
               text-align: justify;
-              color: #1e293b;
-              margin: 0;
-              line-height: 2.0;
+              text-justify: inter-word;
+              color: #000000;
+              margin: 0 0 4px 0;
+              line-height: 1.5;
+              font-size: 9.8pt;
               white-space: pre-line;
-              font-size: 13.5px;
+              font-family: 'Cairo', sans-serif !important;
             }
-            .signatures {
-              margin-top: 50px;
+            .preamble-line {
+              margin-bottom: 2.5px;
+              line-height: 1.5;
+              font-size: 9.8pt;
+              text-align: justify;
+              text-justify: inter-word;
+              font-family: 'Cairo', sans-serif !important;
+            }
+            .page-stamp-row {
+              margin-top: auto;
+              padding-top: 6px;
+              border-top: 1px dashed #64748b;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+              font-size: 11pt !important;
+              page-break-inside: avoid;
+              break-inside: avoid;
+              font-family: 'Cairo', sans-serif !important;
+            }
+            .stamp-box {
+              border: 1.5px dashed #475569;
+              border-radius: 6px;
+              padding: 3px 12px;
+              font-size: 11pt !important;
+              font-weight: 700;
+              color: #334155;
+              text-align: center;
+            }
+            .signatures-section {
+              margin-top: auto;
+              padding-top: 4px;
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            .sig-title {
+              text-align: center;
+              font-weight: 700;
+              font-size: 11pt !important;
+              margin-bottom: 3px;
+              font-family: 'Cairo', sans-serif !important;
+            }
+            .sig-divider {
+              width: 100%;
+              border-top: 1.5px solid #000000;
+              margin-bottom: 6px;
+            }
+            .sig-table {
               width: 100%;
               border-collapse: collapse;
-              page-break-inside: avoid;
+              font-size: 11pt !important;
             }
-            .signatures td {
+            .sig-table td {
               width: 50%;
               vertical-align: top;
-              padding: 10px;
+              padding: 0 8px;
             }
             .sig-box {
-              border: 1px dashed #cbd5e1;
-              border-radius: 8px;
-              padding: 14px;
-              min-height: 120px;
+              line-height: 1.55;
+              font-size: 11pt !important;
+              font-family: 'Cairo', sans-serif !important;
             }
-            .footer-note {
-              margin-top: 30px;
-              text-align: center;
-              font-size: 10.5px;
-              color: #94a3b8;
-              border-top: 1px solid #e2e8f0;
-              padding-top: 10px;
+            .sig-box p {
+              font-size: 11pt !important;
+              margin: 0;
+            }
+            .sig-box span {
+              font-size: 11pt !important;
+            }
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 0 !important;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              .no-print {
+                display: none !important;
+              }
             }
           </style>
         </head>
@@ -366,8 +902,20 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
           ${printContent.innerHTML}
           <script>
             window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
+              try { document.title = ""; } catch (e) {}
+              if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function() {
+                  setTimeout(function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 500);
+                  }, 150);
+                });
+              } else {
+                setTimeout(function() {
+                  window.print();
+                  setTimeout(function() { window.close(); }, 300);
+                }, 250);
+              }
             };
           </script>
         </body>
@@ -387,6 +935,8 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
   const empId = employee.employeeId || employee.employee_id || (employee.id ? `VTS-${employee.id}` : '-');
   const contractNumber = `CON-VTS-${employee.badgeNo || employee.badge_no || empId}-${new Date().getFullYear()}`;
 
+  const contractPages = getContractPages();
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
       <div className="bg-white dark:bg-[#111827] w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col max-h-[92vh] overflow-hidden">
@@ -402,6 +952,9 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                 <span>معاينة وثيقة عقد العمل الرسمي</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-teal-700 dark:text-teal-300">
                   {currentContractType?.name_ar || 'عقد عمل معتمد'}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300">
+                  4 صفحات معتمدة
                 </span>
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -436,7 +989,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                 onChange={(e) => setSelectedTypeId(Number(e.target.value) || e.target.value)}
                 className="text-xs font-bold py-1.5 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1a202c] text-slate-800 dark:text-slate-200 outline-none cursor-pointer shadow-2xs"
               >
-                {contractTypes.map((ct: any) => {
+                {sortedContractTypes.map((ct: any) => {
                   const count = getCachedClauseCount(ct.id);
                   const isCurrent = (ct.id === Number(selectedTypeId) || ct.id === selectedTypeId);
                   const activeCount = isCurrent ? clauses.length : count;
@@ -455,10 +1008,10 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
               type="button"
               onClick={handlePrint}
               className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-teal-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
-              title="طباعة العقد أو حفظه كـ PDF"
+              title="طباعة العقد (4 صفحات مطابقة للوورد مع الشعار في كل صفحة)"
             >
               <span className="material-symbols-outlined text-base">print</span>
-              <span>طباعة العقد</span>
+              <span>طباعة العقد (4 صفحات)</span>
             </button>
 
             {/* Close Button */}
@@ -473,158 +1026,169 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
           </div>
         </div>
 
-        {/* Contract Preview Area (Scrollable A4 document container) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/50 dark:bg-black/40 flex justify-center">
-          <div 
-            id="printableContractArea"
-            className="w-full max-w-[780px] bg-white text-slate-900 p-8 sm:p-12 rounded-xl shadow-xl border border-slate-200 font-sans leading-relaxed text-xs sm:text-[13.5px]"
-            dir="rtl"
-          >
-            {/* 1. Official Letterhead */}
-            <div className="border-b-2 border-teal-600 pb-3 mb-5">
-              <table className="w-full">
+        {/* Contract Preview Area (Scrollable Multi-Page Document) */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/60 dark:bg-black/50 flex flex-col items-center">
+          
+          {/* Optional Metadata Table (Only if toggled ON by user) */}
+          {showMetaTable && (
+            <div className="w-full max-w-[800px] mb-6 bg-white dark:bg-[#1a202c] p-4 rounded-xl border border-slate-300 dark:border-white/10 shadow-md">
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm text-teal-600">badge</span>
+                <span>ملخص بيانات الموظف والراتب الأساسي</span>
+              </h4>
+              <table className="meta-summary-table w-full border-collapse text-[11px]">
                 <tbody>
                   <tr>
-                    <td className="w-1/2 align-middle text-right">
-                      <h2 className="text-base sm:text-lg font-black text-teal-800 m-0">
-                        {companyProfile?.company_name || 'شركة فيتاس العراق للتمويل الأصغر'}
-                      </h2>
-                      <p className="text-[11px] text-slate-500 m-0 font-semibold mt-0.5">
-                        إدارة الموارد البشرية والشؤون الإدارية والقانونية
-                      </p>
-                    </td>
-                    <td className="w-1/2 align-middle text-left font-mono text-[11px] text-slate-500">
-                      <div><strong className="text-slate-700">رقم العقد:</strong> {contractNumber}</div>
-                      <div><strong className="text-slate-700">تاريخ الإصدار:</strong> {new Date().toISOString().split('T')[0]}</div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* 2. Document Title */}
-            <div className="text-center my-4 py-2.5 bg-teal-50/70 border border-teal-200 rounded-xl">
-              <h1 className="text-base sm:text-lg font-extrabold text-teal-900 m-0">
-                عقد عمل رسمي ({currentContractType?.name_ar || employee?.termOfContract || 'عقد عمل'})
-              </h1>
-              <p className="text-[11px] text-teal-700 font-semibold m-0 mt-0.5">
-                محرر ومصادق عليه وفقاً لأحكام قانون العمل العراقي النافذ رقم (37) لسنة 2015
-              </p>
-            </div>
-
-            {/* Optional Metadata Table (Only if toggled ON by user) */}
-            {showMetaTable && (
-              <table className="w-full border-collapse my-4 text-[11px]">
-                <tbody>
-                  <tr>
-                    <td className="border border-slate-300 p-2 bg-slate-100 font-bold w-1/4">المسمى الوظيفي:</td>
-                    <td className="border border-slate-300 p-2 text-slate-900 font-semibold w-1/4">{empJobTitle}</td>
-                    <td className="border border-slate-300 p-2 bg-slate-100 font-bold w-1/4">موقع العمل والفرع:</td>
-                    <td className="border border-slate-300 p-2 text-slate-900 font-semibold w-1/4">{empBranch}</td>
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 bg-slate-100 dark:bg-white/5 font-bold w-1/4">المسمى الوظيفي:</td>
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 text-slate-900 dark:text-slate-200 font-semibold w-1/4">{empJobTitle}</td>
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 bg-slate-100 dark:bg-white/5 font-bold w-1/4">موقع العمل والفرع:</td>
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 text-slate-900 dark:text-slate-200 font-semibold w-1/4">{empBranch}</td>
                   </tr>
                   <tr>
-                    <td className="border border-slate-300 p-2 bg-slate-100 font-bold">الراتب الأساسي:</td>
-                    <td className="border border-slate-300 p-2 text-emerald-800 font-bold font-mono">
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 bg-slate-100 dark:bg-white/5 font-bold">الراتب الأساسي:</td>
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 text-emerald-600 font-bold font-mono">
                       {employee.basicSalary ? `${Number(employee.basicSalary).toLocaleString()} د.ع` : (employee.salary ? `${Number(employee.salary).toLocaleString()} د.ع` : '-')}
                     </td>
-                    <td className="border border-slate-300 p-2 bg-slate-100 font-bold">الراتب كتابة:</td>
-                    <td className="border border-slate-300 p-2 text-slate-900">
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 bg-slate-100 dark:bg-white/5 font-bold">الراتب كتابة:</td>
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 text-slate-900 dark:text-slate-200">
                       {employee.writtenBasicSalaryAr || `${numberToArabicWords(Number(employee.basicSalary || employee.salary || 0))} دينار`}
                     </td>
                   </tr>
                   <tr>
-                    <td className="border border-slate-300 p-2 bg-slate-100 font-bold">تاريخ بدء العقد:</td>
-                    <td className="border border-slate-300 p-2 text-slate-900 font-mono">
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 bg-slate-100 dark:bg-white/5 font-bold">تاريخ بدء العقد:</td>
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 text-slate-900 dark:text-slate-200 font-mono">
                       {employee.contractStartDate || employee.originalStartDate || employee.joinDate || '-'}
                     </td>
-                    <td className="border border-slate-300 p-2 bg-slate-100 font-bold">الدرجة الوظيفية:</td>
-                    <td className="border border-slate-300 p-2 text-slate-900 font-semibold">{employee.grade || 'G-4'}</td>
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 bg-slate-100 dark:bg-white/5 font-bold">الدرجة الوظيفية:</td>
+                    <td className="border border-slate-300 dark:border-slate-700 p-2 text-slate-900 dark:text-slate-200 font-semibold">{employee.grade || 'G-4'}</td>
                   </tr>
                 </tbody>
               </table>
-            )}
-
-            {/* 3. Clauses List (Exact contract content as entered in Settings Templates) */}
-            {isLoading && clauses.length === 0 ? (
-              <div className="py-8 text-center text-slate-400">
-                <span className="material-symbols-outlined text-2xl animate-spin">progress_activity</span>
-                <p className="mt-1 text-xs">جاري تحميل بنود القالب...</p>
-              </div>
-            ) : clauses.length === 0 ? (
-              <div className="py-8 px-4 text-center border border-dashed border-slate-300 rounded-xl my-6 bg-slate-50">
-                <span className="material-symbols-outlined text-3xl text-slate-400">description</span>
-                <p className="text-sm font-bold text-slate-700 mt-2">لا توجد بنود مضافة لهذا القالب حتى الآن</p>
-                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                  لم يتم حفظ أي بنود لهذا القالب بعد. يمكنك كتابة بنود هذا العقد وتخصيصها من خلال:
-                  <br />
-                  <strong>شاشة الإعدادات ← تبويب القوالب (Templates)</strong>
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4 my-6">
-                {clauses.map((clause, idx) => {
-                  const hasTitle = Boolean(clause.title_ar && clause.title_ar.trim() !== '');
-                  const renderedTitle = hasTitle ? replacePlaceholders(clause.title_ar!.trim()) : '';
-                  const renderedText = replacePlaceholders(clause.text_ar || '');
-
-                  return (
-                    <div key={clause.id || idx} className="clause text-slate-900">
-                      {hasTitle && (
-                        <h4 className="font-bold text-teal-800 text-sm sm:text-[14px] mb-2">
-                          {renderedTitle}
-                        </h4>
-                      )}
-                      <p className="text-justify text-slate-800 m-0 leading-loose whitespace-pre-line text-xs sm:text-[13.5px]">
-                        {renderedText}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 4. Signatures and Stamps */}
-            <div className="pt-8 border-t border-slate-200 mt-8">
-              <table className="w-full">
-                <tbody>
-                  <tr>
-                    <td className="w-1/2 align-top p-2">
-                      <div className="border border-slate-300 rounded-xl p-3 bg-slate-50/50 min-h-[120px] flex flex-col justify-between">
-                        <div>
-                          <p className="font-bold text-slate-900 m-0">الطرف الأول (صاحب العمل):</p>
-                          <p className="text-[11px] text-slate-500 m-0 mt-0.5">عن / شركة فيتاس العراق للتمويل الأصغر</p>
-                        </div>
-                        <div className="mt-8 pt-2 border-t border-slate-200 flex justify-between text-[11px] text-slate-500">
-                          <span>التوقيع: ............................</span>
-                          <span>الختم الرسمي</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="w-1/2 align-top p-2">
-                      <div className="border border-slate-300 rounded-xl p-3 bg-slate-50/50 min-h-[120px] flex flex-col justify-between">
-                        <div>
-                          <p className="font-bold text-slate-900 m-0">الطرف الثاني (الموظف):</p>
-                          <p className="text-[11px] text-slate-600 m-0 mt-0.5 font-bold">{empFullName}</p>
-                        </div>
-                        <div className="mt-8 pt-2 border-t border-slate-200 flex justify-between text-[11px] text-slate-500">
-                          <span>التوقيع: ............................</span>
-                          <span>البصمة</span>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <div className="text-center text-[10px] text-slate-400 mt-4 border-t border-slate-100 pt-2">
-                حرر هذا العقد من نسختين أصليتين متطابقتين، تسلم كل طرف نسخة منه للعمل بموجبها.
-              </div>
             </div>
+          )}
 
-          </div>
+          {isLoading && clauses.length === 0 ? (
+            <div className="py-16 text-center text-slate-400">
+              <span className="material-symbols-outlined text-3xl animate-spin">progress_activity</span>
+              <p className="mt-2 text-sm font-semibold">جاري تحميل وثيقة العقد...</p>
+            </div>
+          ) : clauses.length === 0 ? (
+            <div className="w-full max-w-[800px] py-12 px-6 text-center border-2 border-dashed border-slate-300 rounded-2xl bg-white shadow-sm my-6">
+              <span className="material-symbols-outlined text-4xl text-slate-400">description</span>
+              <p className="text-base font-bold text-slate-800 mt-2">لا توجد بنود مضافة لهذا القالب حتى الآن</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                لم يتم حفظ أي بنود لهذا القالب بعد. يمكنك كتابة بنود هذا العقد وتخصيصها من خلال:
+                <br />
+                <strong>شاشة الإعدادات ← تبويب القوالب (Templates)</strong>
+              </p>
+            </div>
+          ) : (
+            <div id="printableContractArea" className="w-full max-w-[800px]" dir="rtl">
+              {contractPages.map((page) => (
+                <div key={page.pageNumber} className="contract-page-wrapper mb-8">
+                  {/* Visual Page Indicator Header in Preview */}
+                  <div className="page-number-indicator flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 px-2 no-print">
+                    <span className="bg-slate-200 dark:bg-white/10 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                      <span className="material-symbols-outlined text-sm">article</span>
+                      <span>الصفحة {page.pageNumber} من 4</span>
+                    </span>
+                    <span className="text-[11px] font-normal text-slate-400">
+                      مؤسسة الإسكان التعاونية CHF • {currentContractType?.name_ar || 'عقد عمل'}
+                    </span>
+                  </div>
+
+                  {/* Single Contract Page Box */}
+                  <div 
+                    className={`contract-page bg-white text-slate-900 p-8 sm:p-12 rounded-xl shadow-xl border border-slate-200 flex flex-col justify-between font-['Cairo',sans-serif] ${page.isLastPage ? 'contract-page-last last-page' : ''}`}
+                    style={{ minHeight: '1020px' }}
+                  >
+                    {/* Official CHF Iraq Logo Header (Appears on EVERY page) */}
+                    <div className="contract-page-header text-center mb-4">
+                      <img 
+                        src={CHF_IRAQ_LOGO_BASE64} 
+                        alt="CHF Iraq Logo" 
+                        className="contract-header-logo h-14 sm:h-18 mx-auto object-contain mb-2"
+                      />
+                      {page.isFirstPage && (
+                        <h1 className="contract-main-title text-xl sm:text-2xl font-bold text-slate-900 m-0 my-2">
+                          عقد عمل
+                        </h1>
+                      )}
+                    </div>
+
+                    {/* Page Body Clauses */}
+                    <div className="contract-page-body flex-1 text-xs sm:text-[13.5px] leading-relaxed">
+                      {page.content}
+                    </div>
+
+                    {/* Bottom Stamp for Pages 1, 2, 3 (Matching desktop Word document) */}
+                    {page.hasStamp && (
+                      <div className="page-stamp-row mt-auto pt-4 border-t border-dashed border-slate-400 flex justify-between items-end text-xs sm:text-[14px] text-slate-800">
+                        <div className="space-y-1">
+                          <div className="font-bold text-slate-900 text-xs sm:text-[14px]">الطرف الثاني</div>
+                          <div className="font-bold text-slate-900 text-xs sm:text-[14px]">
+                            الاسم: <span className="font-normal">{empFullName}</span>
+                          </div>
+                          <div className="font-bold text-slate-900 text-xs sm:text-[14px]">
+                            التوقيع: ................................................
+                          </div>
+                        </div>
+                        <div className="stamp-box border border-dashed border-slate-500 rounded-lg px-4 py-2 text-center text-xs sm:text-[14px] font-bold text-slate-600">
+                          ختم المؤسسة
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Official Signatures Section for Page 4 (Matching desktop Word document) */}
+                    {page.hasSignatures && (
+                      <div className="signatures-section mt-auto pt-4 border-t-2 border-slate-900">
+                        <div className="sig-title text-center font-bold text-xs sm:text-[14px] text-slate-900 mb-2">
+                          نهاية العقد
+                        </div>
+                        <div className="sig-divider w-full border-t border-slate-400 mb-4"></div>
+
+                        <table className="sig-table w-full text-xs sm:text-[14px]">
+                          <tbody>
+                            <tr>
+                              {/* Right column: الطرف الأول */}
+                              <td className="w-1/2 align-top pr-2 pl-4 text-right">
+                                <div className="sig-box space-y-2 text-xs sm:text-[14px]">
+                                  <p className="font-bold text-slate-900 m-0 text-xs sm:text-[14px]">الطرف الأول: مؤسسة الإسكان التعاونية (CHF)</p>
+                                  <p className="font-bold text-slate-800 m-0 text-xs sm:text-[14px]">عنها (إضافة لوظيفته) السيد: ثائر عذاب جاسم</p>
+                                  <p className="font-bold text-slate-700 m-0 pt-2 text-xs sm:text-[14px]">التوقيع: ................................................</p>
+                                  <div className="pt-2">
+                                    <span className="inline-block border border-dashed border-slate-400 rounded-lg px-4 py-2 text-xs sm:text-[14px] text-slate-500 font-bold">
+                                      ختم المؤسسة الرسمي
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Left column: الطرف الثاني */}
+                              <td className="w-1/2 align-top pl-2 pr-4 text-right">
+                                <div className="sig-box space-y-2 text-xs sm:text-[14px]">
+                                  <p className="font-bold text-slate-900 m-0 text-xs sm:text-[14px]">الطرف الثاني</p>
+                                  <p className="font-bold text-slate-800 m-0 text-xs sm:text-[14px]">الاسم: <span className="font-normal">{empFullName}</span></p>
+                                  <p className="font-bold text-slate-700 m-0 pt-2 text-xs sm:text-[14px]">التوقيع: ................................................</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
         </div>
 
       </div>
     </div>
   );
 };
+
+
