@@ -390,9 +390,14 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
       const cleanUser = recId.replace(/^VTS-/i, '').trim().toLowerCase();
       const delTime = del.deleted_at ? new Date(del.deleted_at).getTime() : 0;
 
+      const isNum = /^\d+$/.test(recId);
+      const numId = isNum ? parseInt(recId) : null;
+
       // Check if a row was created/updated AFTER the tombstone was recorded
-      const lRow = localMap.get(recKey) || localMap.get(cleanUser) || localMap.get(`vts-${cleanUser}`);
-      const cRow = cloudMap.get(recKey) || cloudMap.get(cleanUser) || cloudMap.get(`vts-${cleanUser}`);
+      const matchedLocal = isNum ? (Array.isArray(localRows) ? localRows.find(r => r && r.id === numId) : null) : null;
+      const matchedCloud = isNum ? (Array.isArray(cloudRows) ? cloudRows.find(r => r && r.id === numId) : null) : null;
+      const lRow = localMap.get(recKey) || matchedLocal || localMap.get(cleanUser) || localMap.get(`vts-${cleanUser}`);
+      const cRow = cloudMap.get(recKey) || matchedCloud || cloudMap.get(cleanUser) || cloudMap.get(`vts-${cleanUser}`);
       const lTime = lRow?.updated_at ? new Date(lRow.updated_at).getTime() : 0;
       const cTime = cRow?.updated_at ? new Date(cRow.updated_at).getTime() : 0;
 
@@ -403,11 +408,12 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
       }
 
       allKnownDeletions.add(recKey);
+      if (lRow && lRow[syncKey]) allKnownDeletions.add(String(lRow[syncKey]).trim().toLowerCase());
+      if (cRow && cRow[syncKey]) allKnownDeletions.add(String(cRow[syncKey]).trim().toLowerCase());
 
       if (table === 'users') {
         allKnownDeletions.add(cleanUser);
         allKnownDeletions.add(`vts-${cleanUser}`);
-        const isNum = /^\d+$/.test(recId);
         const userDelSql = isNum
           ? 'DELETE FROM users WHERE id = ?'
           : 'DELETE FROM users WHERE username = ? OR employee_id = ? OR LOWER(username) = ? OR LOWER(employee_id) = ?';
@@ -415,7 +421,6 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
         await cloudPool.query(userDelSql, userDelParams).catch(() => {});
         await queryLocal(userDelSql, userDelParams).catch(() => {});
       } else if (table === 'employees') {
-        const isNum = /^\d+$/.test(recId);
         const empDelSql = isNum
           ? 'DELETE FROM employees WHERE id = ?'
           : 'DELETE FROM employees WHERE employee_id = ? OR badge_no = ? OR LOWER(employee_id) = ?';
@@ -423,10 +428,16 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
         await cloudPool.query(empDelSql, empDelParams).catch(() => {});
         await queryLocal(empDelSql, empDelParams).catch(() => {});
       } else {
-        const isNum = /^\d+$/.test(recId);
         if (isNum) {
-          await cloudPool.query(`DELETE FROM \`${table}\` WHERE id = ? OR \`${syncKey}\` = ?`, [parseInt(recId), recId]).catch(() => {});
-          await queryLocal(`DELETE FROM \`${table}\` WHERE id = ? OR \`${syncKey}\` = ?`, [parseInt(recId), recId]).catch(() => {});
+          const bizKey = (lRow && lRow[syncKey]) || (cRow && cRow[syncKey]);
+          if (bizKey) {
+            allKnownDeletions.add(String(bizKey).trim().toLowerCase());
+            await cloudPool.query(`DELETE FROM \`${table}\` WHERE id = ? OR \`${syncKey}\` = ?`, [numId, bizKey]).catch(() => {});
+            await queryLocal(`DELETE FROM \`${table}\` WHERE id = ? OR \`${syncKey}\` = ?`, [numId, bizKey]).catch(() => {});
+          } else {
+            await cloudPool.query(`DELETE FROM \`${table}\` WHERE id = ?`, [numId]).catch(() => {});
+            await queryLocal(`DELETE FROM \`${table}\` WHERE id = ?`, [numId]).catch(() => {});
+          }
         } else {
           await cloudPool.query(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ?`, [recId]).catch(() => {});
           await queryLocal(`DELETE FROM \`${table}\` WHERE \`${syncKey}\` = ?`, [recId]).catch(() => {});

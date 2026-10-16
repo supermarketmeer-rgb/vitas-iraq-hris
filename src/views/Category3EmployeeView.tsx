@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
 import { SearchableComboBox } from '../components/SearchableComboBox';
@@ -7,8 +7,10 @@ import { CompanyNews } from '../components/CompanyNews';
 import { Employee, EmployeeChild } from '../types';
 import { api } from '../api/client';
 import { ContractPreviewModal } from '../components/ContractPreviewModal';
+import { ContractRenewalAlertsModal } from '../components/ContractRenewalAlertsModal';
 import { getBranchName } from '../utils/branchHelper';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
+import { DynamicHrisModule } from '../components/OrgModule/DynamicHrisModule';
 
 export const Category3EmployeeView: React.FC = () => {
   const {
@@ -44,6 +46,65 @@ export const Category3EmployeeView: React.FC = () => {
     setContractModalEmployee(emp);
     setIsContractModalOpen(true);
   };
+
+  // Contract renewal & evaluation alerts modal state
+  const [showRenewalAlertsModal, setShowRenewalAlertsModal] = useState(false);
+
+  // Calculate urgent contract alerts count (<= 7 days or overdue)
+  const urgentContractAlertsCount = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let count = 0;
+
+    employees.forEach((emp: any) => {
+      const term = String(
+        emp.termOfContract || 
+        emp.term_of_contract || 
+        emp.contract_type || 
+        emp.contractType || 
+        ''
+      ).toLowerCase().trim();
+      const isNew = term.includes('جديد') || term.includes('new') || term.includes('تجربة') || term.includes('probation');
+      
+      const startRaw = emp.contractStartDate || emp.contract_start_date || emp.originalStartDate || emp.original_start_date || emp.joinDate;
+      const endRaw = emp.contractEndDate || emp.contract_end_date;
+      const probationRaw = emp.probationEndDate || emp.probation_end_date;
+
+      let targetDateObj: Date | null = null;
+      if (isNew) {
+        if (probationRaw) {
+          const p = new Date(probationRaw);
+          if (!isNaN(p.getTime())) targetDateObj = p;
+        } else if (startRaw) {
+          const s = new Date(startRaw);
+          if (!isNaN(s.getTime())) {
+            const p = new Date(s);
+            p.setMonth(p.getMonth() + 3);
+            targetDateObj = p;
+          }
+        }
+      } else {
+        if (endRaw) {
+          const e = new Date(endRaw);
+          if (!isNaN(e.getTime())) targetDateObj = e;
+        } else if (probationRaw) {
+          const p = new Date(probationRaw);
+          if (!isNaN(p.getTime())) targetDateObj = p;
+        }
+      }
+
+      if (targetDateObj) {
+        const targetNormalized = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), targetDateObj.getDate());
+        const diffMs = targetNormalized.getTime() - today.getTime();
+        const daysRemaining = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        if (daysRemaining <= 7) {
+          count++;
+        }
+      }
+    });
+
+    return count;
+  }, [employees]);
 
   useEffect(() => {
     setAvatarImgError(false);
@@ -1353,6 +1414,7 @@ export const Category3EmployeeView: React.FC = () => {
             )}
             {activeModuleId === 'emp-profile' && t('ملفات الموظفين - HR Employees Profiles', 'HR Employees Profiles')}
             {activeModuleId === 'emp-branches' && t('إدارة الفروع والمواقع الميدانية في العراق', 'Branch & Field Location Management in Iraq')}
+            {activeModuleId === 'emp-organization' && t('الهيكل التنظيمي التفاعلي (A4 Landscape)', 'Dynamic Organization Chart (A4 Landscape)')}
             {activeModuleId === 'emp-company-profile' && t('إعدادات ملف مؤسسة فيتاس العراق', 'VITAS Iraq Institution Profile Settings')}
             {activeModuleId === 'emp-calendar' && t('تقويم الفعاليات والعطل الرسمية', 'Events & Official Holidays Calendar')}
             {activeModuleId === 'emp-news' && t('مركز الأخبار والتنويهات الداخلية', 'Internal News & Announcements Center')}
@@ -1364,6 +1426,33 @@ export const Category3EmployeeView: React.FC = () => {
 
         {(activeModuleId === 'emp-directory' || activeModuleId === 'emp-hr-directory') && (
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Contract Renewal & Evaluation Alerts Button */}
+            <button
+              onClick={() => setShowRenewalAlertsModal(true)}
+              className={`relative px-4 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all flex items-center gap-2 ${
+                urgentContractAlertsCount > 0
+                  ? 'bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white shadow-rose-600/30 ring-2 ring-rose-500/50 animate-pulse'
+                  : isDark
+                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 shadow-black/20'
+                  : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-slate-200'
+              }`}
+              title={t('تنبيهات العقود والتجديد والتقييم', 'Contract Renewal & Evaluation Alerts')}
+            >
+              <span className={`material-symbols-outlined text-sm ${urgentContractAlertsCount > 0 ? 'animate-bounce text-white' : isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                {urgentContractAlertsCount > 0 ? 'notifications_active' : 'history_edu'}
+              </span>
+              <span>{t('تنبيهات العقود والتجديد', 'Contract Alerts')}</span>
+
+              {/* Red Notification Badge with Ping Animation */}
+              {urgentContractAlertsCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-5 w-5 bg-rose-600 text-[10px] font-black text-white items-center justify-center shadow-md border-2 border-white dark:border-slate-900">
+                    {urgentContractAlertsCount}
+                  </span>
+                </span>
+              )}
+            </button>
             {canWrite() && (
               <>
                 <button
@@ -3668,111 +3757,118 @@ export const Category3EmployeeView: React.FC = () => {
         </div>
       )}
 
-      {activeModuleId === 'emp-company-profile' && (
-        <div className="p-6 rounded-3xl bg-[#111827] border border-white/10 shadow-xl space-y-4 max-w-4xl mx-auto">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-blue-400">domain</span>
-              {t('الملف التعريفي للشركة', 'Company Profile')}
-            </h2>
-            {canWrite() && (
-              <button
-                onClick={() => handleEditCompanyProfile(companyProfile)}
-                className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-sm">edit</span>
-                {t('تعديل', 'Edit')}
-              </button>
-            )}
-          </div>
-
-          {companyProfile ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300">
-              {/* Company Names */}
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('اسم الشركة بالعربية', 'Company Name (Arabic)')}:</span>
-                <span className="font-bold text-teal-400 text-sm">{companyProfile.company_name || '-'}</span>
-              </div>
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('اسم الشركة بالإنجليزية', 'Company Name (English)')}:</span>
-                <span className="font-bold text-teal-400 text-sm">{companyProfile.company_name_en || '-'}</span>
-              </div>
-
-              {/* Logo */}
-              {companyProfile.logo_url && (
-                <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2 md:col-span-2">
-                  <span className="text-slate-400 block font-bold mb-1">{t('شعار الشركة', 'Company Logo')}:</span>
-                  <img src={companyProfile.logo_url} alt="Company Logo" className="h-16 object-contain" />
-                </div>
-              )}
-
-              {/* Address */}
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2 md:col-span-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('العنوان', 'Address')}:</span>
-                <span className="text-slate-200">{companyProfile.address || '-'}</span>
-              </div>
-
-              {/* City and Country */}
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('المدينة', 'City')}:</span>
-                <span className="text-slate-200">{companyProfile.city || '-'}</span>
-              </div>
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('البلد', 'Country')}:</span>
-                <span className="text-slate-200">{companyProfile.country || '-'}</span>
-              </div>
-
-              {/* Contact Information */}
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('رقم الهاتف', 'Phone')}:</span>
-                <span className="text-slate-200 font-mono">{companyProfile.phone || '-'}</span>
-              </div>
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('البريد الإلكتروني', 'Email')}:</span>
-                <span className="text-slate-200">{companyProfile.email || '-'}</span>
-              </div>
-
-              {/* Website */}
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2 md:col-span-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('الموقع الإلكتروني', 'Website')}:</span>
-                {companyProfile.website ? (
-                  <a href={companyProfile.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
-                    {companyProfile.website}
-                  </a>
-                ) : (
-                  <span className="text-slate-200">-</span>
+      {(activeModuleId === 'emp-company-profile' || activeModuleId === 'emp-organization') && (
+        <DynamicHrisModule
+          lang={language}
+          theme={isDark ? 'dark' : 'light'}
+          initialTab={activeModuleId === 'emp-organization' ? 'diagram' : 'company-profile'}
+          companyProfileContent={
+            <div className="p-6 rounded-3xl bg-[#111827] border border-white/10 shadow-xl space-y-4 max-w-4xl mx-auto">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-blue-400">domain</span>
+                  {t('الملف التعريفي للشركة', 'Company Profile')}
+                </h2>
+                {canWrite() && (
+                  <button
+                    onClick={() => handleEditCompanyProfile(companyProfile)}
+                    className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">edit</span>
+                    {t('تعديل', 'Edit')}
+                  </button>
                 )}
               </div>
 
-              {/* Legal Information */}
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('الرقم الضريبي', 'Tax ID')}:</span>
-                <span className="text-slate-200 font-mono">{companyProfile.tax_id || '-'}</span>
-              </div>
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('رقم التسجيل', 'Registration Number')}:</span>
-                <span className="text-slate-200 font-mono">{companyProfile.registration_number || '-'}</span>
-              </div>
+              {companyProfile ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300">
+                  {/* Company Names */}
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('اسم الشركة بالعربية', 'Company Name (Arabic)')}:</span>
+                    <span className="font-bold text-teal-400 text-sm">{companyProfile.company_name || '-'}</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('اسم الشركة بالإنجليزية', 'Company Name (English)')}:</span>
+                    <span className="font-bold text-teal-400 text-sm">{companyProfile.company_name_en || '-'}</span>
+                  </div>
 
-              {/* Established Date */}
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('تاريخ التأسيس', 'Established Date')}:</span>
-                <span className="text-slate-200">{companyProfile.established_date || '-'}</span>
-              </div>
+                  {/* Logo */}
+                  {companyProfile.logo_url && (
+                    <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2 md:col-span-2">
+                      <span className="text-slate-400 block font-bold mb-1">{t('شعار الشركة', 'Company Logo')}:</span>
+                      <img src={companyProfile.logo_url} alt="Company Logo" className="h-16 object-contain" />
+                    </div>
+                  )}
 
-              {/* Description */}
-              <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2 md:col-span-2">
-                <span className="text-slate-400 block font-bold mb-1">{t('الوصف', 'Description')}:</span>
-                <span className="text-slate-200">{companyProfile.description || '-'}</span>
-              </div>
+                  {/* Address */}
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2 md:col-span-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('العنوان', 'Address')}:</span>
+                    <span className="text-slate-200">{companyProfile.address || '-'}</span>
+                  </div>
+
+                  {/* City and Country */}
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('المدينة', 'City')}:</span>
+                    <span className="text-slate-200">{companyProfile.city || '-'}</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('البلد', 'Country')}:</span>
+                    <span className="text-slate-200">{companyProfile.country || '-'}</span>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('رقم الهاتف', 'Phone')}:</span>
+                    <span className="text-slate-200 font-mono">{companyProfile.phone || '-'}</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('البريد الإلكتروني', 'Email')}:</span>
+                    <span className="text-slate-200">{companyProfile.email || '-'}</span>
+                  </div>
+
+                  {/* Website */}
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2 md:col-span-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('الموقع الإلكتروني', 'Website')}:</span>
+                    {companyProfile.website ? (
+                      <a href={companyProfile.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
+                        {companyProfile.website}
+                      </a>
+                    ) : (
+                      <span className="text-slate-200">-</span>
+                    )}
+                  </div>
+
+                  {/* Legal Information */}
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('الرقم الضريبي', 'Tax ID')}:</span>
+                    <span className="text-slate-200 font-mono">{companyProfile.tax_id || '-'}</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('رقم التسجيل', 'Registration Number')}:</span>
+                    <span className="text-slate-200 font-mono">{companyProfile.registration_number || '-'}</span>
+                  </div>
+
+                  {/* Established Date */}
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('تاريخ التأسيس', 'Established Date')}:</span>
+                    <span className="text-slate-200">{companyProfile.established_date ? String(companyProfile.established_date).slice(0, 10) : '-'}</span>
+                  </div>
+
+                  {/* Description */}
+                  <div className="p-4 rounded-xl bg-[#0a0c10] border border-white/5 space-y-2 md:col-span-2">
+                    <span className="text-slate-400 block font-bold mb-1">{t('الوصف', 'Description')}:</span>
+                    <span className="text-slate-200">{companyProfile.description || '-'}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-400">
+                  <span className="material-symbols-outlined text-4xl mb-2">domain_disabled</span>
+                  <p>{t('لا يوجد ملف تعريفي للشركة', 'No company profile found')}</p>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-8 text-slate-400">
-              <span className="material-symbols-outlined text-4xl mb-2">domain_disabled</span>
-              <p>{t('لا يوجد ملف تعريفي للشركة', 'No company profile found')}</p>
-            </div>
-          )}
-        </div>
+          }
+        />
       )}
 
       {activeModuleId === 'emp-calendar' && (
@@ -4300,7 +4396,7 @@ export const Category3EmployeeView: React.FC = () => {
                 </label>
                 <input
                   type="date"
-                  value={companyProfileFormData.established_date}
+                  value={companyProfileFormData.established_date ? String(companyProfileFormData.established_date).slice(0, 10) : ''}
                   onChange={(e) => setCompanyProfileFormData({ ...companyProfileFormData, established_date: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl bg-[#0a0c10] border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20 transition-all text-sm"
                 />
@@ -4411,6 +4507,16 @@ export const Category3EmployeeView: React.FC = () => {
         contractTypes={contractTypes}
         language={language}
         companyProfile={companyProfile}
+      />
+
+      {/* Contract Renewal & Evaluation Alerts Modal */}
+      <ContractRenewalAlertsModal
+        isOpen={showRenewalAlertsModal}
+        onClose={() => setShowRenewalAlertsModal(false)}
+        employees={employees}
+        onOpenContract={(emp) => handleOpenContractPreview(emp)}
+        language={language}
+        theme={theme}
       />
     </div>
   );

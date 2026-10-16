@@ -28,6 +28,8 @@ import {
   startBiometricScheduler 
 } from './database/biometricSyncEngine.js';
 import { ensureDefaultContractsAndClauses } from './database/seedDefaultContracts.js';
+import { buildOrgChart } from './database/orgChartService.js';
+import { runAllAcceptanceTests } from './database/acceptanceTests.js';
 
 import http from 'http';
 import { spawn } from 'child_process';
@@ -111,7 +113,29 @@ app.use('/hr_drivers', (req, res) => {
   });
 });
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Universal File Download Endpoint (guarantees exact filename and extension in Chromium/Edge)
+app.post('/api/export/download', (req, res) => {
+  try {
+    const filename = req.body.filename || req.query.filename || 'export_diagram.bin';
+    const mimeType = req.body.mimeType || req.query.mimeType || 'application/octet-stream';
+    const base64Data = req.body.data;
+    if (!base64Data) {
+      return res.status(400).send('No file data provided');
+    }
+    const buffer = Buffer.from(base64Data, 'base64');
+    const safeFilename = String(filename).trim().replace(/["\r\n]/g, '_');
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(safeFilename)}`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
+  } catch (err) {
+    console.error('Error in /api/export/download:', err);
+    res.status(500).send('Download processing failed');
+  }
+});
 
 // Prevent HTTP caching on all API endpoints to guarantee instant reflection across local and cloud nodes
 app.use('/api', (req, res, next) => {
@@ -124,6 +148,7 @@ app.use('/api', (req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'dist')));
 app.use('/assets', express.static(path.join(__dirname, 'dist', 'assets')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/apply/assets', express.static(path.join(__dirname, 'dist', 'assets')));
 app.use('/portal/assets', express.static(path.join(__dirname, 'dist', 'assets')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -831,6 +856,7 @@ const syncSettingsFromEmployees = async () => {
             'INSERT INTO branches (id, name, name_ar, name_en, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
             [`BR${Date.now()}_${Math.floor(Math.random()*1000)}`, nameAr, nameAr, nameEn, 'Active', existingBranches.length + 1]
           ).catch(() => {});
+          existingBranches.push({ name_ar: nameAr, name_en: nameEn, name: nameAr });
         }
       }
     }
@@ -851,6 +877,7 @@ const syncSettingsFromEmployees = async () => {
             'INSERT INTO positions (name_en, name_ar, name, status, sort_order) VALUES (?, ?, ?, ?, ?)',
             [nameEn, nameAr, nameAr, 'Active', existingPositions.length + 1]
           ).catch(() => {});
+          existingPositions.push({ name_ar: nameAr, name_en: nameEn, name: nameAr });
         }
       }
     }
@@ -903,24 +930,6 @@ const syncSettingsFromEmployees = async () => {
       }
     }
 
-    // 4. Sync unique Contract Terms from employees table
-    const empContracts = await query(`
-      SELECT DISTINCT term_of_contract FROM employees 
-      WHERE term_of_contract IS NOT NULL AND term_of_contract != ''
-    `).catch(() => []);
-    const existingCT = await query('SELECT * FROM contract_types').catch(() => []);
-
-    if (Array.isArray(empContracts) && Array.isArray(existingCT)) {
-      for (const ct of empContracts) {
-        const nameAr = ct.term_of_contract;
-        if (nameAr && !existingCT.some(c => c.name_ar === nameAr || c.name_en === nameAr)) {
-          await query(
-            'INSERT INTO contract_types (name_en, name_ar, status, sort_order) VALUES (?, ?, ?, ?)',
-            [nameAr, nameAr, 'Active', existingCT.length + 1]
-          ).catch(() => {});
-        }
-      }
-    }
   } catch (err) {
     console.warn('Error in syncSettingsFromEmployees:', err.message);
   }
@@ -2242,21 +2251,32 @@ app.put('/api/notifications/:id/read', async (req, res) => {
 });
 
 
-// Branches
-app.get(['/api/branches', '/api/settings/branches'], async (req, res) => {
+// Branches & Offices
+app.get(['/api/branches', '/api/settings/branches', '/api/offices'], async (req, res) => {
   try {
     await syncSettingsFromEmployees().catch(() => {});
     const results = await query('SELECT * FROM branches ORDER BY sort_order ASC, name_ar ASC, id DESC');
-    res.json(results);
+
+    // Deduplicate branches strictly so no branch is repeated
+    const seen = new Set();
+    const cleanBranches = [];
+    for (const b of (results || [])) {
+      const key = String(b.name_ar || b.name || b.name_en || '').trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      cleanBranches.push(b);
+    }
+
+    res.json(cleanBranches);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Settings - Branches POST / CREATE
-app.post(['/api/settings/branches', '/api/branches'], async (req, res) => {
+app.post(['/api/settings/branches', '/api/branches', '/api/offices'], async (req, res) => {
   try {
-    const { name, name_ar, name_en, address, city, phone, email, status, sort_order } = req.body;
+    const { name, name_ar, name_en, address, city, phone, email, status, sort_order, department_id } = req.body;
     const finalNameAr = (name_ar || name || name_en || '').trim();
     const finalNameEn = (name_en || name || name_ar || '').trim();
     const finalId = req.body.id ? String(req.body.id).trim() : `BR${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -2292,6 +2312,11 @@ app.post(['/api/settings/branches', '/api/branches'], async (req, res) => {
     await query(sql, params);
     executeCloudQuery(sql, params).catch(() => {});
 
+    // If department_id was specified, link department to this branch
+    if (department_id) {
+      await query('UPDATE departments SET branch_id = ? WHERE id = ?', [finalId, department_id]).catch(() => {});
+    }
+
     const rows = await query('SELECT * FROM branches WHERE id = ? LIMIT 1', [finalId]);
     const inserted = (rows && rows[0]) ? rows[0] : {
       id: finalId,
@@ -2312,10 +2337,10 @@ app.post(['/api/settings/branches', '/api/branches'], async (req, res) => {
 });
 
 // Settings - Branches PUT / UPDATE
-app.put(['/api/settings/branches/:id', '/api/branches/:id'], async (req, res) => {
+app.put(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id'], async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, name_ar, name_en, address, city, phone, email, status, sort_order } = req.body;
+    const { name, name_ar, name_en, address, city, phone, email, status, sort_order, department_id } = req.body;
     const finalNameAr = (name_ar || name || name_en || '').trim();
     const finalNameEn = (name_en || name || name_ar || '').trim();
 
@@ -2349,6 +2374,10 @@ app.put(['/api/settings/branches/:id', '/api/branches/:id'], async (req, res) =>
     await query(sql, params);
     executeCloudQuery(sql, params).catch(() => {});
 
+    if (department_id) {
+      await query('UPDATE departments SET branch_id = ? WHERE id = ?', [id, department_id]).catch(() => {});
+    }
+
     const rows = await query('SELECT * FROM branches WHERE id = ? LIMIT 1', [id]);
     const updated = (rows && rows[0]) ? rows[0] : {
       id,
@@ -2369,7 +2398,7 @@ app.put(['/api/settings/branches/:id', '/api/branches/:id'], async (req, res) =>
 });
 
 // Settings - Branches DELETE
-app.delete(['/api/settings/branches/:id', '/api/branches/:id'], async (req, res) => {
+app.delete(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id'], async (req, res) => {
   try {
     const { id } = req.params;
     const sql = 'DELETE FROM branches WHERE id = ?';
@@ -2382,11 +2411,215 @@ app.delete(['/api/settings/branches/:id', '/api/branches/:id'], async (req, res)
   }
 });
 
+// ----------------------------------------------------
+// Dynamic HRIS & Organization Diagram Endpoints
+// ----------------------------------------------------
+app.get('/api/org-chart', async (req, res) => {
+  try {
+    const statusFilter = req.query.status || 'active';
+    const chart = await buildOrgChart(query, statusFilter);
+    res.json(chart);
+  } catch (err) {
+    console.error('Error generating org chart:', err);
+    res.status(500).json({ error: 'Failed to generate organization chart', details: err.message });
+  }
+});
+
+app.get('/api/audit/integrity', async (req, res) => {
+  try {
+    const chart = await buildOrgChart(query);
+    res.json({
+      issues: chart.issues,
+      metrics: chart.metrics,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/audit/run-tests', async (req, res) => {
+  try {
+    const testReport = await runAllAcceptanceTests(query);
+    res.json(testReport);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Title Normalization Rules CRUD
+app.get('/api/normalization-rules', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM normalization_rules ORDER BY id ASC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/normalization-rules', async (req, res) => {
+  try {
+    const { rule_type, pattern, replacement } = req.body;
+    if (!rule_type || !pattern) {
+      return res.status(400).json({ error: 'Rule type and Pattern are required' });
+    }
+    const result = await query(
+      'INSERT INTO normalization_rules (rule_type, pattern, replacement, is_active) VALUES (?, ?, ?, 1)',
+      [rule_type, String(pattern).trim(), String(replacement || '').trim()]
+    );
+    const created = await query('SELECT * FROM normalization_rules WHERE id = ?', [result.insertId]);
+    res.status(201).json(created[0] || { id: result.insertId, rule_type, pattern, replacement, is_active: 1 });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/normalization-rules/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rule_type, pattern, replacement, is_active } = req.body;
+    await query(
+      'UPDATE normalization_rules SET rule_type = COALESCE(?, rule_type), pattern = COALESCE(?, pattern), replacement = COALESCE(?, replacement), is_active = COALESCE(?, is_active) WHERE id = ?',
+      [rule_type || null, pattern || null, replacement !== undefined ? replacement : null, is_active !== undefined ? is_active : null, id]
+    );
+    const updated = await query('SELECT * FROM normalization_rules WHERE id = ?', [id]);
+    res.json(updated[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/normalization-rules/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM normalization_rules WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Normalization rule removed' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Company Profile CRUD
+app.get('/api/company-profile', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM company_profile LIMIT 1');
+    res.json(rows[0] || null);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/company-profile', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const id = body.id || 'COMP-001';
+    await query(`
+      INSERT INTO company_profile (id, company_name, company_name_en, logo_url, address, city, country, phone, email, website, tax_id, registration_number, established_date, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        company_name = VALUES(company_name),
+        company_name_en = VALUES(company_name_en),
+        logo_url = VALUES(logo_url),
+        address = VALUES(address),
+        city = VALUES(city),
+        country = VALUES(country),
+        phone = VALUES(phone),
+        email = VALUES(email),
+        website = VALUES(website),
+        tax_id = VALUES(tax_id),
+        registration_number = VALUES(registration_number),
+        established_date = VALUES(established_date),
+        description = VALUES(description)
+    `, [
+      id,
+      body.company_name || 'فيتاس العراق',
+      body.company_name_en || 'VITAS Iraq',
+      body.logo_url || null,
+      body.address || null,
+      body.city || null,
+      body.country || 'Iraq',
+      body.phone || null,
+      body.email || null,
+      body.website || null,
+      body.tax_id || null,
+      body.registration_number || null,
+      body.established_date || null,
+      body.description || null
+    ]);
+    const rows = await query('SELECT * FROM company_profile WHERE id = ?', [id]);
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/company-profile/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body || {};
+    await query(`
+      UPDATE company_profile SET
+        company_name = COALESCE(?, company_name),
+        company_name_en = COALESCE(?, company_name_en),
+        logo_url = COALESCE(?, logo_url),
+        address = COALESCE(?, address),
+        city = COALESCE(?, city),
+        country = COALESCE(?, country),
+        phone = COALESCE(?, phone),
+        email = COALESCE(?, email),
+        website = COALESCE(?, website),
+        tax_id = COALESCE(?, tax_id),
+        registration_number = COALESCE(?, registration_number),
+        established_date = COALESCE(?, established_date),
+        description = COALESCE(?, description)
+      WHERE id = ?
+    `, [
+      body.company_name || null,
+      body.company_name_en || null,
+      body.logo_url || null,
+      body.address || null,
+      body.city || null,
+      body.country || null,
+      body.phone || null,
+      body.email || null,
+      body.website || null,
+      body.tax_id || null,
+      body.registration_number || null,
+      body.established_date || null,
+      body.description || null,
+      id
+    ]);
+    const rows = await query('SELECT * FROM company_profile WHERE id = ?', [id]);
+    res.json(rows[0] || body);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Dedicated quick toggle for manager country location
+app.patch('/api/departments/:id/manager-location', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { manager_location_status } = req.body;
+    if (!manager_location_status || (manager_location_status !== 'in_country' && manager_location_status !== 'abroad')) {
+      return res.status(400).json({ error: "manager_location_status must be 'in_country' or 'abroad'" });
+    }
+    await query('UPDATE departments SET manager_location_status = ? WHERE id = ?', [manager_location_status, id]);
+    const rows = await query('SELECT * FROM departments WHERE id = ?', [id]);
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Settings - Departments CRUD
 app.get(['/api/settings/departments', '/api/departments'], async (req, res) => {
   try {
     await syncSettingsFromEmployees().catch(() => {});
     const results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
+    const employees = await query('SELECT id, department, branch, status FROM employees').catch(() => []);
+    const branches = await query('SELECT id, name, name_ar, name_en, status FROM branches').catch(() => []);
+    const positions = await query('SELECT id, department_id, department FROM positions').catch(() => []);
     
     const DEPT_EN_MAP = {
       'إدارة التمويل الأصغر والعمليات': 'Microfinance & Operations',
@@ -2411,18 +2644,62 @@ app.get(['/api/settings/departments', '/api/departments'], async (req, res) => {
       'العمليات': 'Operations'
     };
 
+    const cleanDept = (s) => String(s || '').trim().replace(/^(قسم|دائرة|إدارة)\s+/, '').trim().toLowerCase();
+
     const seen = new Set();
     const cleanResults = [];
     for (const d of (results || [])) {
       const arKey = String(d.name_ar || d.name || '').trim();
-      if (!arKey || seen.has(arKey)) continue;
-      seen.add(arKey);
+      const normKey = cleanDept(arKey);
+      if (!normKey || seen.has(normKey)) continue;
+      seen.add(normKey);
 
       let nameEn = String(d.name_en || '').trim();
       if (!nameEn || /[\u0600-\u06FF]/.test(nameEn)) {
         nameEn = DEPT_EN_MAP[arKey] || nameEn || arKey;
       }
-      cleanResults.push({ ...d, name_en: nameEn });
+
+      // Safe JS calculation of counts without SQL collation errors
+      const dName = String(d.name || '').trim().toLowerCase();
+      const dNameAr = String(d.name_ar || '').trim().toLowerCase();
+      const dNameEn = String(d.name_en || '').trim().toLowerCase();
+
+      const deptEmps = (employees || []).filter(e => {
+        const empD = String(e.department || '').trim().toLowerCase();
+        return empD === dName || empD === dNameAr || empD === dNameEn || cleanDept(empD) === normKey;
+      });
+
+      const activeEmployeesCount = deptEmps.filter(e => String(e.status).toLowerCase() === 'active').length;
+      
+      const deptBranches = (branches || []).filter(b => {
+        if (d.branch_id && String(d.branch_id) === String(b.id)) return true;
+        const bName = String(b.name || '').trim().toLowerCase();
+        const bNameAr = String(b.name_ar || '').trim().toLowerCase();
+        const bNameEn = String(b.name_en || '').trim().toLowerCase();
+        return deptEmps.some(e => {
+          const empB = String(e.branch || '').trim().toLowerCase();
+          return empB === bName || empB === bNameAr || empB === bNameEn;
+        });
+      });
+
+      const deptPositions = (positions || []).filter(p => {
+        if (p.department_id && String(p.department_id) === String(d.id)) return true;
+        const pDept = String(p.department || '').trim().toLowerCase();
+        return pDept === dName || pDept === dNameAr || pDept === dNameEn || cleanDept(pDept) === normKey;
+      });
+
+      cleanResults.push({
+        ...d,
+        name: d.name || d.name_ar || arKey,
+        name_ar: arKey,
+        name_en: nameEn,
+        code: d.code || `DEPT-${d.id}`,
+        manager_name: d.manager_name || 'Unassigned',
+        manager_location_status: d.manager_location_status || 'in_country',
+        offices_count: deptBranches.length,
+        active_employees_count: activeEmployeesCount,
+        positions_count: deptPositions.length
+      });
     }
 
     res.json(cleanResults);
@@ -2431,31 +2708,62 @@ app.get(['/api/settings/departments', '/api/departments'], async (req, res) => {
   }
 });
 
-app.post('/api/settings/departments', async (req, res) => {
+app.post(['/api/settings/departments', '/api/departments'], async (req, res) => {
   try {
-    const { name_en, name_ar, sort_order, status } = req.body;
-    const deptAr = name_ar || '';
-    const deptEn = name_en || '';
-    const sql = 'INSERT INTO departments (name_en, name_ar, name, sort_order, status) VALUES (?, ?, ?, ?, ?)';
-    const params = [deptEn, deptAr, deptAr, sort_order || 0, status || 'Active'];
-    await query(sql, params);
-    const result = await query('SELECT * FROM departments ORDER BY id DESC LIMIT 1');
-    res.json(result[0]);
+    const { name, name_en, name_ar, code, manager_name, manager_location_status, description, sort_order, status } = req.body;
+    const deptAr = (name_ar || name || name_en || '').trim();
+    const deptEn = (name_en || name || name_ar || '').trim();
+    const deptCode = (code || `DEP-${Date.now().toString().slice(-4)}`).trim().toUpperCase();
+
+    const sql = `
+      INSERT INTO departments (name_en, name_ar, name, code, manager_name, manager_location_status, description, sort_order, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      deptEn, deptAr, deptAr, deptCode,
+      manager_name || 'Unassigned',
+      manager_location_status === 'abroad' ? 'abroad' : 'in_country',
+      description || '',
+      sort_order || 0,
+      status || 'Active'
+    ];
+    const insertRes = await query(sql, params);
+    const result = await query('SELECT * FROM departments WHERE id = ?', [insertRes.insertId]);
+    res.json(result[0] || { id: insertRes.insertId, name: deptAr, name_ar: deptAr, name_en: deptEn, code: deptCode });
   } catch (err) {
     console.error('Error in POST /api/settings/departments:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/settings/departments/:id', async (req, res) => {
+app.put(['/api/settings/departments/:id', '/api/departments/:id'], async (req, res) => {
   try {
     const { id } = req.params;
-    const { name_en, name_ar, sort_order, status } = req.body;
-    const deptAr = name_ar || '';
-    const deptEn = name_en || '';
+    const { name, name_en, name_ar, code, manager_name, manager_location_status, description, sort_order, status } = req.body;
+    const deptAr = name_ar || name || null;
+    const deptEn = name_en || null;
     await query(
-      'UPDATE departments SET name_en = ?, name_ar = ?, name = ?, sort_order = ?, status = ? WHERE id = ?',
-      [deptEn, deptAr, deptAr, sort_order || 0, status || 'Active', id]
+      `UPDATE departments SET
+        name_en = COALESCE(?, name_en),
+        name_ar = COALESCE(?, name_ar),
+        name = COALESCE(?, name),
+        code = COALESCE(?, code),
+        manager_name = COALESCE(?, manager_name),
+        manager_location_status = COALESCE(?, manager_location_status),
+        description = COALESCE(?, description),
+        sort_order = COALESCE(?, sort_order),
+        status = COALESCE(?, status)
+      WHERE id = ?`,
+      [
+        deptEn, deptAr, deptAr,
+        code ? String(code).trim().toUpperCase() : null,
+        manager_name || null,
+        manager_location_status || null,
+        description !== undefined ? description : null,
+        sort_order !== undefined ? sort_order : null,
+        status || null,
+        id
+      ]
     );
     const result = await query('SELECT * FROM departments WHERE id = ?', [id]);
     res.json(result[0]);
@@ -2464,52 +2772,102 @@ app.put('/api/settings/departments/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/settings/departments/:id', async (req, res) => {
+app.delete(['/api/settings/departments/:id', '/api/departments/:id'], async (req, res) => {
   try {
     const { id } = req.params;
     await query('DELETE FROM departments WHERE id = ?', [id]);
-    res.json({ success: true });
+    res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Settings - Positions CRUD
-app.get(['/api/settings/positions', '/api/positions'], async (req, res) => {
+// Settings - Positions & Job Positions CRUD
+app.get(['/api/settings/positions', '/api/positions', '/api/job-positions'], async (req, res) => {
   try {
     await syncSettingsFromEmployees().catch(() => {});
-    const results = await query('SELECT * FROM positions ORDER BY sort_order ASC, name_ar ASC, id DESC');
-    res.json(results);
+    const results = await query(`
+      SELECT p.*,
+        COALESCE(p.title, p.name_en, p.name) as title,
+        COALESCE(p.title_ar, p.name_ar, p.name) as title_ar,
+        d.name as department_name, d.name_ar as department_name_ar,
+        sp.title as supervisor_title, sp.title_ar as supervisor_title_ar
+      FROM positions p
+      LEFT JOIN departments d ON p.department_id = d.id
+      LEFT JOIN positions sp ON p.supervisor_position_id = sp.id
+      ORDER BY p.sort_order ASC, p.name_ar ASC, p.id DESC
+    `);
+
+    // Deduplicate positions strictly so no position is repeated
+    const seen = new Set();
+    const cleanPositions = [];
+    for (const p of (results || [])) {
+      const key = String(p.title_ar || p.name_ar || p.title || p.name || p.name_en || '').trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      cleanPositions.push(p);
+    }
+
+    res.json(cleanPositions);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/settings/positions', async (req, res) => {
+app.post(['/api/settings/positions', '/api/positions', '/api/job-positions'], async (req, res) => {
   try {
-    const { name_en, name_ar, sort_order, status } = req.body;
-    const posAr = name_ar || '';
-    const posEn = name_en || '';
-    const sql = 'INSERT INTO positions (name_en, name_ar, name, sort_order, status) VALUES (?, ?, ?, ?, ?)';
-    const params = [posEn, posAr, posAr, sort_order || 0, status || 'Active'];
-    await query(sql, params);
-    const result = await query('SELECT * FROM positions ORDER BY id DESC LIMIT 1');
-    res.json(result[0]);
+    const { name_en, name_ar, title, title_ar, code, department_id, supervisor_position_id, sort_order, status } = req.body;
+    const posAr = (title_ar || name_ar || title || name_en || '').trim();
+    const posEn = (title || name_en || title_ar || name_ar || '').trim();
+    const sql = `
+      INSERT INTO positions (name_en, name_ar, name, title, title_ar, code, department_id, supervisor_position_id, sort_order, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      posEn, posAr, posAr, posEn, posAr,
+      code ? String(code).trim().toUpperCase() : null,
+      department_id || null,
+      supervisor_position_id || null,
+      sort_order || 0,
+      status || 'Active'
+    ];
+    const insertRes = await query(sql, params);
+    const result = await query('SELECT * FROM positions WHERE id = ?', [insertRes.insertId]);
+    res.json(result[0] || { id: insertRes.insertId, title: posEn, title_ar: posAr });
   } catch (err) {
     console.error('Error in POST /api/settings/positions:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/settings/positions/:id', async (req, res) => {
+app.put(['/api/settings/positions/:id', '/api/positions/:id', '/api/job-positions/:id'], async (req, res) => {
   try {
     const { id } = req.params;
-    const { name_en, name_ar, sort_order, status } = req.body;
-    const posAr = name_ar || '';
-    const posEn = name_en || '';
+    const { name_en, name_ar, title, title_ar, code, department_id, supervisor_position_id, sort_order, status } = req.body;
+    const posAr = (title_ar || name_ar || title || name_en || '').trim();
+    const posEn = (title || name_en || title_ar || name_ar || '').trim();
     await query(
-      'UPDATE positions SET name_en = ?, name_ar = ?, name = ?, sort_order = ?, status = ? WHERE id = ?',
-      [posEn, posAr, posAr, sort_order || 0, status || 'Active', id]
+      `UPDATE positions SET
+        name_en = COALESCE(?, name_en),
+        name_ar = COALESCE(?, name_ar),
+        name = COALESCE(?, name),
+        title = COALESCE(?, title),
+        title_ar = COALESCE(?, title_ar),
+        code = COALESCE(?, code),
+        department_id = ?,
+        supervisor_position_id = ?,
+        sort_order = COALESCE(?, sort_order),
+        status = COALESCE(?, status)
+      WHERE id = ?`,
+      [
+        posEn || null, posAr || null, posAr || null, posEn || null, posAr || null,
+        code ? String(code).trim().toUpperCase() : null,
+        department_id !== undefined ? department_id : null,
+        supervisor_position_id !== undefined ? supervisor_position_id : null,
+        sort_order || 0,
+        status || 'Active',
+        id
+      ]
     );
     const result = await query('SELECT * FROM positions WHERE id = ?', [id]);
     res.json(result[0]);
@@ -2518,11 +2876,11 @@ app.put('/api/settings/positions/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/settings/positions/:id', async (req, res) => {
+app.delete(['/api/settings/positions/:id', '/api/positions/:id', '/api/job-positions/:id'], async (req, res) => {
   try {
     const { id } = req.params;
     await query('DELETE FROM positions WHERE id = ?', [id]);
-    res.json({ success: true });
+    res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2569,9 +2927,56 @@ app.put('/api/settings/contract-types/:id', async (req, res) => {
 app.delete('/api/settings/contract-types/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    // 1. Fetch existing contract type before deletion
+    const existing = await query('SELECT * FROM contract_types WHERE id = ?', [id]);
+    const nameAr = existing[0]?.name_ar;
+    const nameEn = existing[0]?.name_en;
+
+    // 2. Delete associated clauses locally
+    await query('DELETE FROM contract_clauses WHERE contract_type_id = ?', [id]).catch(() => {});
+
+    // 3. Delete contract type locally
     await query('DELETE FROM contract_types WHERE id = ?', [id]);
-    res.json({ success: true });
+    if (nameAr) {
+      await query('DELETE FROM contract_types WHERE name_ar = ?', [nameAr]).catch(() => {});
+    }
+
+    // 4. Delete contract type & clauses on Cloud directly
+    await executeCloudQuery('DELETE FROM contract_types WHERE id = ?', [id]).catch(() => {});
+    await executeCloudQuery('DELETE FROM contract_clauses WHERE contract_type_id = ?', [id]).catch(() => {});
+    if (nameAr) {
+      const cloudMatches = await executeCloudQuery('SELECT id FROM contract_types WHERE name_ar = ?', [nameAr]).catch(() => []);
+      if (Array.isArray(cloudMatches)) {
+        for (const cm of cloudMatches) {
+          if (cm.id) await executeCloudQuery('DELETE FROM contract_clauses WHERE contract_type_id = ?', [cm.id]).catch(() => {});
+        }
+      }
+      await executeCloudQuery('DELETE FROM contract_types WHERE name_ar = ?', [nameAr]).catch(() => {});
+    }
+    if (nameEn && nameEn !== nameAr) {
+      await executeCloudQuery('DELETE FROM contract_types WHERE name_en = ?', [nameEn]).catch(() => {});
+    }
+
+    // 5. Insert tombstones in sync_deleted_records
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    const sourceEnv = isRailway ? 'cloud' : 'local';
+    const tombSql = 'INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE source_env = VALUES(source_env), deleted_at = NOW()';
+    await query(tombSql, ['contract_types', String(id), sourceEnv]).catch(() => {});
+    if (nameAr) {
+      await query(tombSql, ['contract_types', nameAr, sourceEnv]).catch(() => {});
+      if (!isRailway) await executeCloudQuery(tombSql, ['contract_types', nameAr, 'local']).catch(() => {});
+    }
+    if (nameEn && nameEn !== nameAr) {
+      await query(tombSql, ['contract_types', nameEn, sourceEnv]).catch(() => {});
+      if (!isRailway) await executeCloudQuery(tombSql, ['contract_types', nameEn, 'local']).catch(() => {});
+    }
+
+    // 6. Trigger real-time sync broadcast
+    triggerRealtimeSync(db, 'contract_types');
+
+    res.json({ success: true, id });
   } catch (err) {
+    console.error('Error in DELETE /api/settings/contract-types:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -3824,43 +4229,113 @@ app.delete('/api/news/:id', async (req, res) => {
   }
 });
 
-// Clear all system data except Super Admin credentials
+// Clear all operational system data while strictly preserving Users, Roles, Settings, Contracts, and Policies
 app.post('/api/reset-data', async (req, res) => {
   try {
-    // Disable foreign key checks to avoid FK constraint errors during table truncation
-    await query('SET FOREIGN_KEY_CHECKS = 0');
+    // 1. Explicit set of tables that MUST BE PRESERVED
+    const PRESERVED_TABLES = new Set([
+      // Users & Auth & Roles & Permissions
+      'users',
+      'roles',
+      'drv_users',
 
-    // Fetch all table names dynamically from MySQL
+      // Settings & System Configuration
+      'app_settings',
+      'attendance_settings',
+      'biometric_server_config',
+      'company_profile',
+      'normalization_rules',
+      'document_categories',
+      'sync_devices',
+
+      // Contracts & Templates
+      'contract_types',
+      'contract_clauses',
+      'contract_template_clauses',
+      'contract_custom_variables',
+      'settings_contract_types',
+
+      // Org Structure & Catalogs in Settings
+      'branches',
+      'settings_offices',
+      'drv_offices',
+      'departments',
+      'positions',
+      'settings_positions',
+      'status_changes',
+      'settings_status_changes',
+      'trainings',
+      'training_programs',
+      'settings_trainings',
+      'shift_types',
+      'company_holidays',
+      'company_holiday_branches',
+      'holidays',
+
+      // Policies & Tax / Allowance Calculation Rules
+      'tax_brackets',
+      'tax_calculation_parameters',
+      'tax_calculation_rules',
+      'tax_calculation_variables',
+      'tax_rule_versions',
+
+      // Driver master catalogs
+      'drv_trip_routes',
+      'drv_trip_types',
+    ]);
+
+    // 2. Disable foreign key checks on both Local and Cloud
+    await query('SET FOREIGN_KEY_CHECKS = 0');
+    await executeCloudQuery('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+
+    // 3. Fetch all table names dynamically from Local MySQL
     const tables = await query('SHOW TABLES');
     const tableNames = tables.map(t => Object.values(t)[0]);
 
-    // Explicitly truncate employee_children and employees tables
-    await query('TRUNCATE TABLE employee_children').catch(() => query('DELETE FROM employee_children').catch(() => {}));
-    await query('TRUNCATE TABLE employees').catch(() => query('DELETE FROM employees').catch(() => {}));
-
+    // Truncate / delete operational tables locally
+    const clearedTables = [];
     for (const table of tableNames) {
+      if (PRESERVED_TABLES.has(table.toLowerCase())) {
+        continue;
+      }
       try {
-        if (table === 'users') {
-          // Keep Super Admin login credentials intact
-          await query("DELETE FROM users WHERE role NOT IN ('Super Admin', 'super_admin') AND username NOT IN ('admin', 'superadmin')");
-        } else if (table !== 'employee_children' && table !== 'employees') {
-          await query(`TRUNCATE TABLE \`${table}\``).catch(() => query(`DELETE FROM \`${table}\``));
-        }
+        await query(`TRUNCATE TABLE \`${table}\``).catch(() => query(`DELETE FROM \`${table}\``));
+        clearedTables.push(table);
       } catch (e) {
-        console.warn(`Could not clear table ${table}:`, e.message);
+        console.warn(`Could not clear local table ${table}:`, e.message);
       }
     }
 
-    // Re-enable foreign key checks
+    // 4. Truncate / delete operational tables on Cloud DB
+    const cloudTables = await executeCloudQuery('SHOW TABLES').catch(() => []);
+    if (Array.isArray(cloudTables)) {
+      for (const ct of cloudTables) {
+        const cTable = Object.values(ct)[0];
+        if (cTable && !PRESERVED_TABLES.has(String(cTable).toLowerCase())) {
+          await executeCloudQuery(`TRUNCATE TABLE \`${cTable}\``).catch(() => executeCloudQuery(`DELETE FROM \`${cTable}\``).catch(() => {}));
+        }
+      }
+    }
+
+    // 5. Re-enable foreign key checks on both Local and Cloud
     await query('SET FOREIGN_KEY_CHECKS = 1');
+    await executeCloudQuery('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
 
-    // Re-seed default settings
-    await ensureSettingsSeededAndSynced();
+    // 6. Broadcast real-time change event to refresh UI components
+    triggerRealtimeSync(db, 'all');
 
-    res.json({ success: true, message: 'All system data cleared except Super Admin credentials.' });
+    res.json({
+      success: true,
+      message: 'Operational data cleared successfully. Users, Roles, Settings, Contracts, and Policies were preserved.',
+      clearedTablesCount: clearedTables.length,
+      clearedTables
+    });
   } catch (err) {
     console.error('Error resetting database data:', err);
-    try { await query('SET FOREIGN_KEY_CHECKS = 1'); } catch (e) {}
+    try {
+      await query('SET FOREIGN_KEY_CHECKS = 1');
+      await executeCloudQuery('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+    } catch (e) {}
     res.status(500).json({ error: err.message });
   }
 });

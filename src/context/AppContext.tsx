@@ -1167,30 +1167,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDocumentRecords([]);
     setNotifications([]);
 
-    // Backup essential user/auth session keys before clearing localStorage
-    const currentUserBackup = localStorage.getItem('vitas_current_user');
-    const authBackup = localStorage.getItem('vitas_auth');
-    const roleBackup = localStorage.getItem('vitas_user_role');
-    const themeBackup = localStorage.getItem('vitas_theme');
-    const langBackup = localStorage.getItem('vitas_language');
-
-    localStorage.clear();
-
-    if (currentUserBackup) localStorage.setItem('vitas_current_user', currentUserBackup);
-    if (authBackup) localStorage.setItem('vitas_auth', authBackup);
-    if (roleBackup) localStorage.setItem('vitas_user_role', roleBackup);
-    if (themeBackup) localStorage.setItem('vitas_theme', themeBackup);
-    if (langBackup) localStorage.setItem('vitas_language', langBackup);
-
-    // Explicitly write empty arrays to domain keys so no cached data persists
-    localStorage.setItem('vitas_employees', JSON.stringify([]));
-    localStorage.setItem('vitas_candidates', JSON.stringify([]));
-    localStorage.setItem('vitas_leave_requests', JSON.stringify([]));
-    localStorage.setItem('vitas_job_vacancies', JSON.stringify([]));
-    localStorage.setItem('vitas_assets', JSON.stringify([]));
-    localStorage.setItem('vitas_risks', JSON.stringify([]));
-    localStorage.setItem('vitas_documents', JSON.stringify([]));
-    localStorage.setItem('vitas_notifications', JSON.stringify([]));
+    // Clear operational domain caches without wiping user session, contract templates, clauses, or settings
+    const operationalKeys = [
+      'vitas_employees',
+      'vitas_candidates',
+      'vitas_leave_requests',
+      'vitas_job_vacancies',
+      'vitas_assets',
+      'vitas_risks',
+      'vitas_documents',
+      'vitas_notifications',
+      'vitas_attendance',
+      'vitas_payroll',
+      'vitas_employee_contracts',
+      'vitas_evaluations',
+      'vitas_warnings',
+      'vitas_compensations'
+    ];
+    for (const key of operationalKeys) {
+      localStorage.setItem(key, JSON.stringify([]));
+    }
   };
 
   // Granular Permission Helpers

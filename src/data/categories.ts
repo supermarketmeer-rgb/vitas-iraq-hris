@@ -124,6 +124,13 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         description: 'إدارة فروع المؤسسة ومواقع العمل الجغرافية في العراق'
       },
       {
+        id: 'emp-organization',
+        title: 'الهيكل التنظيمي التفاعلي',
+        titleEn: 'Dynamic Organization Chart',
+        icon: 'account_tree',
+        description: 'داياكرام الهيكل التنظيمي والإداري لمؤسسة فيتاس العراق'
+      },
+      {
         id: 'emp-company-profile',
         title: 'إعدادات ملف المؤسسة',
         titleEn: 'Company Profile Settings',

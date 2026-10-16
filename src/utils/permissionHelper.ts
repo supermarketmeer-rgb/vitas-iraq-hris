@@ -419,6 +419,7 @@ export const MODULE_CATEGORY_MAP: Record<string, { catId: string; alias: string 
   'emp-sync-guide': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-profile': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-branches': { catId: 'cat-3-emp', alias: 'employees' },
+  'emp-organization': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-company-profile': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-calendar': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-news': { catId: 'cat-3-emp', alias: 'employees' },

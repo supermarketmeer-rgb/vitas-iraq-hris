@@ -183,6 +183,17 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
       <div className={`w-full p-5 rounded-3xl border shadow-xl space-y-4 ${
         isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
       }`}>
+        <style>{`
+          .emp-login-input:-webkit-autofill,
+          .emp-login-input:-webkit-autofill:hover, 
+          .emp-login-input:-webkit-autofill:focus,
+          .emp-login-input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0px 1000px ${isDark ? '#0f172a' : '#f8fafc'} inset !important;
+            -webkit-text-fill-color: ${isDark ? '#ffffff' : '#0f172a'} !important;
+            caret-color: ${isDark ? '#ffffff' : '#0f172a'} !important;
+            transition: background-color 5000s ease-in-out 0s;
+          }
+        `}</style>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-bold mb-1.5 text-teal-400">

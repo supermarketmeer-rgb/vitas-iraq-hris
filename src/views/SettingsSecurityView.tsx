@@ -23,6 +23,9 @@ interface DataItem {
   phone?: string;
   email?: string;
   status?: string;
+  employee_id?: string;
+  department?: string;
+  position?: string;
 }
 
 interface AppSetting {
@@ -43,21 +46,21 @@ interface ContractClause {
 }
 
 export const SettingsSecurityView: React.FC = () => {
-  const { language, t, theme, setEmployees, refreshEmployees, employees, resetToZeroData } = useApp();
+  const { language, t, theme, setEmployees, refreshEmployees, employees, deleteEmployee, resetToZeroData } = useApp();
   const [activeTab, setActiveTab] = useState<string>('locations');
 
   const handleClearAllData = async () => {
     const confirmMsg = language === 'ar'
-      ? 'هل أنت متأكد من مسح جميع بيانات النظام بالكامل؟\nسوف يتم مسح كافة الموظفين، الإجازات، المستندات، الطلبات، والإعدادات بشكل نهائي باستثناء بيانات دخول السوبر آدمن (Super Admin).'
-      : 'Are you sure you want to clear all system data?\nAll employees, leaves, documents, requests, and settings will be permanently deleted EXCEPT Super Admin login credentials.';
+      ? 'هل أنت متأكد من تفريغ البيانات التشغيلية للنظام؟\n\nسيتم حذف جميع سجلات الموظفين، الحضور والانصراف، الإجازات، الرواتب، والطلبات.\n\n✅ سيتم الحفاظ بالكامل على:\n- بيانات جدول المستخدمين (Users) وحسابات الدخول\n- الصلاحيات والأدوار (Roles & Permissions)\n- قوالب وبنود العقود في الإعدادات (Contracts)\n- السياسات واللوائح والضرائب (Policies)\n- إعدادات الفروع والأقسام والمسميات (Settings)'
+      : 'Are you sure you want to clear operational system data?\n\nAll employee records, attendance, leaves, payroll, and requests will be deleted.\n\n✅ WILL BE PRESERVED:\n- Users table and login credentials\n- Roles & Permissions\n- Contract Templates & Clauses\n- System Policies & Rules\n- Settings (Branches, Departments, Positions)';
 
     if (window.confirm(confirmMsg)) {
       try {
         await resetToZeroData();
         await loadData();
         alert(language === 'ar' 
-          ? 'تم مسح جميع بيانات النظام بنجاح مع الإبقاء على حساب بيانات السوبر آدمن.' 
-          : 'All system data has been cleared successfully while preserving Super Admin credentials.');
+          ? 'تم تفريغ البيانات التشغيلية بنجاح مع الحفاظ الكامل على المستخدمين، الصلاحيات، العقود، والسياسات.' 
+          : 'Operational data cleared successfully while preserving Users, Roles, Settings, Contracts, and Policies.');
       } catch (error: any) {
         console.error('Error clearing system data:', error);
         alert(language === 'ar' 
@@ -176,6 +179,69 @@ export const SettingsSecurityView: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Deduplicate locations strictly by trimmed name
+  const deduplicatedLocations = React.useMemo(() => {
+    const seen = new Set();
+    return locations.filter(item => {
+      const key = String(item.name_ar || item.name || item.name_en || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [locations]);
+
+  // Deduplicate positions strictly by trimmed name
+  const deduplicatedPositions = React.useMemo(() => {
+    const seen = new Set();
+    return positions.filter(item => {
+      const key = String(item.name_ar || item.name || item.name_en || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [positions]);
+
+  // Deduplicate departments strictly by trimmed name
+  const deduplicatedDepartments = React.useMemo(() => {
+    const seen = new Set();
+    return departments.filter(item => {
+      const key = String(item.name_ar || item.name || item.name_en || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [departments]);
+
+  // Map and deduplicate employees for the Employee Management tab
+  const employeeDataItems: DataItem[] = React.useMemo(() => {
+    const seen = new Set();
+    const result: DataItem[] = [];
+    for (const emp of (employees || [])) {
+      const code = String(emp.employeeId || emp.employee_id || emp.id || '').trim();
+      const nameAr = String(emp.fullNameAr || emp.full_name_ar || emp.fullName || '').trim();
+      const nameEn = String(emp.fullNameEn || emp.full_name_en || emp.fullName || nameAr || '').trim();
+      const key = (code || nameAr || nameEn).toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+
+      result.push({
+        id: emp.id || code,
+        name_en: nameEn,
+        name_ar: nameAr,
+        name: nameAr,
+        sort_order: 0,
+        employee_id: code,
+        department: emp.department || '',
+        position: emp.jobTitle || emp.position || emp.position_ar || '',
+        city: emp.branch || emp.location_ar || emp.location || '',
+        phone: emp.phone || emp.mobile || '',
+        email: emp.email || '',
+        status: (emp.status && String(emp.status).toLowerCase() === 'active') ? 'Active' : (emp.status || 'Active')
+      });
+    }
+    return result;
+  }, [employees]);
 
   // Reload settings from localStorage when switching to allowances tab
   useEffect(() => {
@@ -1542,7 +1608,7 @@ export const SettingsSecurityView: React.FC = () => {
           <DataTable
             title={t('الفروع والمواقع', 'Locations & Offices')}
             icon="location_city"
-            data={locations}
+            data={deduplicatedLocations}
             onAdd={() => { setShowAddModal(true); setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' }); }}
             onEdit={openEditModal}
             onDelete={handleDelete}
@@ -1556,7 +1622,7 @@ export const SettingsSecurityView: React.FC = () => {
           <DataTable
             title={t('المسميات الوظيفية', 'Positions')}
             icon="work"
-            data={positions}
+            data={deduplicatedPositions}
             onAdd={() => { setShowAddModal(true); setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' }); }}
             onEdit={openEditModal}
             onDelete={handleDelete}
@@ -1570,7 +1636,7 @@ export const SettingsSecurityView: React.FC = () => {
           <DataTable
             title={t('الأقسام', 'Departments')}
             icon="business"
-            data={departments}
+            data={deduplicatedDepartments}
             onAdd={() => { setShowAddModal(true); setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' }); }}
             onEdit={openEditModal}
             onDelete={handleDelete}
@@ -1649,9 +1715,38 @@ export const SettingsSecurityView: React.FC = () => {
               modalTargetTab.current = 'contract-types';
               openEditModal(item);
             }}
-            onDeleteContractType={(id) => {
-              modalTargetTab.current = 'contract-types';
-              handleDelete(id);
+            onDeleteContractType={async (id) => {
+              const confirmMsg = language === 'ar' 
+                ? 'هل أنت متأكد من حذف نوع العقد هذا مع كافة بنوده المرتبطة؟' 
+                : 'Are you sure you want to delete this contract type and its associated clauses?';
+              if (window.confirm(confirmMsg)) {
+                try {
+                  // Optimistically remove from view immediately
+                  setContractTypes(prev => prev.filter(c => c.id !== id && String(c.id) !== String(id)));
+                  if (selectedContractType === id || selectedContractType === parseInt(id.toString())) {
+                    setSelectedContractType(null);
+                    setContractClauses([]);
+                  }
+                  
+                  // Call API to delete from database
+                  await api.deleteContractType(id.toString());
+
+                  // Clean any local storage cache for this contract type
+                  try {
+                    localStorage.removeItem(`vitas_contract_clauses_${id}`);
+                  } catch (e) {}
+
+                  // Refresh contract types from API
+                  const updated = await api.getContractTypes();
+                  if (Array.isArray(updated)) {
+                    setContractTypes(updated);
+                  }
+                } catch (err: any) {
+                  console.error('Error deleting contract type:', err);
+                  alert(language === 'ar' ? 'حدث خطأ أثناء حذف نوع العقد' : 'Error deleting contract type');
+                  await loadData();
+                }
+              }
             }}
           />
         )}
@@ -1659,13 +1754,19 @@ export const SettingsSecurityView: React.FC = () => {
           <DataTable
             title={t('إدارة الموظفين', 'Employee Management')}
             icon="badge"
-            data={[]}
+            data={employeeDataItems}
             onAdd={() => {}}
-            onEdit={() => {}}
-            onDelete={() => {}}
+            onEdit={openEditModal}
+            onDelete={async (id) => {
+              const confirmMsg = language === 'ar' ? 'هل أنت متأكد من حذف هذا الموظف؟' : 'Are you sure you want to delete this employee?';
+              if (window.confirm(confirmMsg)) {
+                await deleteEmployee(String(id));
+                await refreshEmployees();
+              }
+            }}
             language={language}
             showExcelButtons={true}
-            showOnlyTemplateAndImport={true}
+            showOnlyTemplateAndImport={false}
             onGenerateTemplate={generateEmployeeExcelTemplate}
             onExportExcel={handleEmployeeExcelExport}
             onImportExcel={handleEmployeeExcelImport}
@@ -1677,20 +1778,20 @@ export const SettingsSecurityView: React.FC = () => {
           <div className="text-center py-12 bg-rose-500/5 rounded-2xl border border-rose-500/20 max-w-2xl mx-auto p-8 my-4">
             <span className="material-symbols-outlined text-6xl text-rose-500 mb-4 animate-pulse">warning</span>
             <h3 className="text-2xl font-bold text-rose-400 mb-2">
-              {t('منطقة الخطر - تفريغ كافة البيانات', 'Danger Zone - Clear All System Data')}
+              {t('منطقة الصيانة - تفريغ البيانات التشغيلية', 'Maintenance - Clear Operational Data')}
             </h3>
             <p className="text-slate-300 text-sm mb-6 max-w-md mx-auto leading-relaxed">
               {t(
-                'سيتم مسح جميع بيانات التطبيق في كافة الأقسام (الموظفين، الإجازات، المستندات، الطلبات، الإعدادات) بشكل نهائي، مع الإبقاء الحصري على بيانات الدخول للسوبر آدمن (Super Admin).',
-                'This will permanently delete all application data across all modules (employees, leaves, documents, requests, settings) EXCEPT the Super Admin login credentials.'
+                'يقوم هذا الإجراء بحذف كافة البيانات التشغيلية (الموظفين، الحضور والانصراف، الإجازات، الرواتب، والطلبات) بشكل نهائي، مع الحفاظ التام على حسابات المستخدمين (Users)، الصلاحيات، الإعدادات، قوالب العقود، والسياسات.',
+                'This will permanently delete all operational data (employees, attendance, leaves, payroll, requests), while completely preserving Users, Roles & Permissions, Settings, Contract Templates, and Policies.'
               )}
             </p>
             <button 
               onClick={handleClearAllData}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-8 py-3 rounded-xl transition-all shadow-lg hover:shadow-rose-600/30 flex items-center gap-2 mx-auto"
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-8 py-3 rounded-xl transition-all shadow-lg hover:shadow-rose-600/30 flex items-center gap-2 mx-auto cursor-pointer"
             >
-              <span className="material-symbols-outlined text-xl">delete_forever</span>
-              {t('مسح البيانات بالكامل', 'Clear All Data')}
+              <span className="material-symbols-outlined text-xl">delete_sweep</span>
+              {t('مسح البيانات التشغيلية', 'Clear Operational Data')}
             </button>
           </div>
         )}
@@ -1858,7 +1959,7 @@ const DataTable: React.FC<DataTableProps> = ({
               />
             </>
           )}
-          {!showOnlyTemplateAndImport && (
+          {!showOnlyTemplateAndImport && !showExcelButtons && (
             <button
               onClick={(e) => {
                 e.preventDefault();
@@ -1911,6 +2012,47 @@ const DataTable: React.FC<DataTableProps> = ({
                     <span className={`text-xs flex items-center gap-1 whitespace-nowrap ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                       <span className="material-symbols-outlined text-[13px] opacity-70">mail</span>
                       {item.email}
+                    </span>
+                  )}
+                  {item.status && (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                      item.status === 'Active'
+                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                    }`}>
+                      {item.status === 'Active' ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'غير نشط' : 'Inactive')}
+                    </span>
+                  )}
+                </>
+              ) : activeTab === 'employees' ? (
+                <>
+                  {item.employee_id && (
+                    <span className="text-xs px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-400 font-mono font-bold whitespace-nowrap">
+                      {item.employee_id}
+                    </span>
+                  )}
+                  {item.department && (
+                    <span className={`text-xs flex items-center gap-1 whitespace-nowrap ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <span className="material-symbols-outlined text-[13px] opacity-70">business</span>
+                      {item.department}
+                    </span>
+                  )}
+                  {item.position && (
+                    <span className={`text-xs flex items-center gap-1 whitespace-nowrap ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <span className="material-symbols-outlined text-[13px] opacity-70">work</span>
+                      {item.position}
+                    </span>
+                  )}
+                  {item.city && (
+                    <span className={`text-xs flex items-center gap-1 whitespace-nowrap ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <span className="material-symbols-outlined text-[13px] opacity-70">location_on</span>
+                      {item.city}
+                    </span>
+                  )}
+                  {item.phone && (
+                    <span className={`text-xs font-mono flex items-center gap-1 whitespace-nowrap ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <span className="material-symbols-outlined text-[13px] opacity-70">call</span>
+                      {item.phone}
                     </span>
                   )}
                   {item.status && (

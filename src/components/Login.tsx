@@ -642,6 +642,17 @@ export const Login: React.FC = () => {
           </div>
 
           {/* Login Form */}
+          <style>{`
+            input.login-input-dark:-webkit-autofill,
+            input.login-input-dark:-webkit-autofill:hover, 
+            input.login-input-dark:-webkit-autofill:focus,
+            input.login-input-dark:-webkit-autofill:active {
+              -webkit-box-shadow: 0 0 0px 1000px #0f172a inset !important;
+              -webkit-text-fill-color: #ffffff !important;
+              caret-color: #ffffff !important;
+              transition: background-color 5000s ease-in-out 0s;
+            }
+          `}</style>
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label className={`block text-xs sm:text-sm font-bold mb-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -657,12 +668,12 @@ export const Login: React.FC = () => {
                   style={{
                     backgroundColor: isDark ? '#0f172a' : '#ffffff',
                     color: isDark ? '#ffffff' : '#0f172a',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'
+                    borderColor: isDark ? '#334155' : '#cbd5e1'
                   }}
                   className={`w-full ${language === 'ar' ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all shadow-xs ${
                     isDark 
-                      ? 'placeholder-slate-400' 
-                      : 'placeholder-slate-400'
+                      ? 'bg-[#0f172a] text-white border-slate-700 placeholder-slate-400 login-input-dark' 
+                      : 'bg-white text-slate-900 border-slate-300 placeholder-slate-400'
                   }`}
                 />
               </div>
@@ -682,12 +693,12 @@ export const Login: React.FC = () => {
                   style={{
                     backgroundColor: isDark ? '#0f172a' : '#ffffff',
                     color: isDark ? '#ffffff' : '#0f172a',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'
+                    borderColor: isDark ? '#334155' : '#cbd5e1'
                   }}
                   className={`w-full ${language === 'ar' ? 'pr-11 pl-11' : 'pl-11 pr-11'} py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all shadow-xs ${
                     isDark 
-                      ? 'placeholder-slate-400' 
-                      : 'placeholder-slate-400'
+                      ? 'bg-[#0f172a] text-white border-slate-700 placeholder-slate-400 login-input-dark' 
+                      : 'bg-white text-slate-900 border-slate-300 placeholder-slate-400'
                   }`}
                 />
                 <button

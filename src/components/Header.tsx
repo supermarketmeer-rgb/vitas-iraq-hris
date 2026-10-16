@@ -242,8 +242,8 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Middle - Universal Search Bar */}
-      <div className="flex-1 max-w-xl mx-4 hidden md:block">
+      {/* Middle - Universal Search Bar (Hidden as requested, preserved for quick re-enabling) */}
+      <div className="flex-1 max-w-xl mx-4 hidden" style={{ display: 'none' }}>
         <button
           onClick={() => setIsSearchOpen(true)}
           className={`w-full h-10 px-3.5 rounded-xl flex items-center justify-between text-sm transition-all group ${

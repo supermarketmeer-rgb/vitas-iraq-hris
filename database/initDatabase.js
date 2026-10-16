@@ -41,6 +41,39 @@ export async function initDatabase(pool, force = false) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
           `);
 
+          // Ensure company_profile table and default profile exist
+          await query(`
+            CREATE TABLE IF NOT EXISTS company_profile (
+              id VARCHAR(50) PRIMARY KEY,
+              company_name VARCHAR(255) NOT NULL,
+              company_name_en VARCHAR(255),
+              logo_url TEXT,
+              address TEXT,
+              city VARCHAR(100),
+              country VARCHAR(100) DEFAULT 'Iraq',
+              phone VARCHAR(50),
+              email VARCHAR(255),
+              website VARCHAR(255),
+              tax_id VARCHAR(100),
+              registration_number VARCHAR(100),
+              established_date DATE,
+              description TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          `);
+
+          const existingProfiles = await query("SELECT id FROM company_profile LIMIT 1");
+          if (!existingProfiles || existingProfiles.length === 0) {
+            await query(`
+              INSERT INTO company_profile 
+                (id, company_name, company_name_en, logo_url, address, city, country, phone, email, website, tax_id, registration_number, established_date, description)
+              VALUES 
+                ('COMP-001', 'شركة فيتاس العراق للتمويل الأصغر', 'VITAS Iraq for Microfinance', '/assets/VitasLogo.jpeg', 'شارع الكرادة داخل، محلة 903، زقاق 14، مبنى 22', 'بغداد', 'العراق', '+964 780 000 0000', 'info@vitasiraq.com', 'https://vitasiraq.com', '90012345678', 'REG-IQ-2008-0442', '2008-01-15', 'مؤسسة فيتاس العراق هي مؤسسة رائدة في مجال التمويل الأصغر وتطوير المشاريع الصغيرة والمتوسطة، تهدف إلى تمكين رواد الأعمال وأصحاب المهن الحرة وتعزيز التنمية الاقتصادية والاجتماعية المستدامة في كافة المحافظات العراقية.')
+            `);
+            console.log('[DATABASE INIT] Seeded default Company Profile for VITAS Iraq.');
+          }
+
           return { success: true, message: 'Core tables already exist', tablesCount: tableNames.length, tables: tableNames };
         }
       } catch (e) {
