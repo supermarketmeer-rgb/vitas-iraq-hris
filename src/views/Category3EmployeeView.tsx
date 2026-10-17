@@ -50,6 +50,11 @@ export const Category3EmployeeView: React.FC = () => {
   // Contract renewal & evaluation alerts modal state
   const [showRenewalAlertsModal, setShowRenewalAlertsModal] = useState(false);
 
+  // Save confirmation modal state for Employee Add/Edit Form
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
+  const [isSavingEmployee, setIsSavingEmployee] = useState(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+
   // Calculate urgent contract alerts count (<= 7 days or overdue)
   const urgentContractAlertsCount = useMemo(() => {
     const now = new Date();
@@ -1147,18 +1152,24 @@ export const Category3EmployeeView: React.FC = () => {
     }
   };
 
-  const handleAddEmployeeSubmit = async (e: React.FormEvent) => {
+  const handleAddEmployeeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canWrite()) {
       alert(language === 'ar' ? 'ليس لديك صلاحية حفظ أو تعديل الموظفين (وضع القراءة فقط)' : 'You do not have permission to save or edit employees (Read-Only Mode)');
       return;
     }
-    if (!fullName) {
+    if (!fullName || !fullName.trim()) {
       alert(t('يرجى تعبئة الاسم الكامل الثلاثي في التبويب الأول (المعلومات الأساسية)', 'Please fill in the full name in the first tab (Basic Information)'));
       setActiveTab(1);
       return;
     }
 
+    setSaveSuccessMessage(null);
+    setShowSaveConfirmModal(true);
+  };
+
+  const handleConfirmAndExecuteSave = async () => {
+    setIsSavingEmployee(true);
     const isEditMode = Boolean(selectedEmpId);
     const targetId = selectedEmpId || Date.now().toString();
     const finalEmployeeId = empCode || (targetId.startsWith('VTS-') ? targetId : `VTS-${targetId.length > 5 ? targetId.slice(-4) : targetId}`);
@@ -1359,14 +1370,14 @@ export const Category3EmployeeView: React.FC = () => {
       }
     } catch (error) {
       console.warn('Database sync completed with local state fallback:', error);
+    } finally {
+      setIsSavingEmployee(false);
     }
 
-    alert(isEditMode 
-      ? (language === 'ar' ? 'تم تحديث بيانات الموظف بنجاح!' : 'Employee data updated successfully!')
-      : (language === 'ar' ? 'تم حفظ الموظف الجديد بنجاح في النظام!' : 'New employee saved successfully!')
+    setSaveSuccessMessage(isEditMode 
+      ? (language === 'ar' ? 'تم تحديث بيانات الموظف بنجاح في قاعدة البيانات!' : 'Employee data updated successfully in database!')
+      : (language === 'ar' ? 'تم تسجيل وحفظ الموظف الجديد بنجاح في النظام!' : 'New employee registered and saved successfully!')
     );
-    handleResetForm();
-    setActiveModuleId('emp-hr-directory');
   };
 
   const selectedEmployee = employees.find(e => {
@@ -3915,6 +3926,143 @@ export const Category3EmployeeView: React.FC = () => {
                 {t('حذف', 'Delete')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Confirmation Modal for Employee 7-Tabs Form */}
+      {showSaveConfirmModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className={`border rounded-3xl shadow-2xl max-w-lg w-full p-6 space-y-4 ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            {saveSuccessMessage ? (
+              // Success Screen View
+              <div className="text-center py-4 space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-500/40 flex items-center justify-center text-emerald-500">
+                  <span className="material-symbols-outlined text-4xl">check_circle</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-emerald-500 mb-1">
+                    {language === 'ar' ? 'تمت العملية بنجاح' : 'Success'}
+                  </h3>
+                  <p className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    {saveSuccessMessage}
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-3 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSaveConfirmModal(false);
+                      setSaveSuccessMessage(null);
+                      handleResetForm();
+                      setActiveModuleId('emp-hr-directory');
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/30 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">groups</span>
+                    {t('العودة لدليل الموظفين', 'Return to Directory')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSaveConfirmModal(false);
+                      setSaveSuccessMessage(null);
+                    }}
+                    className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      isDark ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {t('البقاء في صفحة النموذج', 'Stay on Form')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Confirmation Dialog View
+              <>
+                <div className="flex items-center gap-3 border-b pb-3 border-teal-500/20">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 shrink-0">
+                    <span className="material-symbols-outlined text-2xl">verified_user</span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black" style={{ color: isDark ? '#ffffff' : '#000000' }}>
+                      {(activeModuleId === 'emp-edit' || selectedEmpId)
+                        ? t('تأكيد حفظ تعديلات بيانات الموظف', 'Confirm Employee Updates')
+                        : t('تأكيد حفظ وتسجيل الموظف الجديد', 'Confirm New Employee Registration')}
+                    </h3>
+                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {t('يرجى مراجعة وتأكيد حفظ كافة البيانات في قاعدة البيانات:', 'Please review and confirm saving data to database:')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Summary Card */}
+                <div className={`p-3.5 rounded-2xl border space-y-2 text-xs ${
+                  isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-1.5">
+                    <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>{t('الاسم الكامل (عربي):', 'Full Name (Ar):')}</span>
+                    <span className="font-bold text-teal-500">{fullName}</span>
+                  </div>
+                  {fullNameEn && (
+                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-1.5">
+                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>{t('الاسم بالإنجليزية:', 'Full Name (En):')}</span>
+                      <span className="font-bold text-slate-200 dark:text-slate-200">{fullNameEn}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-1.5">
+                    <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>{t('الرقم الوظيفي / الكود:', 'Employee ID / Code:')}</span>
+                    <span className="font-mono font-bold text-blue-400">{empCode || selectedEmpId || t('تلقائي', 'Auto')}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-1.5">
+                    <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>{t('الوظيفة والمسمى:', 'Job Title & Role:')}</span>
+                    <span className="font-bold">{jobTitle || t('غير محدد', 'Not Specified')}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-1.5">
+                    <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>{t('القسم والفرع:', 'Dept & Branch:')}</span>
+                    <span className="font-bold">{department} • {branch}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>{t('الراتب الأساسي:', 'Basic Salary:')}</span>
+                    <span className="font-mono font-bold text-emerald-500">
+                      {basicSalary > 0 ? Number(basicSalary).toLocaleString() : '0'} د.ع
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    disabled={isSavingEmployee}
+                    onClick={() => setShowSaveConfirmModal(false)}
+                    className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      isDark ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {t('إلغاء ومتابعة التعديل', 'Cancel & Continue Editing')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSavingEmployee}
+                    onClick={handleConfirmAndExecuteSave}
+                    className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/30 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                  >
+                    {isSavingEmployee ? (
+                      <>
+                        <span className="material-symbols-outlined text-sm animate-spin">sync</span>
+                        <span>{t('جاري الحفظ والتثبيت...', 'Saving & Storing...')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        <span>{t('تأكيد وحفظ التغييرات', 'Confirm & Save Changes')}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -12,8 +12,7 @@ import {
   Sun,
   Moon,
   Globe,
-  LogOut,
-  Home
+  LogOut
 } from 'lucide-react';
 
 interface EmployeeTopTabBarProps {
@@ -77,20 +76,8 @@ export const EmployeeTopTabBar: React.FC<EmployeeTopTabBarProps> = ({ onLogout }
           </p>
         </div>
 
-        {/* Global Controls: Home, Language, Theme, and Sign Out */}
+        {/* Global Controls: Language, Theme, and Sign Out */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Back to main HRIS System */}
-          <button
-            onClick={() => navigate('/')}
-            className={`p-1.5 rounded-xl border-[1.5px] transition-all cursor-pointer shadow-2xs active:scale-95 ${
-              isDark 
-                ? 'bg-slate-800 border-slate-700 text-teal-400 hover:bg-slate-700' 
-                : 'bg-slate-100 border-slate-300 text-teal-700 hover:bg-slate-200'
-            }`}
-            title={isEn ? 'Return to HRIS Dashboard' : 'العودة للنظام الرئيسي'}
-          >
-            <Home className="w-3.5 h-3.5" />
-          </button>
 
           {/* Language Toggle Button */}
           <button

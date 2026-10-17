@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeContext } from '../context/EmployeeContext';
-import { Sun, Moon, Globe, Home } from 'lucide-react';
+import { Sun, Moon, Globe } from 'lucide-react';
 import vitasLogo from '../../../assets/VitasLogo.jpeg';
 
 interface EmployeeLoginProps {
@@ -209,18 +209,7 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Back to main HRIS System */}
-          <button
-            onClick={() => navigate('/')}
-            className={`p-1.5 rounded-xl border transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 ${
-              isDark 
-                ? 'bg-slate-800 border-slate-700 text-teal-400 hover:bg-slate-700' 
-                : 'bg-white border-slate-300 text-teal-700 hover:bg-slate-100'
-            }`}
-            title={isEn ? 'Return to HRIS Dashboard' : 'العودة للنظام الرئيسي'}
-          >
-            <Home className="w-4 h-4" />
-          </button>
+          {/* Language Toggle */}
 
           {/* Language Toggle */}
           <button
