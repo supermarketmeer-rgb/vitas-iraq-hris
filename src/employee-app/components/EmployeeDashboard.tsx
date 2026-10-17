@@ -382,58 +382,88 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
         </div>
       )}
 
-      {/* Quick Action Grid (الوصول السريع) */}
+      {/* Quick Action Grid (الوصول السريع للأقسام الستة المعتمدة) */}
       <div>
         <h2 className={`text-xs font-bold mb-2.5 px-1 uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-          إجراءات سريعة
+          أقسام بوابة الموظف الذاتية
         </h2>
-        <div className="grid grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-3 gap-2.5">
           <button
-            onClick={() => navigate('/employee-app/leave')}
-            className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 ${
+            onClick={() => navigate('/employee-app/profile')}
+            className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 cursor-pointer ${
               isDark ? 'bg-[#131b2e] border-slate-800 text-white hover:border-teal-500/40' : 'bg-white border-slate-200 text-slate-900 shadow-xs hover:border-teal-300'
             }`}
           >
-            <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center mb-1.5">
-              <span className="material-symbols-outlined text-xl">event_available</span>
+            <div className="w-9 h-9 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center mb-1">
+              <span className="material-symbols-outlined text-lg">person</span>
             </div>
-            <span className="text-[11px] font-bold">طلب إجازة</span>
+            <span className="text-[11px] font-bold">الملف الشخصي</span>
+            <span className="text-[9px] text-slate-400">Profile</span>
           </button>
 
           <button
             onClick={() => navigate('/employee-app/attendance')}
-            className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 ${
+            className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 cursor-pointer ${
               isDark ? 'bg-[#131b2e] border-slate-800 text-white hover:border-teal-500/40' : 'bg-white border-slate-200 text-slate-900 shadow-xs hover:border-teal-300'
             }`}
           >
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center mb-1.5">
-              <span className="material-symbols-outlined text-xl">schedule</span>
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center mb-1">
+              <span className="material-symbols-outlined text-lg">schedule</span>
             </div>
             <span className="text-[11px] font-bold">سجل الدوام</span>
+            <span className="text-[9px] text-slate-400">Attendance</span>
           </button>
 
           <button
-            onClick={() => navigate('/employee-app/profile')}
-            className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 ${
+            onClick={() => navigate('/employee-app/payroll')}
+            className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 cursor-pointer ${
               isDark ? 'bg-[#131b2e] border-slate-800 text-white hover:border-teal-500/40' : 'bg-white border-slate-200 text-slate-900 shadow-xs hover:border-teal-300'
             }`}
           >
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-1.5">
-              <span className="material-symbols-outlined text-xl">payments</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-1">
+              <span className="material-symbols-outlined text-lg">payments</span>
             </div>
-            <span className="text-[11px] font-bold">كشف الراتب</span>
+            <span className="text-[11px] font-bold">الرواتب</span>
+            <span className="text-[9px] text-slate-400">Payroll</span>
           </button>
 
           <button
-            onClick={() => navigate('/employee-app/messages')}
-            className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 ${
+            onClick={() => navigate('/employee-app/leave')}
+            className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 cursor-pointer ${
               isDark ? 'bg-[#131b2e] border-slate-800 text-white hover:border-teal-500/40' : 'bg-white border-slate-200 text-slate-900 shadow-xs hover:border-teal-300'
             }`}
           >
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-1.5">
-              <span className="material-symbols-outlined text-xl">mail</span>
+            <div className="w-9 h-9 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center mb-1">
+              <span className="material-symbols-outlined text-lg">event_available</span>
             </div>
-            <span className="text-[11px] font-bold">الرسائل</span>
+            <span className="text-[11px] font-bold">الإجازات</span>
+            <span className="text-[9px] text-slate-400">Leave</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/employee-app/evaluation')}
+            className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 cursor-pointer ${
+              isDark ? 'bg-[#131b2e] border-slate-800 text-white hover:border-teal-500/40' : 'bg-white border-slate-200 text-slate-900 shadow-xs hover:border-teal-300'
+            }`}
+          >
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-1">
+              <span className="material-symbols-outlined text-lg">military_tech</span>
+            </div>
+            <span className="text-[11px] font-bold">التقييم الذاتي</span>
+            <span className="text-[9px] text-slate-400">Evaluation</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/employee-app/notifications')}
+            className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 cursor-pointer relative ${
+              isDark ? 'bg-[#131b2e] border-slate-800 text-white hover:border-teal-500/40' : 'bg-white border-slate-200 text-slate-900 shadow-xs hover:border-teal-300'
+            }`}
+          >
+            <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-1">
+              <span className="material-symbols-outlined text-lg">notifications</span>
+            </div>
+            <span className="text-[11px] font-bold">التنبيهات</span>
+            <span className="text-[9px] text-slate-400">Notifications</span>
           </button>
         </div>
       </div>

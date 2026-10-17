@@ -8,6 +8,9 @@ import { EmployeeLeaveRequests } from './components/EmployeeLeaveRequests';
 import { EmployeeAttendance } from './components/EmployeeAttendance';
 import { EmployeeProfile } from './components/EmployeeProfile';
 import { EmployeeNews } from './components/EmployeeNews';
+import { EmployeePayroll } from './components/EmployeePayroll';
+import { EmployeeEvaluation } from './components/EmployeeEvaluation';
+import { EmployeeTopTabBar } from './components/EmployeeTopTabBar';
 import { EmployeeBottomNav } from './components/EmployeeBottomNav';
 import { EmployeeContextProvider, useEmployeeContext } from './context/EmployeeContext';
 
@@ -139,6 +142,9 @@ function EmployeeAppMain() {
       <div className={`w-full max-w-md md:max-w-xl h-screen flex flex-col relative overflow-hidden shadow-none md:shadow-2xl md:rounded-3xl md:border ${
         isDark ? 'bg-[#0b1120] text-white border-slate-800' : 'bg-[#f8fafc] text-slate-900 border-slate-200'
       }`}>
+        {/* Top Tab Bar matching the 6 ESS buttons */}
+        {isAuthenticated && <EmployeeTopTabBar />}
+
         {/* Dynamic Route Content (Main Scrollable Area) */}
         <div className="flex-1 overflow-y-auto relative no-scrollbar">
           {!isAuthenticated ? (
@@ -171,6 +177,18 @@ function EmployeeAppMain() {
               } />
               <Route path="/attendance" element={
                 <EmployeeAttendance 
+                  employee={currentEmployee} 
+                  onLogout={handleLogout}
+                />
+              } />
+              <Route path="/payroll" element={
+                <EmployeePayroll 
+                  employee={currentEmployee} 
+                  onLogout={handleLogout}
+                />
+              } />
+              <Route path="/evaluation" element={
+                <EmployeeEvaluation 
                   employee={currentEmployee} 
                   onLogout={handleLogout}
                 />
