@@ -14,7 +14,7 @@ interface EmployeeDashboardProps {
 }
 
 export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, onLogout }) => {
-  const { theme, toggleTheme, unreadNotifications } = useEmployeeContext();
+  const { theme, toggleTheme, unreadNotifications, notifications } = useEmployeeContext();
   const navigate = useNavigate();
   const [currentDate] = useState(new Date());
   const [hasPunchedIn, setHasPunchedIn] = useState(true);
@@ -149,7 +149,9 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
           >
             <span className="material-symbols-outlined text-xl">notifications</span>
             {unreadNotifications > 0 && (
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>
+              <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-4 text-[10px] font-bold bg-rose-500 text-white rounded-full flex items-center justify-center animate-pulse shadow-sm">
+                {unreadNotifications}
+              </span>
             )}
           </button>
 
@@ -168,6 +170,34 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
           </button>
         </div>
       </div>
+
+      {/* Official Routed Document Priority Banner (e.g. Contract Waiting) */}
+      {notifications.filter(n => !n.read && n.documentType).map(n => (
+        <div 
+          key={n.id}
+          onClick={() => navigate('/employee-app/notifications')}
+          className="p-4 rounded-3xl bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-700 text-white shadow-xl shadow-teal-600/25 flex items-center justify-between cursor-pointer hover:scale-[1.01] transition-all border border-white/20 animate-in fade-in slide-in-from-top-2"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-white text-2xl">description</span>
+            </div>
+            <div className="min-w-0 pr-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider">
+                  مستند رسمي جديد
+                </span>
+                <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping"></span>
+              </div>
+              <p className="text-xs font-bold mt-1 truncate">{n.title}</p>
+              <p className="text-[10px] opacity-90 truncate">{n.message}</p>
+            </div>
+          </div>
+          <span className="text-xs bg-white text-teal-800 font-bold px-3 py-1.5 rounded-xl shrink-0 shadow-xs">
+            معاينة
+          </span>
+        </div>
+      ))}
 
       {/* Live Punching Card (بصمة الحضور والدوام المباشر) */}
       <div className={`p-5 rounded-3xl border transition-all relative overflow-hidden shadow-lg ${
@@ -441,41 +471,53 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
         </div>
 
         <div className="space-y-2.5">
-          <div className={`flex items-center gap-3 p-3 rounded-2xl border ${
-            isDark ? 'bg-[#0b1120] border-slate-800/80' : 'bg-slate-50 border-slate-100'
-          }`}>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-base">check_circle</span>
+          {notifications && notifications.length > 0 ? (
+            notifications.slice(0, 4).map(notif => (
+              <div
+                key={notif.id}
+                onClick={() => navigate('/employee-app/notifications')}
+                className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                  !notif.read
+                    ? (isDark ? 'bg-teal-950/40 border-teal-500/40 text-white' : 'bg-teal-50/80 border-teal-200 text-slate-900')
+                    : (isDark ? 'bg-[#0b1120] border-slate-800/80 text-slate-300' : 'bg-slate-50 border-slate-100 text-slate-700')
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                  notif.documentType === 'employment_contract' || notif.type === 'success'
+                    ? 'bg-emerald-500/15 text-emerald-500'
+                    : 'bg-teal-500/15 text-teal-500'
+                }`}>
+                  <span className="material-symbols-outlined text-base">
+                    {notif.documentType === 'employment_contract' ? 'description' : 'notifications'}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    {!notif.read && <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0"></span>}
+                    <p className="text-xs font-bold truncate">{notif.title}</p>
+                  </div>
+                  <p className={`text-[10px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {notif.message}
+                  </p>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                  {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString('ar-IQ') : ''}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className={`flex items-center gap-3 p-3 rounded-2xl border ${
+              isDark ? 'bg-[#0b1120] border-slate-800/80' : 'bg-slate-50 border-slate-100'
+            }`}>
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-base">check_circle</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold truncate">تم تسجيل بصمة الدوام بنجاح</p>
+                <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>اليوم، 08:15 صباحاً</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold truncate">تم تسجيل بصمة الدوام بنجاح</p>
-              <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>اليوم، 08:15 صباحاً</p>
-            </div>
-          </div>
-
-          <div className={`flex items-center gap-3 p-3 rounded-2xl border ${
-            isDark ? 'bg-[#0b1120] border-slate-800/80' : 'bg-slate-50 border-slate-100'
-          }`}>
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-base">mail</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold truncate">تنبيه من قسم الموارد البشرية</p>
-              <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>أمس، 10:30 صباحاً</p>
-            </div>
-          </div>
-
-          <div className={`flex items-center gap-3 p-3 rounded-2xl border ${
-            isDark ? 'bg-[#0b1120] border-slate-800/80' : 'bg-slate-50 border-slate-100'
-          }`}>
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-base">event_available</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold truncate">تم الموافقة على طلب الإجازة السنوية</p>
-              <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>منذ يومين</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -14,7 +14,7 @@ import { EmployeeContextProvider, useEmployeeContext } from './context/EmployeeC
 function EmployeeAppMain() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<any>(null);
-  const { theme } = useEmployeeContext();
+  const { theme, setEmployee } = useEmployeeContext();
   const [isPhoneMockup, setIsPhoneMockup] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
 
@@ -37,38 +37,57 @@ function EmployeeAppMain() {
         let emp = authData.employee;
         if (emp && emp.badgeNo) {
           const bNo = String(emp.badgeNo).trim();
-          const badgeMap: Record<string, { ar: string; en: string }> = {
-            '1001': { ar: 'أحمد محمد علي', en: 'Ahmed Mohammed Ali' },
-            '1002': { ar: 'فاطمة حسين خليل', en: 'Fatima Hussein Khalil' },
-            '1003': { ar: 'علي جاسم كريم', en: 'Ali Jassim Kareem' },
-            '1004': { ar: 'مصطفى حسن كاظم', en: 'Mustafa Hassan Kadhim' },
-            '1005': { ar: 'زينب عبد الجبار', en: 'Zainab Abdul-Jabbar' },
-            '1006': { ar: 'حيدر جاسم الفتلاوي', en: 'Haidar Jassim' },
-            '1007': { ar: 'مريم عادل طارق', en: 'Maryam Adel' },
-            '1008': { ar: 'عمر فاروق عبد الله', en: 'Omar Farooq' },
-          };
-          if (badgeMap[bNo]) {
-            emp.fullName = badgeMap[bNo].ar;
-            emp.fullNameEn = badgeMap[bNo].en;
-          }
-          // Overwrite stale local storage with correct badge data
-          localStorage.setItem('employee_auth', JSON.stringify({
-            employee: emp,
-            timestamp: new Date().toISOString()
-          }));
+          
+          // Rehydrate with real employee data from backend if needed
+          fetch('/api/employees')
+            .then(res => res.json())
+            .then(allEmps => {
+              if (Array.isArray(allEmps)) {
+                const found = allEmps.find(e => 
+                  String(e.badge_no || '').toLowerCase() === bNo.toLowerCase() ||
+                  String(e.employee_id || '').toLowerCase() === bNo.toLowerCase() ||
+                  String(e.id) === bNo
+                );
+                if (found) {
+                  const liveEmp = {
+                    ...emp,
+                    id: String(found.id),
+                    badgeNo: found.badge_no,
+                    employeeId: found.employee_id,
+                    fullName: found.full_name_ar,
+                    fullNameEn: found.full_name_en,
+                    department: found.department,
+                    position: found.position_ar || found.position,
+                    branch: found.branch || found.location_ar,
+                    salary: found.basic_salary || found.salary
+                  };
+                  setCurrentEmployee(liveEmp);
+                  setEmployee(liveEmp);
+                  localStorage.setItem('employee_auth', JSON.stringify({
+                    employee: liveEmp,
+                    timestamp: new Date().toISOString()
+                  }));
+                  return;
+                }
+              }
+            })
+            .catch(() => {});
+
+          setIsAuthenticated(true);
+          setCurrentEmployee(emp);
+          setEmployee(emp);
         }
-        setIsAuthenticated(true);
-        setCurrentEmployee(emp);
       } catch (error) {
         console.error('Error parsing saved auth:', error);
         localStorage.removeItem('employee_auth');
       }
     }
-  }, []);
+  }, [setEmployee]);
 
   const handleLogin = (employeeData: any) => {
     setIsAuthenticated(true);
     setCurrentEmployee(employeeData);
+    setEmployee(employeeData);
     localStorage.setItem('employee_auth', JSON.stringify({
       employee: employeeData,
       timestamp: new Date().toISOString()
@@ -78,6 +97,7 @@ function EmployeeAppMain() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentEmployee(null);
+    setEmployee(null);
     localStorage.removeItem('employee_auth');
   };
 

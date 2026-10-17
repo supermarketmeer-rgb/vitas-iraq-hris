@@ -95,47 +95,91 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
         return;
       }
 
-      const allEmployees = [...mockEmployees];
-      const matched = allEmployees.find((emp: any) => {
-        const bNo = String(emp.badgeNo || '').trim().toLowerCase();
-        const eId = String(emp.employeeId || '').trim().toLowerCase();
-        return bNo === cleanInput || eId === cleanInput;
-      });
+      let loggedInUser: any = null;
 
-      const badgeNameMap: Record<string, { ar: string; en: string }> = {
-        '1001': { ar: 'أحمد محمد علي', en: 'Ahmed Mohammed Ali' },
-        '1002': { ar: 'فاطمة حسين خليل', en: 'Fatima Hussein Khalil' },
-        '1003': { ar: 'علي جاسم كريم', en: 'Ali Jassim Kareem' },
-        '1004': { ar: 'مصطفى حسن كاظم', en: 'Mustafa Hassan Kadhim' },
-        '1005': { ar: 'زينب عبد الجبار', en: 'Zainab Abdul-Jabbar' },
-        '1006': { ar: 'حيدر جاسم الفتلاوي', en: 'Haidar Jassim' },
-        '1007': { ar: 'مريم عادل طارق', en: 'Maryam Adel' },
-        '1008': { ar: 'عمر فاروق عبد الله', en: 'Omar Farooq' },
-      };
+      try {
+        const res = await fetch('/api/employees');
+        if (res.ok) {
+          const liveEmployees = await res.json();
+          if (Array.isArray(liveEmployees)) {
+            const found = liveEmployees.find((emp: any) => {
+              const bNo = String(emp.badge_no || emp.badgeNo || '').trim().toLowerCase();
+              const eId = String(emp.employee_id || emp.employeeId || '').trim().toLowerCase();
+              const idStr = String(emp.id || '').trim();
+              const nameAr = String(emp.full_name_ar || '').trim().toLowerCase();
+              return bNo === cleanInput || eId === cleanInput || idStr === cleanInput || (cleanInput.length > 3 && nameAr.includes(cleanInput));
+            });
 
-      const bKey = badgeNumber.trim();
-      const defaultName = badgeNameMap[bKey] || { ar: 'أحمد محمد علي', en: 'Ahmed Mohammed Ali' };
+            if (found) {
+              loggedInUser = {
+                id: String(found.id),
+                badgeNo: found.badge_no || cleanInput.toUpperCase(),
+                employeeId: found.employee_id || `VTS-${cleanInput.toUpperCase()}`,
+                fullName: found.full_name_ar || found.full_name_en,
+                fullNameEn: found.full_name_en || found.full_name_ar,
+                email: found.org_email || found.email || `${cleanInputAlpha}@vitasiraq.com`,
+                phone: found.phone || found.mobile || '07700000000',
+                department: found.department || 'قسم العمليات والائتمان',
+                departmentEn: found.department_en || 'Operations & Credit',
+                position: found.position_ar || found.position || 'موظف',
+                positionEn: found.position_en || 'Employee',
+                branch: found.branch || found.location_ar || 'بغداد',
+                joinDate: found.contract_start_date || found.original_start_date || '2022-01-01',
+                salary: found.basic_salary || found.salary || 1200000,
+                avatar: found.photo_url || found.avatar || '',
+                role: 'Employee'
+              };
+            }
+          }
+        }
+      } catch (fetchErr) {
+        console.warn('Could not fetch live employees from API, falling back to local directory:', fetchErr);
+      }
 
-      const loggedInUser = matched ? {
-        ...matched
-      } : {
-        id: 'EMP-TEMP',
-        badgeNo: badgeNumber.trim(),
-        employeeId: `VTS-${cleanInput.toUpperCase()}`,
-        fullName: defaultName.ar,
-        fullNameEn: defaultName.en,
-        email: `${cleanInputAlpha}@vitasiraq.com`,
-        phone: '07700000000',
-        department: 'قسم العمليات والائتمان',
-        departmentEn: 'Operations & Credit',
-        position: 'مسؤول ائتمان',
-        positionEn: 'Credit Officer',
-        branch: 'بغداد',
-        joinDate: '2022-01-01',
-        salary: 1200000,
-        avatar: '',
-        role: 'Employee'
-      };
+      if (!loggedInUser) {
+        const allEmployees = [...mockEmployees];
+        const matched = allEmployees.find((emp: any) => {
+          const bNo = String(emp.badgeNo || '').trim().toLowerCase();
+          const eId = String(emp.employeeId || '').trim().toLowerCase();
+          return bNo === cleanInput || eId === cleanInput;
+        });
+
+        const badgeNameMap: Record<string, { ar: string; en: string }> = {
+          '1001': { ar: 'أحمد محمد علي', en: 'Ahmed Mohammed Ali' },
+          '1002': { ar: 'فاطمة حسين خليل', en: 'Fatima Hussein Khalil' },
+          '1003': { ar: 'علي جاسم كريم', en: 'Ali Jassim Kareem' },
+          '1004': { ar: 'مصطفى حسن كاظم', en: 'Mustafa Hassan Kadhim' },
+          '1005': { ar: 'زينب عبد الجبار', en: 'Zainab Abdul-Jabbar' },
+          '1006': { ar: 'حيدر جاسم الفتلاوي', en: 'Haidar Jassim' },
+          '1007': { ar: 'مريم عادل طارق', en: 'Maryam Adel' },
+          '1008': { ar: 'عمر فاروق عبد الله', en: 'Omar Farooq' },
+          'V167': { ar: 'دينا حيدر قاسم', en: 'Dina Haider Qasim' }
+        };
+
+        const bKey = badgeNumber.trim().toUpperCase();
+        const defaultName = badgeNameMap[bKey] || { ar: 'موظف فيتاس', en: 'VITAS Employee' };
+
+        loggedInUser = matched ? {
+          ...matched
+        } : {
+          id: bKey === 'V167' ? '85' : 'EMP-TEMP',
+          badgeNo: badgeNumber.trim(),
+          employeeId: `VTS-${cleanInput.toUpperCase()}`,
+          fullName: defaultName.ar,
+          fullNameEn: defaultName.en,
+          email: `${cleanInputAlpha}@vitasiraq.com`,
+          phone: '07700000000',
+          department: 'قسم العمليات والائتمان',
+          departmentEn: 'Operations & Credit',
+          position: 'مسؤول ائتمان',
+          positionEn: 'Credit Officer',
+          branch: 'بغداد',
+          joinDate: '2022-01-01',
+          salary: 1200000,
+          avatar: '',
+          role: 'Employee'
+        };
+      }
 
       onLogin(loggedInUser);
       navigate('/employee-app/');

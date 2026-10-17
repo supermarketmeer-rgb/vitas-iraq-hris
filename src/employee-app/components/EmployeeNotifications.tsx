@@ -195,7 +195,8 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
     ]
   }));
 
-  const allNotifications = [...routedNotificationsFormatted, ...mockNotifications, ...notifications];
+  const combinedList = [...(routedNotificationsFormatted.length > 0 ? routedNotificationsFormatted : notifications), ...mockNotifications];
+  const allNotifications = Array.from(new Map(combinedList.map(n => [n.id, n])).values());
 
   const filteredNotifications = allNotifications.filter(notification => {
     if (filter === 'unread') return !notification.read;
@@ -205,16 +206,8 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
 
   const handlePreviewAttachment = (att: any, notif: any) => {
     if (att.deliveryId) {
-      fetch(`/api/routing/documents/${att.deliveryId}/access`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeId: employee?.id || employee?.badgeNo || '1001',
-          action: 'view'
-        })
-      }).then(() => {
-        setRoutedDeliveries(prev => prev.map(d => d.id === att.deliveryId ? { ...d, app_status: 'read' } : d));
-      }).catch(() => {});
+      markNotificationAsRead(att.deliveryId);
+      setRoutedDeliveries(prev => prev.map(d => d.id === att.deliveryId ? { ...d, app_status: 'read' } : d));
     }
     setPreviewAttachment({ ...att, notifTitle: notif.title });
   };
