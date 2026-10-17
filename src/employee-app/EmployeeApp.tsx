@@ -11,7 +11,6 @@ import { EmployeeNews } from './components/EmployeeNews';
 import { EmployeePayroll } from './components/EmployeePayroll';
 import { EmployeeEvaluation } from './components/EmployeeEvaluation';
 import { EmployeeTopTabBar } from './components/EmployeeTopTabBar';
-import { EmployeeBottomNav } from './components/EmployeeBottomNav';
 import { EmployeeContextProvider, useEmployeeContext } from './context/EmployeeContext';
 
 function EmployeeAppMain() {
@@ -156,8 +155,8 @@ function EmployeeAppMain() {
         : 'bg-[#f8fafc] text-slate-900'
     }`}>
       {/* Main App Container */}
-      <div className={`w-full max-w-md md:max-w-xl h-screen flex flex-col relative overflow-hidden shadow-none md:shadow-2xl md:rounded-3xl md:border ${isDark ? 'employee-app-dark' : 'employee-app-light'} ${
-        isDark ? 'bg-[#0b1120] text-white border-slate-800' : 'bg-[#f8fafc] text-slate-900 border-slate-200'
+      <div className={`w-full max-w-md md:max-w-xl h-screen flex flex-col relative overflow-hidden shadow-none md:shadow-2xl md:rounded-3xl md:border-2 ${isDark ? 'employee-app-dark' : 'employee-app-light'} ${
+        isDark ? 'bg-[#0b1120] text-white border-slate-700/80' : 'bg-[#f8fafc] text-slate-900 border-slate-300'
       }`}>
         {/* Top Tab Bar matching the 6 ESS buttons */}
         {isAuthenticated && <EmployeeTopTabBar />}
@@ -226,13 +225,6 @@ function EmployeeAppMain() {
             </Routes>
           )}
         </div>
-
-        {/* Mobile Bottom Navigation (Fixed at Bottom) */}
-        {isAuthenticated && (
-          <div className="shrink-0 z-50 w-full relative">
-            <EmployeeBottomNav />
-          </div>
-        )}
       </div>
     </div>
   );

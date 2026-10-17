@@ -1236,21 +1236,58 @@ html.dark textarea:not(.employee-app-light *):not(.employee-app-light) {
 .employee-app-light [class*="bg-white"]:not([class*="bg-white/10"]):not([class*="bg-white/20"]):not([class*="bg-white/5"]):not(button.bg-teal-600):not(button.bg-emerald-600):not(button.bg-emerald-500):not(button.bg-amber-500):not(button.bg-rose-500) {
   background-color: #ffffff !important;
   color: #0f172a !important;
-  border-color: #e2e8f0 !important;
+  border-width: 1.5px !important;
+  border-color: #cbd5e1 !important;
 }
 
 .employee-app-light .bg-slate-100,
 .employee-app-light [class*="bg-slate-100"] {
   background-color: #f1f5f9 !important;
   color: #334155 !important;
-  border-color: #e2e8f0 !important;
+  border-width: 1.5px !important;
+  border-color: #cbd5e1 !important;
 }
 
 .employee-app-light .bg-slate-50,
 .employee-app-light [class*="bg-slate-50"] {
   background-color: #f8fafc !important;
   color: #0f172a !important;
-  border-color: #e2e8f0 !important;
+  border-width: 1.5px !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Card and window borders (اعرض بدرجة لتظهر بشكل طبيعي 1.5px) */
+.employee-app-light div[class*="rounded-3xl"]:not([class*="border-b"]):not([class*="border-t"]),
+.employee-app-light div[class*="rounded-2xl"]:not([class*="border-b"]):not([class*="border-t"]),
+.employee-app-light div[class*="rounded-xl"]:not([class*="border-b"]):not([class*="border-t"]),
+.employee-app-light button[class*="rounded-2xl"][class*="border"],
+.employee-app-light div[class*="rounded-3xl"] > div[class*="border"],
+.employee-app-light div[class*="rounded-2xl"] > div[class*="border"] {
+  border-width: 1.5px !important;
+  border-color: #cbd5e1 !important;
+}
+
+.employee-app-dark div[class*="rounded-3xl"]:not([class*="border-b"]):not([class*="border-t"]),
+.employee-app-dark div[class*="rounded-2xl"]:not([class*="border-b"]):not([class*="border-t"]),
+.employee-app-dark div[class*="rounded-xl"]:not([class*="border-b"]):not([class*="border-t"]),
+.employee-app-dark button[class*="rounded-2xl"][class*="border"],
+.employee-app-dark div[class*="rounded-3xl"] > div[class*="border"],
+.employee-app-dark div[class*="rounded-2xl"] > div[class*="border"] {
+  border-width: 1.5px !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Modal windows & Dialogs */
+.employee-app-light [role="dialog"],
+.employee-app-light [class*="modal"] {
+  border-width: 2px !important;
+  border-color: #cbd5e1 !important;
+}
+
+.employee-app-dark [role="dialog"],
+.employee-app-dark [class*="modal"] {
+  border-width: 2px !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
 }
 
 .employee-app-light input:not([type="checkbox"]):not([type="radio"]),
@@ -1258,6 +1295,7 @@ html.dark textarea:not(.employee-app-light *):not(.employee-app-light) {
 .employee-app-light textarea {
   background-color: #ffffff !important;
   color: #0f172a !important;
+  border-width: 1.5px !important;
   border-color: #cbd5e1 !important;
 }
 
