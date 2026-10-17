@@ -3,14 +3,10 @@ import { useEmployeeContext } from '../context/EmployeeContext';
 import { 
   CreditCard, 
   Download, 
-  Printer, 
   ArrowUpRight, 
   ArrowDownRight, 
   CheckCircle2, 
-  Calendar, 
-  DollarSign,
-  Building,
-  ShieldCheck
+  Building
 } from 'lucide-react';
 
 interface EmployeePayrollProps {
@@ -19,8 +15,9 @@ interface EmployeePayrollProps {
 }
 
 export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) => {
-  const { theme } = useEmployeeContext();
+  const { theme, language } = useEmployeeContext();
   const isDark = theme === 'dark';
+  const isEn = language === 'en';
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(0);
   const [downloadSuccessToast, setDownloadSuccessToast] = useState<string | null>(null);
@@ -40,8 +37,10 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
 
   const payslipHistory = [
     {
-      month: 'آب (أغسطس) 2026',
-      shortMonth: 'آب 2026',
+      monthAr: 'آب (أغسطس) 2026',
+      monthEn: 'August 2026',
+      shortMonthAr: 'آب 2026',
+      shortMonthEn: 'Aug 2026',
       date: '2026-08-27',
       status: 'paid',
       gross: grossSalary,
@@ -55,11 +54,14 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
       tax: taxDeduction,
       insurance: insuranceDeduction,
       totalDeductions: totalDeductions,
-      bank: 'المصرف العراقي للتجارة (TBI)'
+      bankAr: 'المصرف العراقي للتجارة (TBI)',
+      bankEn: 'Trade Bank of Iraq (TBI)'
     },
     {
-      month: 'تموز (يوليو) 2026',
-      shortMonth: 'تموز 2026',
+      monthAr: 'تموز (يوليو) 2026',
+      monthEn: 'July 2026',
+      shortMonthAr: 'تموز 2026',
+      shortMonthEn: 'Jul 2026',
       date: '2026-07-27',
       status: 'paid',
       gross: grossSalary - 20000,
@@ -73,11 +75,14 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
       tax: taxDeduction,
       insurance: insuranceDeduction,
       totalDeductions: totalDeductions,
-      bank: 'المصرف العراقي للتجارة (TBI)'
+      bankAr: 'المصرف العراقي للتجارة (TBI)',
+      bankEn: 'Trade Bank of Iraq (TBI)'
     },
     {
-      month: 'حزيران (يونيو) 2026',
-      shortMonth: 'حزيران 2026',
+      monthAr: 'حزيران (يونيو) 2026',
+      monthEn: 'June 2026',
+      shortMonthAr: 'حزيران 2026',
+      shortMonthEn: 'Jun 2026',
       date: '2026-06-27',
       status: 'paid',
       gross: grossSalary,
@@ -91,26 +96,32 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
       tax: taxDeduction,
       insurance: insuranceDeduction,
       totalDeductions: totalDeductions,
-      bank: 'المصرف العراقي للتجارة (TBI)'
+      bankAr: 'المصرف العراقي للتجارة (TBI)',
+      bankEn: 'Trade Bank of Iraq (TBI)'
     }
   ];
 
   const activeSlip = payslipHistory[selectedMonthIndex];
+  const activeMonth = isEn ? activeSlip.monthEn : activeSlip.monthAr;
+  const activeShortMonth = isEn ? activeSlip.shortMonthEn : activeSlip.shortMonthAr;
+  const activeBank = isEn ? activeSlip.bankEn : activeSlip.bankAr;
+  const currencyLabel = isEn ? 'IQD' : 'د.ع';
 
   const handleDownloadSlip = () => {
-    const content = `=== VITAS IRAQ OFFICIAL PAYSLIP ===\nEmployee: ${employee?.fullName || 'دينا حيدر قاسم'}\nBadge: ${employee?.badgeNo || 'V167'}\nMonth: ${activeSlip.month}\nBasic Salary: ${activeSlip.basic.toLocaleString()} IQD\nGross Salary: ${activeSlip.gross.toLocaleString()} IQD\nDeductions: ${activeSlip.totalDeductions.toLocaleString()} IQD\nNet Disbursed: ${activeSlip.net.toLocaleString()} IQD\nBank: ${activeSlip.bank}\nDate: ${activeSlip.date}\nStatus: Officially Verified & Disbursed`;
+    const empName = isEn ? (employee?.fullNameEn || 'Dina Haider Qasim') : (employee?.fullName || 'دينا حيدر قاسم');
+    const content = `=== VITAS IRAQ OFFICIAL PAYSLIP ===\nEmployee: ${empName}\nBadge: ${employee?.badgeNo || 'V167'}\nMonth: ${activeMonth}\nBasic Salary: ${activeSlip.basic.toLocaleString()} IQD\nGross Salary: ${activeSlip.gross.toLocaleString()} IQD\nDeductions: ${activeSlip.totalDeductions.toLocaleString()} IQD\nNet Disbursed: ${activeSlip.net.toLocaleString()} IQD\nBank: ${activeBank}\nDate: ${activeSlip.date}\nStatus: Verified & Disbursed`;
     
     const blob = new Blob([content], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `قسيمة_راتب_${employee?.badgeNo || 'V167'}_${activeSlip.shortMonth}.pdf`;
+    a.download = isEn ? `Payslip_${employee?.badgeNo || 'V167'}_${activeShortMonth}.pdf` : `قسيمة_راتب_${employee?.badgeNo || 'V167'}_${activeShortMonth}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    setDownloadSuccessToast(`تم تحميل قسيمة راتب ${activeSlip.shortMonth} بنجاح`);
+    setDownloadSuccessToast(isEn ? `Payslip for ${activeShortMonth} downloaded successfully` : `تم تحميل قسيمة راتب ${activeShortMonth} بنجاح`);
     setTimeout(() => setDownloadSuccessToast(null), 3500);
   };
 
@@ -124,10 +135,10 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
           </div>
           <div>
             <h1 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              الرواتب والمستحقات المالية
+              {isEn ? 'Payroll & Financial Compensation' : 'الرواتب والمستحقات المالية'}
             </h1>
             <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              كشوفات الرواتب الشهرية والبدلات والاستقطاعات الرسمية
+              {isEn ? 'Monthly salary slips, allowances, and official deductions' : 'كشوفات الرواتب الشهرية والبدلات والاستقطاعات الرسمية'}
             </p>
           </div>
         </div>
@@ -137,7 +148,7 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
           className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 shrink-0"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>تحميل (PDF)</span>
+          <span>{isEn ? 'Download (PDF)' : 'تحميل (PDF)'}</span>
         </button>
       </div>
 
@@ -160,7 +171,7 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
                 : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            {slip.shortMonth}
+            {isEn ? slip.shortMonthEn : slip.shortMonthAr}
           </button>
         ))}
       </div>
@@ -172,28 +183,32 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
         <div className="relative z-10 space-y-3">
           <div className="flex items-center justify-between">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              مدفوع ومحوّل للحساب
+              {isEn ? 'Paid & Transferred to Account' : 'مدفوع ومحوّل للحساب'}
             </span>
             <span className="text-[11px] font-mono text-emerald-200">
-              {activeSlip.month}
+              {activeMonth}
             </span>
           </div>
 
           <div>
-            <p className="text-xs text-slate-300">صافي الراتب المستحق</p>
+            <p className="text-xs text-slate-300">
+              {isEn ? 'Net Salary Payable' : 'صافي الراتب المستحق'}
+            </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-3xl font-black font-mono tracking-tight text-emerald-300">
                 {activeSlip.net.toLocaleString('en-US')}
               </span>
-              <span className="text-xs font-bold text-slate-200">دينار عراقي</span>
+              <span className="text-xs font-bold text-slate-200">
+                {isEn ? 'IQD' : 'دينار عراقي'}
+              </span>
             </div>
           </div>
 
           <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-300">
-            <span>تاريخ الإيداع: {activeSlip.date}</span>
+            <span>{isEn ? `Disbursement Date: ${activeSlip.date}` : `تاريخ الإيداع: ${activeSlip.date}`}</span>
             <span className="flex items-center gap-1 text-emerald-300">
               <Building className="w-3 h-3" />
-              <span>{activeSlip.bank}</span>
+              <span>{activeBank}</span>
             </span>
           </div>
         </div>
@@ -206,33 +221,35 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
         <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-1.5">
             <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-            <h3 className="text-xs font-bold">المستحقات والبدلات الإجمالية</h3>
+            <h3 className="text-xs font-bold">
+              {isEn ? 'Gross Earnings & Allowances' : 'المستحقات والبدلات الإجمالية'}
+            </h3>
           </div>
           <span className="text-xs font-mono font-bold text-emerald-500">
-            +{activeSlip.gross.toLocaleString('en-US')} د.ع
+            +{activeSlip.gross.toLocaleString('en-US')} {currencyLabel}
           </span>
         </div>
 
         <div className="space-y-2 text-xs">
           <div className="flex justify-between items-center text-slate-400">
-            <span>الراتب الأساسي</span>
-            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.basic.toLocaleString()} د.ع</span>
+            <span>{isEn ? 'Basic Salary' : 'الراتب الأساسي'}</span>
+            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.basic.toLocaleString()} {currencyLabel}</span>
           </div>
           <div className="flex justify-between items-center text-slate-400">
-            <span>بدل النقل والمظهر</span>
-            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.transport.toLocaleString()} د.ع</span>
+            <span>{isEn ? 'Transportation & Presentation Allowance' : 'بدل النقل والمظهر'}</span>
+            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.transport.toLocaleString()} {currencyLabel}</span>
           </div>
           <div className="flex justify-between items-center text-slate-400">
-            <span>بدل الشهادة الأكاديمية</span>
-            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.cert.toLocaleString()} د.ع</span>
+            <span>{isEn ? 'Academic Degree Allowance' : 'بدل الشهادة الأكاديمية'}</span>
+            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.cert.toLocaleString()} {currencyLabel}</span>
           </div>
           <div className="flex justify-between items-center text-slate-400">
-            <span>بدل الهاتف والاتصالات</span>
-            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.phone.toLocaleString()} د.ع</span>
+            <span>{isEn ? 'Phone & Communications Allowance' : 'بدل الهاتف والاتصالات'}</span>
+            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.phone.toLocaleString()} {currencyLabel}</span>
           </div>
           <div className="flex justify-between items-center text-slate-400">
-            <span>حافز الإنتاجية والأداء</span>
-            <span className="font-mono font-bold text-emerald-400">+{activeSlip.bonus.toLocaleString()} د.ع</span>
+            <span>{isEn ? 'Performance & Productivity Incentive' : 'حافز الإنتاجية والأداء'}</span>
+            <span className="font-mono font-bold text-emerald-400">+{activeSlip.bonus.toLocaleString()} {currencyLabel}</span>
           </div>
         </div>
       </div>
@@ -244,25 +261,27 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
         <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-1.5">
             <ArrowDownRight className="w-4 h-4 text-rose-500" />
-            <h3 className="text-xs font-bold">الاستقطاعات والتأمينات</h3>
+            <h3 className="text-xs font-bold">
+              {isEn ? 'Deductions & Insurances' : 'الاستقطاعات والتأمينات'}
+            </h3>
           </div>
           <span className="text-xs font-mono font-bold text-rose-500">
-            -{activeSlip.totalDeductions.toLocaleString('en-US')} د.ع
+            -{activeSlip.totalDeductions.toLocaleString('en-US')} {currencyLabel}
           </span>
         </div>
 
         <div className="space-y-2 text-xs">
           <div className="flex justify-between items-center text-slate-400">
-            <span>استقطاع التقاعد والضمان الاجتماعي (5%)</span>
-            <span className="font-mono font-bold text-rose-400">-{activeSlip.socialSecurity.toLocaleString()} د.ع</span>
+            <span>{isEn ? 'Social Security & Pension (5%)' : 'استقطاع التقاعد والضمان الاجتماعي (5%)'}</span>
+            <span className="font-mono font-bold text-rose-400">-{activeSlip.socialSecurity.toLocaleString()} {currencyLabel}</span>
           </div>
           <div className="flex justify-between items-center text-slate-400">
-            <span>ضريبة الدخل المستقطعة</span>
-            <span className="font-mono font-bold text-rose-400">-{activeSlip.tax.toLocaleString()} د.ع</span>
+            <span>{isEn ? 'Withholding Income Tax' : 'ضريبة الدخل المستقطعة'}</span>
+            <span className="font-mono font-bold text-rose-400">-{activeSlip.tax.toLocaleString()} {currencyLabel}</span>
           </div>
           <div className="flex justify-between items-center text-slate-400">
-            <span>التأمين الصحي الشامل</span>
-            <span className="font-mono font-bold text-rose-400">-{activeSlip.insurance.toLocaleString()} د.ع</span>
+            <span>{isEn ? 'Comprehensive Medical Insurance' : 'التأمين الصحي الشامل'}</span>
+            <span className="font-mono font-bold text-rose-400">-{activeSlip.insurance.toLocaleString()} {currencyLabel}</span>
           </div>
         </div>
       </div>

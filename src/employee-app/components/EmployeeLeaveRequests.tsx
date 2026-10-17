@@ -7,8 +7,9 @@ interface EmployeeLeaveRequestsProps {
 }
 
 export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ employee, onLogout }) => {
-  const { theme } = useEmployeeContext();
+  const { theme, language } = useEmployeeContext();
   const isDark = theme === 'dark';
+  const isEn = language === 'en';
 
   const [showForm, setShowForm] = useState(false);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
@@ -30,9 +31,15 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
   const todayDate = new Date().toISOString().split('T')[0];
 
   // Employee details
-  const empName = employee?.fullName || employee?.name || 'وليد خالد اسماعيل البياتي';
-  const empTitle = employee?.jobTitle || employee?.position || 'حارس وصيانة';
-  const empDept = employee?.department || 'قسم الائتمان';
+  const empName = isEn 
+    ? (employee?.fullNameEn || 'Dina Haider Qasim') 
+    : (employee?.fullName || employee?.name || 'دينا حيدر قاسم');
+  const empTitle = isEn 
+    ? 'Receptionist' 
+    : (employee?.jobTitle || employee?.position || 'موظف استقبال');
+  const empDept = isEn 
+    ? 'Credit Department' 
+    : (employee?.department || 'قسم الائتمان');
 
   // Attendance Today State
   const [attendanceToday, setAttendanceToday] = useState({
@@ -40,7 +47,7 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
     scheduled_end: '16:00',
     check_in: '07:55',
     check_out: '16:15',
-    worked_hours: '8.35 hrs'
+    worked_hours: isEn ? '8.35 hrs' : '8.35 ساعة'
   });
 
   // Leave Balances
@@ -101,11 +108,43 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
     reason: ''
   });
 
+  const getLeaveTypeName = (type: string) => {
+    if (!isEn) {
+      if (type === 'Annual Leave') return 'إجازة سنوية';
+      if (type === 'Sick Leave') return 'إجازة مرضية';
+      if (type === 'Emergency Leave') return 'إجازة طارئة';
+      if (type === 'Unpaid Leave') return 'إجازة بدون راتب';
+      return type;
+    }
+    if (type === 'إجازة سنوية' || type === 'إجازة اعتيادية') return 'Annual Leave';
+    if (type === 'إجازة مرضية') return 'Sick Leave';
+    if (type === 'إجازة طارئة') return 'Emergency Leave';
+    if (type === 'إجازة بدون راتب') return 'Unpaid Leave';
+    return type;
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'approved') return isEn ? 'Approved' : 'مقبول';
+    if (status === 'pending') return isEn ? 'Pending' : 'قيد الانتظار';
+    return isEn ? 'Rejected' : 'مرفوض';
+  };
+
+  const getReasonLabel = (reason: string) => {
+    if (!isEn) return reason;
+    if (reason.includes('عطلة عائلية')) return 'Scheduled family vacation';
+    if (reason.includes('علاج طارئ')) return 'Emergency medical checkup';
+    if (reason.includes('عطلة سنوية')) return 'Annual regular leave';
+    return reason;
+  };
+
   const handleSyncNow = () => {
     setIsSyncing(true);
     setTimeout(() => {
       setIsSyncing(false);
-      setToastMessage('تمت مزامنة سجلات الحضور بنجاح مع أجهزة البصمة');
+      setToastMessage(isEn 
+        ? 'Attendance logs successfully synced with biometric devices' 
+        : 'تمت مزامنة سجلات الحضور بنجاح مع أجهزة البصمة'
+      );
       setTimeout(() => setToastMessage(null), 3000);
     }, 1000);
   };
@@ -154,7 +193,10 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
 
     setShowForm(false);
     setNewRequest({ leaveType: 'إجازة سنوية', startDate: '', endDate: '', reason: '' });
-    setToastMessage(`تم تقديم طلب الإجازة (${days} أيام) بنجاح`);
+    setToastMessage(isEn 
+      ? `Leave request (${days} days) submitted successfully` 
+      : `تم تقديم طلب الإجازة (${days} أيام) بنجاح`
+    );
     setTimeout(() => setToastMessage(null), 3500);
   };
 
@@ -166,7 +208,10 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
       check_out: correctionForm.requestedOut || prev.check_out
     }));
     setShowCorrectionModal(false);
-    setToastMessage('تم تقديم طلب تصحيح البصمة بنجاح');
+    setToastMessage(isEn 
+      ? 'Punch correction request submitted successfully' 
+      : 'تم تقديم طلب تصحيح البصمة بنجاح'
+    );
     setTimeout(() => setToastMessage(null), 3500);
   };
 
@@ -191,7 +236,7 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
           <div>
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-[10px] font-mono text-teal-700 dark:text-teal-400 uppercase tracking-widest font-bold bg-teal-50 dark:bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-500/20">
-                VITAS IRAQ HRIS • LEAVES & ATTENDANCE
+                {isEn ? 'VITAS IRAQ HRIS • LEAVES & ATTENDANCE' : 'نظام فيتاس العراق للموارد البشرية • الإجازات والدوام'}
               </span>
               <span className="text-xs text-slate-400">•</span>
               <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-semibold">
@@ -199,7 +244,7 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               </span>
             </div>
             <h1 className={`text-xl sm:text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              مرحباً، {empName}
+              {isEn ? `Welcome, ${empName}` : `مرحباً، ${empName}`}
             </h1>
             <p className={`text-xs font-medium mt-0.5 flex items-center gap-2 ${
               isDark ? 'text-slate-300' : 'text-slate-600'
@@ -225,7 +270,7 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
             className="px-3.5 py-2 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-1.5 border border-teal-400/40 cursor-pointer active:scale-95"
           >
             <span className="material-symbols-outlined text-sm">edit_calendar</span>
-            <span>تقديم طلب إجازة</span>
+            <span>{isEn ? 'Apply for Leave' : 'تقديم طلب إجازة'}</span>
           </button>
 
           <button
@@ -238,7 +283,7 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
             }`}
           >
             <span className={`material-symbols-outlined text-sm text-teal-600 dark:text-teal-400 ${isSyncing ? 'animate-spin' : ''}`}>sync</span>
-            <span>{isSyncing ? 'مزامنة...' : 'تحديث الحضور'}</span>
+            <span>{isSyncing ? (isEn ? 'Syncing...' : 'مزامنة...') : (isEn ? 'Update Logs' : 'تحديث الحضور')}</span>
           </button>
         </div>
       </div>
@@ -248,7 +293,9 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
         {/* Present */}
         <div className={`p-3.5 rounded-2xl border shadow-xs ${isDark ? 'bg-[#121b2d] border-[#1f2d4a]' : 'bg-white border-slate-200'}`}>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>حاضر</span>
+            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              {isEn ? 'Present' : 'حاضر'}
+            </span>
             <div className="p-1 rounded-lg bg-emerald-500/10 text-emerald-500">
               <span className="material-symbols-outlined text-sm">person_check</span>
             </div>
@@ -256,68 +303,88 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
           <div className="text-2xl font-black text-emerald-500">20</div>
           <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>41% نسبة الحضور</span>
+            <span>{isEn ? '41% Attendance Rate' : '41% نسبة الحضور'}</span>
           </div>
         </div>
 
         {/* Late */}
         <div className={`p-3.5 rounded-2xl border shadow-xs ${isDark ? 'bg-[#121b2d] border-[#1f2d4a]' : 'bg-white border-slate-200'}`}>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>متأخر</span>
+            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              {isEn ? 'Late' : 'متأخر'}
+            </span>
             <div className="p-1 rounded-lg bg-amber-500/10 text-amber-500">
               <span className="material-symbols-outlined text-sm">schedule</span>
             </div>
           </div>
           <div className="text-2xl font-black text-amber-500">10</div>
-          <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">تأخير صباحي</div>
+          <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+            {isEn ? 'Morning delays' : 'تأخير صباحي'}
+          </div>
         </div>
 
         {/* On Leave */}
         <div className={`p-3.5 rounded-2xl border shadow-xs ${isDark ? 'bg-[#121b2d] border-[#1f2d4a]' : 'bg-white border-slate-200'}`}>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>في إجازة</span>
+            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              {isEn ? 'On Leave' : 'في إجازة'}
+            </span>
             <div className="p-1 rounded-lg bg-blue-500/10 text-blue-500">
               <span className="material-symbols-outlined text-sm">event_available</span>
             </div>
           </div>
           <div className="text-2xl font-black text-blue-500">5</div>
-          <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">إجازات معتمدة</div>
+          <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
+            {isEn ? 'Approved leaves' : 'إجازات معتمدة'}
+          </div>
         </div>
 
         {/* Early Leave */}
         <div className={`p-3.5 rounded-2xl border shadow-xs ${isDark ? 'bg-[#121b2d] border-[#1f2d4a]' : 'bg-white border-slate-200'}`}>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>خروج مبكر</span>
+            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              {isEn ? 'Early Leave' : 'خروج مبكر'}
+            </span>
             <div className="p-1 rounded-lg bg-purple-500/10 text-purple-500">
               <span className="material-symbols-outlined text-sm">output</span>
             </div>
           </div>
           <div className="text-2xl font-black text-purple-500">5</div>
-          <div className="text-[10px] text-purple-600 dark:text-purple-400 mt-0.5">خروج قبل الوقت</div>
+          <div className="text-[10px] text-purple-600 dark:text-purple-400 mt-0.5">
+            {isEn ? 'Left early' : 'خروج قبل الوقت'}
+          </div>
         </div>
 
         {/* Missing Punch */}
         <div className={`p-3.5 rounded-2xl border shadow-xs ${isDark ? 'bg-[#121b2d] border-[#1f2d4a]' : 'bg-white border-slate-200'}`}>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>بصمة مفقودة</span>
+            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              {isEn ? 'Missing Punch' : 'بصمة مفقودة'}
+            </span>
             <div className="p-1 rounded-lg bg-rose-500/10 text-rose-500">
               <span className="material-symbols-outlined text-sm">warning</span>
             </div>
           </div>
           <div className="text-2xl font-black text-rose-500">4</div>
-          <div className="text-[10px] text-rose-600 dark:text-rose-400 mt-0.5">بحاجة لتصحيح</div>
+          <div className="text-[10px] text-rose-600 dark:text-rose-400 mt-0.5">
+            {isEn ? 'Needs correction' : 'بحاجة لتصحيح'}
+          </div>
         </div>
 
         {/* Absent */}
         <div className={`p-3.5 rounded-2xl border shadow-xs ${isDark ? 'bg-[#121b2d] border-[#1f2d4a]' : 'bg-white border-slate-200'}`}>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>غائب</span>
+            <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              {isEn ? 'Absent' : 'غائب'}
+            </span>
             <div className="p-1 rounded-lg bg-slate-500/10 text-slate-500">
               <span className="material-symbols-outlined text-sm">person_off</span>
             </div>
           </div>
           <div className={`text-2xl font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>5</div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">غائب بدون عذر</div>
+          <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+            {isEn ? 'Unexcused absence' : 'غائب بدون عذر'}
+          </div>
         </div>
       </div>
 
@@ -334,7 +401,7 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-teal-500">fingerprint</span>
                 <h2 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  حضوري اليوم
+                  {isEn ? 'My Attendance Today' : 'حضوري اليوم'}
                 </h2>
               </div>
               <button
@@ -342,25 +409,33 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
                 className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">edit</span>
-                <span>طلب تصحيح</span>
+                <span>{isEn ? 'Request Correction' : 'طلب تصحيح'}</span>
               </button>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
-                <span className="text-slate-400 block text-[10px] mb-0.5">الوردية المجدولة</span>
+                <span className="text-slate-400 block text-[10px] mb-0.5">
+                  {isEn ? 'Scheduled Shift' : 'الوردية المجدولة'}
+                </span>
                 <span className="font-mono font-bold text-[11px]">{attendanceToday.scheduled_start} - {attendanceToday.scheduled_end}</span>
               </div>
               <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
-                <span className="text-slate-400 block text-[10px] mb-0.5">وقت الحضور</span>
+                <span className="text-slate-400 block text-[10px] mb-0.5">
+                  {isEn ? 'Punch In' : 'وقت الحضور'}
+                </span>
                 <span className="font-mono font-bold text-emerald-500 text-[11px]">{attendanceToday.check_in}</span>
               </div>
               <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
-                <span className="text-slate-400 block text-[10px] mb-0.5">وقت الانصراف</span>
+                <span className="text-slate-400 block text-[10px] mb-0.5">
+                  {isEn ? 'Punch Out' : 'وقت الانصراف'}
+                </span>
                 <span className="font-mono font-bold text-[11px]">{attendanceToday.check_out}</span>
               </div>
               <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
-                <span className="text-slate-400 block text-[10px] mb-0.5">ساعات العمل</span>
+                <span className="text-slate-400 block text-[10px] mb-0.5">
+                  {isEn ? 'Worked Hours' : 'ساعات العمل'}
+                </span>
                 <span className="font-bold text-teal-500 text-[11px]">{attendanceToday.worked_hours}</span>
               </div>
             </div>
@@ -368,51 +443,53 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
 
           {/* Quick Simulation Buttons */}
           <div className={`pt-2.5 border-t ${isDark ? 'border-[#1f2d4a]' : 'border-slate-100'}`}>
-            <span className="text-[10px] text-slate-400 block mb-1.5 font-medium">تسجيل البصمة السريع:</span>
+            <span className="text-[10px] text-slate-400 block mb-1.5 font-medium">
+              {isEn ? 'Quick Punch Simulation:' : 'تسجيل البصمة السريع:'}
+            </span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               <button
                 onClick={() => {
                   const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
                   setAttendanceToday(prev => ({ ...prev, check_in: now }));
-                  setToastMessage(`تم تسجيل الحضور في ${now}`);
+                  setToastMessage(isEn ? `Punch-in recorded at ${now}` : `تم تسجيل الحضور في ${now}`);
                   setTimeout(() => setToastMessage(null), 3000);
                 }}
-                className="px-2 py-2 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
+                className="px-2 py-2 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">login</span>
-                <span>حضور</span>
+                <span>{isEn ? 'In' : 'حضور'}</span>
               </button>
               <button
                 onClick={() => {
                   const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
                   setAttendanceToday(prev => ({ ...prev, check_out: now }));
-                  setToastMessage(`تم تسجيل الانصراف في ${now}`);
+                  setToastMessage(isEn ? `Punch-out recorded at ${now}` : `تم تسجيل الانصراف في ${now}`);
                   setTimeout(() => setToastMessage(null), 3000);
                 }}
-                className="px-2 py-2 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
+                className="px-2 py-2 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">logout</span>
-                <span>انصراف</span>
+                <span>{isEn ? 'Out' : 'انصراف'}</span>
               </button>
               <button
                 onClick={() => {
-                  setToastMessage('تم تسجيل الخروج للاستراحة');
+                  setToastMessage(isEn ? 'Break out logged' : 'تم تسجيل الخروج للاستراحة');
                   setTimeout(() => setToastMessage(null), 3000);
                 }}
-                className="px-2 py-2 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
+                className="px-2 py-2 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">coffee</span>
-                <span>استراحة</span>
+                <span>{isEn ? 'Break' : 'استراحة'}</span>
               </button>
               <button
                 onClick={() => {
-                  setToastMessage('تم تسجيل العودة من الاستراحة');
+                  setToastMessage(isEn ? 'Break return logged' : 'تم تسجيل العودة من الاستراحة');
                   setTimeout(() => setToastMessage(null), 3000);
                 }}
-                className="px-2 py-2 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
+                className="px-2 py-2 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">work</span>
-                <span>عودة</span>
+                <span>{isEn ? 'Resume' : 'عودة'}</span>
               </button>
             </div>
           </div>
@@ -429,7 +506,7 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-teal-500">account_balance_wallet</span>
                 <h2 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  أرصدة إجازاتي
+                  {isEn ? 'My Leave Balances' : 'أرصدة إجازاتي'}
                 </h2>
               </div>
               <button
@@ -437,7 +514,7 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
                 className="px-2.5 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95"
               >
                 <span className="material-symbols-outlined text-xs">add</span>
-                <span>طلب إجازة</span>
+                <span>{isEn ? 'Request Leave' : 'طلب إجازة'}</span>
               </button>
             </div>
 
@@ -445,12 +522,16 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               {/* Annual */}
               <div className={`p-2.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[10px] truncate">إجازة اعتيادية</span>
+                  <span className="font-bold text-[10px] truncate">
+                    {isEn ? 'Annual' : 'إجازة اعتيادية'}
+                  </span>
                   <span className="text-[8px] px-1 py-0.2 rounded font-mono font-bold bg-teal-500/10 text-teal-500">2026</span>
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-xl font-black text-teal-500">{leaveBalances.annual.available}</span>
-                  <span className="text-[9px] text-slate-400">من {leaveBalances.annual.entitled} يوم</span>
+                  <span className="text-[9px] text-slate-400">
+                    {isEn ? `of ${leaveBalances.annual.entitled} days` : `من ${leaveBalances.annual.entitled} يوم`}
+                  </span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-white/10 rounded-full h-1 overflow-hidden">
                   <div className="bg-teal-500 h-full rounded-full" style={{ width: `${(leaveBalances.annual.available / leaveBalances.annual.entitled) * 100}%` }} />
@@ -460,12 +541,16 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               {/* Sick */}
               <div className={`p-2.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[10px] truncate">إجازة مرضية</span>
+                  <span className="font-bold text-[10px] truncate">
+                    {isEn ? 'Sick' : 'إجازة مرضية'}
+                  </span>
                   <span className="text-[8px] px-1 py-0.2 rounded font-mono font-bold bg-teal-500/10 text-teal-500">2026</span>
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-xl font-black text-teal-500">{leaveBalances.sick.available}</span>
-                  <span className="text-[9px] text-slate-400">من {leaveBalances.sick.entitled} يوم</span>
+                  <span className="text-[9px] text-slate-400">
+                    {isEn ? `of ${leaveBalances.sick.entitled} days` : `من ${leaveBalances.sick.entitled} يوم`}
+                  </span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-white/10 rounded-full h-1 overflow-hidden">
                   <div className="bg-teal-500 h-full rounded-full" style={{ width: `${(leaveBalances.sick.available / leaveBalances.sick.entitled) * 100}%` }} />
@@ -475,12 +560,16 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               {/* Emergency */}
               <div className={`p-2.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[10px] truncate">إجازة طارئة</span>
+                  <span className="font-bold text-[10px] truncate">
+                    {isEn ? 'Emergency' : 'إجازة طارئة'}
+                  </span>
                   <span className="text-[8px] px-1 py-0.2 rounded font-mono font-bold bg-teal-500/10 text-teal-500">2026</span>
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-xl font-black text-teal-500">{leaveBalances.emergency.available}</span>
-                  <span className="text-[9px] text-slate-400">من {leaveBalances.emergency.entitled} يوم</span>
+                  <span className="text-[9px] text-slate-400">
+                    {isEn ? `of ${leaveBalances.emergency.entitled} days` : `من ${leaveBalances.emergency.entitled} يوم`}
+                  </span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-white/10 rounded-full h-1 overflow-hidden">
                   <div className="bg-teal-500 h-full rounded-full" style={{ width: `${(leaveBalances.emergency.available / leaveBalances.emergency.entitled) * 100}%` }} />
@@ -491,9 +580,11 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
 
           <div className={`pt-2 border-t flex items-center justify-between text-[11px] ${isDark ? 'border-[#1f2d4a]' : 'border-slate-100'}`}>
             <span className="text-slate-400">
-              طلبات الإجازة المعلقة: {requests.filter(r => r.status === 'pending').length}
+              {isEn ? `Pending requests: ${requests.filter(r => r.status === 'pending').length}` : `طلبات الإجازة المعلقة: ${requests.filter(r => r.status === 'pending').length}`}
             </span>
-            <span className="text-teal-500 font-bold">سجل إجازاتي الكامل ←</span>
+            <span className="text-teal-500 font-bold">
+              {isEn ? 'Complete Leave History →' : 'سجل إجازاتي الكامل ←'}
+            </span>
           </div>
         </div>
       </div>
@@ -502,9 +593,11 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
           <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            سجل طلبات الإجازة السابقة
+            {isEn ? 'Leave Requests History' : 'سجل طلبات الإجازة السابقة'}
           </h3>
-          <span className="text-[11px] text-teal-500 font-bold">{requests.length} طلبات</span>
+          <span className="text-[11px] text-teal-500 font-bold">
+            {requests.length} {isEn ? 'requests' : 'طلبات'}
+          </span>
         </div>
 
         <div className="space-y-2.5">
@@ -517,9 +610,9 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold">{request.leaveType}</span>
+                  <span className="text-xs font-bold">{getLeaveTypeName(request.leaveType)}</span>
                   <span className="text-[10px] font-mono text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full">
-                    {request.totalDays} أيام
+                    {request.totalDays} {isEn ? 'Days' : 'أيام'}
                   </span>
                 </div>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
@@ -527,7 +620,7 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
                   request.status === 'pending' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
                   'bg-rose-500/15 text-rose-400 border-rose-500/20'
                 }`}>
-                  {request.status === 'approved' ? 'مقبول' : request.status === 'pending' ? 'قيد الانتظار' : 'مرفوض'}
+                  {getStatusLabel(request.status)}
                 </span>
               </div>
 
@@ -535,17 +628,22 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
                 isDark ? 'bg-slate-900/50' : 'bg-slate-50'
               }`}>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">تاريخ البداية</span>
+                  <span className="text-slate-400 block text-[10px]">
+                    {isEn ? 'Start Date' : 'تاريخ البداية'}
+                  </span>
                   <span className="font-bold">{request.startDate}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">تاريخ النهاية</span>
+                  <span className="text-slate-400 block text-[10px]">
+                    {isEn ? 'End Date' : 'تاريخ النهاية'}
+                  </span>
                   <span className="font-bold">{request.endDate}</span>
                 </div>
               </div>
 
               <p className={`text-[11px] ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                <span className="font-bold">السبب:</span> {request.reason}
+                <span className="font-bold">{isEn ? 'Reason: ' : 'السبب: '}</span>
+                {getReasonLabel(request.reason)}
               </p>
             </div>
           ))}
@@ -561,11 +659,11 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
             <div className="flex items-center justify-between pb-2 border-b border-slate-700/40">
               <h2 className="text-sm font-black flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-teal-500">edit_calendar</span>
-                <span>تقديم طلب إجازة جديدة</span>
+                <span>{isEn ? 'Apply for New Leave' : 'تقديم طلب إجازة جديدة'}</span>
               </h2>
               <button
                 onClick={() => setShowForm(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-white"
+                className="p-1 rounded-full text-slate-400 hover:text-white cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">close</span>
               </button>
@@ -573,7 +671,9 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
 
             <form onSubmit={handleSubmitRequest} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold mb-1 text-teal-500">نوع الإجازة المطلوبة *</label>
+                <label className="block text-xs font-bold mb-1 text-teal-500">
+                  {isEn ? 'Requested Leave Type *' : 'نوع الإجازة المطلوبة *'}
+                </label>
                 <select
                   value={newRequest.leaveType}
                   onChange={(e) => setNewRequest({ ...newRequest, leaveType: e.target.value })}
@@ -582,16 +682,26 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
                   }`}
                   required
                 >
-                  <option value="إجازة سنوية">إجازة سنوية (متاح: {leaveBalances.annual.available} يوم)</option>
-                  <option value="إجازة مرضية">إجازة مرضية (متاح: {leaveBalances.sick.available} يوم)</option>
-                  <option value="إجازة طارئة">إجازة طارئة (متاح: {leaveBalances.emergency.available} يوم)</option>
-                  <option value="إجازة بدون راتب">إجازة بدون راتب</option>
+                  <option value="إجازة سنوية">
+                    {isEn ? `Annual Leave (Available: ${leaveBalances.annual.available} days)` : `إجازة سنوية (متاح: ${leaveBalances.annual.available} يوم)`}
+                  </option>
+                  <option value="إجازة مرضية">
+                    {isEn ? `Sick Leave (Available: ${leaveBalances.sick.available} days)` : `إجازة مرضية (متاح: ${leaveBalances.sick.available} يوم)`}
+                  </option>
+                  <option value="إجازة طارئة">
+                    {isEn ? `Emergency Leave (Available: ${leaveBalances.emergency.available} days)` : `إجازة طارئة (متاح: ${leaveBalances.emergency.available} يوم)`}
+                  </option>
+                  <option value="إجازة بدون راتب">
+                    {isEn ? 'Unpaid Leave' : 'إجازة بدون راتب'}
+                  </option>
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-teal-500">تاريخ البداية *</label>
+                  <label className="block text-xs font-bold mb-1 text-teal-500">
+                    {isEn ? 'Start Date *' : 'تاريخ البداية *'}
+                  </label>
                   <input
                     type="date"
                     value={newRequest.startDate}
@@ -603,7 +713,9 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-teal-500">تاريخ النهاية *</label>
+                  <label className="block text-xs font-bold mb-1 text-teal-500">
+                    {isEn ? 'End Date *' : 'تاريخ النهاية *'}
+                  </label>
                   <input
                     type="date"
                     value={newRequest.endDate}
@@ -618,17 +730,21 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
 
               {newRequest.startDate && newRequest.endDate && (
                 <div className="p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs flex justify-between">
-                  <span>الأيام المحسوبة:</span>
-                  <span className="font-black">{calculateDays()} أيام</span>
+                  <span>{isEn ? 'Calculated Days:' : 'الأيام المحسوبة:'}</span>
+                  <span className="font-black">
+                    {calculateDays()} {isEn ? 'Days' : 'أيام'}
+                  </span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold mb-1 text-teal-500">سبب طلب الإجازة *</label>
+                <label className="block text-xs font-bold mb-1 text-teal-500">
+                  {isEn ? 'Reason for Leave *' : 'سبب طلب الإجازة *'}
+                </label>
                 <textarea
                   value={newRequest.reason}
                   onChange={(e) => setNewRequest({ ...newRequest, reason: e.target.value })}
-                  placeholder="يرجى كتابة سبب الإجازة..."
+                  placeholder={isEn ? 'Please describe reason for leave...' : 'يرجى كتابة سبب الإجازة...'}
                   rows={3}
                   className={`w-full px-3 py-2 rounded-xl border text-xs resize-none ${
                     isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
@@ -640,18 +756,18 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 active:scale-95 transition-all"
+                  className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 active:scale-95 transition-all cursor-pointer"
                 >
-                  إرسال طلب الإجازة
+                  {isEn ? 'Submit Leave Request' : 'إرسال طلب الإجازة'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className={`px-3 py-2.5 rounded-xl border text-xs font-bold ${
+                  className={`px-3 py-2.5 rounded-xl border text-xs font-bold cursor-pointer ${
                     isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-300 text-slate-700'
                   }`}
                 >
-                  إلغاء
+                  {isEn ? 'Cancel' : 'إلغاء'}
                 </button>
               </div>
             </form>
@@ -668,11 +784,11 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
             <div className="flex items-center justify-between pb-2 border-b border-slate-700/40">
               <h2 className="text-sm font-black flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-teal-500">edit</span>
-                <span>طلب تصحيح بصمة دوام</span>
+                <span>{isEn ? 'Attendance Punch Correction' : 'طلب تصحيح بصمة دوام'}</span>
               </h2>
               <button
                 onClick={() => setShowCorrectionModal(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-white"
+                className="p-1 rounded-full text-slate-400 hover:text-white cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">close</span>
               </button>
@@ -680,7 +796,9 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
 
             <form onSubmit={handleCorrectionSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold mb-1 text-teal-500">تاريخ اليوم *</label>
+                <label className="block text-xs font-bold mb-1 text-teal-500">
+                  {isEn ? 'Date *' : 'تاريخ اليوم *'}
+                </label>
                 <input
                   type="date"
                   value={correctionForm.date}
@@ -694,7 +812,9 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-teal-500">الحضور الفعلي *</label>
+                  <label className="block text-xs font-bold mb-1 text-teal-500">
+                    {isEn ? 'Actual Punch In *' : 'الحضور الفعلي *'}
+                  </label>
                   <input
                     type="time"
                     value={correctionForm.requestedIn}
@@ -706,7 +826,9 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-teal-500">الانصراف الفعلي *</label>
+                  <label className="block text-xs font-bold mb-1 text-teal-500">
+                    {isEn ? 'Actual Punch Out *' : 'الانصراف الفعلي *'}
+                  </label>
                   <input
                     type="time"
                     value={correctionForm.requestedOut}
@@ -720,11 +842,13 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               </div>
 
               <div>
-                <label className="block text-xs font-bold mb-1 text-teal-500">سبب التصحيح *</label>
+                <label className="block text-xs font-bold mb-1 text-teal-500">
+                  {isEn ? 'Correction Reason *' : 'سبب التصحيح *'}
+                </label>
                 <textarea
                   value={correctionForm.reason}
                   onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })}
-                  placeholder="سبب نسيان البصمة أو العطل الفني..."
+                  placeholder={isEn ? 'Reason for missing punch or hardware issue...' : 'سبب نسيان البصمة أو العطل الفني...'}
                   rows={3}
                   className={`w-full px-3 py-2 rounded-xl border text-xs resize-none ${
                     isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
@@ -736,18 +860,18 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 active:scale-95 transition-all"
+                  className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 active:scale-95 transition-all cursor-pointer"
                 >
-                  إرسال طلب التصحيح
+                  {isEn ? 'Submit Correction Request' : 'إرسال طلب التصحيح'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCorrectionModal(false)}
-                  className={`px-3 py-2.5 rounded-xl border text-xs font-bold ${
+                  className={`px-3 py-2.5 rounded-xl border text-xs font-bold cursor-pointer ${
                     isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-300 text-slate-700'
                   }`}
                 >
-                  إلغاء
+                  {isEn ? 'Cancel' : 'إلغاء'}
                 </button>
               </div>
             </form>

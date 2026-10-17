@@ -8,8 +8,9 @@ interface EmployeeNewsProps {
 }
 
 export const EmployeeNews: React.FC<EmployeeNewsProps> = () => {
-  const { theme } = useEmployeeContext();
+  const { theme, language } = useEmployeeContext();
   const isDark = theme === 'dark';
+  const isEn = language === 'en';
 
   return (
     <div className="w-full max-w-md mx-auto p-4 space-y-4">
@@ -21,10 +22,10 @@ export const EmployeeNews: React.FC<EmployeeNewsProps> = () => {
           </div>
           <div>
             <h1 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              أخبار وإعلانات فيتاس
+              {isEn ? 'Vitas News & Announcements' : 'أخبار وإعلانات فيتاس'}
             </h1>
             <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              تابع أحدث التعميمات والأحداث الرسمية
+              {isEn ? 'Follow the latest official circulars and events' : 'تابع أحدث التعميمات والأحداث الرسمية'}
             </p>
           </div>
         </div>
@@ -34,8 +35,9 @@ export const EmployeeNews: React.FC<EmployeeNewsProps> = () => {
       <div className={`p-4 rounded-3xl border shadow-md ${
         isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
       }`}>
-        <CompanyNews language="ar" isReadOnly={true} />
+        <CompanyNews language={language} isReadOnly={true} />
       </div>
     </div>
   );
 };
+

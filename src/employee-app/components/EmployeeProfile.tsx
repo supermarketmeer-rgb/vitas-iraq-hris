@@ -7,8 +7,9 @@ interface EmployeeProfileProps {
 }
 
 export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLogout }) => {
-  const { theme, toggleTheme } = useEmployeeContext();
+  const { theme, toggleTheme, language } = useEmployeeContext();
   const isDark = theme === 'dark';
+  const isEn = language === 'en';
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedEmployee, setEditedEmployee] = useState(employee);
@@ -21,6 +22,22 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
   });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+
+  const displayName = isEn 
+    ? (editedEmployee?.fullNameEn || 'Dina Haider Qasim') 
+    : (editedEmployee?.fullName || editedEmployee?.name || 'دينا حيدر قاسم');
+  const displayPosition = isEn 
+    ? 'Receptionist' 
+    : (editedEmployee?.position || 'موظف استقبال');
+  const displayDept = isEn 
+    ? 'Credit Department' 
+    : (editedEmployee?.department || 'الائتمان');
+  const displayBranch = isEn 
+    ? 'Najaf Office' 
+    : (editedEmployee?.branch || 'مكتب النجف');
+  const displayNationality = isEn 
+    ? 'Iraqi' 
+    : (editedEmployee?.nationality || 'عراقي');
 
   const handleSave = () => {
     console.log('Saving employee data:', editedEmployee);
@@ -38,17 +55,17 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
     setPasswordSuccess('');
 
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      setPasswordError('جميع الحقول مطلوبة');
+      setPasswordError(isEn ? 'All fields are required' : 'جميع الحقول مطلوبة');
       return;
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError('كلمة المرور الجديدة غير متطابقة');
+      setPasswordError(isEn ? 'New passwords do not match' : 'كلمة المرور الجديدة غير متطابقة');
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      setPasswordError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      setPasswordError(isEn ? 'Password must be at least 6 characters' : 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
       return;
     }
 
@@ -59,14 +76,14 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
         if (passwordData.currentPassword === (authData.employee?.password || '123456')) {
           authData.employee.password = passwordData.newPassword;
           localStorage.setItem('employee_auth', JSON.stringify(authData));
-          setPasswordSuccess('تم تغيير كلمة المرور بنجاح');
+          setPasswordSuccess(isEn ? 'Password changed successfully' : 'تم تغيير كلمة المرور بنجاح');
           setShowPasswordChange(false);
           setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         } else {
-          setPasswordError('كلمة المرور الحالية غير صحيحة');
+          setPasswordError(isEn ? 'Current password is incorrect' : 'كلمة المرور الحالية غير صحيحة');
         }
       } catch (error) {
-        setPasswordError('حدث خطأ أثناء تغيير كلمة المرور');
+        setPasswordError(isEn ? 'An error occurred while changing password' : 'حدث خطأ أثناء تغيير كلمة المرور');
       }
     }
   };
@@ -88,19 +105,19 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
           </div>
           <div>
             <h1 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              الملف الشخصي والحساب
+              {isEn ? 'Profile & Account' : 'الملف الشخصي والحساب'}
             </h1>
             <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              بيانات الموظف والراتب والإعدادات
+              {isEn ? 'Employee records, salary, and preferences' : 'بيانات الموظف والراتب والإعدادات'}
             </p>
           </div>
         </div>
 
         <button
           onClick={onLogout}
-          className="px-3.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs border border-rose-500/20 transition-all"
+          className="px-3.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs border border-rose-500/20 transition-all cursor-pointer"
         >
-          خروج
+          {isEn ? 'Sign Out' : 'خروج'}
         </button>
       </div>
 
@@ -111,11 +128,11 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
         <div className="flex items-center gap-3.5">
           <div className="relative">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-white font-black text-2xl flex items-center justify-center shadow-md">
-              {editedEmployee?.fullName ? editedEmployee.fullName.charAt(0) : 'م'}
+              {displayName.charAt(0)}
             </div>
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-sm text-xs border border-white"
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-sm text-xs border border-white cursor-pointer"
             >
               <span className="material-symbols-outlined text-xs">{isEditing ? 'check' : 'edit'}</span>
             </button>
@@ -124,15 +141,15 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
               <span className="text-[10px] font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full">
-                {editedEmployee?.employeeId || 'VIT-2023-001'}
+                {editedEmployee?.employeeId || editedEmployee?.badgeNo || 'V167'}
               </span>
               <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                نشط
+                {isEn ? 'Active' : 'نشط'}
               </span>
             </div>
-            <h2 className="text-base font-black truncate">{editedEmployee?.fullName}</h2>
+            <h2 className="text-base font-black truncate">{displayName}</h2>
             <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {editedEmployee?.position} • {editedEmployee?.department}
+              {displayPosition} • {displayDept}
             </p>
           </div>
         </div>
@@ -142,16 +159,18 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
           isDark ? 'border-slate-800 text-slate-300' : 'border-slate-100 text-slate-700'
         }`}>
           <div>
-            <span className="text-[10px] text-slate-400 block">الفرع</span>
-            <span className="font-bold text-[11px]">{editedEmployee?.branch || 'المقر'}</span>
+            <span className="text-[10px] text-slate-400 block">{isEn ? 'Branch' : 'الفرع'}</span>
+            <span className="font-bold text-[11px]">{displayBranch}</span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 block">تاريخ التعيين</span>
-            <span className="font-bold text-[11px]">{editedEmployee?.joinDate}</span>
+            <span className="text-[10px] text-slate-400 block">{isEn ? 'Hire Date' : 'تاريخ التعيين'}</span>
+            <span className="font-bold text-[11px]">{editedEmployee?.joinDate || '2023-01-15'}</span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 block">الراتب الأساسي</span>
-            <span className="font-bold text-[11px] text-teal-400">{editedEmployee?.salary?.toLocaleString()} د.ع</span>
+            <span className="text-[10px] text-slate-400 block">{isEn ? 'Basic Salary' : 'الراتب الأساسي'}</span>
+            <span className="font-bold text-[11px] text-teal-400">
+              {(editedEmployee?.salary || 950000).toLocaleString()} {isEn ? 'IQD' : 'د.ع'}
+            </span>
           </div>
         </div>
       </div>
@@ -165,15 +184,23 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
             <span className="material-symbols-outlined text-xl">payments</span>
           </div>
           <div>
-            <h3 className="text-xs font-black">كشف الراتب لشهر أغسطس 2026</h3>
-            <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>الراتب صافي: {editedEmployee?.salary?.toLocaleString()} د.ع</p>
+            <h3 className="text-xs font-black">
+              {isEn ? 'Salary Slip - August 2026' : 'كشف الراتب لشهر أغسطس 2026'}
+            </h3>
+            <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              {isEn ? 'Net Salary: ' : 'الراتب صافي: '}
+              {(editedEmployee?.salary || 950000).toLocaleString()} {isEn ? 'IQD' : 'د.ع'}
+            </p>
           </div>
         </div>
         <button
-          onClick={() => alert(`كشف الراتب للموظف ${editedEmployee?.fullName}:\nالراتب الأساسي: ${editedEmployee?.salary?.toLocaleString()} د.ع\nالمستقطعات: 0 د.ع\nالصافي المستلم: ${editedEmployee?.salary?.toLocaleString()} د.ع`)}
-          className="px-3 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs shadow-xs"
+          onClick={() => alert(isEn 
+            ? `Salary Slip for ${displayName}:\nBasic Salary: ${(editedEmployee?.salary || 950000).toLocaleString()} IQD\nDeductions: 0 IQD\nNet Received: ${(editedEmployee?.salary || 950000).toLocaleString()} IQD`
+            : `كشف الراتب للموظف ${displayName}:\nالراتب الأساسي: ${(editedEmployee?.salary || 950000).toLocaleString()} د.ع\nالمستقطعات: 0 د.ع\nالصافي المستلم: ${(editedEmployee?.salary || 950000).toLocaleString()} د.ع`
+          )}
+          className="px-3 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs shadow-xs cursor-pointer"
         >
-          استعراض
+          {isEn ? 'Preview' : 'استعراض'}
         </button>
       </div>
 
@@ -181,43 +208,43 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
         <button
           onClick={() => setActiveTab('personal')}
-          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all ${
+          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'personal'
               ? 'bg-teal-500 text-slate-950 font-black'
               : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'
           }`}
         >
-          الشخصية
+          {isEn ? 'Personal' : 'الشخصية'}
         </button>
         <button
           onClick={() => setActiveTab('professional')}
-          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all ${
+          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'professional'
               ? 'bg-teal-500 text-slate-950 font-black'
               : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'
           }`}
         >
-          المهنية
+          {isEn ? 'Professional' : 'المهنية'}
         </button>
         <button
           onClick={() => setActiveTab('contact')}
-          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all ${
+          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'contact'
               ? 'bg-teal-500 text-slate-950 font-black'
               : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'
           }`}
         >
-          الاتصال
+          {isEn ? 'Contact' : 'الاتصال'}
         </button>
         <button
           onClick={() => setActiveTab('security')}
-          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all ${
+          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'security'
               ? 'bg-teal-500 text-slate-950 font-black'
               : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'
           }`}
         >
-          الأمان
+          {isEn ? 'Security' : 'الأمان'}
         </button>
       </div>
 
@@ -228,45 +255,35 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
         {activeTab === 'personal' && (
           <div className="space-y-3">
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">الاسم الكامل (عربي)</label>
+              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                {isEn ? 'Full Name' : 'الاسم الكامل'}
+              </label>
               {isEditing ? (
                 <input
                   type="text"
-                  value={editedEmployee?.fullName || ''}
-                  onChange={(e) => handleChange('fullName', e.target.value)}
+                  value={displayName}
+                  onChange={(e) => handleChange(isEn ? 'fullNameEn' : 'fullName', e.target.value)}
                   className={`w-full px-3 py-2 rounded-xl border text-xs font-bold ${
                     isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 />
               ) : (
-                <p className="text-xs font-bold">{editedEmployee?.fullName}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">الاسم الكامل (إنجليزي)</label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={editedEmployee?.fullNameEn || ''}
-                  onChange={(e) => handleChange('fullNameEn', e.target.value)}
-                  className={`w-full px-3 py-2 rounded-xl border text-xs font-bold ${
-                    isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
-                />
-              ) : (
-                <p className="text-xs font-bold">{editedEmployee?.fullNameEn}</p>
+                <p className="text-xs font-bold">{displayName}</p>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold mb-1 text-teal-400">تاريخ الميلاد</label>
-                <p className="text-xs font-bold">{editedEmployee?.dateOfBirth || '1992-05-14'}</p>
+                <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                  {isEn ? 'Date of Birth' : 'تاريخ الميلاد'}
+                </label>
+                <p className="text-xs font-bold">{editedEmployee?.dateOfBirth || '1995-04-12'}</p>
               </div>
               <div>
-                <label className="block text-[11px] font-bold mb-1 text-teal-400">الجنسية</label>
-                <p className="text-xs font-bold">{editedEmployee?.nationality || 'عراقي'}</p>
+                <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                  {isEn ? 'Nationality' : 'الجنسية'}
+                </label>
+                <p className="text-xs font-bold">{displayNationality}</p>
               </div>
             </div>
           </div>
@@ -276,23 +293,31 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold mb-1 text-teal-400">رقم البادج</label>
-                <p className="text-xs font-bold">{editedEmployee?.badgeNo || '1001'}</p>
+                <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                  {isEn ? 'Badge Number' : 'رقم البادج'}
+                </label>
+                <p className="text-xs font-bold">{editedEmployee?.badgeNo || 'V167'}</p>
               </div>
               <div>
-                <label className="block text-[11px] font-bold mb-1 text-teal-400">معرف الموظف</label>
-                <p className="text-xs font-bold">{editedEmployee?.employeeId || 'VIT-2023-001'}</p>
+                <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                  {isEn ? 'Employee ID' : 'معرف الموظف'}
+                </label>
+                <p className="text-xs font-bold">{editedEmployee?.employeeId || 'VIT-0037'}</p>
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">المسمى الوظيفي</label>
-              <p className="text-xs font-bold">{editedEmployee?.position}</p>
+              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                {isEn ? 'Job Position' : 'المسمى الوظيفي'}
+              </label>
+              <p className="text-xs font-bold">{displayPosition}</p>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">القسم الإداري</label>
-              <p className="text-xs font-bold">{editedEmployee?.department}</p>
+              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                {isEn ? 'Department' : 'القسم الإداري'}
+              </label>
+              <p className="text-xs font-bold">{displayDept}</p>
             </div>
           </div>
         )}
@@ -300,12 +325,16 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
         {activeTab === 'contact' && (
           <div className="space-y-3">
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">البريد الإلكتروني</label>
-              <p className="text-xs font-bold">{editedEmployee?.email}</p>
+              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                {isEn ? 'Email Address' : 'البريد الإلكتروني'}
+              </label>
+              <p className="text-xs font-bold">{editedEmployee?.email || 'dina.haider@vitasiraq.com'}</p>
             </div>
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">رقم الهاتف المحمول</label>
-              <p className="text-xs font-bold">{editedEmployee?.phone}</p>
+              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                {isEn ? 'Mobile Phone' : 'رقم الهاتف المحمول'}
+              </label>
+              <p className="text-xs font-bold">{editedEmployee?.phone || '+964 780 123 4567'}</p>
             </div>
           </div>
         )}
@@ -315,23 +344,27 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
             {!showPasswordChange ? (
               <div className="text-center py-3">
                 <span className="material-symbols-outlined text-3xl text-teal-400 mb-1">lock</span>
-                <h3 className="text-xs font-bold mb-1">تغيير كلمة المرور الخاصة بك</h3>
+                <h3 className="text-xs font-bold mb-1">
+                  {isEn ? 'Change Account Password' : 'تغيير كلمة المرور الخاصة بك'}
+                </h3>
                 <button
                   onClick={() => setShowPasswordChange(true)}
-                  className="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold text-xs shadow-md mt-2"
+                  className="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold text-xs shadow-md mt-2 cursor-pointer"
                 >
-                  تغيير كلمة المرور
+                  {isEn ? 'Change Password' : 'تغيير كلمة المرور'}
                 </button>
               </div>
             ) : (
               <form onSubmit={handlePasswordChange} className="space-y-3">
                 <div>
-                  <label className="block text-[11px] font-bold mb-1 text-teal-400">كلمة المرور الحالية</label>
+                  <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                    {isEn ? 'Current Password' : 'كلمة المرور الحالية'}
+                  </label>
                   <input
                     type="password"
                     value={passwordData.currentPassword}
                     onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
-                    placeholder="أدخل كلمة المرور الحالية"
+                    placeholder={isEn ? 'Enter current password' : 'أدخل كلمة المرور الحالية'}
                     style={{
                       backgroundColor: isDark ? '#0f172a' : '#f8fafc',
                       color: isDark ? '#ffffff' : '#0f172a',
@@ -345,12 +378,14 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold mb-1 text-teal-400">كلمة المرور الجديدة</label>
+                  <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                    {isEn ? 'New Password' : 'كلمة المرور الجديدة'}
+                  </label>
                   <input
                     type="password"
                     value={passwordData.newPassword}
                     onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
-                    placeholder="أدخل كلمة المرور الجديدة"
+                    placeholder={isEn ? 'Enter new password' : 'أدخل كلمة المرور الجديدة'}
                     style={{
                       backgroundColor: isDark ? '#0f172a' : '#f8fafc',
                       color: isDark ? '#ffffff' : '#0f172a',
@@ -364,12 +399,14 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold mb-1 text-teal-400">تأكيد كلمة المرور الجديدة</label>
+                  <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                    {isEn ? 'Confirm New Password' : 'تأكيد كلمة المرور الجديدة'}
+                  </label>
                   <input
                     type="password"
                     value={passwordData.confirmPassword}
                     onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
-                    placeholder="أعد إدخال كلمة المرور الجديدة"
+                    placeholder={isEn ? 'Re-enter new password' : 'أعد إدخال كلمة المرور الجديدة'}
                     style={{
                       backgroundColor: isDark ? '#0f172a' : '#f8fafc',
                       color: isDark ? '#ffffff' : '#0f172a',
@@ -391,11 +428,11 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
                 )}
 
                 <div className="flex gap-2 pt-1">
-                  <button type="submit" className="flex-1 py-2.5 rounded-xl bg-teal-600 text-white font-bold text-xs shadow-md">
-                    حفظ كلمة المرور
+                  <button type="submit" className="flex-1 py-2.5 rounded-xl bg-teal-600 text-white font-bold text-xs shadow-md cursor-pointer">
+                    {isEn ? 'Save Password' : 'حفظ كلمة المرور'}
                   </button>
-                  <button type="button" onClick={() => setShowPasswordChange(false)} className="px-3 py-2.5 rounded-xl border text-xs">
-                    إلغاء
+                  <button type="button" onClick={() => setShowPasswordChange(false)} className="px-3 py-2.5 rounded-xl border text-xs cursor-pointer">
+                    {isEn ? 'Cancel' : 'إلغاء'}
                   </button>
                 </div>
               </form>

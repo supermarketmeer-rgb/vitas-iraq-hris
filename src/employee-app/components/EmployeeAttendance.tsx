@@ -7,11 +7,12 @@ interface EmployeeAttendanceProps {
 }
 
 export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee, onLogout }) => {
-  const { theme, toggleTheme } = useEmployeeContext();
+  const { theme, toggleTheme, language } = useEmployeeContext();
   const isDark = theme === 'dark';
+  const isEn = language === 'en';
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
-  // بيانات الحضور التجريبية
+  // Attendance mock data
   const mockAttendanceData = [
     {
       date: '2026-08-01',
@@ -125,20 +126,44 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
   const getStatusText = (status: string) => {
     switch (status) {
       case 'present':
-        return 'حاضر';
+        return isEn ? 'Present' : 'حاضر';
       case 'late':
-        return 'متأخر';
+        return isEn ? 'Late' : 'متأخر';
       case 'absent':
-        return 'غائب';
+        return isEn ? 'Absent' : 'غائب';
       case 'weekend':
-        return 'عطلة';
+        return isEn ? 'Weekend' : 'عطلة';
       default:
         return status;
     }
   };
 
+  const getDayName = (dayAr: string) => {
+    if (!isEn) return dayAr;
+    const map: { [key: string]: string } = {
+      'الخميس': 'Thursday',
+      'الجمعة': 'Friday',
+      'السبت': 'Saturday',
+      'الأحد': 'Sunday',
+      'الاثنين': 'Monday',
+      'الثلاثاء': 'Tuesday',
+      'الأربعاء': 'Wednesday'
+    };
+    return map[dayAr] || dayAr;
+  };
+
+  const getNotes = (notesAr: string) => {
+    if (!isEn) return notesAr;
+    const map: { [key: string]: string } = {
+      'عطلة نهاية الأسبوع': 'Weekend Holiday',
+      'تأخير 15 دقيقة': '15 mins delay',
+      'إجازة مرضية': 'Sick Leave'
+    };
+    return map[notesAr] || notesAr;
+  };
+
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ar-IQ', {
+    return new Date(dateString).toLocaleDateString(isEn ? 'en-US' : 'ar-IQ', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -172,10 +197,10 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
           </div>
           <div>
             <h1 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              سجل الدوام والبصصمات
+              {isEn ? 'Attendance & Punch Logs' : 'سجل الدوام والبصمات'}
             </h1>
             <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              تتبع كشوفات البصمة وساعات العمل
+              {isEn ? 'Track punch records and worked hours' : 'تتبع كشوفات البصمة وساعات العمل'}
             </p>
           </div>
         </div>
@@ -199,10 +224,16 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
         }`}>
           <div className="flex items-center justify-between mb-1">
             <span className="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
-            <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">حضور</span>
+            <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+              {isEn ? 'Present' : 'حضور'}
+            </span>
           </div>
-          <p className="text-xl font-black text-emerald-500">{currentStats.present} أيام</p>
-          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>من أصل {currentStats.total} يوم عمل</p>
+          <p className="text-xl font-black text-emerald-500">
+            {currentStats.present} {isEn ? 'Days' : 'أيام'}
+          </p>
+          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {isEn ? `Out of ${currentStats.total} workdays` : `من أصل ${currentStats.total} يوم عمل`}
+          </p>
         </div>
 
         <div className={`p-3.5 rounded-2xl border ${
@@ -210,10 +241,16 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
         }`}>
           <div className="flex items-center justify-between mb-1">
             <span className="material-symbols-outlined text-amber-500 text-lg">schedule</span>
-            <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">تأخير</span>
+            <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+              {isEn ? 'Late' : 'تأخير'}
+            </span>
           </div>
-          <p className="text-xl font-black text-amber-500">{currentStats.late} يوم</p>
-          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>تأخير عن 08:00 صباحاً</p>
+          <p className="text-xl font-black text-amber-500">
+            {currentStats.late} {isEn ? 'Days' : 'يوم'}
+          </p>
+          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {isEn ? 'Late past 08:00 AM' : 'تأخير عن 08:00 صباحاً'}
+          </p>
         </div>
 
         <div className={`p-3.5 rounded-2xl border ${
@@ -221,10 +258,16 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
         }`}>
           <div className="flex items-center justify-between mb-1">
             <span className="material-symbols-outlined text-rose-500 text-lg">cancel</span>
-            <span className="text-[10px] font-bold text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full">غياب</span>
+            <span className="text-[10px] font-bold text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full">
+              {isEn ? 'Absent' : 'غياب'}
+            </span>
           </div>
-          <p className="text-xl font-black text-rose-500">{currentStats.absent} يوم</p>
-          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>إجازة مرضية / غياب</p>
+          <p className="text-xl font-black text-rose-500">
+            {currentStats.absent} {isEn ? 'Days' : 'يوم'}
+          </p>
+          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {isEn ? 'Sick leave / Absence' : 'إجازة مرضية / غياب'}
+          </p>
         </div>
 
         <div className={`p-3.5 rounded-2xl border ${
@@ -232,10 +275,16 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
         }`}>
           <div className="flex items-center justify-between mb-1">
             <span className="material-symbols-outlined text-blue-500 text-lg">weekend</span>
-            <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full">عطلة</span>
+            <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full">
+              {isEn ? 'Weekend' : 'عطلة'}
+            </span>
           </div>
-          <p className="text-xl font-black text-blue-500">{currentStats.weekend} أيام</p>
-          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>عطلات الجمعة والسبت</p>
+          <p className="text-xl font-black text-blue-500">
+            {currentStats.weekend} {isEn ? 'Days' : 'أيام'}
+          </p>
+          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {isEn ? 'Fri & Sat holidays' : 'عطلات الجمعة والسبت'}
+          </p>
         </div>
       </div>
 
@@ -244,15 +293,21 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
         isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs text-slate-900'
       }`}>
         <div className="flex items-center justify-between text-xs font-bold mb-2">
-          <span>إجمالي ساعات عمل الشهر</span>
-          <span className="text-teal-500 font-mono">{monthlyStats.totalWorkHours} ساعة</span>
+          <span>{isEn ? 'Total Monthly Hours' : 'إجمالي ساعات عمل الشهر'}</span>
+          <span className="text-teal-500 font-mono">
+            {monthlyStats.totalWorkHours} {isEn ? 'hours' : 'ساعة'}
+          </span>
         </div>
         <div className="w-full bg-slate-700/20 h-2.5 rounded-full overflow-hidden">
           <div className="bg-gradient-to-r from-teal-500 to-emerald-400 h-full rounded-full" style={{ width: '85%' }}></div>
         </div>
         <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1.5">
-          <span>المعدل اليومي: {monthlyStats.avgWorkHours} ساعة/يوم</span>
-          <span className="text-emerald-500 font-bold">التزام 95%</span>
+          <span>
+            {isEn ? `Daily Avg: ${monthlyStats.avgWorkHours} hrs/day` : `المعدل اليومي: ${monthlyStats.avgWorkHours} ساعة/يوم`}
+          </span>
+          <span className="text-emerald-500 font-bold">
+            {isEn ? '95% Compliance' : 'التزام 95%'}
+          </span>
         </div>
       </div>
 
@@ -260,9 +315,11 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            سجل أيام الشهر اليومي
+            {isEn ? 'Daily Attendance History' : 'سجل أيام الشهر اليومي'}
           </h3>
-          <span className="text-[11px] text-teal-500 font-bold">{mockAttendanceData.length} سجلات</span>
+          <span className="text-[11px] text-teal-500 font-bold">
+            {mockAttendanceData.length} {isEn ? 'records' : 'سجلات'}
+          </span>
         </div>
 
         <div className="space-y-2.5">
@@ -281,7 +338,7 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black">{record.day}</span>
+                  <span className="text-xs font-black">{getDayName(record.day)}</span>
                   <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDate(record.date)}</span>
                 </div>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(record.status)}`}>
@@ -292,21 +349,29 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
               {record.status !== 'weekend' && record.status !== 'absent' ? (
                 <div className="grid grid-cols-3 gap-2 bg-slate-800/10 dark:bg-slate-900/40 p-2 rounded-xl text-center text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-400 block mb-0.5">الدخول</span>
+                    <span className="text-[10px] text-slate-400 block mb-0.5">
+                      {isEn ? 'Check In' : 'الدخول'}
+                    </span>
                     <span className="font-mono font-bold text-emerald-500">{record.checkIn || '--:--'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block mb-0.5">الخروج</span>
+                    <span className="text-[10px] text-slate-400 block mb-0.5">
+                      {isEn ? 'Check Out' : 'الخروج'}
+                    </span>
                     <span className="font-mono font-bold text-blue-500">{record.checkOut || '--:--'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block mb-0.5">المدة</span>
-                    <span className="font-mono font-bold text-teal-400">{record.workHours} س</span>
+                    <span className="text-[10px] text-slate-400 block mb-0.5">
+                      {isEn ? 'Duration' : 'المدة'}
+                    </span>
+                    <span className="font-mono font-bold text-teal-400">
+                      {record.workHours} {isEn ? 'hrs' : 'س'}
+                    </span>
                   </div>
                 </div>
               ) : (
                 <p className={`text-xs italic ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {record.notes || 'لا يوجد بصمة مسجلة لهذا اليوم'}
+                  {getNotes(record.notes) || (isEn ? 'No punch registered for this day' : 'لا يوجد بصمة مسجلة لهذا اليوم')}
                 </p>
               )}
             </div>

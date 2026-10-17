@@ -8,6 +8,10 @@ interface EmployeeContextType {
   unreadMessages: number;
   theme: 'dark' | 'light';
   toggleTheme: () => void;
+  language: 'ar' | 'en';
+  toggleLanguage: () => void;
+  setLanguage: (lang: 'ar' | 'en') => void;
+  t: (ar: string, en: string) => string;
   setEmployee: (employee: any) => void;
   refreshNotifications: () => Promise<void>;
   addNotification: (notification: any) => void;
@@ -22,12 +26,22 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
   const [employee, setEmployee] = useState<any>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
       const savedTheme = localStorage.getItem('employee_app_theme');
       return savedTheme === 'light' ? 'light' : 'dark';
     } catch {
       return 'dark';
+    }
+  });
+
+  const [language, setLanguageState] = useState<'ar' | 'en'>(() => {
+    try {
+      const savedLang = localStorage.getItem('employee_app_lang');
+      return savedLang === 'en' ? 'en' : 'ar';
+    } catch {
+      return 'ar';
     }
   });
 
@@ -41,6 +55,27 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
     });
   };
 
+  const toggleLanguage = () => {
+    setLanguageState(prev => {
+      const next = prev === 'ar' ? 'en' : 'ar';
+      try {
+        localStorage.setItem('employee_app_lang', next);
+      } catch {}
+      return next;
+    });
+  };
+
+  const setLanguage = (lang: 'ar' | 'en') => {
+    setLanguageState(lang);
+    try {
+      localStorage.setItem('employee_app_lang', lang);
+    } catch {}
+  };
+
+  const t = React.useCallback((ar: string, en: string) => {
+    return language === 'en' ? en : ar;
+  }, [language]);
+
   const refreshNotifications = React.useCallback(async () => {
     if (!employee) return;
     const empId = employee.id || employee.employeeId || employee.badgeNo;
@@ -53,13 +88,15 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
         if (Array.isArray(deliveries)) {
           const formatted = deliveries.map((del: any) => ({
             id: del.id,
-            title: `[مستند رسمي] ${del.document_title}`,
-            message: del.message || `تم توجيه مستند رسمي (${del.document_title}) إليك برقم مرجعي ${del.document_id}.`,
+            title: language === 'en' ? `[Official Document] ${del.document_title}` : `[مستند رسمي] ${del.document_title}`,
+            message: del.message || (language === 'en' 
+              ? `Official document (${del.document_title}) was routed to you with ref ${del.document_id}.`
+              : `تم توجيه مستند رسمي (${del.document_title}) إليك برقم مرجعي ${del.document_id}.`),
             type: del.document_type === 'employment_contract' ? 'success' : 'info',
             timestamp: del.created_at,
             read: del.app_status === 'read',
             important: true,
-            action: 'معاينة المستند',
+            action: language === 'en' ? 'Preview Document' : 'معاينة المستند',
             deliveryId: del.id,
             documentType: del.document_type,
             documentId: del.document_id,
@@ -70,9 +107,11 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
                 size: '1.2 MB',
                 type: 'pdf',
                 refNo: del.document_id,
-                issuer: del.sender_name || 'فيتاس العراق',
+                issuer: del.sender_name || (language === 'en' ? 'VITAS Iraq' : 'فيتاس العراق'),
                 deliveryId: del.id,
-                content: `مستند معتمد رسمياً: ${del.document_title}\nرقم المرجع: ${del.document_id}\nالمرسل: ${del.sender_name}\nتاريخ التسليم: ${new Date(del.created_at).toLocaleDateString('ar-IQ')}`
+                content: language === 'en'
+                  ? `Official verified document: ${del.document_title}\nReference No: ${del.document_id}\nSender: ${del.sender_name}\nDelivery Date: ${new Date(del.created_at).toLocaleDateString('en-US')}`
+                  : `مستند معتمد رسمياً: ${del.document_title}\nرقم المرجع: ${del.document_id}\nالمرسل: ${del.sender_name}\nتاريخ التسليم: ${new Date(del.created_at).toLocaleDateString('ar-IQ')}`
               }
             ]
           }));
@@ -82,7 +121,7 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
     } catch (e) {
       console.warn('Failed to fetch employee notifications:', e);
     }
-  }, [employee]);
+  }, [employee, language]);
 
   // Initial load and periodic refresh
   React.useEffect(() => {
@@ -147,6 +186,10 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
       unreadMessages,
       theme,
       toggleTheme,
+      language,
+      toggleLanguage,
+      setLanguage,
+      t,
       setEmployee,
       refreshNotifications,
       addNotification,

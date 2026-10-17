@@ -13,16 +13,17 @@ import {
 export const EmployeeBottomNav: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { theme, unreadNotifications } = useEmployeeContext();
+  const { theme, language, unreadNotifications } = useEmployeeContext();
   const isDark = theme === 'dark';
+  const isEn = language === 'en';
 
   const navItems = [
-    { path: '/employee-app/profile', label: 'حسابي', labelEn: 'Profile', icon: User },
-    { path: '/employee-app/attendance', label: 'الدوام', labelEn: 'Attendance', icon: Clock },
-    { path: '/employee-app/payroll', label: 'الرواتب', labelEn: 'Payroll', icon: CreditCard },
-    { path: '/employee-app/leave', label: 'الإجازات', labelEn: 'Leave', icon: Calendar },
-    { path: '/employee-app/evaluation', label: 'التقييم', labelEn: 'Evaluation', icon: Award },
-    { path: '/employee-app/notifications', label: 'التنبيهات', labelEn: 'Alerts', icon: Bell, badge: unreadNotifications },
+    { path: '/employee-app/profile', label: isEn ? 'Profile' : 'حسابي', icon: User },
+    { path: '/employee-app/attendance', label: isEn ? 'Attendance' : 'الدوام', icon: Clock },
+    { path: '/employee-app/payroll', label: isEn ? 'Payroll' : 'الرواتب', icon: CreditCard },
+    { path: '/employee-app/leave', label: isEn ? 'Leave' : 'الإجازات', icon: Calendar },
+    { path: '/employee-app/evaluation', label: isEn ? 'Evaluation' : 'التقييم', icon: Award },
+    { path: '/employee-app/notifications', label: isEn ? 'Alerts' : 'التنبيهات', icon: Bell, badge: unreadNotifications },
   ];
 
   return (

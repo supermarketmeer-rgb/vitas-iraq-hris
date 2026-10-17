@@ -9,8 +9,9 @@ interface EmployeeMessagesProps {
 
 export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, onLogout }) => {
   const navigate = useNavigate();
-  const { messages, addMessage, markMessageAsRead, unreadMessages, theme, toggleTheme } = useEmployeeContext();
+  const { messages, addMessage, markMessageAsRead, unreadMessages, theme, toggleTheme, language } = useEmployeeContext();
   const isDark = theme === 'dark';
+  const isEn = language === 'en';
 
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [showCompose, setShowCompose] = useState(false);
@@ -20,34 +21,40 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
     content: ''
   });
 
-  // رسائل تجريبية
+  // Mock messages
   const mockMessages = [
     {
       id: '1',
-      from: 'إدارة الموارد البشرية',
+      from: isEn ? 'HR Department' : 'إدارة الموارد البشرية',
       fromId: 'HR001',
-      subject: 'تحديث سياسة الإجازات',
-      content: 'نود إعلامكم بتحديث سياسة الإجازات السنوية ابتداءً من الشهر القادم. يرجى مراجعة القسم الجديد في بوابة الموظفين للحصول على التفاصيل الكاملة.',
+      subject: isEn ? 'Annual Leave Policy Update' : 'تحديث سياسة الإجازات',
+      content: isEn 
+        ? 'Please be informed that the annual leave request guidelines have been updated for 2026. Review the leave section in your ESS app.'
+        : 'نود إعلامكم بتحديث سياسة الإجازات السنوية ابتداءً من الشهر القادم. يرجى مراجعة القسم الجديد في بوابة الموظفين للحصول على التفاصيل الكاملة.',
       timestamp: '2026-08-08T10:30:00',
       read: false,
       priority: 'high'
     },
     {
       id: '2',
-      from: 'المدير المباشر',
+      from: isEn ? 'Direct Supervisor' : 'المدير المباشر',
       fromId: 'MGR001',
-      subject: 'اجتماع الفريق الأسبوعي',
-      content: 'تذكير بموعد اجتماع الفريق الأسبوعي يوم الأحد القادم الساعة 9 صباحاً في قاعة الاجتماعات رقم 2. يرجى التأكد من حضوركم.',
+      subject: isEn ? 'Weekly Branch Sync Meeting' : 'اجتماع الفريق الأسبوعي',
+      content: isEn
+        ? 'Reminder for our weekly operational sync meeting this Sunday at 09:00 AM in the branch meeting hall.'
+        : 'تذكير بموعد اجتماع الفريق الأسبوعي يوم الأحد القادم الساعة 9 صباحاً في قاعة الاجتماعات رقم 2. يرجى التأكد من حضوركم.',
       timestamp: '2026-08-07T14:15:00',
       read: true,
       priority: 'normal'
     },
     {
       id: '3',
-      from: 'قسم المالية',
+      from: isEn ? 'Finance & Payroll' : 'قسم المالية',
       fromId: 'FIN001',
-      subject: 'إشعار كشف الراتب',
-      content: 'تم إصدار كشف الراتب للشهر الحالي. يمكنك الآن عرض وتحميل كشف الراتب من قسم الرواتب في البوابة.',
+      subject: isEn ? 'Monthly Salary Slip Issued' : 'إشعار كشف الراتب',
+      content: isEn
+        ? 'Your official salary slip for the month of August has been uploaded. You can view or download the verified PDF in the payroll section.'
+        : 'تم إصدار كشف الراتب للشهر الحالي. يمكنك الآن عرض وتحميل كشف الراتب من قسم الرواتب في البوابة.',
       timestamp: '2026-08-05T09:00:00',
       read: true,
       priority: 'normal'
@@ -61,8 +68,8 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
     if (!newMessage.to || !newMessage.subject || !newMessage.content) return;
 
     addMessage({
-      from: employee?.fullName || 'الموظف',
-      fromId: employee?.employeeId || 'EMP001',
+      from: isEn ? (employee?.fullNameEn || 'Dina Haider Qasim') : (employee?.fullName || 'دينا حيدر قاسم'),
+      fromId: employee?.employeeId || employee?.badgeNo || 'V167',
       to: newMessage.to,
       subject: newMessage.subject,
       content: newMessage.content,
@@ -89,9 +96,9 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffHours < 24) return `اليوم، ${date.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}`;
-    if (diffDays === 1) return `أمس، ${date.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}`;
-    return date.toLocaleDateString('ar-IQ');
+    if (diffHours < 24) return isEn ? `Today, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}` : `اليوم، ${date.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}`;
+    if (diffDays === 1) return isEn ? `Yesterday, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}` : `أمس، ${date.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}`;
+    return date.toLocaleDateString(isEn ? 'en-US' : 'ar-IQ');
   };
 
   return (
@@ -104,20 +111,22 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
           </div>
           <div>
             <h1 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              الرسائل والمراسلات
+              {isEn ? 'Messages & Inbox' : 'الرسائل والمراسلات'}
             </h1>
             <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {unreadMessages > 0 ? `${unreadMessages} رسائل غير مقروءة` : 'صندوق الوارد المباشر'}
+              {unreadMessages > 0 
+                ? (isEn ? `${unreadMessages} unread messages` : `${unreadMessages} رسائل غير مقروءة`) 
+                : (isEn ? 'Direct Inbox' : 'صندوق الوارد المباشر')}
             </p>
           </div>
         </div>
 
         <button
           onClick={() => { setSelectedMessage(null); setShowCompose(true); }}
-          className="px-3.5 py-2 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs flex items-center gap-1 shadow-md shadow-teal-600/20 active:scale-95 transition-all"
+          className="px-3.5 py-2 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs flex items-center gap-1 shadow-md shadow-teal-600/20 active:scale-95 transition-all cursor-pointer"
         >
           <span className="material-symbols-outlined text-base">edit</span>
-          <span>كتابة</span>
+          <span>{isEn ? 'Compose' : 'كتابة'}</span>
         </button>
       </div>
 
@@ -129,11 +138,11 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
           <div className="flex items-center justify-between pb-2 border-b border-slate-700/40">
             <h2 className="text-sm font-black flex items-center gap-1.5">
               <span className="material-symbols-outlined text-teal-400">send</span>
-              <span>كتابة رسالة جديدة</span>
+              <span>{isEn ? 'Compose New Message' : 'كتابة رسالة جديدة'}</span>
             </h2>
             <button
               onClick={() => setShowCompose(false)}
-              className={`p-1 rounded-full ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600'}`}
+              className={`p-1 rounded-full cursor-pointer ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600'}`}
             >
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
@@ -141,12 +150,14 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
 
           <form onSubmit={handleSendMessage} className="space-y-3">
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">إلى (اسم المستلم أو القسم) *</label>
+              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                {isEn ? 'To (Recipient or Department) *' : 'إلى (اسم المستلم أو القسم) *'}
+              </label>
               <input
                 type="text"
                 value={newMessage.to}
                 onChange={(e) => setNewMessage({...newMessage, to: e.target.value})}
-                placeholder="مثال: قسم الموارد البشرية"
+                placeholder={isEn ? 'e.g. HR Department' : 'مثال: قسم الموارد البشرية'}
                 className={`w-full px-3 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
                   isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                 }`}
@@ -155,12 +166,14 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">موضوع الرسالة *</label>
+              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                {isEn ? 'Message Subject *' : 'موضوع الرسالة *'}
+              </label>
               <input
                 type="text"
                 value={newMessage.subject}
                 onChange={(e) => setNewMessage({...newMessage, subject: e.target.value})}
-                placeholder="عنوان أو موضوع المراسلة..."
+                placeholder={isEn ? 'Enter message subject...' : 'عنوان أو موضوع المراسلة...'}
                 className={`w-full px-3 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
                   isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                 }`}
@@ -169,11 +182,13 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">محتوى الرسالة *</label>
+              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+                {isEn ? 'Message Body *' : 'محتوى الرسالة *'}
+              </label>
               <textarea
                 value={newMessage.content}
                 onChange={(e) => setNewMessage({...newMessage, content: e.target.value})}
-                placeholder="اكتب نص الرسالة هنا..."
+                placeholder={isEn ? 'Write message body here...' : 'اكتب نص الرسالة هنا...'}
                 rows={4}
                 className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
                   isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
@@ -185,18 +200,18 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
             <div className="flex gap-2 pt-1">
               <button
                 type="submit"
-                className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md"
+                className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md cursor-pointer"
               >
-                إرسال الرسالة
+                {isEn ? 'Send Message' : 'إرسال الرسالة'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowCompose(false)}
-                className={`px-4 py-2.5 rounded-2xl border font-bold text-xs ${
+                className={`px-4 py-2.5 rounded-2xl border font-bold text-xs cursor-pointer ${
                   isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-300 text-slate-700'
                 }`}
               >
-                إلغاء
+                {isEn ? 'Cancel' : 'إلغاء'}
               </button>
             </div>
           </form>
@@ -209,14 +224,14 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
           <div className="flex items-center justify-between pb-3 border-b border-slate-700/40">
             <button
               onClick={() => setSelectedMessage(null)}
-              className="flex items-center gap-1 text-teal-400 text-xs font-bold hover:underline"
+              className="flex items-center gap-1 text-teal-400 text-xs font-bold hover:underline cursor-pointer"
             >
               <span className="material-symbols-outlined text-base">arrow_forward</span>
-              <span>العودة للرسائل</span>
+              <span>{isEn ? 'Back to Messages' : 'العودة للرسائل'}</span>
             </button>
             {selectedMessage.priority === 'high' && (
               <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 text-[10px] font-bold border border-rose-500/30">
-                رسالة هامة
+                {isEn ? 'High Priority' : 'رسالة هامة'}
               </span>
             )}
           </div>
@@ -244,11 +259,11 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
 
           <div className="pt-2 flex gap-2">
             <button
-              onClick={() => alert('تم إرسال الرد المباشر')}
-              className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5"
+              onClick={() => alert(isEn ? 'Quick reply dispatched' : 'تم إرسال الرد المباشر')}
+              className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span className="material-symbols-outlined text-base">reply</span>
-              <span>رد سريع</span>
+              <span>{isEn ? 'Quick Reply' : 'رد سريع'}</span>
             </button>
           </div>
         </div>

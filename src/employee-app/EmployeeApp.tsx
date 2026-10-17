@@ -17,7 +17,7 @@ import { EmployeeContextProvider, useEmployeeContext } from './context/EmployeeC
 function EmployeeAppMain() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<any>(null);
-  const { theme, setEmployee } = useEmployeeContext();
+  const { theme, language, setEmployee } = useEmployeeContext();
   const [isPhoneMockup, setIsPhoneMockup] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
 
@@ -133,7 +133,7 @@ function EmployeeAppMain() {
   const isDark = theme === 'dark';
 
   return (
-    <div dir="rtl" className={`min-h-screen w-full flex flex-col items-center justify-center p-0 transition-colors duration-300 ${
+    <div dir={language === 'ar' ? 'rtl' : 'ltr'} className={`min-h-screen w-full flex flex-col items-center justify-center p-0 transition-colors duration-300 ${
       isDark 
         ? 'bg-[#0b1120] text-slate-100' 
         : 'bg-[#f8fafc] text-slate-900'
