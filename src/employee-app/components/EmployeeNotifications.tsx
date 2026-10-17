@@ -1,19 +1,238 @@
 import React, { useState, useEffect } from 'react';
 import { useEmployeeContext } from '../context/EmployeeContext';
+import { 
+  Bell, 
+  Paperclip, 
+  FileText, 
+  FileSpreadsheet, 
+  Eye, 
+  Download, 
+  Check, 
+  Search, 
+  Printer, 
+  X,
+  ShieldCheck,
+  Calendar,
+  AlertCircle
+} from 'lucide-react';
+
+export interface MobileAttachment {
+  id: string;
+  name: string;
+  type: 'pdf' | 'excel' | 'word' | 'image';
+  size: string;
+  refNo?: string;
+  docTitle?: string;
+  docDate?: string;
+  issuer?: string;
+  contentSnippet?: string;
+  tableData?: Array<{ [key: string]: string | number }>;
+  deliveryId?: string;
+}
+
+export interface MobileNotification {
+  id: string;
+  title: string;
+  titleEn?: string;
+  sender: string;
+  senderEn?: string;
+  category: 'decision' | 'payroll' | 'leave' | 'medical' | 'report' | 'contract';
+  categoryLabelAr: string;
+  categoryLabelEn: string;
+  date: string;
+  time: string;
+  message: string;
+  messageEn?: string;
+  read: boolean;
+  priority: 'normal' | 'important' | 'urgent';
+  attachments?: MobileAttachment[];
+}
 
 interface EmployeeNotificationsProps {
   employee: any;
   onLogout: () => void;
 }
 
-export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ employee, onLogout }) => {
-  const { notifications, markNotificationAsRead, unreadNotifications, theme, toggleTheme } = useEmployeeContext();
+export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ employee }) => {
+  const { markNotificationAsRead, unreadNotifications, theme } = useEmployeeContext();
   const isDark = theme === 'dark';
-  const [filter, setFilter] = useState<'all' | 'unread' | 'important'>('all');
-  const [routedDeliveries, setRoutedDeliveries] = useState<any[]>([]);
 
-  useEffect(() => {
-    const empIdentifier = employee?.id || employee?.employeeId || employee?.badgeNo || '1001';
+  const [filter, setFilter] = useState<'all' | 'unread' | 'attachments'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [routedDeliveries, setRoutedDeliveries] = useState<any[]>([]);
+  const [previewData, setPreviewData] = useState<{
+    attachment: MobileAttachment;
+    notifTitle: string;
+    notifDate: string;
+  } | null>(null);
+
+  // Exact Official Notifications List matching the ESS Portal
+  const [portalNotifications, setPortalNotifications] = useState<MobileNotification[]>([
+    {
+      id: 'notif-p-1',
+      title: 'قرار إداري: اعتماد لائحة الحوافز والإنتاجية الربع سنوية المحدثة 2026',
+      titleEn: 'Administrative Decision: Updated Quarterly Incentive Policy 2026',
+      sender: 'الإدارة العامة & قسم الموارد البشرية',
+      senderEn: 'Executive Management & HR Department',
+      category: 'decision',
+      categoryLabelAr: 'قرار إداري',
+      categoryLabelEn: 'Administrative Decision',
+      date: '2026-08-10',
+      time: '10:30 ص',
+      message: 'بناءً على مصادقة المدير المفوض، تقرر تطبيق سلم الحوافز والإنتاجية المحدث لكافة الموظفين بالفروع والإدارات. يرجى مراجعة الجدول والمستند المرفق للاطلاع على معايير الاستحقاق والنسب المقررة لكل فئة.',
+      messageEn: 'Approved by Managing Director: Updated incentive and bonus structure implemented across branches. Review attached memo for eligibility criteria.',
+      read: false,
+      priority: 'urgent',
+      attachments: [
+        {
+          id: 'att-1',
+          name: 'قرار_إداري_رقم_89_الحوافز_2026.pdf',
+          type: 'pdf',
+          size: '1.4 MB',
+          refNo: 'VITAS/HQ/DEC-2026/089',
+          docTitle: 'قرار إداري رقم (89) لسنة 2026 - اعتماد لائحة الحوافز والإنتاجية',
+          docDate: '2026-08-10',
+          issuer: 'الإدارة العامة - مؤسسة فيتاس العراق',
+          contentSnippet: 'المادة الأولى: تُعتمد لائحة الحوافز الربع سنوية الجديدة لجميع الموظفين المستمرين بالخدمة.\nالمادة الثانية: تُصرف الحوافز بناءً على تحقيق مستهدفات الجودة ومعدلات الحضور والإنتاجية بنسبة لا تقل عن 90%.\nالمادة الثالثة: يُعمل بهذا القرار من تاريخ صدوره ويُلغى كل ما يتعارض معه.'
+        },
+        {
+          id: 'att-2',
+          name: 'جدول_معايير_الاستحقاق_والتقييم_الربع_سنوي.xlsx',
+          type: 'excel',
+          size: '620 KB',
+          refNo: 'VITAS/FIN/TBL-2026/44',
+          docTitle: 'جدول معايير ونسب احتساب الحوافز الربع سنوية 2026',
+          docDate: '2026-08-10',
+          issuer: 'الإدارة المالية والموارد البشرية',
+          tableData: [
+            { 'المعيار / البند': 'نسبة الالتزام بالدوام الشهري', 'الحد الأدنى': '95%', 'الوزن النسبي': '30%', 'معدل الحافز': '100,000 د.ع' },
+            { 'المعيار / البند': 'تقييم الأداء العام (KPIs)', 'الحد الأدنى': '85%', 'الوزن النسبي': '40%', 'معدل الحافز': '150,000 د.ع' },
+            { 'المعيار / البند': 'إنجاز المهام التشغيلية والميدانية', 'الحد الأدنى': '90%', 'الوزن النسبي': '30%', 'معدل الحافز': '120,000 د.ع' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'notif-p-2',
+      title: 'إشعار مالي: صدور قسيمة الراتب الرسمي لشهر آب 2026',
+      titleEn: 'Financial Notice: August 2026 Payslip Released',
+      sender: 'قسم الرواتب والعمليات المالية',
+      senderEn: 'Payroll & Compensation Operations',
+      category: 'payroll',
+      categoryLabelAr: 'كشف راتب',
+      categoryLabelEn: 'Payroll Slip',
+      date: '2026-08-01',
+      time: '09:00 ص',
+      message: 'تم إيداع وتحويل مستحقات الراتب لشهر أغسطس 2026 في الحساب المصرفي المعتمد، متضمناً الراتب الأساسي ومخصصات الخدمة بعد استقطاع الضمان الاجتماعي.',
+      messageEn: 'August 2026 salary credited to your designated bank account. Payslip breakdown with allowances and social security deductions is available.',
+      read: true,
+      priority: 'normal',
+      attachments: [
+        {
+          id: 'att-3',
+          name: 'قسيمة_راتب_رسمية_آب_2026.pdf',
+          type: 'pdf',
+          size: '420 KB',
+          refNo: 'VTS/PAY/2026-08/SLIP',
+          docTitle: 'قسيمة راتب شهر آب / أغسطس 2026',
+          docDate: '2026-08-01',
+          issuer: 'الشؤون المالية - قسم الرواتب',
+          contentSnippet: 'الراتب الأساسي: 1,200,000 د.ع\nبدل النقل والمظهر: 150,000 د.ع\nحافز الإنتاجية: 100,000 د.ع\nاستقطاع الضمان الاجتماعي (5%): 60,000 د.ع\nصافي الراتب المستلم: 1,390,000 د.ع'
+        }
+      ]
+    },
+    {
+      id: 'notif-p-3',
+      title: 'تحديث استمارة التأمين الطبي والخدمات العلاجية 2026',
+      titleEn: 'Medical Insurance Policy Update & Clinic Network 2026',
+      sender: 'وحدة الخدمات والمنافع الطبية',
+      senderEn: 'Medical Benefits Unit',
+      category: 'medical',
+      categoryLabelAr: 'تأمين طبي',
+      categoryLabelEn: 'Medical Insurance',
+      date: '2026-07-28',
+      time: '11:15 ص',
+      message: 'نود إعلامكم بتوسيع شبكة المستشفيات والمراكز التخصصية المتعاقد معها للتأمين الصحي الشامل لك ولأفراد عائلتك المستحقين.',
+      messageEn: 'Comprehensive medical insurance provider network expanded. Access attached handbook for updated hospital clinics and co-pay guidelines.',
+      read: true,
+      priority: 'normal',
+      attachments: [
+        {
+          id: 'att-4',
+          name: 'دليل_شبكة_المستشفيات_والمراكز_الطبية_2026.pdf',
+          type: 'pdf',
+          size: '890 KB',
+          refNo: 'VITAS/MED/DIR-2026/04',
+          docTitle: 'دليل المستشفيات والمراكز الصحية المعتمدة',
+          docDate: '2026-07-28',
+          issuer: 'شركة التأمين الوطنية & فيتاس العراق',
+          contentSnippet: 'المستشفيات المعتمدة: مستشفى بغداد الدولي، مستشفى القمة التخصصي، مستشفى الكفيل، مستشفى الفارابي.\nنسبة التغطية داخل الشبكة: 85% للعيادات الخارجية و 100% للعمليات والإقامة الجراحية.'
+        }
+      ]
+    },
+    {
+      id: 'notif-p-4',
+      title: 'تقرير التدقيق والمطابقة التشغيلية للفروع',
+      titleEn: 'Branch Compliance & Operational Audit Summary',
+      sender: 'إدارة الرقابة والامتثال الداخلي',
+      senderEn: 'Internal Audit & Compliance',
+      category: 'report',
+      categoryLabelAr: 'تقرير تدقيق',
+      categoryLabelEn: 'Audit Report',
+      date: '2026-07-20',
+      time: '02:00 م',
+      message: 'يرجى مراجعة توصيات التدقيق الدوري الخاصة بملفات العملاء وإجراءات الأرشفة والالتزام بضوابط مكافحة غسل الأموال وحماية بيانات المقترضين.',
+      messageEn: 'Please review branch audit findings regarding file completeness, AML compliance checkpoints, and loan documentation standards.',
+      read: true,
+      priority: 'important',
+      attachments: [
+        {
+          id: 'att-5',
+          name: 'تقرير_المطابقة_والرقابة_الداخلية_Q2.pdf',
+          type: 'pdf',
+          size: '2.1 MB',
+          refNo: 'VITAS/AUD/REP-2026/Q2',
+          docTitle: 'تقرير نتائج تدقيق الفروع والامتثال الربع الثاني 2026',
+          docDate: '2026-07-20',
+          issuer: 'لجنة التدقيق المستقلة',
+          contentSnippet: 'المؤشر العام للالتزام: 94.2% ممتاز.\nالتوصية: استكمال التوقيعات الحية على ملحقات العقود وأرشفة وصولات الدفع اليومية رقمياً.'
+        }
+      ]
+    },
+    {
+      id: 'notif-p-5',
+      title: 'تعميم إداري: مواعيد وساعات الدوام الرسمي خلال العطلات',
+      titleEn: 'Official Circular: Working Hours & Public Holiday Schedule',
+      sender: 'الشؤون الإدارية & الموارد البشرية',
+      senderEn: 'Admin Affairs & HR',
+      category: 'decision',
+      categoryLabelAr: 'تعميم إداري',
+      categoryLabelEn: 'Administrative Circular',
+      date: '2026-07-15',
+      time: '08:30 ص',
+      message: 'نحيطكم علماً بمواعيد الدوام الرسمي المقررة، مع مراعاة جداول المناوبات في الفروع لضمان استمرارية تقديم خدمات القروض والتحصيلات للزبائن دون انقطاع.',
+      messageEn: 'Official notification on revised branch opening schedules and roster rotation during upcoming public holiday season.',
+      read: true,
+      priority: 'normal',
+      attachments: [
+        {
+          id: 'att-6',
+          name: 'تعميم_أوقات_الدوام_الرسمي_رقم_14.pdf',
+          type: 'pdf',
+          size: '350 KB',
+          refNo: 'VITAS/ADM/CIR-2026/14',
+          docTitle: 'تعميم إداري رقم 14 لسنة 2026 - تنظيم أوقات العمل',
+          docDate: '2026-07-15',
+          issuer: 'الإدارة العامة',
+          contentSnippet: 'يبدأ الدوام الرسمي من الساعة 8:00 صباحاً حتى 4:00 عصراً.\nتلتزم لجان الصندوق والمحصلين بإقفال الحسابات اليومية قبل الساعة 3:30 عصراً.'
+        }
+      ]
+    }
+  ]);
+
+  // Fetch Live Routed Documents from Centralized Routing API
+  const fetchRoutedDeliveries = () => {
+    const empIdentifier = employee?.id || employee?.employeeId || employee?.badgeNo || '85';
     fetch(`/api/routing/employee/${encodeURIComponent(empIdentifier)}/notifications`)
       .then(res => res.json())
       .then(data => {
@@ -22,146 +241,116 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchRoutedDeliveries();
+    const interval = setInterval(fetchRoutedDeliveries, 10000);
+    return () => clearInterval(interval);
   }, [employee]);
 
-  // تنبيهات تجريبية مع مرفقات رسمية
-  const mockNotifications = [
-    {
-      id: '1',
-      title: 'تم قبول طلب الإجازة',
-      message: 'تم قبول طلب الإجازة من 15-20 أغسطس 2026. يمكنك الآن التخطيط لإجازتك.',
-      type: 'success',
-      timestamp: '2026-08-08T09:15:00',
-      read: false,
-      important: true,
-      action: 'عرض التفاصيل',
+  // Convert Live Routed Documents into official notifications format
+  const routedNotifications: MobileNotification[] = routedDeliveries.map(del => {
+    const isContract = del.document_type === 'employment_contract' || String(del.document_id).startsWith('CON-');
+    const docDate = del.created_at ? new Date(del.created_at).toISOString().split('T')[0] : '2026-10-17';
+    const docTime = del.created_at ? new Date(del.created_at).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }) : '11:00 ص';
+
+    return {
+      id: `routed-${del.id}`,
+      title: isContract ? `عقد عمل رسمي معتمد: ${del.document_title}` : `قرار رسمي موجه: ${del.document_title}`,
+      titleEn: isContract ? `Official Employment Contract: ${del.document_title}` : `Official Routed Document: ${del.document_title}`,
+      sender: del.sender_name || 'إدارة الموارد البشرية - فيتاس العراق',
+      senderEn: 'HR Department - VITAS Iraq',
+      category: isContract ? 'contract' : 'decision',
+      categoryLabelAr: isContract ? 'عقد رسمي' : 'قرار رسمي',
+      categoryLabelEn: isContract ? 'Official Contract' : 'Official Decision',
+      date: docDate,
+      time: docTime,
+      message: del.message || `تم توجيه مستند رسمي (${del.document_title}) إليك برقم مرجعي (${del.document_id}) عبر نظام التوجيه الذكي. يرجى مراجعة وتدقيق المستند المرفق أصولياً.`,
+      messageEn: `Official document (${del.document_title}) routed to you with reference ID (${del.document_id}). Please review and acknowledge.`,
+      read: del.app_status === 'read',
+      priority: 'urgent',
       attachments: [
         {
-          name: 'قرار_الموافقة_على_الإجازة_السنوية.pdf',
-          size: '380 KB',
+          id: `att-routed-${del.id}`,
+          name: `${del.document_title}.pdf`,
           type: 'pdf',
-          refNo: 'LV-APP-2026/089',
-          issuer: 'شعبة الإجازات والدوام - فيتاس العراق',
-          content: 'نص الموافقة الرسمية: تم قبول طلب الإجازة المقدم بعد تدقيق الرصيد السنوي المتاح للموظف والموافقة عليها أصولياً.'
+          size: '1.2 MB',
+          refNo: del.document_id,
+          docTitle: del.document_title,
+          docDate: docDate,
+          issuer: del.sender_name || 'قسم الموارد البشرية - فيتاس العراق',
+          deliveryId: del.id,
+          contentSnippet: `مستند رسمي معتمد صادرة عن مؤسسة فيتاس العراق.\nالعنوان: ${del.document_title}\nالرقم المرجعي: ${del.document_id}\nالمستلم: ${employee?.fullName || 'الموظف'}\nالحالة: معتمد وموجه أصولياً.`
         }
       ]
-    },
-    {
-      id: '2',
-      title: 'تذكير: اجتماع الفريق وتعميم أوقات العمل',
-      message: 'اجتماع الفريق الأسبوعي غداً الساعة 9 صباحاً في قاعة الاجتماعات رقم 2.',
-      type: 'info',
-      timestamp: '2026-08-07T16:00:00',
-      read: false,
-      important: true,
-      action: 'إضافة للتقويم',
-      attachments: [
-        {
-          name: 'جدول_أعمال_الاجتماع_والتوجيهات.pdf',
-          size: '520 KB',
-          type: 'pdf',
-          refNo: 'MTG-2026/41',
-          issuer: 'إدارة العمليات - فيتاس العراق',
-          content: 'جدول أعمال الاجتماع الأسبوعي: مراجعة المستهدفات الشهرية، مؤشرات خدمة العملاء، خطة العمل الميداني.'
-        }
-      ]
-    },
-    {
-      id: '3',
-      title: 'تحديث سلم الحوافز والرواتب الربع سنوية',
-      message: 'تم تحديث سياسة الرواتب والحوافز الربع سنوية المعتمدة لعام 2026. يرجى مراجعة المستند والجدول المرفق.',
-      type: 'warning',
-      timestamp: '2026-08-06T11:30:00',
-      read: true,
-      important: false,
-      action: 'عرض المستند',
-      attachments: [
-        {
-          name: 'لائحة_الحوافز_والإنتاجية_المعتمدة.pdf',
-          size: '1.4 MB',
-          type: 'pdf',
-          refNo: 'VITAS/HR/DEC-2026/089',
-          issuer: 'الإدارة العامة - فيتاس العراق',
-          content: 'المادة 1: تُصرف الحوافز الربع سنوية وفق معدلات الإنجاز ومطابقة الحضور بما لا يقل عن 90%.\nالمادة 2: يُعمل بالقرار اعتباراً من الشهر الجاري.'
-        },
-        {
-          name: 'جدول_معايير_الاستحقاق_2026.xlsx',
-          size: '620 KB',
-          type: 'excel',
-          refNo: 'VITAS/FIN/TBL-2026/44',
-          issuer: 'الشؤون المالية والموارد البشرية',
-          content: 'جدول معايير ونسب استحقاق الحوافز والتقييم الوظيفي لموظفي الفروع والإدارات.'
-        }
-      ]
-    },
-    {
-      id: '4',
-      title: 'كشف الراتب لشهر آب 2026 متاح الآن',
-      message: 'كشف راتب شهر أغسطس 2026 متاح الآن للعرض والتحميل مع تفاصيل البدلات والاستقطاعات.',
-      type: 'success',
-      timestamp: '2026-08-05T08:00:00',
-      read: true,
-      important: false,
-      action: 'عرض الكشف',
-      attachments: [
-        {
-          name: 'قسيمة_راتب_رسمية_آب_2026.pdf',
-          size: '420 KB',
-          type: 'pdf',
-          refNo: 'VTS/PAY/2026-08/SLIP',
-          issuer: 'قسم الرواتب والأجور - فيتاس العراق',
-          content: 'قسيمة صرف الراتب الشهرية المعتمدة رسمياً متضمنة الراتب الأساسي والبدلات وصندوق الضمان الاجتماعي.'
-        }
-      ]
-    },
-    {
-      id: '5',
-      title: 'تذكير: تقييم الأداء ونموذج التطوير',
-      message: 'يجب إكمال تقييم الأداء الذاتي ومراجعة الأهداف التشغيلية قبل نهاية الأسبوع.',
-      type: 'warning',
-      timestamp: '2026-08-04T14:00:00',
-      read: true,
-      important: true,
-      action: 'بدء التقييم',
-      attachments: [
-        {
-          name: 'دليل_معايير_تقييم_الأداء_KPIs.xlsx',
-          size: '780 KB',
-          type: 'excel',
-          refNo: 'VITAS/HR/KPI-2026',
-          issuer: 'قسم التدريب والتطوير الوظيفي',
-          content: 'معايير تقييم الأداء السنوي ومؤشرات قياس الإنتاجية الوظيفية وجودة العمل الميداني.'
-        }
-      ]
-    },
-    {
-      id: '6',
-      title: 'رسالة جديدة من إدارة الموارد البشرية',
-      message: 'تحديث استمارة التأمين الصحي وإصدار بطاقات العلاج الطبي لك ولعائلتك.',
-      type: 'info',
-      timestamp: '2026-08-03T10:00:00',
-      read: true,
-      important: false,
-      action: 'عرض الرسالة',
-      attachments: [
-        {
-          name: 'استمارة_تحديث_التأمين_الطبي_2026.pdf',
-          size: '710 KB',
-          type: 'pdf',
-          refNo: 'VITAS/MED/FORM-2026/12',
-          issuer: 'وحدة الخدمات والمنافع الطبية',
-          content: 'استمارة تجديد وثيقة التأمين الصحي الشامل للموظفين وأفراد عائلاتهم المستحقين.'
-        }
-      ]
-    }
+    };
+  });
+
+  // Combine live routed notifications with official portal notifications
+  const allNotifications: MobileNotification[] = [
+    ...routedNotifications,
+    ...portalNotifications.filter(pn => !routedNotifications.some(rn => rn.id === pn.id))
   ];
 
-  const [previewAttachment, setPreviewAttachment] = useState<any | null>(null);
+  // Filtering Logic
+  const filteredNotifications = allNotifications.filter(n => {
+    if (filter === 'unread' && n.read) return false;
+    if (filter === 'attachments' && (!n.attachments || n.attachments.length === 0)) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const inTitle = n.title.toLowerCase().includes(q) || (n.titleEn && n.titleEn.toLowerCase().includes(q));
+      const inMsg = n.message.toLowerCase().includes(q) || (n.messageEn && n.messageEn.toLowerCase().includes(q));
+      const inSender = n.sender.toLowerCase().includes(q);
+      const inAtt = n.attachments?.some(a => a.name.toLowerCase().includes(q) || (a.refNo && a.refNo.toLowerCase().includes(q)));
+      return inTitle || inMsg || inSender || inAtt;
+    }
+    return true;
+  });
 
-  const handleDownloadAttachment = (att: any) => {
-    let mimeType = att.type === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/pdf';
-    const content = `=== VITAS IRAQ OFFICIAL HR DOCUMENT ===\nDocument: ${att.name}\nRef: ${att.refNo || 'VITAS/HR/2026'}\nDate: ${new Date().toLocaleDateString('ar-IQ')}\n${att.content || 'Verified by VITAS Iraq HRMS Portal.'}`;
-    const blob = new Blob([content], { type: mimeType });
+  const unreadCount = allNotifications.filter(n => !n.read).length;
+
+  const handleMarkAsRead = (id: string) => {
+    markNotificationAsRead(id);
+    setPortalNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    const targetDel = routedDeliveries.find(d => `routed-${d.id}` === id);
+    if (targetDel) {
+      setRoutedDeliveries(prev => prev.map(d => d.id === targetDel.id ? { ...d, app_status: 'read' } : d));
+    }
+  };
+
+  const handleMarkAllAsRead = () => {
+    allNotifications.forEach(n => {
+      if (!n.read) handleMarkAsRead(n.id);
+    });
+  };
+
+  const handleOpenPreview = (att: MobileAttachment, notif: MobileNotification) => {
+    if (att.deliveryId) {
+      handleMarkAsRead(`routed-${att.deliveryId}`);
+    }
+    setPreviewData({
+      attachment: att,
+      notifTitle: notif.title,
+      notifDate: notif.date
+    });
+  };
+
+  const handleDownloadAttachment = (att: MobileAttachment) => {
+    const mimeType = att.type === 'excel'
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'application/pdf';
+
+    let contentText = `=== VITAS IRAQ OFFICIAL HR DOCUMENT ===\nDocument: ${att.name}\nRef: ${att.refNo || 'VITAS/HR/2026'}\nDate: ${att.docDate || new Date().toLocaleDateString('ar-IQ')}\nIssuer: ${att.issuer || 'VITAS Iraq HRMS'}\n\n`;
+
+    if (att.tableData && att.tableData.length > 0) {
+      contentText += '--- DATA TABLE ---\n';
+      contentText += JSON.stringify(att.tableData, null, 2);
+    } else {
+      contentText += att.contentSnippet || 'Verified by VITAS Iraq HRMS Enterprise Portal.';
+    }
+
+    const blob = new Blob([contentText], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -172,330 +361,382 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
     URL.revokeObjectURL(url);
   };
 
-  const routedNotificationsFormatted = routedDeliveries.map(del => ({
-    id: del.id,
-    title: `[مستند رسمي] ${del.document_title}`,
-    message: del.message || `تم توجيه مستند رسمي (${del.document_title}) إليك برقم مرجعي ${del.document_id}.`,
-    type: del.document_type === 'employment_contract' ? 'success' : 'info',
-    timestamp: del.created_at,
-    read: del.app_status === 'read',
-    important: true,
-    action: 'معاينة المستند',
-    deliveryId: del.id,
-    attachments: [
-      {
-        name: `${del.document_title}.pdf`,
-        size: '1.2 MB',
-        type: 'pdf',
-        refNo: del.document_id,
-        issuer: del.sender_name || 'فيتاس العراق',
-        deliveryId: del.id,
-        content: `مستند معتمد رسمياً: ${del.document_title}\nرقم المرجع: ${del.document_id}\nالمرسل: ${del.sender_name}\nتاريخ التسليم: ${new Date(del.created_at).toLocaleDateString('ar-IQ')}`
-      }
-    ]
-  }));
-
-  const combinedList = [...(routedNotificationsFormatted.length > 0 ? routedNotificationsFormatted : notifications), ...mockNotifications];
-  const allNotifications = Array.from(new Map(combinedList.map(n => [n.id, n])).values());
-
-  const filteredNotifications = allNotifications.filter(notification => {
-    if (filter === 'unread') return !notification.read;
-    if (filter === 'important') return notification.important;
-    return true;
-  });
-
-  const handlePreviewAttachment = (att: any, notif: any) => {
-    if (att.deliveryId) {
-      markNotificationAsRead(att.deliveryId);
-      setRoutedDeliveries(prev => prev.map(d => d.id === att.deliveryId ? { ...d, app_status: 'read' } : d));
-    }
-    setPreviewAttachment({ ...att, notifTitle: notif.title });
-  };
-
-  const handleMarkAsRead = (id: string) => {
-    markNotificationAsRead(id);
-  };
-
-  const handleMarkAllAsRead = () => {
-    allNotifications.forEach(notification => {
-      if (!notification.read) {
-        markNotificationAsRead(notification.id);
-      }
-    });
-  };
-
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
-    if (diffHours < 24) return `منذ ${diffHours} ساعة`;
-    if (diffDays < 7) return `منذ ${diffDays} يوم`;
-    return date.toLocaleDateString('ar-IQ');
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'success':
-        return 'check_circle';
-      case 'warning':
-        return 'warning';
-      case 'error':
-        return 'error';
-      case 'info':
-      default:
-        return 'info';
-    }
-  };
-
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case 'success':
-        return 'from-green-500 to-green-600';
-      case 'warning':
-        return 'from-amber-500 to-amber-600';
-      case 'error':
-        return 'from-rose-500 to-rose-600';
-      case 'info':
-      default:
-        return 'from-blue-500 to-blue-600';
-    }
-  };
-
   return (
-    <div className="w-full max-w-md mx-auto p-4 space-y-4">
-      {/* Mobile Header */}
+    <div className="w-full max-w-md mx-auto p-4 space-y-4 pb-20 animate-in fade-in">
+      {/* Top Header Matching ESS Portal */}
       <div className="flex items-center justify-between gap-3 pt-1">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center">
-            <span className="material-symbols-outlined text-xl">notifications</span>
+          <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center shadow-xs">
+            <Bell className="w-5 h-5 text-teal-500" />
           </div>
           <div>
             <h1 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              التنبيهات والإشعارات
+              التنبيهات والمرفقات الرسمية
             </h1>
             <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {unreadNotifications > 0 ? `${unreadNotifications} تنبيهات غير مقروءة` : 'جميع التنبيهات محدّثة'}
+              الاطلاع على جميع القرارات الإدارية، كشوفات الرواتب، والمستندات المرفقة الصادرة لك.
             </p>
           </div>
         </div>
 
-        {unreadNotifications > 0 && (
+        {unreadCount > 0 && (
           <button
             onClick={handleMarkAllAsRead}
-            className="text-[11px] font-bold text-teal-400 hover:underline bg-teal-500/10 px-2.5 py-1.5 rounded-xl"
+            className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-teal-600/10 hover:bg-teal-600/20 text-teal-600 dark:text-teal-400 border border-teal-500/30 transition-all flex items-center gap-1 cursor-pointer shrink-0"
           >
-            قراءة الكل
+            <Check className="w-3.5 h-3.5" />
+            <span>تحديد الكل كمقروء</span>
           </button>
         )}
       </div>
 
-      {/* Filter Chips */}
+      {/* Filter Chips Matching ESS Portal */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
         <button
           onClick={() => setFilter('all')}
-          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all ${
+          className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
             filter === 'all'
-              ? 'bg-teal-500 text-slate-950 font-black shadow-sm'
-              : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'
+              ? 'bg-teal-600 text-white shadow-sm'
+              : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
           الكل ({allNotifications.length})
         </button>
+
         <button
           onClick={() => setFilter('unread')}
-          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all ${
+          className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${
             filter === 'unread'
-              ? 'bg-teal-500 text-slate-950 font-black shadow-sm'
-              : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'
+              ? 'bg-teal-600 text-white shadow-sm'
+              : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
-          غير مقروء ({allNotifications.filter(n => !n.read).length})
+          غير مقروءة ({unreadCount})
         </button>
+
         <button
-          onClick={() => setFilter('important')}
-          className={`px-3 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all ${
-            filter === 'important'
-              ? 'bg-teal-500 text-slate-950 font-black shadow-sm'
-              : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'
+          onClick={() => setFilter('attachments')}
+          className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+            filter === 'attachments'
+              ? 'bg-teal-600 text-white shadow-sm'
+              : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
-          هام ({allNotifications.filter(n => n.important).length})
+          <Paperclip className="w-3.5 h-3.5" />
+          <span>تحتوي مرفقات ({allNotifications.filter(n => n.attachments && n.attachments.length > 0).length})</span>
         </button>
       </div>
 
-      {/* Notifications Cards List */}
-      <div className="space-y-2.5">
+      {/* Search Input Bar */}
+      <div className="relative">
+        <Search className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="بحث في التنبيهات أو أرقام المرفقات..."
+          className={`w-full pr-8 pl-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+            isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+          }`}
+        />
+      </div>
+
+      {/* Notifications List Cards */}
+      <div className="space-y-3.5">
         {filteredNotifications.length === 0 ? (
           <div className={`p-8 rounded-3xl border text-center ${
             isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
           }`}>
-            <div className={`w-14 h-14 mx-auto mb-3 rounded-full flex items-center justify-center ${
+            <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${
               isDark ? 'bg-slate-800 text-slate-500' : 'bg-slate-100 text-slate-400'
             }`}>
-              <span className="material-symbols-outlined text-2xl">notifications_off</span>
+              <Bell className="w-6 h-6" />
             </div>
-            <p className="text-xs font-bold">لا توجد تنبيهات متاحة حالياً</p>
+            <p className="text-xs font-bold">لا توجد تنبيهات أو مرفقات تطابق البحث</p>
           </div>
         ) : (
-          filteredNotifications.map((notification) => (
+          filteredNotifications.map((notif) => (
             <div
-              key={notification.id}
-              className={`p-3.5 rounded-2xl border transition-all ${
-                !notification.read
-                  ? isDark ? 'bg-teal-950/20 border-teal-500/40 text-white shadow-xs' : 'bg-teal-50/70 border-teal-300 text-slate-900 shadow-xs'
-                  : isDark ? 'bg-[#131b2e] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800 shadow-xs'
+              key={notif.id}
+              className={`p-4 rounded-2xl border transition-all ${
+                !notif.read
+                  ? isDark
+                    ? 'bg-gradient-to-r from-teal-950/40 via-slate-900 to-slate-900 border-teal-500/40 shadow-lg shadow-teal-950/20'
+                    : 'bg-teal-50/70 border-teal-300 shadow-sm'
+                  : isDark
+                    ? 'bg-slate-900/70 border-slate-800 text-slate-300'
+                    : 'bg-white border-slate-200 text-slate-800 shadow-xs'
               }`}
             >
-              <div className="flex items-start gap-3">
-                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${getNotificationColor(notification.type)} flex items-center justify-center shrink-0 shadow-xs text-white`}>
-                  <span className="material-symbols-outlined text-lg">
-                    {getNotificationIcon(notification.type)}
+              {/* Card Meta Header (Category + Priority + Sender + Date) */}
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${
+                    notif.category === 'decision'
+                      ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                      : notif.category === 'contract'
+                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                      : notif.category === 'payroll'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                      : notif.category === 'medical'
+                      ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                  }`}>
+                    {notif.categoryLabelAr}
+                  </span>
+
+                  {notif.priority === 'urgent' && (
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-rose-500 text-white animate-pulse">
+                      عاجل
+                    </span>
+                  )}
+
+                  <span className={`text-[11px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    • {notif.sender}
                   </span>
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <h3 className="text-xs font-bold truncate">{notification.title}</h3>
-                      {notification.important && (
-                        <span className="px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-400 text-[9px] font-bold border border-rose-500/30 shrink-0">
-                          هام
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-slate-400 shrink-0 font-mono">
-                      {formatTime(notification.timestamp)}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={`text-[10px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {notif.date} | {notif.time}
+                  </span>
+                  {!notif.read && (
+                    <button
+                      onClick={() => handleMarkAsRead(notif.id)}
+                      title="تحديد كمقروء"
+                      className="p-1 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-teal-400 transition-colors cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Title & Description */}
+              <h3 className={`text-xs sm:text-sm font-black mb-1.5 leading-snug ${
+                !notif.read ? (isDark ? 'text-white' : 'text-slate-950') : (isDark ? 'text-slate-200' : 'text-slate-800')
+              }`}>
+                {notif.title}
+              </h3>
+              <p className={`text-[11px] leading-relaxed mb-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                {notif.message}
+              </p>
+
+              {/* Official Verified Attachments Section Matching Screenshot */}
+              {notif.attachments && notif.attachments.length > 0 && (
+                <div className={`pt-2.5 mt-2 border-t ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Paperclip className="w-3.5 h-3.5 text-teal-500" />
+                    <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400">
+                      المرفقات الرسمية المعتمدة ({notif.attachments.length})
                     </span>
                   </div>
 
-                  <p className={`text-[11px] leading-relaxed mb-2.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {notification.message}
-                  </p>
-
-                  {/* Notification Attachments List */}
-                  {notification.attachments && notification.attachments.length > 0 && (
-                    <div className="mb-3 space-y-1.5 pt-2 border-t border-white/5">
-                      <p className="text-[10px] font-bold text-teal-400 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs">attach_file</span>
-                        <span>المرفقات المعتمدة ({notification.attachments.length})</span>
-                      </p>
-                      {notification.attachments.map((att: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className={`p-2 rounded-xl border flex items-center justify-between gap-2 text-[11px] ${
-                            isDark ? 'bg-slate-900/90 border-slate-700/80' : 'bg-slate-50 border-slate-200'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="material-symbols-outlined text-base text-rose-400 shrink-0">
-                              {att.type === 'excel' ? 'table_chart' : 'description'}
-                            </span>
-                            <span className="truncate font-bold">{att.name}</span>
-                            <span className="text-[9px] text-slate-400 shrink-0 font-mono">({att.size})</span>
-                          </div>
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => handlePreviewAttachment(att, notification)}
-                              className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 hover:bg-teal-500/30 flex items-center gap-0.5 cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-xs">visibility</span>
-                              <span>معاينة</span>
-                            </button>
-                            <button
-                              onClick={() => handleDownloadAttachment(att)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 cursor-pointer"
-                              title="تحميل"
-                            >
-                              <span className="material-symbols-outlined text-xs">download</span>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    <button className="text-[10px] font-bold text-white bg-teal-600 hover:bg-teal-700 px-2.5 py-1 rounded-lg shadow-sm transition-all cursor-pointer">
-                      {notification.action}
-                    </button>
-                    {!notification.read && (
-                      <button
-                        onClick={() => handleMarkAsRead(notification.id)}
-                        className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border ${
-                          isDark ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                  <div className="space-y-2">
+                    {notif.attachments.map((att) => (
+                      <div
+                        key={att.id}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                          isDark 
+                            ? 'bg-slate-900/90 border-slate-700/80 hover:border-teal-500/50' 
+                            : 'bg-white border-slate-200 hover:border-teal-400 shadow-xs'
                         }`}
                       >
-                        تعليم كمقروء
-                      </button>
-                    )}
+                        {/* File Icon & Info */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            att.type === 'pdf'
+                              ? 'bg-rose-500/10 text-rose-500'
+                              : 'bg-emerald-500/10 text-emerald-500'
+                          }`}>
+                            {att.type === 'pdf' ? (
+                              <FileText className="w-4 h-4" />
+                            ) : (
+                              <FileSpreadsheet className="w-4 h-4" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold truncate">
+                              {att.name}
+                            </p>
+                            <p className="text-[9px] font-mono text-slate-400 truncate">
+                              {att.type.toUpperCase()} • {att.size} {att.refNo && `• ${att.refNo}`}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons: Preview & Download */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => handleOpenPreview(att, notif)}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold bg-teal-600 hover:bg-teal-500 text-white flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>معاينة</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleDownloadAttachment(att)}
+                            className={`p-1.5 rounded-lg border text-slate-400 hover:text-white transition-colors cursor-pointer ${
+                              isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 hover:bg-slate-200'
+                            }`}
+                            title="تحميل المرفق"
+                          >
+                            <Download className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           ))
         )}
       </div>
 
-      {/* Attachment Preview Modal for Mobile App */}
-      {previewAttachment && (
+      {/* Official Verified Document / Attachment Preview Modal */}
+      {previewData && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in">
-          <div className={`w-full max-w-sm rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[85vh] ${
+          <div className={`w-full max-w-lg max-h-[90vh] rounded-2xl border shadow-2xl flex flex-col overflow-hidden ${
             isDark ? 'bg-[#0f172a] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
           }`}>
-            <div className={`p-3.5 border-b flex items-center justify-between ${
-              isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200'
+            {/* Modal Header */}
+            <div className={`p-3.5 border-b flex items-center justify-between gap-2 ${
+              isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'
             }`}>
               <div className="flex items-center gap-2 min-w-0">
-                <span className="material-symbols-outlined text-teal-400 text-lg">description</span>
-                <span className="text-xs font-bold truncate">{previewAttachment.name}</span>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  previewData.attachment.type === 'pdf' ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'
+                }`}>
+                  {previewData.attachment.type === 'pdf' ? <FileText className="w-4 h-4" /> : <FileSpreadsheet className="w-4 h-4" />}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-xs font-bold truncate">
+                    {previewData.attachment.name}
+                  </h3>
+                  <p className="text-[10px] text-slate-400 truncate">
+                    {previewData.attachment.docTitle || previewData.notifTitle}
+                  </p>
+                </div>
               </div>
-              <button
-                onClick={() => setPreviewAttachment(null)}
-                className="text-slate-400 hover:text-white cursor-pointer"
-              >
-                ✕
-              </button>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => handleDownloadAttachment(previewData.attachment)}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-teal-600 hover:bg-teal-500 text-white flex items-center gap-1 cursor-pointer shadow-xs"
+                >
+                  <Download className="w-3 h-3" />
+                  <span>تحميل</span>
+                </button>
+                <button
+                  onClick={() => setPreviewData(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            <div className="p-4 overflow-y-auto space-y-3 text-xs leading-relaxed">
-              <div className="border-b border-teal-500/20 pb-3 text-center">
-                <p className="font-black text-teal-400 text-sm">مؤسسة فيتاس العراق للتمويل الأصغر</p>
-                <p className="text-[10px] text-slate-400">VITAS IRAQ - HRMS OFFICIAL ATTACHMENT</p>
-                <p className="text-[10px] font-mono mt-1 text-teal-500 font-bold">{previewAttachment.refNo || 'REF-2026'}</p>
-              </div>
+            {/* Modal Body: Official Letterhead Paper View */}
+            <div className={`p-4 overflow-y-auto flex-1 relative ${isDark ? 'bg-[#080d1a]' : 'bg-slate-100'}`}>
+              <div className={`p-5 rounded-2xl shadow-xl border relative overflow-hidden ${
+                isDark ? 'bg-[#0f172a] border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+              }`}>
+                {/* Official Watermark */}
+                <div className="absolute inset-0 pointer-events-none select-none flex items-center justify-center opacity-[0.03]">
+                  <p className="text-5xl font-black uppercase rotate-[-25deg] tracking-widest text-center">
+                    VITAS IRAQ<br />OFFICIAL
+                  </p>
+                </div>
 
-              <div className="p-3 rounded-xl bg-slate-900/40 border border-white/5 space-y-2 whitespace-pre-line text-justify">
-                {previewAttachment.content || 'وثيقة رسمية معتمدة من إدارة الموارد البشرية والشؤون الإدارية.'}
-              </div>
+                {/* Letterhead Header */}
+                <div className="border-b-2 border-teal-500/40 pb-3 mb-4">
+                  <div className="flex items-center justify-between text-right">
+                    <div>
+                      <h4 className="text-sm font-black text-teal-600 dark:text-teal-400">
+                        مؤسسة فيتاس العراق للتمويل الأصغر
+                      </h4>
+                      <p className="text-[9px] font-mono tracking-wider text-slate-400">
+                        VITAS IRAQ MICROFINANCE - HRMS
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+                        {previewData.attachment.issuer || 'قسم الموارد البشرية والشؤون الإدارية'}
+                      </p>
+                    </div>
 
-              <div className="pt-2 text-center text-[10px] text-emerald-400 font-bold flex items-center justify-center gap-1">
-                <span className="material-symbols-outlined text-sm">verified</span>
-                <span>مصادق ومعتمد رسمياً من الإدارة العامة</span>
-              </div>
-            </div>
+                    <div className="text-left font-mono text-[10px] space-y-0.5">
+                      <p><span className="text-slate-400">الرقم: </span><span className="font-bold text-teal-500">{previewData.attachment.refNo || 'VITAS/HR/2026'}</span></p>
+                      <p><span className="text-slate-400">التاريخ: </span><span className="font-bold">{previewData.attachment.docDate || previewData.notifDate}</span></p>
+                      <p><span className="text-slate-400">الحالة: </span><span className="font-bold text-emerald-500">معتمد ورسمي</span></p>
+                    </div>
+                  </div>
+                </div>
 
-            <div className={`p-3 border-t flex items-center justify-between gap-2 ${
-              isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-slate-50 border-slate-200'
-            }`}>
-              <button
-                onClick={() => handleDownloadAttachment(previewAttachment)}
-                className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">download</span>
-                <span>تحميل المرفق</span>
-              </button>
-              <button
-                onClick={() => setPreviewAttachment(null)}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs cursor-pointer"
-              >
-                إغلاق
-              </button>
+                {/* Document Title */}
+                <div className="text-center my-4">
+                  <h2 className="text-xs sm:text-sm font-black underline underline-offset-4 decoration-teal-500">
+                    {previewData.attachment.docTitle || previewData.attachment.name}
+                  </h2>
+                </div>
+
+                {/* Document Content */}
+                <div className="space-y-3 text-xs leading-relaxed">
+                  {previewData.attachment.tableData && previewData.attachment.tableData.length > 0 ? (
+                    <div className="mt-2 border border-slate-300 dark:border-slate-700 rounded-xl overflow-x-auto">
+                      <table className="w-full text-right text-[11px]">
+                        <thead className={isDark ? 'bg-slate-800 text-teal-400' : 'bg-slate-100 text-teal-700'}>
+                          <tr>
+                            {Object.keys(previewData.attachment.tableData[0]).map((col, idx) => (
+                              <th key={idx} className="p-2 font-bold border-b border-slate-300 dark:border-slate-700 whitespace-nowrap">
+                                {col}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                          {previewData.attachment.tableData.map((row, rIdx) => (
+                            <tr key={rIdx} className={rIdx % 2 === 0 ? (isDark ? 'bg-slate-900/40' : 'bg-white') : (isDark ? 'bg-slate-900/80' : 'bg-slate-50')}>
+                              {Object.values(row).map((val, cIdx) => (
+                                <td key={cIdx} className="p-2 whitespace-nowrap">
+                                  {String(val)}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 whitespace-pre-line text-justify leading-relaxed text-[11px]">
+                      {previewData.attachment.contentSnippet || 'نص الوثيقة والمذكرة الرسمية المعتمدة من إدارة الموارد البشرية بمؤسسة فيتاس العراق.'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Official Stamps & Signatures Footer */}
+                <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] font-bold text-slate-400">قسم التدقيق الداخلي والحوكمة</p>
+                    <p className="text-[10px] font-extrabold text-teal-600 mt-0.5">مصادق إلكترونياً بنجاح</p>
+                  </div>
+
+                  {/* Stamp Graphic */}
+                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-teal-500/80 p-0.5 flex items-center justify-center rotate-[-8deg] select-none text-center">
+                    <div className="w-full h-full rounded-full border border-teal-500/60 flex flex-col items-center justify-center p-0.5 text-[7px] font-black text-teal-500 leading-tight">
+                      <span>فيتاس العراق</span>
+                      <span className="my-0.5">★ معتمد ★</span>
+                      <span>الموارد البشرية</span>
+                    </div>
+                  </div>
+
+                  <div className="text-left">
+                    <p className="text-[9px] font-bold text-slate-400">المدير العام / المفوض</p>
+                    <p className="text-[10px] font-black text-slate-700 dark:text-slate-200 mt-0.5">مؤسسة فيتاس العراق</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
