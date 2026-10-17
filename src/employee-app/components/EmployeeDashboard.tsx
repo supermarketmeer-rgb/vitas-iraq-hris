@@ -135,14 +135,16 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee: 
         <div className="flex items-center gap-3">
           <div className="relative cursor-pointer shrink-0" onClick={() => navigate('/employee-app/profile')}>
             {employeePhoto ? (
-              <img 
-                src={employeePhoto} 
-                alt={firstName} 
-                className="w-12 h-12 rounded-2xl object-cover border-2 border-teal-500/50 shadow-md shadow-teal-500/20"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
+              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 border-2 border-teal-500/50 shadow-md shadow-teal-500/20 overflow-hidden flex items-center justify-center p-0.5">
+                <img 
+                  src={employeePhoto} 
+                  alt={firstName} 
+                  className="w-full h-full object-contain rounded-xl"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              </div>
             ) : null}
             <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 items-center justify-center text-white font-black text-lg shadow-md shadow-teal-500/20 ${employeePhoto ? 'hidden' : 'flex'}`}>
               {firstName.charAt(0)}
@@ -246,18 +248,20 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee: 
           : 'bg-white border-slate-300 text-slate-900 shadow-sm'
       }`}>
         <div className="flex items-center gap-4">
-          <div className="relative shrink-0 cursor-pointer" onClick={() => navigate('/employee-app/profile')}>
+          <div className="relative shrink-0 cursor-pointer group" onClick={() => navigate('/employee-app/profile')}>
             {employeePhoto ? (
-              <img 
-                src={employeePhoto} 
-                alt={firstName} 
-                className="w-20 h-20 rounded-2xl object-cover border-2 border-teal-500 shadow-md shadow-teal-500/25"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
+              <div className="w-20 h-26 rounded-2xl bg-white dark:bg-slate-800 border-2 border-teal-500 shadow-md shadow-teal-500/25 overflow-hidden flex items-center justify-center p-0.5">
+                <img 
+                  src={employeePhoto} 
+                  alt={firstName} 
+                  className="w-full h-full object-contain rounded-xl group-hover:scale-105 transition-transform"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              </div>
             ) : null}
-            <div className={`w-20 h-20 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 items-center justify-center text-white font-black text-2xl shadow-md shadow-teal-500/20 ${employeePhoto ? 'hidden' : 'flex'}`}>
+            <div className={`w-20 h-26 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 items-center justify-center text-white font-black text-2xl shadow-md shadow-teal-500/20 ${employeePhoto ? 'hidden' : 'flex'}`}>
               {firstName.charAt(0)}
             </div>
             <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full shadow-xs"></span>

@@ -197,18 +197,20 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
         isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
       }`}>
         <div className="flex items-center gap-3.5">
-          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()} title={isEn ? 'Click to change photo' : 'انقر لتغيير الصورة الشخصية'}>
+          <div className="relative group cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()} title={isEn ? 'Click to change photo' : 'انقر لتغيير الصورة الشخصية'}>
             {employeePhoto ? (
-              <img 
-                src={employeePhoto} 
-                alt={displayName} 
-                className="w-16 h-16 rounded-2xl object-cover shadow-md border-2 border-teal-500/50 group-hover:opacity-90 transition-opacity"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
+              <div className="w-20 h-26 rounded-2xl bg-white dark:bg-slate-800 border-2 border-teal-500/60 shadow-lg p-0.5 overflow-hidden flex items-center justify-center group-hover:opacity-90 transition-opacity">
+                <img 
+                  src={employeePhoto} 
+                  alt={displayName} 
+                  className="w-full h-full object-contain rounded-xl"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              </div>
             ) : null}
-            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-white font-black text-2xl items-center justify-center shadow-md ${employeePhoto ? 'hidden' : 'flex'}`}>
+            <div className={`w-20 h-26 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-white font-black text-2xl items-center justify-center shadow-md ${employeePhoto ? 'hidden' : 'flex'}`}>
               {displayName.charAt(0)}
             </div>
             <input 
