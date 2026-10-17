@@ -7,7 +7,7 @@ interface EmployeeProfileProps {
 }
 
 export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLogout }) => {
-  const { theme, toggleTheme, language } = useEmployeeContext();
+  const { theme, toggleTheme, language, setEmployee } = useEmployeeContext();
   const isDark = theme === 'dark';
   const isEn = language === 'en';
 
@@ -22,6 +22,49 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
   });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (employee) {
+      setEditedEmployee(employee);
+    }
+  }, [employee]);
+
+  const employeePhoto = editedEmployee?.photoUrl || 
+                        editedEmployee?.photo_url || 
+                        editedEmployee?.avatar || 
+                        editedEmployee?.photo || 
+                        (String(editedEmployee?.badgeNo || editedEmployee?.badge_no || '').trim().toUpperCase() === 'V167' ? '/uploads/dina_haider.jpg' : null);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64Url = reader.result as string;
+      const updated = {
+        ...editedEmployee,
+        photoUrl: base64Url,
+        photo_url: base64Url,
+        avatar: base64Url
+      };
+      setEditedEmployee(updated);
+      if (setEmployee) setEmployee(updated);
+      try {
+        const savedAuth = localStorage.getItem('employee_auth');
+        if (savedAuth) {
+          const authData = JSON.parse(savedAuth);
+          authData.employee = updated;
+          localStorage.setItem('employee_auth', JSON.stringify(authData));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const displayName = isEn 
     ? (editedEmployee?.fullNameEn || 'Dina Haider Qasim') 
@@ -41,6 +84,15 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
 
   const handleSave = () => {
     console.log('Saving employee data:', editedEmployee);
+    if (setEmployee) setEmployee(editedEmployee);
+    try {
+      const savedAuth = localStorage.getItem('employee_auth');
+      if (savedAuth) {
+        const authData = JSON.parse(savedAuth);
+        authData.employee = editedEmployee;
+        localStorage.setItem('employee_auth', JSON.stringify(authData));
+      }
+    } catch {}
     setIsEditing(false);
   };
 
@@ -126,15 +178,37 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
         isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
       }`}>
         <div className="flex items-center gap-3.5">
-          <div className="relative">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-white font-black text-2xl flex items-center justify-center shadow-md">
+          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()} title={isEn ? 'Click to change photo' : 'انقر لتغيير الصورة الشخصية'}>
+            {employeePhoto ? (
+              <img 
+                src={employeePhoto} 
+                alt={displayName} 
+                className="w-16 h-16 rounded-2xl object-cover shadow-md border-2 border-teal-500/50 group-hover:opacity-90 transition-opacity"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : null}
+            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-white font-black text-2xl items-center justify-center shadow-md ${employeePhoto ? 'hidden' : 'flex'}`}>
               {displayName.charAt(0)}
             </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handlePhotoUpload} 
+            />
             <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-sm text-xs border border-white cursor-pointer"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-teal-600 hover:bg-teal-700 text-white flex items-center justify-center shadow-sm text-xs border border-white cursor-pointer transition-colors"
+              title={isEn ? 'Change Photo' : 'تغيير الصورة الشخصية'}
             >
-              <span className="material-symbols-outlined text-xs">{isEditing ? 'check' : 'edit'}</span>
+              <span className="material-symbols-outlined text-xs">photo_camera</span>
             </button>
           </div>
 

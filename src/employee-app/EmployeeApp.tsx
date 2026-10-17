@@ -57,6 +57,9 @@ function EmployeeAppMain() {
             emp.position_ar = 'موظف استقبال';
             emp.department = 'الائتمان';
             emp.branch = 'مكتب النجف';
+            emp.photoUrl = emp.photoUrl || emp.photo_url || '/uploads/dina_haider.jpg';
+            emp.photo_url = emp.photo_url || emp.photoUrl || '/uploads/dina_haider.jpg';
+            emp.avatar = emp.avatar || '/uploads/dina_haider.jpg';
           }
 
           // Rehydrate with real employee data from backend if needed
@@ -87,7 +90,10 @@ function EmployeeAppMain() {
                     position: found.position_ar || found.position,
                     position_ar: found.position_ar || found.position,
                     branch: found.branch || found.location_ar,
-                    salary: found.basic_salary || found.salary
+                    salary: found.basic_salary || found.salary,
+                    photoUrl: found.photo_url || found.photoUrl || found.avatar || emp.photoUrl || (bNo === 'V167' ? '/uploads/dina_haider.jpg' : ''),
+                    photo_url: found.photo_url || found.photoUrl || found.avatar || emp.photo_url || (bNo === 'V167' ? '/uploads/dina_haider.jpg' : ''),
+                    avatar: found.photo_url || found.photoUrl || found.avatar || emp.avatar || (bNo === 'V167' ? '/uploads/dina_haider.jpg' : '')
                   };
                   setCurrentEmployee(liveEmp);
                   setEmployee(liveEmp);
@@ -113,6 +119,12 @@ function EmployeeAppMain() {
   }, [setEmployee]);
 
   const handleLogin = (employeeData: any) => {
+    const bNo = String(employeeData?.badgeNo || employeeData?.badge_no || '').trim().toUpperCase();
+    if (bNo === 'V167' && !employeeData.photoUrl && !employeeData.photo_url) {
+      employeeData.photoUrl = '/uploads/dina_haider.jpg';
+      employeeData.photo_url = '/uploads/dina_haider.jpg';
+      employeeData.avatar = '/uploads/dina_haider.jpg';
+    }
     setIsAuthenticated(true);
     setCurrentEmployee(employeeData);
     setEmployee(employeeData);

@@ -1,12 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeContext } from '../context/EmployeeContext';
-import {
-  getLocalServerConfig,
-  saveLocalServerConfig,
-  sendPunchToLocalServer,
-  LocalServerConfig
-} from '../utils/localBiometricService';
 import { 
   Bell, 
   Sun, 
@@ -34,18 +28,12 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
   const isEn = language === 'en';
 
   const [currentDate] = useState(new Date());
-  const [hasPunchedIn, setHasPunchedIn] = useState(true);
-  const [punchTime, setPunchTime] = useState(isEn ? '08:15 AM' : '08:15 صباحاً');
-  const [isPunching, setIsPunching] = useState(false);
-  const [punchStatusMsg, setPunchStatusMsg] = useState<string | null>(null);
 
-  // Local Server Settings State
-  const [serverConfig, setServerConfig] = useState<LocalServerConfig>(getLocalServerConfig());
-  const [showServerModal, setShowServerModal] = useState(false);
-  const [serverIpInput, setServerIpInput] = useState(serverConfig.serverIp);
-  const [punchEndpointInput, setPunchEndpointInput] = useState(serverConfig.punchEndpoint);
-  const [wifiSsidInput, setWifiSsidInput] = useState(serverConfig.wifiSsid);
-  const [useNativeBiometricsInput, setUseNativeBiometricsInput] = useState(serverConfig.useNativeBiometrics);
+  const employeePhoto = employee?.photoUrl || 
+                        employee?.photo_url || 
+                        employee?.avatar || 
+                        employee?.photo || 
+                        (String(employee?.badgeNo || employee?.badge_no || '').trim().toUpperCase() === 'V167' ? '/uploads/dina_haider.jpg' : null);
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat(isEn ? 'en-US' : 'ar-IQ', {
@@ -53,44 +41,6 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
       day: 'numeric',
       month: 'short'
     }).format(date);
-  };
-
-  const handleSaveServerSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newConfig: LocalServerConfig = {
-      serverIp: serverIpInput.trim(),
-      punchEndpoint: punchEndpointInput.trim(),
-      wifiSsid: wifiSsidInput.trim(),
-      useNativeBiometrics: useNativeBiometricsInput,
-      offlineModeAllowed: true
-    };
-    saveLocalServerConfig(newConfig);
-    setServerConfig(newConfig);
-    setShowServerModal(false);
-    setPunchStatusMsg(
-      isEn 
-        ? `Local biometric server connected to (${newConfig.serverIp}) successfully!` 
-        : `تم تمكين وتحديث ربط سيرفر البصمة المحلي على (${newConfig.serverIp}) بنجاح!`
-    );
-  };
-
-  const handlePunchToggle = async () => {
-    setIsPunching(true);
-    setPunchStatusMsg(null);
-
-    const targetType = hasPunchedIn ? 'CHECK_OUT' : 'CHECK_IN';
-    const result = await sendPunchToLocalServer(employee, targetType);
-
-    if (result.success) {
-      if (hasPunchedIn) {
-        setHasPunchedIn(false);
-      } else {
-        setHasPunchedIn(true);
-        setPunchTime(result.timestamp);
-      }
-    }
-    setPunchStatusMsg(result.message);
-    setIsPunching(false);
   };
 
   const getFirstName = (empObj: any) => {
@@ -155,11 +105,21 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
       {/* Mobile Top Header */}
       <div className="flex items-center justify-between gap-3 pt-1">
         <div className="flex items-center gap-3">
-          <div className="relative cursor-pointer" onClick={() => navigate('/employee-app/profile')}>
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 flex items-center justify-center text-white font-black text-lg shadow-md shadow-teal-500/20">
+          <div className="relative cursor-pointer shrink-0" onClick={() => navigate('/employee-app/profile')}>
+            {employeePhoto ? (
+              <img 
+                src={employeePhoto} 
+                alt={firstName} 
+                className="w-12 h-12 rounded-2xl object-cover border-2 border-teal-500/50 shadow-md shadow-teal-500/20"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : null}
+            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 items-center justify-center text-white font-black text-lg shadow-md shadow-teal-500/20 ${employeePhoto ? 'hidden' : 'flex'}`}>
               {firstName.charAt(0)}
             </div>
-            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
+            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full shadow-xs"></span>
           </div>
           <div>
             <div className="flex items-center gap-1.5">
@@ -249,99 +209,80 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
         </div>
       ))}
 
-      {/* Live Punching Card */}
+      {/* Employee Identity & Profile Overview Card (Replaces Biometric Fingerprint Punch Card) */}
       <div className={`p-5 rounded-3xl border transition-all relative overflow-hidden shadow-lg ${
-        hasPunchedIn
-          ? isDark 
-            ? 'bg-gradient-to-br from-emerald-950/40 via-teal-900/30 to-slate-900 border-emerald-500/30' 
-            : 'bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white border-emerald-200'
-          : isDark
-            ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700/60'
-            : 'bg-gradient-to-br from-slate-50 to-white border-slate-200'
+        isDark 
+          ? 'bg-gradient-to-br from-[#131b2e] via-[#0f172a] to-[#0b1120] border-slate-700/80 text-white shadow-teal-950/20' 
+          : 'bg-white border-slate-200 text-slate-900 shadow-sm'
       }`}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className={`w-3 h-3 rounded-full ${hasPunchedIn ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              {hasPunchedIn 
-                ? (isEn ? 'Status: Present at Work' : 'حالة الدوام: حاضر في العمل') 
-                : (isEn ? 'Status: Not Checked In Yet' : 'حالة الدوام: لم تسجل البصمة بعد')}
-            </span>
-          </div>
-          <span className="text-xs font-mono font-bold text-teal-500 bg-teal-500/10 px-2 py-0.5 rounded-lg">
-            {branchTitle}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between my-2">
-          <div>
-            <p className={`text-2xl font-black font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {hasPunchedIn ? punchTime : '00:00'}
-            </p>
-            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {hasPunchedIn 
-                ? (isEn ? 'Check-in biometric punch' : 'وقت تسجيل دخول البصمة') 
-                : (isEn ? 'Tap button to punch in' : 'اضغط الزر للتبصيم المباشر')}
-            </p>
-          </div>
-
-          <button
-            onClick={handlePunchToggle}
-            disabled={isPunching}
-            className={`px-5 py-3 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer ${
-              hasPunchedIn
-                ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/20'
-                : 'bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white shadow-teal-500/30'
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg">
-              {isPunching ? 'sync' : hasPunchedIn ? 'logout' : 'fingerprint'}
-            </span>
-            <span>
-              {isPunching 
-                ? (isEn ? 'Processing...' : 'جاري التبصيم...') 
-                : hasPunchedIn 
-                ? (isEn ? 'Check Out' : 'تسجيل انصراف') 
-                : (isEn ? 'Check In' : 'تسجيل حضورك')}
-            </span>
-          </button>
-        </div>
-
-        {/* Punch Result Toast Notification */}
-        {punchStatusMsg && (
-          <div className="mt-3 p-3 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-teal-400 text-[11px] font-bold flex items-center justify-between gap-2 animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>{punchStatusMsg}</span>
+        <div className="flex items-center gap-4">
+          <div className="relative shrink-0 cursor-pointer" onClick={() => navigate('/employee-app/profile')}>
+            {employeePhoto ? (
+              <img 
+                src={employeePhoto} 
+                alt={firstName} 
+                className="w-20 h-20 rounded-2xl object-cover border-2 border-teal-500 shadow-md shadow-teal-500/25"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : null}
+            <div className={`w-20 h-20 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 items-center justify-center text-white font-black text-2xl shadow-md shadow-teal-500/20 ${employeePhoto ? 'hidden' : 'flex'}`}>
+              {firstName.charAt(0)}
             </div>
-            <button onClick={() => setPunchStatusMsg(null)} className="text-slate-400 hover:text-white">✕</button>
+            <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full shadow-xs"></span>
           </div>
-        )}
 
-        {/* Local Server Wi-Fi Connection Bar */}
-        <div className={`mt-3 pt-2.5 border-t flex items-center justify-between text-[11px] ${
-          isDark ? 'border-white/10' : 'border-slate-200'
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+              <span className="text-[10px] font-bold text-teal-500 dark:text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full font-mono">
+                {employee?.badgeNo || employee?.badge_no || employee?.employeeId || employee?.employee_id || 'V167'}
+              </span>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>{isEn ? 'Active' : 'نشط'}</span>
+              </span>
+            </div>
+
+            <h2 className={`text-base font-black truncate leading-snug ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {isEn 
+                ? (employee?.fullNameEn || 'Dina Haider Qasim') 
+                : (employee?.full_name_ar || employee?.fullNameAr || employee?.fullName || employee?.name || 'دينا حيدر قاسم')}
+            </h2>
+
+            <p className={`text-xs font-bold truncate mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+              {positionTitle}
+            </p>
+
+            <p className={`text-[11px] font-medium truncate mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              {branchTitle} • {isEn ? (employee?.departmentEn || 'Credit Department') : (employee?.department || 'قسم الائتمان')}
+            </p>
+          </div>
+        </div>
+
+        {/* Quick Profile Footer Links */}
+        <div className={`mt-4 pt-3 border-t flex items-center justify-between text-xs ${
+          isDark ? 'border-slate-800' : 'border-slate-100'
         }`}>
-          <div
-            onClick={() => setShowServerModal(true)}
-            className={`flex items-center gap-1.5 font-bold cursor-pointer ${
+          <button
+            onClick={() => navigate('/employee-app/profile')}
+            className={`flex items-center gap-1.5 font-bold cursor-pointer transition-colors ${
               isDark ? 'text-teal-400 hover:text-teal-300' : 'text-teal-700 hover:text-teal-800'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="material-symbols-outlined text-sm">lan</span>
-            <span>{isEn ? `Biometric Server: ${serverConfig.serverIp}` : `سيرفر البصمة المحلي: ${serverConfig.serverIp}`}</span>
-          </div>
+            <span className="material-symbols-outlined text-sm">badge</span>
+            <span>{isEn ? 'View Profile & Job Details' : 'عرض الملف الوظيفي'}</span>
+          </button>
+
           <button
-            onClick={() => setShowServerModal(true)}
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border flex items-center gap-1 cursor-pointer transition-colors ${
+            onClick={() => navigate('/employee-app/payroll')}
+            className={`px-3 py-1 rounded-xl text-[11px] font-bold transition-colors cursor-pointer border ${
               isDark 
-                ? 'text-slate-300 hover:text-white bg-slate-800/80 border-slate-700' 
-                : 'text-slate-700 hover:text-slate-900 bg-slate-100 border-slate-300'
+                ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white' 
+                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
             }`}
           >
-            <span className="material-symbols-outlined text-xs">settings</span>
-            <span>{isEn ? 'Server Setup' : 'إعدادات السيرفر'}</span>
+            {isEn ? 'Payslip' : 'كشف الراتب'}
           </button>
         </div>
       </div>
@@ -520,108 +461,15 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold truncate">{isEn ? 'Attendance recorded successfully' : 'تم تسجيل بصمة الدوام بنجاح'}</p>
+                <p className="text-xs font-bold truncate">{isEn ? 'Welcome to your employee self-service portal' : 'مرحباً بك في بوابتك الوظيفية الذاتية'}</p>
                 <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {isEn ? 'Today, 08:15 AM' : 'اليوم، 08:15 صباحاً'}
+                  {isEn ? 'All employee records are up to date' : 'جميع بيانات وسجلات الموظف محدثة'}
                 </p>
               </div>
             </div>
           )}
         </div>
       </div>
-
-      {/* Local Biometric Server Settings Modal */}
-      {showServerModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className={`w-full max-w-md rounded-3xl p-5 border shadow-2xl space-y-4 animate-in zoom-in-95 ${
-            isDark ? 'bg-[#0f172a] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            <div className={`flex items-center justify-between pb-2 border-b ${
-              isDark ? 'border-slate-800' : 'border-slate-200'
-            }`}>
-              <h2 className="text-sm font-black flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-teal-500">lan</span>
-                <span>{isEn ? 'Biometric Server Connection' : 'إعدادات ربط سيرفر البصمة المحلي'}</span>
-              </h2>
-              <button
-                onClick={() => setShowServerModal(false)}
-                className={`p-1 rounded-full cursor-pointer ${
-                  isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <span className="material-symbols-outlined text-base">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveServerSettings} className="space-y-3.5">
-              <div>
-                <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
-                  {isEn ? 'Local Server IP / Hostname *' : 'عنوان IP سيرفر البصمة المحلي *'}
-                </label>
-                <input
-                  type="text"
-                  value={serverIpInput}
-                  onChange={(e) => setServerIpInput(e.target.value)}
-                  placeholder="192.168.1.100:5000"
-                  className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-                  }`}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
-                  {isEn ? 'Punch Endpoint *' : 'نقطة نهاية التبصيم (Endpoint) *'}
-                </label>
-                <input
-                  type="text"
-                  value={punchEndpointInput}
-                  onChange={(e) => setPunchEndpointInput(e.target.value)}
-                  placeholder="/api/attendance/punch"
-                  className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-                  }`}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
-                  {isEn ? 'Authorized Branch Wi-Fi SSID' : 'اسم شبكة الواي فاي المعتمدة للفرع (SSID)'}
-                </label>
-                <input
-                  type="text"
-                  value={wifiSsidInput}
-                  onChange={(e) => setWifiSsidInput(e.target.value)}
-                  placeholder="VITAS-Branch-WiFi"
-                  className={`w-full px-3 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-                  }`}
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 active:scale-95 transition-all cursor-pointer"
-                >
-                  {isEn ? 'Save & Connect' : 'حفظ وإعادة الاتصال'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowServerModal(false)}
-                  className={`px-3.5 py-2.5 rounded-xl border text-xs font-bold cursor-pointer ${
-                    isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-300 text-slate-700'
-                  }`}
-                >
-                  {isEn ? 'Cancel' : 'إلغاء'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

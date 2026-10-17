@@ -125,6 +125,8 @@ app.use('/hr_drivers', (req, res) => {
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 // Universal File Download Endpoint (guarantees exact filename and extension in Chromium/Edge)
 app.post('/api/export/download', (req, res) => {

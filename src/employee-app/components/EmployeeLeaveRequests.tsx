@@ -446,59 +446,6 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               </div>
             </div>
           </div>
-
-          {/* Quick Simulation Buttons */}
-          <div className={`pt-2.5 border-t ${isDark ? 'border-[#1f2d4a]' : 'border-slate-100'}`}>
-            <span className={`text-[10px] block mb-1.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {isEn ? 'Quick Punch Simulation:' : 'تسجيل البصمة السريع:'}
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              <button
-                onClick={() => {
-                  const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-                  setAttendanceToday(prev => ({ ...prev, check_in: now }));
-                  setToastMessage(isEn ? `Punch-in recorded at ${now}` : `تم تسجيل الحضور في ${now}`);
-                  setTimeout(() => setToastMessage(null), 3000);
-                }}
-                className="px-2 py-2 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">login</span>
-                <span>{isEn ? 'In' : 'حضور'}</span>
-              </button>
-              <button
-                onClick={() => {
-                  const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-                  setAttendanceToday(prev => ({ ...prev, check_out: now }));
-                  setToastMessage(isEn ? `Punch-out recorded at ${now}` : `تم تسجيل الانصراف في ${now}`);
-                  setTimeout(() => setToastMessage(null), 3000);
-                }}
-                className="px-2 py-2 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">logout</span>
-                <span>{isEn ? 'Out' : 'انصراف'}</span>
-              </button>
-              <button
-                onClick={() => {
-                  setToastMessage(isEn ? 'Break out logged' : 'تم تسجيل الخروج للاستراحة');
-                  setTimeout(() => setToastMessage(null), 3000);
-                }}
-                className="px-2 py-2 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">coffee</span>
-                <span>{isEn ? 'Break' : 'استراحة'}</span>
-              </button>
-              <button
-                onClick={() => {
-                  setToastMessage(isEn ? 'Break return logged' : 'تم تسجيل العودة من الاستراحة');
-                  setTimeout(() => setToastMessage(null), 3000);
-                }}
-                className="px-2 py-2 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">work</span>
-                <span>{isEn ? 'Resume' : 'عودة'}</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Leave Balances Card */}
