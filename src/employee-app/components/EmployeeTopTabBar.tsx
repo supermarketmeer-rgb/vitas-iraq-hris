@@ -54,11 +54,14 @@ export const EmployeeTopTabBar: React.FC = () => {
     {
       id: 'notifications',
       path: '/employee-app/notifications',
-      label: isEn ? 'Notifications & Attachments' : 'التنبيهات والمرفقات',
+      label: isEn ? 'Notifications' : 'التنبيهات',
       icon: Bell,
-      badge: unreadNotifications
+      badge: unreadNotifications,
+      hidden: true // مخفي لأن آيقونة التنبيهات موجودة في الشريط السفلي
     }
   ];
+
+  const visibleTabs = tabs.filter(tab => !tab.hidden);
 
   return (
     <div className={`w-full border-b sticky top-0 z-40 backdrop-blur-md transition-colors ${
@@ -110,9 +113,9 @@ export const EmployeeTopTabBar: React.FC = () => {
         </div>
       </div>
 
-      {/* 6 ESS Pill Tabs matching the exact user screenshot */}
+      {/* ESS Pill Tabs */}
       <div className="w-full max-w-md mx-auto px-3 py-2 overflow-x-auto no-scrollbar flex items-center gap-2">
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const isActive = location.pathname === tab.path;
           const Icon = tab.icon;
 
