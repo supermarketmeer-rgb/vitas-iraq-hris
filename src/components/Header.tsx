@@ -42,9 +42,12 @@ export const Header: React.FC = () => {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showHelpGuideModal, setShowHelpGuideModal] = useState(false);
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwdChangeMsg, setPwdChangeMsg] = useState<string | null>(null);
+  const [pwdChangeError, setPwdChangeError] = useState<string | null>(null);
+  const [isChangingPwd, setIsChangingPwd] = useState(false);
 
   // Manual Sync states
   const [isManualSyncing, setIsManualSyncing] = useState(false);
@@ -590,9 +593,11 @@ export const Header: React.FC = () => {
               <button
                 onClick={() => {
                   setShowChangePwdModal(false);
+                  setCurrentPassword('');
                   setNewPassword('');
                   setConfirmPassword('');
                   setPwdChangeMsg(null);
+                  setPwdChangeError(null);
                 }}
                 className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
               >
@@ -601,52 +606,91 @@ export const Header: React.FC = () => {
             </div>
 
             <form
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
+                setPwdChangeMsg(null);
+                setPwdChangeError(null);
+
                 if (!newPassword || newPassword.length < 4) {
-                  alert(t('يرجى إدخال كلمة مرور بطول 4 أحرف على الأقل', 'Password must be at least 4 characters'));
+                  setPwdChangeError(t('يرجى إدخال كلمة مرور بطول 4 أحرف على الأقل', 'Password must be at least 4 characters'));
                   return;
                 }
                 if (newPassword !== confirmPassword) {
-                  alert(t('كلمتا المرور غير متطابقتين', 'Passwords do not match'));
+                  setPwdChangeError(t('كلمتا المرور غير متطابقتين', 'Passwords do not match'));
                   return;
                 }
 
+                setIsChangingPwd(true);
                 try {
-                  // Update in custom users list if exists
-                  const customUsersRaw = localStorage.getItem('vitas_custom_users') || '{}';
-                  const customUsers = JSON.parse(customUsersRaw);
-                  const userKey = (currentUser.employeeId || currentUser.name || '').toLowerCase();
-                  if (customUsers[userKey]) {
-                    customUsers[userKey].password = newPassword;
-                  }
-                  // Also match by username if stored
-                  Object.keys(customUsers).forEach(k => {
-                    if (customUsers[k].name === currentUser.name || customUsers[k].employeeId === currentUser.employeeId) {
-                      customUsers[k].password = newPassword;
-                    }
+                  await api.changePassword({
+                    username: currentUser.username || currentUser.name,
+                    employeeId: currentUser.employeeId,
+                    currentPassword: currentPassword.trim(),
+                    newPassword: newPassword.trim()
                   });
-                  localStorage.setItem('vitas_custom_users', JSON.stringify(customUsers));
-                } catch (err) {
-                  console.error(err);
-                }
 
-                setPwdChangeMsg(t('تم تحديث كلمة المرور الخاصة بك بنجاح!', 'Your password has been updated successfully!'));
-                setTimeout(() => {
-                  setShowChangePwdModal(false);
-                  setNewPassword('');
-                  setConfirmPassword('');
-                  setPwdChangeMsg(null);
-                }, 2000);
+                  // Update in custom users list if exists
+                  try {
+                    const customUsersRaw = localStorage.getItem('vitas_custom_users') || '{}';
+                    const customUsers = JSON.parse(customUsersRaw);
+                    const userKey = (currentUser.employeeId || currentUser.name || '').toLowerCase();
+                    if (customUsers[userKey]) {
+                      customUsers[userKey].password = newPassword.trim();
+                    }
+                    Object.keys(customUsers).forEach(k => {
+                      if (customUsers[k].name === currentUser.name || customUsers[k].employeeId === currentUser.employeeId) {
+                        customUsers[k].password = newPassword.trim();
+                      }
+                    });
+                    localStorage.setItem('vitas_custom_users', JSON.stringify(customUsers));
+                  } catch (err) {
+                    console.error(err);
+                  }
+
+                  setPwdChangeMsg(t('تم تحديث كلمة المرور الخاصة بك بنجاح في قاعدة البيانات!', 'Your password has been updated successfully in the database!'));
+                  setTimeout(() => {
+                    setShowChangePwdModal(false);
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                    setPwdChangeMsg(null);
+                    setPwdChangeError(null);
+                  }, 2000);
+                } catch (err: any) {
+                  setPwdChangeError(err.message || t('حدث خطأ أثناء تحديث كلمة المرور', 'An error occurred while changing password'));
+                } finally {
+                  setIsChangingPwd(false);
+                }
               }}
               className="p-6 space-y-4 text-xs"
             >
+              {pwdChangeError && (
+                <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold flex items-center gap-2 animate-in fade-in">
+                  <span className="material-symbols-outlined text-base">error</span>
+                  <span>{pwdChangeError}</span>
+                </div>
+              )}
               {pwdChangeMsg && (
                 <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-2 animate-in fade-in">
                   <span className="material-symbols-outlined text-base">check_circle</span>
                   <span>{pwdChangeMsg}</span>
                 </div>
               )}
+
+              <div>
+                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  {t('كلمة المرور الحالية (اختياري للآدمن):', 'Current Password (Optional for Admin):')}
+                </label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                  placeholder={t('أدخل كلمة المرور الحالية', 'Enter current password')}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none font-mono ${
+                    isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
 
               <div>
                 <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">
@@ -683,16 +727,31 @@ export const Header: React.FC = () => {
               <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setShowChangePwdModal(false)}
+                  onClick={() => {
+                    setShowChangePwdModal(false);
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                    setPwdChangeMsg(null);
+                    setPwdChangeError(null);
+                  }}
                   className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-white/5 font-bold transition-all text-xs cursor-pointer"
                 >
                   {t('إلغاء', 'Cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-md shadow-teal-600/20 text-xs cursor-pointer"
+                  disabled={isChangingPwd}
+                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold transition-all shadow-md shadow-teal-600/20 text-xs cursor-pointer flex items-center gap-1.5"
                 >
-                  {t('تحديث كلمة المرور', 'Update Password')}
+                  {isChangingPwd ? (
+                    <>
+                      <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                      <span>{t('جاري التحديث...', 'Updating...')}</span>
+                    </>
+                  ) : (
+                    <span>{t('تحديث كلمة المرور', 'Update Password')}</span>
+                  )}
                 </button>
               </div>
             </form>

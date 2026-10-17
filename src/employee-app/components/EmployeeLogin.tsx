@@ -42,6 +42,43 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
         return;
       }
 
+      // 0. Verify password against users table in MySQL database
+      try {
+        const uRes = await fetch('/api/users');
+        if (uRes.ok) {
+          const dbUsers = await uRes.json();
+          if (Array.isArray(dbUsers) && dbUsers.length > 0) {
+            const matchedDbUser = dbUsers.find((u: any) => {
+              const uUser = String(u.username || '').toLowerCase();
+              const uEmp = String(u.employee_id || '').toLowerCase();
+              return (
+                uUser === cleanInput ||
+                uEmp === cleanInput ||
+                (cleanInputAlpha && (uUser === cleanInputAlpha || uEmp.includes(cleanInputAlpha)))
+              );
+            });
+
+            if (matchedDbUser) {
+              const expectedPass = matchedDbUser.password || '123456';
+              if (password.trim() !== expectedPass) {
+                setError(isEn ? 'Incorrect password. Please verify and try again.' : 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.');
+                setIsLoading(false);
+                return;
+              }
+            } else {
+              // User has no custom user row yet -> default expected password is 123456
+              if (password.trim() !== '123456') {
+                setError(isEn ? 'Incorrect password. Please verify and try again.' : 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.');
+                setIsLoading(false);
+                return;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not verify against /api/users, proceeding:', err);
+      }
+
       let loggedInUser: any = null;
 
       try {
@@ -188,6 +225,10 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
         }
       }
 
+      if (loggedInUser) {
+        loggedInUser.password = password.trim();
+      }
+
       onLogin(loggedInUser);
       navigate('/employee-app/profile');
     } catch {
@@ -198,7 +239,7 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-4 my-auto flex flex-col items-center justify-center relative animate-in fade-in duration-300 space-y-3.5">
+    <div className="w-full max-w-md mx-auto p-4 my-auto -translate-y-4 flex flex-col items-center justify-center relative animate-in fade-in duration-300 space-y-3.5">
       {/* Top Header Controls with Language and Theme */}
       <div className="w-full flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
@@ -363,21 +404,6 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
               </>
             )}
           </button>
-
-          {/* Quick Demo Fill Helper */}
-          <div className="pt-2 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setBadgeNumber('V167');
-                setPassword('123456');
-              }}
-              className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline cursor-pointer font-bold inline-flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-xs">key</span>
-              <span>{isEn ? 'Quick Demo Fill: V167 (Dina Haider)' : 'تعبئة تجريبية سريعة: V167 (دينا حيدر)'}</span>
-            </button>
-          </div>
         </form>
 
         {/* Footer */}

@@ -223,6 +223,12 @@ export const api = {
   getUsers: () => apiClient.get('/users'),
   saveUser: (user: any) => apiClient.post('/users', user),
   deleteUser: (identifier: string | number) => apiClient.delete(`/users/${identifier}`),
+  changePassword: (data: {
+    username?: string;
+    employeeId?: string;
+    currentPassword?: string;
+    newPassword: string;
+  }) => apiClient.post('/change-password', data),
 
   // Contract Template Clauses
   getContractClauses: (contractTypeId: string) => apiClient.get(`/settings/contract-clauses/${contractTypeId}`),

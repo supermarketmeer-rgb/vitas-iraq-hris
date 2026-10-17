@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useEmployeeContext } from '../context/EmployeeContext';
+import { api } from '../../api/client';
 
 interface EmployeeProfileProps {
   employee: any;
@@ -23,6 +24,7 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
   });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -127,7 +129,7 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
     setIsEditing(false);
   };
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
     setPasswordSuccess('');
@@ -142,27 +144,45 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
       return;
     }
 
-    if (passwordData.newPassword.length < 6) {
-      setPasswordError(isEn ? 'Password must be at least 6 characters' : 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+    if (passwordData.newPassword.length < 4) {
+      setPasswordError(isEn ? 'Password must be at least 4 characters' : 'كلمة المرور يجب أن تكون 4 أحرف على الأقل');
       return;
     }
 
-    const storedAuth = localStorage.getItem('employee_auth');
-    if (storedAuth) {
-      try {
-        const authData = JSON.parse(storedAuth);
-        if (passwordData.currentPassword === (authData.employee?.password || '123456')) {
-          authData.employee.password = passwordData.newPassword;
-          localStorage.setItem('employee_auth', JSON.stringify(authData));
-          setPasswordSuccess(isEn ? 'Password changed successfully' : 'تم تغيير كلمة المرور بنجاح');
-          setShowPasswordChange(false);
-          setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        } else {
-          setPasswordError(isEn ? 'Current password is incorrect' : 'كلمة المرور الحالية غير صحيحة');
-        }
-      } catch (error) {
-        setPasswordError(isEn ? 'An error occurred while changing password' : 'حدث خطأ أثناء تغيير كلمة المرور');
+    setIsChangingPassword(true);
+    try {
+      const empBadge = currentEmp?.badgeNo || currentEmp?.badge_no || '';
+      const empId = currentEmp?.employeeId || currentEmp?.employee_id || currentEmp?.id || '';
+
+      await api.changePassword({
+        employeeId: empId,
+        username: empBadge || empId,
+        currentPassword: passwordData.currentPassword.trim(),
+        newPassword: passwordData.newPassword.trim()
+      });
+
+      // Update in localStorage employee_auth
+      const storedAuth = localStorage.getItem('employee_auth');
+      if (storedAuth) {
+        try {
+          const authData = JSON.parse(storedAuth);
+          if (authData.employee) {
+            authData.employee.password = passwordData.newPassword.trim();
+            localStorage.setItem('employee_auth', JSON.stringify(authData));
+          }
+        } catch {}
       }
+
+      setPasswordSuccess(isEn ? 'Password changed successfully in the database!' : 'تم تغيير كلمة المرور بنجاح في قاعدة البيانات!');
+      setTimeout(() => {
+        setShowPasswordChange(false);
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setPasswordSuccess('');
+      }, 2000);
+    } catch (err: any) {
+      setPasswordError(err.message || (isEn ? 'Current password is incorrect or failed to update' : 'كلمة المرور الحالية غير صحيحة أو فشل التحديث'));
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -491,8 +511,19 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
                 )}
 
                 <div className="flex gap-2 pt-1">
-                  <button type="submit" className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md cursor-pointer active:scale-95 transition-all">
-                    {isEn ? 'Save Password' : 'حفظ كلمة المرور'}
+                  <button
+                    type="submit"
+                    disabled={isChangingPassword}
+                    className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-xs shadow-md cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isChangingPassword ? (
+                      <>
+                        <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                        <span>{isEn ? 'Saving...' : 'جاري الحفظ...'}</span>
+                      </>
+                    ) : (
+                      <span>{isEn ? 'Save Password' : 'حفظ كلمة المرور'}</span>
+                    )}
                   </button>
                   <button type="button" onClick={() => setShowPasswordChange(false)} className={`px-3 py-2.5 rounded-xl border text-xs font-bold cursor-pointer ${
                     isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-300 text-slate-700'
