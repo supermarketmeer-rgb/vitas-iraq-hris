@@ -21,8 +21,9 @@ interface EmployeeDashboardProps {
   onLogout: () => void;
 }
 
-export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, onLogout }) => {
-  const { theme, toggleTheme, language, toggleLanguage, unreadNotifications, notifications } = useEmployeeContext();
+export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee: propEmployee, onLogout }) => {
+  const { employee: contextEmployee, theme, toggleTheme, language, toggleLanguage, unreadNotifications, notifications } = useEmployeeContext();
+  const employee = contextEmployee || propEmployee;
   const navigate = useNavigate();
   const isDark = theme === 'dark';
   const isEn = language === 'en';

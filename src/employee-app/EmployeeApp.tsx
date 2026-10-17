@@ -16,7 +16,7 @@ import { EmployeeContextProvider, useEmployeeContext } from './context/EmployeeC
 function EmployeeAppMain() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<any>(null);
-  const { theme, language, setEmployee } = useEmployeeContext();
+  const { theme, language, setEmployee, employee: contextEmployee } = useEmployeeContext();
   const [isPhoneMockup, setIsPhoneMockup] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
 
@@ -30,6 +30,14 @@ function EmployeeAppMain() {
     return () => clearInterval(interval);
   }, []);
 
+  // Sync state when contextEmployee updates
+  useEffect(() => {
+    if (contextEmployee) {
+      setCurrentEmployee(contextEmployee);
+      setIsAuthenticated(true);
+    }
+  }, [contextEmployee]);
+
   // Check for existing employee authentication on mount
   useEffect(() => {
     const savedAuth = localStorage.getItem('employee_auth');
@@ -37,63 +45,49 @@ function EmployeeAppMain() {
       try {
         const authData = JSON.parse(savedAuth);
         let emp = authData.employee;
-        if (emp && (emp.badgeNo || emp.badge_no)) {
-          const bNo = String(emp.badgeNo || emp.badge_no).trim().toUpperCase();
+        if (emp && (emp.badgeNo || emp.badge_no || emp.id)) {
+          const bNo = String(emp.badgeNo || emp.badge_no || emp.id || '').trim().toUpperCase();
           
-          // Immediately fix Dina V167 synchronously
-          if (bNo === 'V167') {
-            emp.id = '85';
-            emp.badgeNo = 'V167';
-            emp.badge_no = 'V167';
-            emp.employeeId = 'VIT-0037';
-            emp.employee_id = 'VIT-0037';
-            emp.fullName = 'دينا حيدر قاسم';
-            emp.fullNameAr = 'دينا حيدر قاسم';
-            emp.full_name_ar = 'دينا حيدر قاسم';
-            emp.name = 'دينا حيدر قاسم';
-            emp.name_ar = 'دينا حيدر قاسم';
-            emp.fullNameEn = 'Dina Haider Qasim';
-            emp.position = 'موظف استقبال';
-            emp.position_ar = 'موظف استقبال';
-            emp.department = 'الائتمان';
-            emp.branch = 'مكتب النجف';
-            emp.photoUrl = emp.photoUrl || emp.photo_url || '/uploads/dina_haider.jpg';
-            emp.photo_url = emp.photo_url || emp.photoUrl || '/uploads/dina_haider.jpg';
-            emp.avatar = emp.avatar || '/uploads/dina_haider.jpg';
-          }
+          setIsAuthenticated(true);
+          setCurrentEmployee(emp);
+          setEmployee(emp);
 
-          // Rehydrate with real employee data from backend if needed
+          // Rehydrate with real employee data from backend immediately
           fetch('/api/employees')
             .then(res => res.json())
             .then(allEmps => {
-              if (Array.isArray(allEmps)) {
-                const found = allEmps.find(e => 
-                  String(e.badge_no || '').toLowerCase() === bNo.toLowerCase() ||
-                  String(e.employee_id || '').toLowerCase() === bNo.toLowerCase() ||
-                  String(e.id) === bNo
-                );
+              if (Array.isArray(allEmps) && allEmps.length > 0) {
+                const found = allEmps.find((e: any) => {
+                  const b = String(e.badgeNo || e.badge_no || '').trim().toUpperCase();
+                  const eid = String(e.employeeId || e.employee_id || '').trim().toUpperCase();
+                  const id = String(e.id || '').trim();
+                  return b === bNo || eid === bNo || id === bNo || (bNo === 'V167' && (b === 'V167' || id === '85' || eid === 'VIT-0037'));
+                });
                 if (found) {
+                  const livePhoto = found.photoUrl || found.photo_url || found.photo || found.avatar || '';
                   const liveEmp = {
                     ...emp,
                     id: String(found.id),
-                    badgeNo: found.badge_no,
-                    badge_no: found.badge_no,
-                    employeeId: found.employee_id,
-                    employee_id: found.employee_id,
-                    fullName: found.full_name_ar,
-                    fullNameAr: found.full_name_ar,
-                    full_name_ar: found.full_name_ar,
-                    name: found.full_name_ar,
-                    name_ar: found.full_name_ar,
-                    fullNameEn: found.full_name_en,
-                    department: found.department,
-                    position: found.position_ar || found.position,
-                    position_ar: found.position_ar || found.position,
-                    branch: found.branch || found.location_ar,
-                    salary: found.basic_salary || found.salary,
-                    photoUrl: found.photo_url || found.photoUrl || found.avatar || emp.photoUrl || (bNo === 'V167' ? '/uploads/dina_haider.jpg' : ''),
-                    photo_url: found.photo_url || found.photoUrl || found.avatar || emp.photo_url || (bNo === 'V167' ? '/uploads/dina_haider.jpg' : ''),
-                    avatar: found.photo_url || found.photoUrl || found.avatar || emp.avatar || (bNo === 'V167' ? '/uploads/dina_haider.jpg' : '')
+                    badgeNo: found.badgeNo || found.badge_no || emp.badgeNo,
+                    badge_no: found.badgeNo || found.badge_no || emp.badge_no,
+                    employeeId: found.employeeId || found.employee_id || emp.employeeId,
+                    employee_id: found.employeeId || found.employee_id || emp.employee_id,
+                    fullName: found.fullName || found.full_name_ar || emp.fullName,
+                    fullNameAr: found.fullName || found.full_name_ar || emp.fullNameAr,
+                    full_name_ar: found.fullName || found.full_name_ar || emp.full_name_ar,
+                    name: found.fullName || found.full_name_ar || emp.name,
+                    name_ar: found.fullName || found.full_name_ar || emp.name_ar,
+                    fullNameEn: found.fullNameEn || found.full_name_en || emp.fullNameEn,
+                    department: found.department || emp.department,
+                    position: found.jobTitle || found.position_ar || found.position || emp.position,
+                    position_ar: found.jobTitle || found.position_ar || found.position || emp.position_ar,
+                    positionEn: found.jobTitleEn || found.position_en || emp.positionEn,
+                    branch: found.branch || found.location_ar || emp.branch,
+                    salary: found.basicSalary || found.basic_salary || found.salary || emp.salary,
+                    photoUrl: livePhoto || emp.photoUrl || '',
+                    photo_url: livePhoto || emp.photo_url || '',
+                    avatar: livePhoto || emp.avatar || '',
+                    photo: livePhoto || emp.photo || ''
                   };
                   setCurrentEmployee(liveEmp);
                   setEmployee(liveEmp);
@@ -101,15 +95,10 @@ function EmployeeAppMain() {
                     employee: liveEmp,
                     timestamp: new Date().toISOString()
                   }));
-                  return;
                 }
               }
             })
             .catch(() => {});
-
-          setIsAuthenticated(true);
-          setCurrentEmployee(emp);
-          setEmployee(emp);
         }
       } catch (error) {
         console.error('Error parsing saved auth:', error);

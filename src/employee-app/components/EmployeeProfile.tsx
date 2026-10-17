@@ -7,12 +7,13 @@ interface EmployeeProfileProps {
 }
 
 export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLogout }) => {
-  const { theme, toggleTheme, language, setEmployee } = useEmployeeContext();
+  const { theme, toggleTheme, language, setEmployee, employee: contextEmployee, refreshEmployee } = useEmployeeContext();
+  const currentEmp = contextEmployee || employee;
   const isDark = theme === 'dark';
   const isEn = language === 'en';
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editedEmployee, setEditedEmployee] = useState(employee);
+  const [editedEmployee, setEditedEmployee] = useState(currentEmp);
   const [activeTab, setActiveTab] = useState<'personal' | 'professional' | 'contact' | 'security'>('personal');
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -26,10 +27,14 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    if (employee) {
-      setEditedEmployee(employee);
+    if (refreshEmployee) refreshEmployee();
+  }, [refreshEmployee]);
+
+  React.useEffect(() => {
+    if (currentEmp) {
+      setEditedEmployee(currentEmp);
     }
-  }, [employee]);
+  }, [currentEmp]);
 
   const employeePhoto = editedEmployee?.photoUrl || 
                         editedEmployee?.photo_url || 
@@ -42,13 +47,14 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const base64Url = reader.result as string;
       const updated = {
         ...editedEmployee,
         photoUrl: base64Url,
         photo_url: base64Url,
-        avatar: base64Url
+        avatar: base64Url,
+        photo: base64Url
       };
       setEditedEmployee(updated);
       if (setEmployee) setEmployee(updated);
@@ -59,6 +65,19 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
           authData.employee = updated;
           localStorage.setItem('employee_auth', JSON.stringify(authData));
         }
+
+        // Persist to backend database so main admin app sees it immediately too
+        await fetch('/api/employees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: updated.id,
+            badgeNo: updated.badgeNo,
+            employeeId: updated.employeeId,
+            photoUrl: base64Url
+          })
+        });
+        if (refreshEmployee) await refreshEmployee();
       } catch (err) {
         console.error(err);
       }
