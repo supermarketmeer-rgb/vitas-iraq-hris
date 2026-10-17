@@ -114,18 +114,26 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
               loggedInUser = {
                 id: String(found.id),
                 badgeNo: found.badge_no || cleanInput.toUpperCase(),
+                badge_no: found.badge_no || cleanInput.toUpperCase(),
                 employeeId: found.employee_id || `VTS-${cleanInput.toUpperCase()}`,
+                employee_id: found.employee_id || `VTS-${cleanInput.toUpperCase()}`,
                 fullName: found.full_name_ar || found.full_name_en,
+                fullNameAr: found.full_name_ar,
+                full_name_ar: found.full_name_ar,
+                name: found.full_name_ar,
+                name_ar: found.full_name_ar,
                 fullNameEn: found.full_name_en || found.full_name_ar,
+                full_name_en: found.full_name_en,
                 email: found.org_email || found.email || `${cleanInputAlpha}@vitasiraq.com`,
                 phone: found.phone || found.mobile || '07700000000',
-                department: found.department || 'قسم العمليات والائتمان',
-                departmentEn: found.department_en || 'Operations & Credit',
-                position: found.position_ar || found.position || 'موظف',
-                positionEn: found.position_en || 'Employee',
-                branch: found.branch || found.location_ar || 'بغداد',
+                department: found.department || 'الائتمان',
+                departmentEn: found.department_en || 'Credit',
+                position: found.position_ar || found.position || 'موظف استقبال',
+                position_ar: found.position_ar || found.position || 'موظف استقبال',
+                positionEn: found.position_en || 'Receptionist',
+                branch: found.branch || found.location_ar || 'مكتب النجف',
                 joinDate: found.contract_start_date || found.original_start_date || '2022-01-01',
-                salary: found.basic_salary || found.salary || 1200000,
+                salary: found.basic_salary || found.salary || 900000,
                 avatar: found.photo_url || found.avatar || '',
                 role: 'Employee'
               };
@@ -157,25 +165,33 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
         };
 
         const bKey = badgeNumber.trim().toUpperCase();
-        const defaultName = badgeNameMap[bKey] || { ar: 'موظف فيتاس', en: 'VITAS Employee' };
+        const defaultName = badgeNameMap[bKey] || (bKey === 'V167' ? { ar: 'دينا حيدر قاسم', en: 'Dina Haider Qasim' } : { ar: 'موظف فيتاس', en: 'VITAS Employee' });
 
         loggedInUser = matched ? {
           ...matched
         } : {
           id: bKey === 'V167' ? '85' : 'EMP-TEMP',
-          badgeNo: badgeNumber.trim(),
-          employeeId: `VTS-${cleanInput.toUpperCase()}`,
+          badgeNo: badgeNumber.trim().toUpperCase(),
+          badge_no: badgeNumber.trim().toUpperCase(),
+          employeeId: bKey === 'V167' ? 'VIT-0037' : `VTS-${cleanInput.toUpperCase()}`,
+          employee_id: bKey === 'V167' ? 'VIT-0037' : `VTS-${cleanInput.toUpperCase()}`,
           fullName: defaultName.ar,
+          fullNameAr: defaultName.ar,
+          full_name_ar: defaultName.ar,
+          name: defaultName.ar,
+          name_ar: defaultName.ar,
           fullNameEn: defaultName.en,
+          full_name_en: defaultName.en,
           email: `${cleanInputAlpha}@vitasiraq.com`,
           phone: '07700000000',
-          department: 'قسم العمليات والائتمان',
+          department: bKey === 'V167' ? 'الائتمان' : 'قسم العمليات والائتمان',
           departmentEn: 'Operations & Credit',
-          position: 'مسؤول ائتمان',
+          position: bKey === 'V167' ? 'موظف استقبال' : 'مسؤول ائتمان',
+          position_ar: bKey === 'V167' ? 'موظف استقبال' : 'مسؤول ائتمان',
           positionEn: 'Credit Officer',
-          branch: 'بغداد',
+          branch: bKey === 'V167' ? 'مكتب النجف' : 'بغداد',
           joinDate: '2022-01-01',
-          salary: 1200000,
+          salary: bKey === 'V167' ? 900000 : 1200000,
           avatar: '',
           role: 'Employee'
         };

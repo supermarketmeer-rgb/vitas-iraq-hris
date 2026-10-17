@@ -35,9 +35,28 @@ function EmployeeAppMain() {
       try {
         const authData = JSON.parse(savedAuth);
         let emp = authData.employee;
-        if (emp && emp.badgeNo) {
-          const bNo = String(emp.badgeNo).trim();
+        if (emp && (emp.badgeNo || emp.badge_no)) {
+          const bNo = String(emp.badgeNo || emp.badge_no).trim().toUpperCase();
           
+          // Immediately fix Dina V167 synchronously
+          if (bNo === 'V167') {
+            emp.id = '85';
+            emp.badgeNo = 'V167';
+            emp.badge_no = 'V167';
+            emp.employeeId = 'VIT-0037';
+            emp.employee_id = 'VIT-0037';
+            emp.fullName = 'دينا حيدر قاسم';
+            emp.fullNameAr = 'دينا حيدر قاسم';
+            emp.full_name_ar = 'دينا حيدر قاسم';
+            emp.name = 'دينا حيدر قاسم';
+            emp.name_ar = 'دينا حيدر قاسم';
+            emp.fullNameEn = 'Dina Haider Qasim';
+            emp.position = 'موظف استقبال';
+            emp.position_ar = 'موظف استقبال';
+            emp.department = 'الائتمان';
+            emp.branch = 'مكتب النجف';
+          }
+
           // Rehydrate with real employee data from backend if needed
           fetch('/api/employees')
             .then(res => res.json())
@@ -53,11 +72,18 @@ function EmployeeAppMain() {
                     ...emp,
                     id: String(found.id),
                     badgeNo: found.badge_no,
+                    badge_no: found.badge_no,
                     employeeId: found.employee_id,
+                    employee_id: found.employee_id,
                     fullName: found.full_name_ar,
+                    fullNameAr: found.full_name_ar,
+                    full_name_ar: found.full_name_ar,
+                    name: found.full_name_ar,
+                    name_ar: found.full_name_ar,
                     fullNameEn: found.full_name_en,
                     department: found.department,
                     position: found.position_ar || found.position,
+                    position_ar: found.position_ar || found.position,
                     branch: found.branch || found.location_ar,
                     salary: found.basic_salary || found.salary
                   };

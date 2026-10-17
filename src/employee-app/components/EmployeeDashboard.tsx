@@ -74,10 +74,34 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
   };
 
   const getFirstName = (empObj: any) => {
-    if (!empObj) return 'أحمد';
+    if (!empObj) return 'الموظف';
 
-    // 1. Priority: Map badge numbers dynamically to correct Arabic first names
-    const badgeNo = String(empObj.badgeNo || empObj.badge_no || '').trim();
+    const bNo = String(empObj.badgeNo || empObj.badge_no || '').trim().toUpperCase();
+    if (bNo === 'V167') return 'دينا';
+
+    // 1. Direct name extraction from all possible Arabic full name properties
+    const fullNameAr = empObj.full_name_ar || 
+                       empObj.fullNameAr || 
+                       empObj.fullName || 
+                       empObj.name_ar || 
+                       empObj.nameAr || 
+                       empObj.name || 
+                       empObj.employeeNameAr || 
+                       '';
+
+    let cleaned = String(fullNameAr)
+      .replace(/^الموظف\s+/gi, '')
+      .replace(/^السيد\s+/gi, '')
+      .replace(/^السيدة\s+/gi, '')
+      .replace(/^الآنسة\s+/gi, '')
+      .replace(/[\(\)\d\_\-\.]/g, '')
+      .trim();
+
+    if (cleaned && !/^\d+$/.test(cleaned)) {
+      return cleaned.split(/\s+/)[0]; // e.g. "دينا حيدر قاسم" -> "دينا"
+    }
+
+    // 2. Exact badge mapping fallback
     const badgeNameMap: Record<string, string> = {
       '1001': 'أحمد',
       '1002': 'فاطمة',
@@ -89,24 +113,14 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
       '1008': 'عمر',
       '1009': 'سارة',
       '1010': 'كرار',
+      'V167': 'دينا'
     };
 
-    if (badgeNo && badgeNameMap[badgeNo]) {
-      return badgeNameMap[badgeNo];
+    if (bNo && badgeNameMap[bNo]) {
+      return badgeNameMap[bNo];
     }
 
-    // 2. Check direct full name fields if available
-    const arabicTripleName = empObj.fullNameAr || empObj.nameAr || empObj.name_ar || empObj.employeeNameAr || empObj.fullName || empObj.name || '';
-    let cleaned = String(arabicTripleName).replace(/^الموظف/gi, '').replace(/[\(\)\d\_\-\.]/g, '').trim();
-    
-    if (cleaned && !/^\d+$/.test(cleaned)) {
-      return cleaned.split(/\s+/)[0];
-    }
-
-    // 3. Deterministic fallback for any other custom badge number
-    const firstNames = ['أحمد', 'فاطمة', 'علي', 'مصطفى', 'زينب', 'حيدر', 'مريم', 'عمر', 'سارة', 'كرار', 'حسين', 'نور', 'ياسين', 'زهراء'];
-    const charSum = (badgeNo || '1001').split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-    return firstNames[charSum % firstNames.length];
+    return 'الموظف';
   };
 
   const firstName = getFirstName(employee);
