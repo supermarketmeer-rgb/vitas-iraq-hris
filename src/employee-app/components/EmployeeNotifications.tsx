@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEmployeeContext } from '../context/EmployeeContext';
 
 interface EmployeeNotificationsProps {
@@ -10,6 +10,19 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
   const { notifications, markNotificationAsRead, unreadNotifications, theme, toggleTheme } = useEmployeeContext();
   const isDark = theme === 'dark';
   const [filter, setFilter] = useState<'all' | 'unread' | 'important'>('all');
+  const [routedDeliveries, setRoutedDeliveries] = useState<any[]>([]);
+
+  useEffect(() => {
+    const empIdentifier = employee?.id || employee?.employeeId || employee?.badgeNo || '1001';
+    fetch(`/api/routing/employee/${encodeURIComponent(empIdentifier)}/notifications`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setRoutedDeliveries(data);
+        }
+      })
+      .catch(() => {});
+  }, [employee]);
 
   // تنبيهات تجريبية مع مرفقات رسمية
   const mockNotifications = [
@@ -159,13 +172,52 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
     URL.revokeObjectURL(url);
   };
 
-  const allNotifications = [...mockNotifications, ...notifications];
+  const routedNotificationsFormatted = routedDeliveries.map(del => ({
+    id: del.id,
+    title: `[مستند رسمي] ${del.document_title}`,
+    message: del.message || `تم توجيه مستند رسمي (${del.document_title}) إليك برقم مرجعي ${del.document_id}.`,
+    type: del.document_type === 'employment_contract' ? 'success' : 'info',
+    timestamp: del.created_at,
+    read: del.app_status === 'read',
+    important: true,
+    action: 'معاينة المستند',
+    deliveryId: del.id,
+    attachments: [
+      {
+        name: `${del.document_title}.pdf`,
+        size: '1.2 MB',
+        type: 'pdf',
+        refNo: del.document_id,
+        issuer: del.sender_name || 'فيتاس العراق',
+        deliveryId: del.id,
+        content: `مستند معتمد رسمياً: ${del.document_title}\nرقم المرجع: ${del.document_id}\nالمرسل: ${del.sender_name}\nتاريخ التسليم: ${new Date(del.created_at).toLocaleDateString('ar-IQ')}`
+      }
+    ]
+  }));
+
+  const allNotifications = [...routedNotificationsFormatted, ...mockNotifications, ...notifications];
 
   const filteredNotifications = allNotifications.filter(notification => {
     if (filter === 'unread') return !notification.read;
     if (filter === 'important') return notification.important;
     return true;
   });
+
+  const handlePreviewAttachment = (att: any, notif: any) => {
+    if (att.deliveryId) {
+      fetch(`/api/routing/documents/${att.deliveryId}/access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: employee?.id || employee?.badgeNo || '1001',
+          action: 'view'
+        })
+      }).then(() => {
+        setRoutedDeliveries(prev => prev.map(d => d.id === att.deliveryId ? { ...d, app_status: 'read' } : d));
+      }).catch(() => {});
+    }
+    setPreviewAttachment({ ...att, notifTitle: notif.title });
+  };
 
   const handleMarkAsRead = (id: string) => {
     markNotificationAsRead(id);
@@ -356,7 +408,7 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
 
                           <div className="flex items-center gap-1 shrink-0">
                             <button
-                              onClick={() => setPreviewAttachment({ ...att, notifTitle: notification.title })}
+                              onClick={() => handlePreviewAttachment(att, notification)}
                               className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 hover:bg-teal-500/30 flex items-center gap-0.5 cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-xs">visibility</span>

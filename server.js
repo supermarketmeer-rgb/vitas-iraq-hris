@@ -30,6 +30,16 @@ import {
 import { ensureDefaultContractsAndClauses } from './database/seedDefaultContracts.js';
 import { buildOrgChart } from './database/orgChartService.js';
 import { runAllAcceptanceTests } from './database/acceptanceTests.js';
+import {
+  initDocumentRoutingTables,
+  resolveRecipients,
+  sendDocumentThroughRouting,
+  retryEmailDelivery,
+  recordDocumentAccess,
+  runDocumentRoutingAcceptanceTests
+} from './database/documentRoutingEngine.js';
+import { testGraphConnection, getGraphConfig } from './database/msGraphService.js';
+import { getPushNotificationStatus } from './database/mobilePushService.js';
 
 import http from 'http';
 import { spawn } from 'child_process';
@@ -191,6 +201,7 @@ db.getConnection(async (err, connection) => {
   // Auto-initialize database tables and seed data if missing
   await initDatabase(db);
   await initSyncEngineTables(db);
+  await initDocumentRoutingTables(db);
   
   // Launch Local Server Discovery (UDP Beacon)
   startLocalDiscoveryServer({ port: PORT, serverId: `VITAS-SERVER-LAN` });
@@ -4671,6 +4682,298 @@ app.post('/api/attendance/reprocess', async (req, res) => {
   } catch (err) {
     console.error('Error reprocessing attendance:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Centralized Smart Document Routing & Delivery API ───────────────────────────
+
+// 1. Get all routing rules
+app.get('/api/routing/rules', async (req, res) => {
+  try {
+    const rules = await query('SELECT * FROM document_routing_rules ORDER BY id ASC');
+    res.json(rules);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Create routing rule
+app.post('/api/routing/rules', async (req, res) => {
+  try {
+    const {
+      document_type,
+      source_module,
+      name_ar,
+      name_en,
+      default_recipient_type,
+      default_channels,
+      allow_multiple_recipients = 1,
+      allow_sender_override = 1,
+      requires_approval = 0,
+      allow_additional_attachments = 1,
+      require_delivery_confirmation = 0
+    } = req.body;
+
+    const sql = `
+      INSERT INTO document_routing_rules
+        (document_type, source_module, name_ar, name_en, default_recipient_type, default_channels,
+         allow_multiple_recipients, allow_sender_override, requires_approval, allow_additional_attachments,
+         require_delivery_confirmation, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())
+      ON DUPLICATE KEY UPDATE
+        name_ar = VALUES(name_ar),
+        name_en = VALUES(name_en),
+        default_recipient_type = VALUES(default_recipient_type),
+        default_channels = VALUES(default_channels),
+        allow_multiple_recipients = VALUES(allow_multiple_recipients),
+        allow_sender_override = VALUES(allow_sender_override),
+        requires_approval = VALUES(requires_approval),
+        allow_additional_attachments = VALUES(allow_additional_attachments),
+        require_delivery_confirmation = VALUES(require_delivery_confirmation),
+        updated_at = NOW()
+    `;
+
+    await query(sql, [
+      document_type, source_module || 'general', name_ar, name_en,
+      default_recipient_type || 'direct_supervisor', default_channels || 'both',
+      allow_multiple_recipients ? 1 : 0, allow_sender_override ? 1 : 0,
+      requires_approval ? 1 : 0, allow_additional_attachments ? 1 : 0,
+      require_delivery_confirmation ? 1 : 0
+    ]);
+
+    res.json({ success: true, message: 'Routing rule saved successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Update routing rule
+app.put('/api/routing/rules/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name_ar,
+      name_en,
+      default_recipient_type,
+      default_channels,
+      allow_multiple_recipients,
+      allow_sender_override,
+      requires_approval,
+      allow_additional_attachments,
+      require_delivery_confirmation,
+      is_active
+    } = req.body;
+
+    await query(
+      `UPDATE document_routing_rules
+       SET name_ar = COALESCE(?, name_ar),
+           name_en = COALESCE(?, name_en),
+           default_recipient_type = COALESCE(?, default_recipient_type),
+           default_channels = COALESCE(?, default_channels),
+           allow_multiple_recipients = COALESCE(?, allow_multiple_recipients),
+           allow_sender_override = COALESCE(?, allow_sender_override),
+           requires_approval = COALESCE(?, requires_approval),
+           allow_additional_attachments = COALESCE(?, allow_additional_attachments),
+           require_delivery_confirmation = COALESCE(?, require_delivery_confirmation),
+           is_active = COALESCE(?, is_active),
+           updated_at = NOW()
+       WHERE id = ?`,
+      [
+        name_ar, name_en, default_recipient_type, default_channels,
+        allow_multiple_recipients !== undefined ? (allow_multiple_recipients ? 1 : 0) : null,
+        allow_sender_override !== undefined ? (allow_sender_override ? 1 : 0) : null,
+        requires_approval !== undefined ? (requires_approval ? 1 : 0) : null,
+        allow_additional_attachments !== undefined ? (allow_additional_attachments ? 1 : 0) : null,
+        require_delivery_confirmation !== undefined ? (require_delivery_confirmation ? 1 : 0) : null,
+        is_active !== undefined ? (is_active ? 1 : 0) : null,
+        id
+      ]
+    );
+
+    res.json({ success: true, message: 'Routing rule updated.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Delete routing rule
+app.delete('/api/routing/rules/:id', async (req, res) => {
+  try {
+    await query('DELETE FROM document_routing_rules WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Recipient Resolution based on organizational hierarchy
+app.post('/api/routing/resolve-recipients', async (req, res) => {
+  try {
+    const result = await resolveRecipients(query, req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ resolved: false, error: err.message });
+  }
+});
+
+// 6. Send Document through Smart Routing
+app.post('/api/routing/send', async (req, res) => {
+  try {
+    const result = await sendDocumentThroughRouting(db, req.body);
+    res.json(result);
+  } catch (err) {
+    console.error('Error in /api/routing/send:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 7. Central Delivery History (with filtering and pagination)
+app.get('/api/routing/deliveries', async (req, res) => {
+  try {
+    const { status, channel, document_type, search, limit = 100 } = req.query;
+    let sql = 'SELECT * FROM document_deliveries WHERE 1=1';
+    const params = [];
+
+    if (status && status !== 'all') {
+      sql += ' AND overall_status = ?';
+      params.push(status);
+    }
+
+    if (channel && channel !== 'all') {
+      sql += ' AND channel_requested = ?';
+      params.push(channel);
+    }
+
+    if (document_type && document_type !== 'all') {
+      sql += ' AND document_type = ?';
+      params.push(document_type);
+    }
+
+    if (search) {
+      sql += ' AND (document_title LIKE ? OR recipient_name LIKE ? OR sender_name LIKE ? OR id LIKE ? OR document_id LIKE ?)';
+      const s = `%${search}%`;
+      params.push(s, s, s, s, s);
+    }
+
+    sql += ' ORDER BY created_at DESC LIMIT ?';
+    params.push(parseInt(limit) || 100);
+
+    const rows = await query(sql, params);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 8. Delivery Details by ID
+app.get('/api/routing/deliveries/:id', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM document_deliveries WHERE id = ? LIMIT 1', [req.params.id]);
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'Delivery record not found.' });
+    }
+    const accessLogs = await query('SELECT * FROM document_access_logs WHERE delivery_id = ? ORDER BY created_at DESC', [req.params.id]).catch(() => []);
+    res.json({ ...rows[0], access_logs: accessLogs });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 9. Retry Failed Email Delivery
+app.post('/api/routing/deliveries/:id/retry-email', async (req, res) => {
+  try {
+    const result = await retryEmailDelivery(db, req.params.id);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 10. Record Document Access & Update Read Status
+app.post('/api/routing/documents/:deliveryId/access', async (req, res) => {
+  try {
+    const { employeeId, action = 'view' } = req.body;
+    const result = await recordDocumentAccess(db, {
+      deliveryId: req.params.deliveryId,
+      documentId: req.body.documentId,
+      employeeId: employeeId || req.headers['x-employee-id'] || 'EMP-ANONYMOUS',
+      action,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
+    if (result.isUnauthorized) {
+      return res.status(403).json(result);
+    }
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 11. Get Employee Routed Documents & Notifications (for Employee App)
+app.get('/api/routing/employee/:employeeId/notifications', async (req, res) => {
+  try {
+    const empId = req.params.employeeId;
+    const deliveries = await query(
+      `SELECT d.*, 
+              (SELECT COUNT(*) FROM document_access_logs l WHERE l.delivery_id = d.id) as access_count
+       FROM document_deliveries d
+       WHERE (
+         d.recipient_employee_id = ? 
+         OR d.recipient_employee_id = (SELECT CAST(id AS CHAR) FROM employees WHERE badge_no = ? OR employee_id = ? LIMIT 1)
+         OR d.recipient_employee_id = (SELECT employee_id FROM employees WHERE id = ? OR badge_no = ? LIMIT 1)
+         OR d.recipient_employee_id = (SELECT badge_no FROM employees WHERE id = ? OR employee_id = ? LIMIT 1)
+       )
+         AND (d.channel_requested IN ('app', 'both'))
+       ORDER BY d.created_at DESC LIMIT 50`,
+      [empId, empId, empId, empId, empId, empId, empId]
+    ).catch(() => []);
+
+    res.json(deliveries);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 12. Microsoft 365 Graph Status & Inspector
+app.get('/api/routing/m365/status', async (req, res) => {
+  try {
+    const status = await testGraphConnection(query);
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ isConfigured: false, status: 'error', error: err.message });
+  }
+});
+
+// 13. Test Microsoft 365 Connection
+app.post('/api/routing/m365/test', async (req, res) => {
+  try {
+    const result = await testGraphConnection(query);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 14. Mobile Push Notification Gateway Status
+app.get('/api/routing/push/status', async (req, res) => {
+  try {
+    const status = await getPushNotificationStatus(query);
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ isConfigured: false, error: err.message });
+  }
+});
+
+// 15. Run Document Routing Acceptance Tests (16 Tests)
+app.post('/api/routing/run-acceptance-tests', async (req, res) => {
+  try {
+    const report = await runDocumentRoutingAcceptanceTests(db);
+    res.json(report);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

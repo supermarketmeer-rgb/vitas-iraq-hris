@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
 import { CHF_IRAQ_LOGO_BASE64 } from '../data/contractHeaderLogo';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
+import { useDocumentRouting } from '../context/DocumentRoutingContext';
 
 interface ContractClause {
   id?: number | string;
@@ -28,6 +29,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
   language = 'ar',
   companyProfile
 }) => {
+  const { openDocumentRouting } = useDocumentRouting();
   const [selectedTypeId, setSelectedTypeId] = useState<number | string | null>(null);
   const [clauses, setClauses] = useState<ContractClause[]>([]);
   const [showMetaTable, setShowMetaTable] = useState<boolean>(false);
@@ -1012,6 +1014,42 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
             >
               <span className="material-symbols-outlined text-base">print</span>
               <span>طباعة العقد (4 صفحات)</span>
+            </button>
+
+            {/* Smart Document Routing & Delivery Button */}
+            <button
+              type="button"
+              onClick={() => {
+                openDocumentRouting({
+                  documentType: 'employment_contract',
+                  documentId: contractNumber,
+                  documentTitle: `عقد عمل - ${empFullName}`,
+                  sourceModule: 'contracts',
+                  employeeId: String(employee.id || employee.employeeId || employee.badgeNo || employee.badge_no || ''),
+                  employeeName: empFullName,
+                  specificEmployeeIds: [
+                    String(employee.id || ''),
+                    String(employee.employeeId || employee.employee_id || ''),
+                    String(employee.badgeNo || employee.badge_no || ''),
+                    empFullName
+                  ].filter(Boolean),
+                  suggestedRecipient: 'specific_employee',
+                  fileName: `${contractNumber}.pdf`,
+                  fileType: 'application/pdf',
+                  metadata: {
+                    contractType: currentContractType?.name_ar,
+                    salary: employee.basicSalary || employee.salary,
+                    position: empJobTitle,
+                    branch: empBranch,
+                    badgeNo: employee.badgeNo || employee.badge_no
+                  }
+                });
+              }}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
+              title="إرسال وتوجيه العقد عبر البريد المؤسسي وتطبيق الموظف"
+            >
+              <span className="material-symbols-outlined text-base">forward_to_inbox</span>
+              <span>توجيه العقد ذكياً</span>
             </button>
 
             {/* Close Button */}

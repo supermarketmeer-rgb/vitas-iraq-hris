@@ -42,6 +42,8 @@ import { EmployeePortal } from './components/EmployeePortal';
 import { EmployeePortalView } from './views/EmployeePortalView';
 import { EmployeeApp } from './employee-app/EmployeeApp';
 import { useApp } from './context/AppContext';
+import { DocumentRoutingProvider } from './context/DocumentRoutingContext';
+import { DocumentRoutingModal } from './components/routing/DocumentRoutingModal';
 
 function AppContent() {
   const { activeModuleId, isSidebarOpen, theme, currentUser } = useApp();
@@ -385,31 +387,34 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AppProvider>
-      <Router>
-        <Routes>
-          {/* Login Page */}
-          <Route path="/login" element={<Login />} />
+      <DocumentRoutingProvider>
+        <Router>
+          <DocumentRoutingModal />
+          <Routes>
+            {/* Login Page */}
+            <Route path="/login" element={<Login />} />
 
-          {/* Public Candidate Portal */}
-          <Route path="/apply" element={<PublicCandidatePortal />} />
+            {/* Public Candidate Portal */}
+            <Route path="/apply" element={<PublicCandidatePortal />} />
 
-          {/* Public Employee Portal */}
-          <Route path="/portal" element={<PublicEmployeePortal />} />
+            {/* Public Employee Portal */}
+            <Route path="/portal" element={<PublicEmployeePortal />} />
 
-          {/* New Employee App (completely separate) */}
-          <Route path="/employee-app/*" element={<NewEmployeeApp />} />
+            {/* New Employee App (completely separate) */}
+            <Route path="/employee-app/*" element={<NewEmployeeApp />} />
 
-          {/* Admin Dashboard (protected route) */}
-          <Route
-            path="*"
-            element={
-              <ProtectedRoute>
-                <AppContent />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Router>
+            {/* Admin Dashboard (protected route) */}
+            <Route
+              path="*"
+              element={
+                <ProtectedRoute>
+                  <AppContent />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Router>
+      </DocumentRoutingProvider>
     </AppProvider>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { useDocumentRouting } from '../../context/DocumentRoutingContext';
 
 interface EmployeeDigitalFileProps {
   employee: any;
@@ -20,6 +21,7 @@ export const EmployeeDigitalFile: React.FC<EmployeeDigitalFileProps> = ({
   theme
 }) => {
   const { t } = useApp();
+  const { openDocumentRouting } = useDocumentRouting();
   const isAr = language === 'ar';
   const isDark = theme === 'dark';
 
@@ -86,13 +88,33 @@ export const EmployeeDigitalFile: React.FC<EmployeeDigitalFileProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => onUploadForEmployee(String(employee.id))}
-            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white px-4 py-2.5 rounded-xl transition font-semibold text-xs shadow-md shadow-teal-600/20 self-start sm:self-auto"
-          >
-            <span className="material-symbols-outlined text-base">upload_file</span>
-            <span>{t('رفع وثيقة جديدة', 'Upload New Document')}</span>
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              onClick={() => onUploadForEmployee(String(employee.id))}
+              className="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white px-4 py-2.5 rounded-xl transition font-semibold text-xs shadow-md shadow-teal-600/20"
+            >
+              <span className="material-symbols-outlined text-base">upload_file</span>
+              <span>{t('رفع وثيقة جديدة', 'Upload New Document')}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                openDocumentRouting({
+                  documentType: 'employee_document',
+                  documentId: empCode,
+                  documentTitle: `${t('ملف وثائق الموظف', 'Employee Digital File')} - ${name}`,
+                  sourceModule: 'archive',
+                  employeeId: employee.id || employee.employee_id,
+                  employeeName: name,
+                  suggestedRecipient: 'direct_supervisor'
+                });
+              }}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl transition font-semibold text-xs shadow-md shadow-blue-600/20 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-base">forward_to_inbox</span>
+              <span>{t('توجيه المستند ذكياً', 'Smart Document Routing')}</span>
+            </button>
+          </div>
         </div>
       </div>
 

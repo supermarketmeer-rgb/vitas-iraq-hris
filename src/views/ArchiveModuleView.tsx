@@ -10,6 +10,7 @@ import { AuditLogsView } from '../components/archive/AuditLogsView';
 import { ReportsAnalytics } from '../components/archive/ReportsAnalytics';
 import { CategoriesSettings } from '../components/archive/CategoriesSettings';
 import { DocumentViewModal } from '../components/archive/DocumentViewModal';
+import { DocumentRoutingAdminView } from '../components/routing/DocumentRoutingAdminView';
 
 export const ArchiveModuleView: React.FC = () => {
   const { activeModuleId, setActiveModuleId, language, theme, t } = useApp();
@@ -28,6 +29,7 @@ export const ArchiveModuleView: React.FC = () => {
     { id: 'workflows', moduleId: 'archive-workflows', labelAr: 'مسارات العمل والـ n8n', labelEn: 'Workflows & n8n', icon: 'account_tree' },
     { id: 'reports', moduleId: 'archive-reports', labelAr: 'التقارير والإحصائيات', labelEn: 'Reports & Analytics', icon: 'analytics' },
     { id: 'audit', moduleId: 'archive-audit', labelAr: 'سجل التدقيق والصلاحيات', labelEn: 'Audit Logs & RBAC', icon: 'security' },
+    { id: 'routing', moduleId: 'archive-routing', labelAr: 'التوجيه الذكي للمستندات', labelEn: 'Smart Document Routing', icon: 'forward_to_inbox' },
     { id: 'settings', moduleId: 'archive-settings', labelAr: 'التصنيفات وتثبيت النظام', labelEn: 'Categories & System', icon: 'settings' },
   ];
 
@@ -44,6 +46,7 @@ export const ArchiveModuleView: React.FC = () => {
       'archive-workflows': 'workflows',
       'archive-reports': 'reports',
       'archive-audit': 'audit',
+      'archive-routing': 'routing',
       'archive-settings': 'settings'
     };
     
@@ -216,6 +219,11 @@ export const ArchiveModuleView: React.FC = () => {
             language={language}
             theme={theme}
           />
+        )}
+
+        {/* Tab 9: Smart Document Routing & Delivery Center */}
+        {currentTab === 'routing' && (
+          <DocumentRoutingAdminView />
         )}
       </main>
 
