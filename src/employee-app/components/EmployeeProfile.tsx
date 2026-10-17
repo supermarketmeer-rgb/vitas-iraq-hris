@@ -26,8 +26,6 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
   React.useEffect(() => {
     if (refreshEmployee) refreshEmployee();
   }, [refreshEmployee]);
@@ -51,48 +49,7 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
                           editedEmployee?.contract_start_date || 
                           '-';
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64Url = reader.result as string;
-      const updated = {
-        ...editedEmployee,
-        photoUrl: base64Url,
-        photo_url: base64Url,
-        avatar: base64Url,
-        photo: base64Url
-      };
-      setEditedEmployee(updated);
-      if (setEmployee) setEmployee(updated);
-      try {
-        const savedAuth = localStorage.getItem('employee_auth');
-        if (savedAuth) {
-          const authData = JSON.parse(savedAuth);
-          authData.employee = updated;
-          localStorage.setItem('employee_auth', JSON.stringify(authData));
-        }
-
-        // Persist to backend database so main admin app sees it immediately too
-        await fetch('/api/employees', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: updated.id,
-            badgeNo: updated.badgeNo,
-            employeeId: updated.employeeId,
-            photoUrl: base64Url
-          })
-        });
-        if (refreshEmployee) await refreshEmployee();
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   const displayName = isEn 
     ? (editedEmployee?.fullNameEn || 'Dina Haider Qasim') 
@@ -207,9 +164,9 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
         isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
       }`}>
         <div className="flex items-center gap-3.5">
-          <div className="relative group cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()} title={isEn ? 'Click to change photo' : 'انقر لتغيير الصورة الشخصية'}>
+          <div className="relative shrink-0">
             {employeePhoto ? (
-              <div className="w-20 h-26 rounded-2xl bg-white dark:bg-slate-800 border-2 border-teal-500/60 shadow-lg p-0.5 overflow-hidden flex items-center justify-center group-hover:opacity-90 transition-opacity">
+              <div className="w-20 h-26 rounded-2xl bg-white dark:bg-slate-800 border-2 border-teal-500/60 shadow-lg p-0.5 overflow-hidden flex items-center justify-center">
                 <img 
                   src={employeePhoto} 
                   alt={displayName} 
@@ -223,24 +180,6 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
             <div className={`w-20 h-26 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-white font-black text-2xl items-center justify-center shadow-md ${employeePhoto ? 'hidden' : 'flex'}`}>
               {displayName.charAt(0)}
             </div>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handlePhotoUpload} 
-            />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-teal-600 hover:bg-teal-700 text-white flex items-center justify-center shadow-sm text-xs border border-white cursor-pointer transition-colors"
-              title={isEn ? 'Change Photo' : 'تغيير الصورة الشخصية'}
-            >
-              <span className="material-symbols-outlined text-xs">photo_camera</span>
-            </button>
           </div>
 
           <div className="flex-1 min-w-0">
