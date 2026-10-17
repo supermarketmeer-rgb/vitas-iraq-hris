@@ -218,7 +218,9 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
       <div className={`p-4 rounded-2xl border ${
         isDark ? 'bg-slate-900/80 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
       }`}>
-        <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div className={`flex items-center justify-between mb-3 pb-2 border-b ${
+          isDark ? 'border-slate-800' : 'border-slate-200'
+        }`}>
           <div className="flex items-center gap-1.5">
             <ArrowUpRight className="w-4 h-4 text-emerald-500" />
             <h3 className="text-xs font-bold">
@@ -231,25 +233,25 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
         </div>
 
         <div className="space-y-2 text-xs">
-          <div className="flex justify-between items-center text-slate-400">
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
             <span>{isEn ? 'Basic Salary' : 'الراتب الأساسي'}</span>
-            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.basic.toLocaleString()} {currencyLabel}</span>
+            <span className={`font-mono font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{activeSlip.basic.toLocaleString()} {currencyLabel}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400">
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
             <span>{isEn ? 'Transportation & Presentation Allowance' : 'بدل النقل والمظهر'}</span>
-            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.transport.toLocaleString()} {currencyLabel}</span>
+            <span className={`font-mono font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{activeSlip.transport.toLocaleString()} {currencyLabel}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400">
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
             <span>{isEn ? 'Academic Degree Allowance' : 'بدل الشهادة الأكاديمية'}</span>
-            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.cert.toLocaleString()} {currencyLabel}</span>
+            <span className={`font-mono font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{activeSlip.cert.toLocaleString()} {currencyLabel}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400">
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
             <span>{isEn ? 'Phone & Communications Allowance' : 'بدل الهاتف والاتصالات'}</span>
-            <span className="font-mono font-bold text-slate-200 dark:text-slate-100">{activeSlip.phone.toLocaleString()} {currencyLabel}</span>
+            <span className={`font-mono font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{activeSlip.phone.toLocaleString()} {currencyLabel}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400">
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
             <span>{isEn ? 'Performance & Productivity Incentive' : 'حافز الإنتاجية والأداء'}</span>
-            <span className="font-mono font-bold text-emerald-400">+{activeSlip.bonus.toLocaleString()} {currencyLabel}</span>
+            <span className="font-mono font-bold text-emerald-500">+{activeSlip.bonus.toLocaleString()} {currencyLabel}</span>
           </div>
         </div>
       </div>
@@ -258,7 +260,9 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
       <div className={`p-4 rounded-2xl border ${
         isDark ? 'bg-slate-900/80 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
       }`}>
-        <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div className={`flex items-center justify-between mb-3 pb-2 border-b ${
+          isDark ? 'border-slate-800' : 'border-slate-200'
+        }`}>
           <div className="flex items-center gap-1.5">
             <ArrowDownRight className="w-4 h-4 text-rose-500" />
             <h3 className="text-xs font-bold">
@@ -271,17 +275,17 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee }) =>
         </div>
 
         <div className="space-y-2 text-xs">
-          <div className="flex justify-between items-center text-slate-400">
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
             <span>{isEn ? 'Social Security & Pension (5%)' : 'استقطاع التقاعد والضمان الاجتماعي (5%)'}</span>
-            <span className="font-mono font-bold text-rose-400">-{activeSlip.socialSecurity.toLocaleString()} {currencyLabel}</span>
+            <span className={`font-mono font-bold ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>-{activeSlip.socialSecurity.toLocaleString()} {currencyLabel}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400">
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
             <span>{isEn ? 'Withholding Income Tax' : 'ضريبة الدخل المستقطعة'}</span>
-            <span className="font-mono font-bold text-rose-400">-{activeSlip.tax.toLocaleString()} {currencyLabel}</span>
+            <span className={`font-mono font-bold ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>-{activeSlip.tax.toLocaleString()} {currencyLabel}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400">
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
             <span>{isEn ? 'Comprehensive Medical Insurance' : 'التأمين الصحي الشامل'}</span>
-            <span className="font-mono font-bold text-rose-400">-{activeSlip.insurance.toLocaleString()} {currencyLabel}</span>
+            <span className={`font-mono font-bold ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>-{activeSlip.insurance.toLocaleString()} {currencyLabel}</span>
           </div>
         </div>
       </div>

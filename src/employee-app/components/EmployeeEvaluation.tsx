@@ -155,18 +155,18 @@ export const EmployeeEvaluation: React.FC<EmployeeEvaluationProps> = ({ employee
         <div className={`p-4 rounded-2xl border ${
           isDark ? 'bg-slate-900/80 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
         }`}>
-          <h2 className="text-xs font-bold mb-3 flex items-center gap-1.5 text-teal-500">
+          <h2 className={`text-xs font-bold mb-3 flex items-center gap-1.5 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
             <Target className="w-4 h-4" />
             <span>{isEn ? 'Core Self-Evaluation Criteria' : 'معايير التقييم الذاتي الرئيسية'}</span>
           </h2>
 
           <div className="space-y-3">
             {criteria.map((item) => (
-              <div key={item.id} className="pt-2 border-t border-slate-200 dark:border-slate-800 first:border-0 first:pt-0">
+              <div key={item.id} className={`pt-2 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'} first:border-0 first:pt-0`}>
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <div>
-                    <p className="text-xs font-bold">{item.label}</p>
-                    <p className="text-[10px] text-slate-400">{item.desc}</p>
+                    <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.label}</p>
+                    <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{item.desc}</p>
                   </div>
 
                   {/* Star Rating Buttons */}
@@ -179,7 +179,7 @@ export const EmployeeEvaluation: React.FC<EmployeeEvaluationProps> = ({ employee
                         className={`p-1 rounded-lg transition-transform active:scale-125 cursor-pointer ${
                           star <= (ratings[item.id] || 0)
                             ? 'text-amber-400'
-                            : 'text-slate-300 dark:text-slate-700'
+                            : isDark ? 'text-slate-700' : 'text-slate-300'
                         }`}
                       >
                         <Star className={`w-4 h-4 ${star <= (ratings[item.id] || 0) ? 'fill-amber-400' : ''}`} />
@@ -197,7 +197,7 @@ export const EmployeeEvaluation: React.FC<EmployeeEvaluationProps> = ({ employee
           isDark ? 'bg-slate-900/80 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
         }`}>
           <div>
-            <label className="block text-xs font-bold mb-1 text-slate-400">
+            <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
               {isEn ? 'Key Achievements & Completed Tasks' : 'أبرز الإنجازات والمهام المكتملة خلال الدورة'}
             </label>
             <textarea
@@ -205,14 +205,16 @@ export const EmployeeEvaluation: React.FC<EmployeeEvaluationProps> = ({ employee
               value={achievements}
               onChange={e => setAchievements(e.target.value)}
               className={`w-full p-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
-                isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                isDark 
+                  ? 'bg-slate-950 border-slate-700 text-white placeholder-slate-500' 
+                  : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
               }`}
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold mb-1 text-slate-400">
+            <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
               {isEn ? 'Proposed Professional Development & Training Areas' : 'مجالات التطوير المهني والتدريب المقترحة'}
             </label>
             <textarea
@@ -220,7 +222,9 @@ export const EmployeeEvaluation: React.FC<EmployeeEvaluationProps> = ({ employee
               value={trainingGoals}
               onChange={e => setTrainingGoals(e.target.value)}
               className={`w-full p-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
-                isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                isDark 
+                  ? 'bg-slate-950 border-slate-700 text-white placeholder-slate-500' 
+                  : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
               }`}
               required
             />

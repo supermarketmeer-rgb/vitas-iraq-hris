@@ -328,18 +328,18 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
               key={index}
               className={`p-3.5 rounded-2xl border transition-all ${
                 record.status === 'present'
-                  ? isDark ? 'bg-[#131b2e] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+                  ? isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
                   : record.status === 'late'
-                  ? isDark ? 'bg-amber-950/20 border-amber-500/30' : 'bg-amber-50/60 border-amber-200'
+                  ? isDark ? 'bg-amber-950/20 border-amber-500/30 text-white' : 'bg-amber-50/60 border-amber-200 text-slate-900'
                   : record.status === 'absent'
-                  ? isDark ? 'bg-rose-950/20 border-rose-500/30' : 'bg-rose-50/60 border-rose-200'
-                  : isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-200'
+                  ? isDark ? 'bg-rose-950/20 border-rose-500/30 text-white' : 'bg-rose-50/60 border-rose-200 text-slate-900'
+                  : isDark ? 'bg-slate-900/50 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black">{getDayName(record.day)}</span>
-                  <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDate(record.date)}</span>
+                  <span className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{getDayName(record.day)}</span>
+                  <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{formatDate(record.date)}</span>
                 </div>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(record.status)}`}>
                   {getStatusText(record.status)}
@@ -347,30 +347,32 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
               </div>
 
               {record.status !== 'weekend' && record.status !== 'absent' ? (
-                <div className="grid grid-cols-3 gap-2 bg-slate-800/10 dark:bg-slate-900/40 p-2 rounded-xl text-center text-xs">
+                <div className={`grid grid-cols-3 gap-2 p-2 rounded-xl text-center text-xs border ${
+                  isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
                   <div>
-                    <span className="text-[10px] text-slate-400 block mb-0.5">
+                    <span className={`text-[10px] block mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
                       {isEn ? 'Check In' : 'الدخول'}
                     </span>
                     <span className="font-mono font-bold text-emerald-500">{record.checkIn || '--:--'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block mb-0.5">
+                    <span className={`text-[10px] block mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
                       {isEn ? 'Check Out' : 'الخروج'}
                     </span>
                     <span className="font-mono font-bold text-blue-500">{record.checkOut || '--:--'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block mb-0.5">
+                    <span className={`text-[10px] block mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
                       {isEn ? 'Duration' : 'المدة'}
                     </span>
-                    <span className="font-mono font-bold text-teal-400">
+                    <span className={`font-mono font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
                       {record.workHours} {isEn ? 'hrs' : 'س'}
                     </span>
                   </div>
                 </div>
               ) : (
-                <p className={`text-xs italic ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-xs italic ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   {getNotes(record.notes) || (isEn ? 'No punch registered for this day' : 'لا يوجد بصمة مسجلة لهذا اليوم')}
                 </p>
               )}

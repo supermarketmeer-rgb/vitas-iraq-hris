@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeContext } from '../context/EmployeeContext';
 import { Sun, Moon, Globe } from 'lucide-react';
+import vitasLogo from '../../../assets/VitasLogo.jpeg';
 
 interface EmployeeLoginProps {
   onLogin: (employeeData: any) => void;
@@ -10,6 +11,7 @@ interface EmployeeLoginProps {
 export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
   const [badgeNumber, setBadgeNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -23,13 +25,19 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
     setIsLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const cleanInput = badgeNumber.trim().toLowerCase();
       const cleanInputAlpha = cleanInput.replace(/[^a-z0-9]/g, '');
 
       if (!cleanInput) {
         setError(isEn ? 'Please enter badge number or employee ID' : 'يرجى إدخال رقم الباجة أو معرف الموظف');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!password.trim()) {
+        setError(isEn ? 'Please enter password' : 'يرجى إدخال كلمة المرور');
         setIsLoading(false);
         return;
       }
@@ -153,18 +161,13 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
     }
   };
 
-  const handleQuickDemo = (bNo: string) => {
-    setBadgeNumber(bNo);
-    setPassword('123456');
-  };
-
   return (
-    <div className="w-full max-w-md mx-auto p-4 space-y-6 flex flex-col items-center justify-center min-h-[750px] relative">
+    <div className="w-full max-w-md mx-auto p-4 space-y-5 flex flex-col items-center justify-center min-h-[750px] relative animate-in fade-in duration-300">
       {/* Top Header Controls with Language and Theme */}
       <div className="w-full flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="text-[11px] font-bold text-slate-400">
+          <span className={`text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {isEn ? 'VITAS Iraq • ESS Portal' : 'فيتاس العراق • بوابة الموظف'}
           </span>
         </div>
@@ -173,8 +176,10 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
           {/* Language Toggle */}
           <button
             onClick={toggleLanguage}
-            className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 cursor-pointer shadow-xs ${
-              isDark ? 'bg-slate-800 border-slate-700 text-teal-400 hover:bg-slate-700' : 'bg-white border-slate-300 text-teal-700 hover:bg-slate-100'
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 ${
+              isDark 
+                ? 'bg-slate-800 border-slate-700 text-teal-400 hover:bg-slate-700' 
+                : 'bg-white border-slate-300 text-teal-700 hover:bg-slate-100'
             }`}
             title={isEn ? 'التبديل إلى العربية' : 'Switch to English'}
           >
@@ -185,8 +190,10 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className={`p-2 rounded-xl border transition-all cursor-pointer shadow-xs ${
-              isDark ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
+            className={`p-2 rounded-xl border transition-all cursor-pointer shadow-xs active:scale-95 ${
+              isDark 
+                ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700' 
+                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
             }`}
             title={isDark ? (isEn ? 'Switch to Light Mode' : 'التحويل للوضع النهاري') : (isEn ? 'Switch to Dark Mode' : 'التحويل للوضع الليلي')}
           >
@@ -195,31 +202,43 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
         </div>
       </div>
 
-      {/* Brand Icon & Welcome */}
-      <div className="text-center space-y-2">
-        <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-teal-600 via-teal-500 to-emerald-400 flex items-center justify-center shadow-xl shadow-teal-500/20 text-white">
-          <span className="material-symbols-outlined text-4xl">fingerprint</span>
-        </div>
-        <h1 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          {isEn ? 'Employee Mobile Portal' : 'تطبيق الهاتف الذكي للموظف'}
-        </h1>
-        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-          {isEn ? 'VITAS Iraq Unified HRMS Enterprise' : 'بوابة فيتاس العراق الموحدة للموارد البشرية'}
-        </p>
-      </div>
-
-      {/* Login Card */}
-      <div className={`w-full p-5 rounded-3xl border shadow-xl space-y-4 ${
-        isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
+      {/* Main Login Card - Modeled after the main system login */}
+      <div className={`w-full p-6 sm:p-7 rounded-3xl border transition-all ${
+        isDark 
+          ? 'bg-[#0a0c10] border-white/10 text-white shadow-2xl' 
+          : 'bg-white border-slate-200 text-slate-900 shadow-xl'
       }`}>
+        {/* Brand Header with VITAS Logo */}
+        <div className="text-center mb-6">
+          <div className="inline-block mb-3">
+            <div className="w-20 h-20 mx-auto rounded-full overflow-hidden shadow-xl shadow-teal-500/30 border-4 border-teal-500/30 backdrop-blur-sm">
+              <img 
+                src={vitasLogo} 
+                alt="VITAS Iraq Logo" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+          <h1 className={`text-xl font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-slate-900'}`}>
+            {isEn ? 'VITAS Iraq' : 'مؤسسة فيتاس العراق'}
+          </h1>
+          <p className={`text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            {isEn ? 'Cooperative Housing Foundation CHF' : 'مؤسسة الاسكان التعاونية CHF'}
+          </p>
+          <p className={`text-xs font-semibold ${isDark ? 'text-teal-500/90' : 'text-teal-700'}`}>
+            {isEn ? 'Unified HRMS • Employee Mobile Portal' : 'نظام إدارة الموارد البشرية • بوابة الموظف'}
+          </p>
+        </div>
+
+        {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold mb-1.5 text-teal-400">
-              {isEn ? 'Badge Number / Employee ID *' : 'رقم الباجة / معرف الموظف *'}
+            <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {isEn ? 'Badge Number / Employee ID' : 'رقم الباجة / معرف الموظف'}
             </label>
-            <div className="relative">
-              <span className={`material-symbols-outlined absolute top-1/2 -translate-y-1/2 text-lg text-teal-400 ${
-                isEn ? 'left-3' : 'right-3'
+            <div className="relative flex items-center">
+              <span className={`material-symbols-outlined absolute ${isEn ? 'left-3' : 'right-3'} text-lg pointer-events-none ${
+                isDark ? 'text-teal-400' : 'text-slate-500'
               }`}>
                 badge
               </span>
@@ -227,11 +246,16 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
                 type="text"
                 value={badgeNumber}
                 onChange={(e) => setBadgeNumber(e.target.value)}
-                placeholder={isEn ? 'Enter badge ID (e.g. V167 or 1001)' : 'أدخل رقم الباجة (مثال: V167 أو 1001)'}
-                className={`w-full py-2.5 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  isEn ? 'pl-10 pr-3' : 'pr-10 pl-3'
-                } ${
-                  isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                placeholder={isEn ? 'Enter badge number or employee ID' : 'أدخل رقم الباجة أو معرف الموظف'}
+                style={{
+                  backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                  color: isDark ? '#ffffff' : '#0f172a',
+                  borderColor: isDark ? '#334155' : '#cbd5e1'
+                }}
+                className={`w-full ${isEn ? 'pl-11 pr-4' : 'pr-11 pl-4'} py-3 rounded-xl border text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all shadow-xs ${
+                  isDark 
+                    ? 'bg-[#0f172a] text-white border-slate-700 placeholder-slate-500' 
+                    : 'bg-white text-slate-900 border-slate-300 placeholder-slate-400'
                 }`}
                 required
               />
@@ -239,32 +263,47 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
           </div>
 
           <div>
-            <label className="block text-xs font-bold mb-1.5 text-teal-400">
-              {isEn ? 'Secret Password *' : 'كلمة المرور السرية *'}
+            <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {isEn ? 'Password' : 'كلمة المرور'}
             </label>
-            <div className="relative">
-              <span className={`material-symbols-outlined absolute top-1/2 -translate-y-1/2 text-lg text-teal-400 ${
-                isEn ? 'left-3' : 'right-3'
+            <div className="relative flex items-center">
+              <span className={`material-symbols-outlined absolute ${isEn ? 'left-3' : 'right-3'} text-lg pointer-events-none ${
+                isDark ? 'text-teal-400' : 'text-slate-500'
               }`}>
                 lock
               </span>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={isEn ? 'Enter password (default: 123456)' : 'أدخل كلمة المرور (الافتراضية: 123456)'}
-                className={`w-full py-2.5 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  isEn ? 'pl-10 pr-3' : 'pr-10 pl-3'
-                } ${
-                  isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                placeholder={isEn ? 'Enter password' : 'أدخل كلمة المرور'}
+                style={{
+                  backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                  color: isDark ? '#ffffff' : '#0f172a',
+                  borderColor: isDark ? '#334155' : '#cbd5e1'
+                }}
+                className={`w-full ${isEn ? 'pl-11 pr-11' : 'pr-11 pl-11'} py-3 rounded-xl border text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all shadow-xs ${
+                  isDark 
+                    ? 'bg-[#0f172a] text-white border-slate-700 placeholder-slate-500' 
+                    : 'bg-white text-slate-900 border-slate-300 placeholder-slate-400'
                 }`}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className={`absolute ${isEn ? 'right-3' : 'left-3'} p-1 rounded-lg text-slate-400 hover:text-teal-500 transition-colors focus:outline-none flex items-center justify-center cursor-pointer`}
+                title={showPassword ? (isEn ? 'Hide password' : 'إخفاء كلمة المرور') : (isEn ? 'Show password' : 'إظهار كلمة المرور')}
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {showPassword ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
             </div>
           </div>
 
           {error && (
-            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold text-center animate-in fade-in">
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 dark:text-rose-400 text-xs font-bold text-center animate-in fade-in">
               {error}
             </div>
           )}
@@ -272,54 +311,25 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-black text-xs shadow-md shadow-teal-500/20 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white font-bold text-sm transition-all shadow-lg shadow-teal-600/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
           >
-            {isLoading 
-              ? (isEn ? 'Authenticating & Signing in...' : 'جاري التحقق والدخول...') 
-              : (isEn ? 'Sign In to Employee App' : 'تسجيل الدخول للتطبيق')}
+            {isLoading ? (
+              <>
+                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                <span>{isEn ? 'Signing in...' : 'جاري تسجيل الدخول...'}</span>
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-base">login</span>
+                <span>{isEn ? 'Sign In' : 'تسجيل الدخول'}</span>
+              </>
+            )}
           </button>
         </form>
 
-        {/* Demo Quick Touch ID */}
-        <div className="pt-2 border-t border-slate-700/40 text-center space-y-2">
-          <button
-            onClick={() => handleQuickDemo('V167')}
-            className={`w-full py-2.5 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              isDark 
-                ? 'bg-slate-800/80 border-teal-500/30 text-teal-400 hover:bg-slate-700' 
-                : 'bg-teal-50 border-teal-200 text-teal-900 hover:bg-teal-100 shadow-xs'
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg text-teal-400">fingerprint</span>
-            <span>{isEn ? 'Quick Biometric Sign In (Dina - V167)' : 'دخول سريع بالبصمة الحيوية (دينا - V167)'}</span>
-          </button>
-        </div>
-
-        {/* Demo Accounts Chips */}
-        <div className="pt-1 text-center">
-          <p className="text-[10px] text-slate-400 font-bold mb-1.5">
-            {isEn ? 'Quick Demo Accounts:' : 'حسابات للتجربة السريعة:'}
-          </p>
-          <div className="flex justify-center gap-1.5 flex-wrap">
-            <button
-              onClick={() => handleQuickDemo('V167')}
-              className="px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-600 text-white text-[10px] font-bold border border-teal-600 shadow-sm transition-all cursor-pointer"
-            >
-              {isEn ? 'V167 - Dina (Credit)' : 'V167 - دينا (الائتمان)'}
-            </button>
-            <button
-              onClick={() => handleQuickDemo('1001')}
-              className="px-2.5 py-1 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-[10px] font-bold border border-blue-600 shadow-sm transition-all cursor-pointer"
-            >
-              {isEn ? '1001 - Ahmed (HR)' : '1001 - أحمد (الموارد البشرية)'}
-            </button>
-            <button
-              onClick={() => handleQuickDemo('1002')}
-              className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold border border-emerald-600 shadow-sm transition-all cursor-pointer"
-            >
-              {isEn ? '1002 - Fatima (Finance)' : '1002 - فاطمة (المالية)'}
-            </button>
-          </div>
+        {/* Footer */}
+        <div className={`mt-6 text-center text-xs ${isDark ? 'text-teal-400' : 'text-slate-500'}`}>
+          <p>© 2026 {isEn ? 'VITAS Iraq • Microfinance' : 'مؤسسة فيتاس العراق • للتمويل الأصغر'}</p>
         </div>
       </div>
     </div>

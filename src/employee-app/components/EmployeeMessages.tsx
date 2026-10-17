@@ -135,14 +135,18 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
         <div className={`p-4 rounded-3xl border shadow-xl space-y-4 animate-in fade-in duration-200 ${
           isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
         }`}>
-          <div className="flex items-center justify-between pb-2 border-b border-slate-700/40">
+          <div className={`flex items-center justify-between pb-2 border-b ${
+            isDark ? 'border-slate-800' : 'border-slate-200'
+          }`}>
             <h2 className="text-sm font-black flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-teal-400">send</span>
+              <span className={`material-symbols-outlined ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>send</span>
               <span>{isEn ? 'Compose New Message' : 'كتابة رسالة جديدة'}</span>
             </h2>
             <button
               onClick={() => setShowCompose(false)}
-              className={`p-1 rounded-full cursor-pointer ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600'}`}
+              className={`p-1 rounded-full cursor-pointer ${
+                isDark ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+              }`}
             >
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
@@ -150,7 +154,7 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
 
           <form onSubmit={handleSendMessage} className="space-y-3">
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+              <label className={`block text-[11px] font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
                 {isEn ? 'To (Recipient or Department) *' : 'إلى (اسم المستلم أو القسم) *'}
               </label>
               <input
@@ -159,14 +163,14 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
                 onChange={(e) => setNewMessage({...newMessage, to: e.target.value})}
                 placeholder={isEn ? 'e.g. HR Department' : 'مثال: قسم الموارد البشرية'}
                 className={`w-full px-3 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                  isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
                 }`}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+              <label className={`block text-[11px] font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
                 {isEn ? 'Message Subject *' : 'موضوع الرسالة *'}
               </label>
               <input
@@ -175,14 +179,14 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
                 onChange={(e) => setNewMessage({...newMessage, subject: e.target.value})}
                 placeholder={isEn ? 'Enter message subject...' : 'عنوان أو موضوع المراسلة...'}
                 className={`w-full px-3 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                  isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
                 }`}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold mb-1 text-teal-400">
+              <label className={`block text-[11px] font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
                 {isEn ? 'Message Body *' : 'محتوى الرسالة *'}
               </label>
               <textarea
@@ -191,7 +195,7 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
                 placeholder={isEn ? 'Write message body here...' : 'اكتب نص الرسالة هنا...'}
                 rows={4}
                 className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
-                  isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                  isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
                 }`}
                 required
               />
@@ -200,7 +204,7 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
             <div className="flex gap-2 pt-1">
               <button
                 type="submit"
-                className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md cursor-pointer"
+                className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md cursor-pointer active:scale-95 transition-all"
               >
                 {isEn ? 'Send Message' : 'إرسال الرسالة'}
               </button>
@@ -221,16 +225,20 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
         <div className={`p-4 rounded-3xl border shadow-xl space-y-4 animate-in fade-in duration-200 ${
           isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
         }`}>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-700/40">
+          <div className={`flex items-center justify-between pb-3 border-b ${
+            isDark ? 'border-slate-800' : 'border-slate-200'
+          }`}>
             <button
               onClick={() => setSelectedMessage(null)}
-              className="flex items-center gap-1 text-teal-400 text-xs font-bold hover:underline cursor-pointer"
+              className={`flex items-center gap-1 text-xs font-bold hover:underline cursor-pointer ${
+                isDark ? 'text-teal-400' : 'text-teal-700'
+              }`}
             >
               <span className="material-symbols-outlined text-base">arrow_forward</span>
               <span>{isEn ? 'Back to Messages' : 'العودة للرسائل'}</span>
             </button>
             {selectedMessage.priority === 'high' && (
-              <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 text-[10px] font-bold border border-rose-500/30">
+              <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-500 text-[10px] font-bold border border-rose-500/30">
                 {isEn ? 'High Priority' : 'رسالة هامة'}
               </span>
             )}
@@ -241,7 +249,7 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
               {selectedMessage.from.charAt(0)}
             </div>
             <div>
-              <h2 className="text-sm font-bold">{selectedMessage.from}</h2>
+              <h2 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedMessage.from}</h2>
               <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 {formatTime(selectedMessage.timestamp)}
               </p>
@@ -249,9 +257,9 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
           </div>
 
           <div>
-            <h3 className="text-sm font-black text-teal-400 mb-2">{selectedMessage.subject}</h3>
+            <h3 className={`text-sm font-black mb-2 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{selectedMessage.subject}</h3>
             <div className={`p-3.5 rounded-2xl border text-xs leading-relaxed ${
-              isDark ? 'bg-slate-900/60 border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+              isDark ? 'bg-slate-900/60 border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-900'
             }`}>
               {selectedMessage.content}
             </div>
@@ -260,7 +268,7 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
           <div className="pt-2 flex gap-2">
             <button
               onClick={() => alert(isEn ? 'Quick reply dispatched' : 'تم إرسال الرد المباشر')}
-              className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+              className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
             >
               <span className="material-symbols-outlined text-base">reply</span>
               <span>{isEn ? 'Quick Reply' : 'رد سريع'}</span>
@@ -295,7 +303,11 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
-                    <p className={`text-xs font-bold truncate ${!message.read ? 'text-teal-400 font-black' : ''}`}>
+                    <p className={`text-xs font-bold truncate ${
+                      !message.read 
+                        ? (isDark ? 'text-teal-400 font-black' : 'text-teal-700 font-black') 
+                        : (isDark ? 'text-white' : 'text-slate-900')
+                    }`}>
                       {message.from}
                     </p>
                     <span className="text-[10px] text-slate-400 shrink-0 font-mono">
@@ -303,8 +315,8 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
                     </span>
                   </div>
 
-                  <p className="text-xs font-bold truncate mb-1">{message.subject}</p>
-                  <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <p className={`text-xs font-bold truncate mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{message.subject}</p>
+                  <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     {message.content}
                   </p>
                 </div>

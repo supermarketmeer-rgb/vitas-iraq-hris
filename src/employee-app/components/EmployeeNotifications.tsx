@@ -617,7 +617,7 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                             className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
                               isDark 
                                 ? 'bg-slate-900/90 border-slate-700/80 hover:border-teal-500/50' 
-                                : 'bg-white border-slate-200 hover:border-teal-400 shadow-xs'
+                                : 'bg-slate-50 border-slate-200 hover:border-teal-400 shadow-2xs'
                             }`}
                           >
                             {/* File Icon & Info */}
@@ -635,10 +635,10 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                               </div>
 
                               <div className="min-w-0">
-                                <p className="text-xs font-bold truncate">
+                                <p className={`text-xs font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                   {attName}
                                 </p>
-                                <p className="text-[9px] font-mono text-slate-400 truncate">
+                                <p className={`text-[9px] font-mono truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                   {att.type.toUpperCase()} • {att.size} {att.refNo && `• ${att.refNo}`}
                                 </p>
                               </div>
@@ -656,8 +656,10 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
 
                               <button
                                 onClick={() => handleDownloadAttachment(att)}
-                                className={`p-1.5 rounded-lg border text-slate-400 hover:text-white transition-colors cursor-pointer ${
-                                  isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 hover:bg-slate-200'
+                                className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                                  isDark 
+                                    ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700' 
+                                    : 'bg-slate-100 border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-200'
                                 }`}
                                 title={isEn ? 'Download' : 'تحميل'}
                               >
@@ -693,10 +695,10 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                   {previewData.attachment.type === 'pdf' ? <FileText className="w-4 h-4" /> : <FileSpreadsheet className="w-4 h-4" />}
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-xs font-bold truncate">
+                  <h3 className={`text-xs font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {isEn ? (previewData.attachment.nameEn || previewData.attachment.name) : previewData.attachment.name}
                   </h3>
-                  <p className="text-[10px] text-slate-400 truncate">
+                  <p className={`text-[10px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {isEn 
                       ? (previewData.attachment.docTitleEn || previewData.notifTitle) 
                       : (previewData.attachment.docTitle || previewData.notifTitle)}
@@ -707,14 +709,18 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => handleDownloadAttachment(previewData.attachment)}
-                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-teal-600 hover:bg-teal-500 text-white flex items-center gap-1 cursor-pointer shadow-xs"
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-teal-600 hover:bg-teal-500 text-white flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
                 >
                   <Download className="w-3 h-3" />
                   <span>{isEn ? 'Download' : 'تحميل'}</span>
                 </button>
                 <button
                   onClick={() => setPreviewData(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                  className={`p-1 rounded-lg cursor-pointer ${
+                    isDark 
+                      ? 'text-slate-400 hover:text-white hover:bg-slate-800' 
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                  }`}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -788,7 +794,7 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                               {tbl.map((row, rIdx) => (
                                 <tr key={rIdx} className={rIdx % 2 === 0 ? (isDark ? 'bg-slate-900/40' : 'bg-white') : (isDark ? 'bg-slate-900/80' : 'bg-slate-50')}>
                                   {Object.values(row).map((val, cIdx) => (
-                                    <td key={cIdx} className="p-2 whitespace-nowrap">
+                                    <td key={cIdx} className={`p-2 whitespace-nowrap font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
                                       {String(val)}
                                     </td>
                                   ))}

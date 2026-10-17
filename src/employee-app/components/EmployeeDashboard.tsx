@@ -319,18 +319,26 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
         )}
 
         {/* Local Server Wi-Fi Connection Bar */}
-        <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px]">
+        <div className={`mt-3 pt-2.5 border-t flex items-center justify-between text-[11px] ${
+          isDark ? 'border-white/10' : 'border-slate-200'
+        }`}>
           <div
             onClick={() => setShowServerModal(true)}
-            className="flex items-center gap-1.5 text-teal-400 hover:text-teal-300 font-bold cursor-pointer"
+            className={`flex items-center gap-1.5 font-bold cursor-pointer ${
+              isDark ? 'text-teal-400 hover:text-teal-300' : 'text-teal-700 hover:text-teal-800'
+            }`}
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="material-symbols-outlined text-sm">lan</span>
             <span>{isEn ? `Biometric Server: ${serverConfig.serverIp}` : `سيرفر البصمة المحلي: ${serverConfig.serverIp}`}</span>
           </div>
           <button
             onClick={() => setShowServerModal(true)}
-            className="text-[10px] font-bold text-slate-300 hover:text-white bg-slate-800/80 px-2 py-0.5 rounded-lg border border-slate-700 flex items-center gap-1 cursor-pointer"
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border flex items-center gap-1 cursor-pointer transition-colors ${
+              isDark 
+                ? 'text-slate-300 hover:text-white bg-slate-800/80 border-slate-700' 
+                : 'text-slate-700 hover:text-slate-900 bg-slate-100 border-slate-300'
+            }`}
           >
             <span className="material-symbols-outlined text-xs">settings</span>
             <span>{isEn ? 'Server Setup' : 'إعدادات السيرفر'}</span>
@@ -506,7 +514,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
             ))
           ) : (
             <div className={`flex items-center gap-3 p-3 rounded-2xl border ${
-              isDark ? 'bg-[#0b1120] border-slate-800/80' : 'bg-slate-50 border-slate-100'
+              isDark ? 'bg-[#0b1120] border-slate-800/80 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-800'
             }`}>
               <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -521,6 +529,99 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee, 
           )}
         </div>
       </div>
+
+      {/* Local Biometric Server Settings Modal */}
+      {showServerModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className={`w-full max-w-md rounded-3xl p-5 border shadow-2xl space-y-4 animate-in zoom-in-95 ${
+            isDark ? 'bg-[#0f172a] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`flex items-center justify-between pb-2 border-b ${
+              isDark ? 'border-slate-800' : 'border-slate-200'
+            }`}>
+              <h2 className="text-sm font-black flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-teal-500">lan</span>
+                <span>{isEn ? 'Biometric Server Connection' : 'إعدادات ربط سيرفر البصمة المحلي'}</span>
+              </h2>
+              <button
+                onClick={() => setShowServerModal(false)}
+                className={`p-1 rounded-full cursor-pointer ${
+                  isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveServerSettings} className="space-y-3.5">
+              <div>
+                <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                  {isEn ? 'Local Server IP / Hostname *' : 'عنوان IP سيرفر البصمة المحلي *'}
+                </label>
+                <input
+                  type="text"
+                  value={serverIpInput}
+                  onChange={(e) => setServerIpInput(e.target.value)}
+                  placeholder="192.168.1.100:5000"
+                  className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                  }`}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                  {isEn ? 'Punch Endpoint *' : 'نقطة نهاية التبصيم (Endpoint) *'}
+                </label>
+                <input
+                  type="text"
+                  value={punchEndpointInput}
+                  onChange={(e) => setPunchEndpointInput(e.target.value)}
+                  placeholder="/api/attendance/punch"
+                  className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                  }`}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                  {isEn ? 'Authorized Branch Wi-Fi SSID' : 'اسم شبكة الواي فاي المعتمدة للفرع (SSID)'}
+                </label>
+                <input
+                  type="text"
+                  value={wifiSsidInput}
+                  onChange={(e) => setWifiSsidInput(e.target.value)}
+                  placeholder="VITAS-Branch-WiFi"
+                  className={`w-full px-3 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                  }`}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 active:scale-95 transition-all cursor-pointer"
+                >
+                  {isEn ? 'Save & Connect' : 'حفظ وإعادة الاتصال'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowServerModal(false)}
+                  className={`px-3.5 py-2.5 rounded-xl border text-xs font-bold cursor-pointer ${
+                    isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-300 text-slate-700'
+                  }`}
+                >
+                  {isEn ? 'Cancel' : 'إلغاء'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
