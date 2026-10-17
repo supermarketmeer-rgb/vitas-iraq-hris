@@ -566,13 +566,13 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                       </span>
                     )}
 
-                    <span className={`text-[11px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <span className={`text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                       • {notifSender}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className={`text-[10px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                       {notif.date} | {notifTime}
                     </span>
                     {!notif.read && (
@@ -593,7 +593,7 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                 }`}>
                   {notifTitle}
                 </h3>
-                <p className={`text-[11px] leading-relaxed mb-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                <p className={`text-[11px] leading-relaxed mb-3 font-medium ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
                   {notifMessage}
                 </p>
 
@@ -601,8 +601,8 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                 {notif.attachments && notif.attachments.length > 0 && (
                   <div className={`pt-2.5 mt-2 border-t ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
                     <div className="flex items-center gap-1.5 mb-2">
-                      <Paperclip className="w-3.5 h-3.5 text-teal-500" />
-                      <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400">
+                      <Paperclip className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                      <span className="text-[11px] font-black text-teal-700 dark:text-teal-400">
                         {isEn ? `Official Verified Attachments (${notif.attachments.length})` : `المرفقات الرسمية المعتمدة (${notif.attachments.length})`}
                       </span>
                     </div>
@@ -617,15 +617,15 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                             className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
                               isDark 
                                 ? 'bg-slate-900/90 border-slate-700/80 hover:border-teal-500/50' 
-                                : 'bg-slate-50 border-slate-200 hover:border-teal-400 shadow-2xs'
+                                : 'bg-slate-50 border-slate-300 hover:border-teal-400 shadow-2xs'
                             }`}
                           >
                             {/* File Icon & Info */}
                             <div className="flex items-center gap-2 min-w-0">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                                 att.type === 'pdf'
-                                  ? 'bg-rose-500/10 text-rose-500'
-                                  : 'bg-emerald-500/10 text-emerald-500'
+                                  ? 'bg-rose-500/10 text-rose-600'
+                                  : 'bg-emerald-500/10 text-emerald-600'
                               }`}>
                                 {att.type === 'pdf' ? (
                                   <FileText className="w-4 h-4" />
@@ -635,10 +635,10 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                               </div>
 
                               <div className="min-w-0">
-                                <p className={`text-xs font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                <p className={`text-xs font-black truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                   {attName}
                                 </p>
-                                <p className={`text-[9px] font-mono truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                <p className={`text-[9px] font-mono truncate font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                                   {att.type.toUpperCase()} • {att.size} {att.refNo && `• ${att.refNo}`}
                                 </p>
                               </div>

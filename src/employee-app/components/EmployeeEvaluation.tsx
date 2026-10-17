@@ -165,8 +165,8 @@ export const EmployeeEvaluation: React.FC<EmployeeEvaluationProps> = ({ employee
               <div key={item.id} className={`pt-2 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'} first:border-0 first:pt-0`}>
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <div>
-                    <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.label}</p>
-                    <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{item.desc}</p>
+                    <p className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.label}</p>
+                    <p className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>{item.desc}</p>
                   </div>
 
                   {/* Star Rating Buttons */}
@@ -178,11 +178,11 @@ export const EmployeeEvaluation: React.FC<EmployeeEvaluationProps> = ({ employee
                         onClick={() => handleRatingChange(item.id, star)}
                         className={`p-1 rounded-lg transition-transform active:scale-125 cursor-pointer ${
                           star <= (ratings[item.id] || 0)
-                            ? 'text-amber-400'
+                            ? 'text-amber-500'
                             : isDark ? 'text-slate-700' : 'text-slate-300'
                         }`}
                       >
-                        <Star className={`w-4 h-4 ${star <= (ratings[item.id] || 0) ? 'fill-amber-400' : ''}`} />
+                        <Star className={`w-4 h-4 ${star <= (ratings[item.id] || 0) ? 'fill-amber-500 text-amber-500' : ''}`} />
                       </button>
                     ))}
                   </div>
@@ -194,17 +194,17 @@ export const EmployeeEvaluation: React.FC<EmployeeEvaluationProps> = ({ employee
 
         {/* Text Areas */}
         <div className={`p-4 rounded-2xl border space-y-3 ${
-          isDark ? 'bg-slate-900/80 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
+          isDark ? 'bg-slate-900/80 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-xs'
         }`}>
           <div>
-            <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
+            <label className={`block text-xs font-black mb-1 ${isDark ? 'text-slate-300' : 'text-slate-900'}`}>
               {isEn ? 'Key Achievements & Completed Tasks' : 'أبرز الإنجازات والمهام المكتملة خلال الدورة'}
             </label>
             <textarea
               rows={2}
               value={achievements}
               onChange={e => setAchievements(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
+              className={`w-full p-2.5 rounded-xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
                 isDark 
                   ? 'bg-slate-950 border-slate-700 text-white placeholder-slate-500' 
                   : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
@@ -214,14 +214,14 @@ export const EmployeeEvaluation: React.FC<EmployeeEvaluationProps> = ({ employee
           </div>
 
           <div>
-            <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
+            <label className={`block text-xs font-black mb-1 ${isDark ? 'text-slate-300' : 'text-slate-900'}`}>
               {isEn ? 'Proposed Professional Development & Training Areas' : 'مجالات التطوير المهني والتدريب المقترحة'}
             </label>
             <textarea
               rows={2}
               value={trainingGoals}
               onChange={e => setTrainingGoals(e.target.value)}
-              className={`w-full p-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
+              className={`w-full p-2.5 rounded-xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
                 isDark 
                   ? 'bg-slate-950 border-slate-700 text-white placeholder-slate-500' 
                   : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'

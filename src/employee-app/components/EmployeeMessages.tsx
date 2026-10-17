@@ -305,18 +305,18 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
                   <div className="flex items-center justify-between mb-0.5">
                     <p className={`text-xs font-bold truncate ${
                       !message.read 
-                        ? (isDark ? 'text-teal-400 font-black' : 'text-teal-700 font-black') 
+                        ? (isDark ? 'text-teal-400 font-black' : 'text-teal-800 font-black') 
                         : (isDark ? 'text-white' : 'text-slate-900')
                     }`}>
                       {message.from}
                     </p>
-                    <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                    <span className={`text-[10px] shrink-0 font-mono font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                       {formatTime(message.timestamp).split('،')[0]}
                     </span>
                   </div>
 
-                  <p className={`text-xs font-bold truncate mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{message.subject}</p>
-                  <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <p className={`text-xs font-black truncate mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{message.subject}</p>
+                  <p className={`text-[11px] truncate font-medium ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                     {message.content}
                   </p>
                 </div>

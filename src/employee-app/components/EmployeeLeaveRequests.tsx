@@ -414,33 +414,33 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
-                <span className={`block text-[10px] mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+              <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-300'}`}>
+                <span className={`block text-[10px] mb-0.5 font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                   {isEn ? 'Scheduled Shift' : 'الوردية المجدولة'}
                 </span>
-                <span className={`font-mono font-bold text-[11px] ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <span className={`font-mono font-black text-[11px] ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {attendanceToday.scheduled_start} - {attendanceToday.scheduled_end}
                 </span>
               </div>
-              <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
-                <span className={`block text-[10px] mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+              <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-300'}`}>
+                <span className={`block text-[10px] mb-0.5 font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                   {isEn ? 'Punch In' : 'وقت الحضور'}
                 </span>
-                <span className="font-mono font-bold text-emerald-500 text-[11px]">{attendanceToday.check_in}</span>
+                <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-[11px]">{attendanceToday.check_in}</span>
               </div>
-              <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
-                <span className={`block text-[10px] mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+              <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-300'}`}>
+                <span className={`block text-[10px] mb-0.5 font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                   {isEn ? 'Punch Out' : 'وقت الانصراف'}
                 </span>
-                <span className={`font-mono font-bold text-[11px] ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <span className={`font-mono font-black text-[11px] ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {attendanceToday.check_out}
                 </span>
               </div>
-              <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
-                <span className={`block text-[10px] mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+              <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-300'}`}>
+                <span className={`block text-[10px] mb-0.5 font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                   {isEn ? 'Worked Hours' : 'ساعات العمل'}
                 </span>
-                <span className={`font-bold text-[11px] ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                <span className={`font-black text-[11px] ${isDark ? 'text-teal-400' : 'text-teal-800'}`}>
                   {attendanceToday.worked_hours}
                 </span>
               </div>
@@ -450,15 +450,15 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
 
         {/* Leave Balances Card */}
         <div className={`p-5 rounded-3xl border shadow-xs flex flex-col justify-between space-y-4 ${
-          isDark ? 'bg-[#121b2d] border-[#1f2d4a]' : 'bg-white border-slate-200'
+          isDark ? 'bg-[#121b2d] border-[#1f2d4a]' : 'bg-white border-slate-300'
         }`}>
           <div>
             <div className={`flex items-center justify-between border-b pb-2.5 mb-3.5 ${
-              isDark ? 'border-[#1f2d4a]' : 'border-slate-100'
+              isDark ? 'border-[#1f2d4a]' : 'border-slate-200'
             }`}>
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-500">account_balance_wallet</span>
-                <h2 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">account_balance_wallet</span>
+                <h2 className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {isEn ? 'My Leave Balances' : 'أرصدة إجازاتي'}
                 </h2>
               </div>
@@ -475,14 +475,14 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               {/* Annual */}
               <div className={`p-2.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex items-center justify-between">
-                  <span className={`font-bold text-[10px] truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <span className={`font-black text-[10px] truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {isEn ? 'Annual' : 'إجازة اعتيادية'}
                   </span>
-                  <span className="text-[8px] px-1 py-0.2 rounded font-mono font-bold bg-teal-500/10 text-teal-500">2026</span>
+                  <span className="text-[8px] px-1 py-0.2 rounded font-mono font-bold bg-teal-500/10 text-teal-600 dark:text-teal-400">2026</span>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-xl font-black text-teal-500">{leaveBalances.annual.available}</span>
-                  <span className={`text-[9px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <span className="text-xl font-black text-teal-600 dark:text-teal-400">{leaveBalances.annual.available}</span>
+                  <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                     {isEn ? `of ${leaveBalances.annual.entitled} days` : `من ${leaveBalances.annual.entitled} يوم`}
                   </span>
                 </div>
@@ -494,14 +494,14 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               {/* Sick */}
               <div className={`p-2.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex items-center justify-between">
-                  <span className={`font-bold text-[10px] truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <span className={`font-black text-[10px] truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {isEn ? 'Sick' : 'إجازة مرضية'}
                   </span>
-                  <span className="text-[8px] px-1 py-0.2 rounded font-mono font-bold bg-teal-500/10 text-teal-500">2026</span>
+                  <span className="text-[8px] px-1 py-0.2 rounded font-mono font-bold bg-teal-500/10 text-teal-600 dark:text-teal-400">2026</span>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-xl font-black text-teal-500">{leaveBalances.sick.available}</span>
-                  <span className={`text-[9px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <span className="text-xl font-black text-teal-600 dark:text-teal-400">{leaveBalances.sick.available}</span>
+                  <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                     {isEn ? `of ${leaveBalances.sick.entitled} days` : `من ${leaveBalances.sick.entitled} يوم`}
                   </span>
                 </div>
@@ -513,14 +513,14 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
               {/* Emergency */}
               <div className={`p-2.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0c1322] border-[#1f2d4a]' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex items-center justify-between">
-                  <span className={`font-bold text-[10px] truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <span className={`font-black text-[10px] truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {isEn ? 'Emergency' : 'إجازة طارئة'}
                   </span>
-                  <span className="text-[8px] px-1 py-0.2 rounded font-mono font-bold bg-teal-500/10 text-teal-500">2026</span>
+                  <span className="text-[8px] px-1 py-0.2 rounded font-mono font-bold bg-teal-500/10 text-teal-600 dark:text-teal-400">2026</span>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-xl font-black text-teal-500">{leaveBalances.emergency.available}</span>
-                  <span className={`text-[9px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <span className="text-xl font-black text-teal-600 dark:text-teal-400">{leaveBalances.emergency.available}</span>
+                  <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                     {isEn ? `of ${leaveBalances.emergency.entitled} days` : `من ${leaveBalances.emergency.entitled} يوم`}
                   </span>
                 </div>
@@ -531,11 +531,11 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
             </div>
           </div>
 
-          <div className={`pt-2 border-t flex items-center justify-between text-[11px] ${isDark ? 'border-[#1f2d4a]' : 'border-slate-100'}`}>
-            <span className="text-slate-400">
+          <div className={`pt-2 border-t flex items-center justify-between text-[11px] ${isDark ? 'border-[#1f2d4a]' : 'border-slate-200'}`}>
+            <span className={`font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
               {isEn ? `Pending requests: ${requests.filter(r => r.status === 'pending').length}` : `طلبات الإجازة المعلقة: ${requests.filter(r => r.status === 'pending').length}`}
             </span>
-            <span className="text-teal-500 font-bold">
+            <span className="text-teal-700 dark:text-teal-400 font-black">
               {isEn ? 'Complete Leave History →' : 'سجل إجازاتي الكامل ←'}
             </span>
           </div>
@@ -545,10 +545,10 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
       {/* 4. Leave Requests History List */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
-          <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-800'}`}>
             {isEn ? 'Leave Requests History' : 'سجل طلبات الإجازة السابقة'}
           </h3>
-          <span className="text-[11px] text-teal-500 font-bold">
+          <span className="text-[11px] text-teal-700 dark:text-teal-400 font-black">
             {requests.length} {isEn ? 'requests' : 'طلبات'}
           </span>
         </div>
@@ -558,44 +558,44 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
             <div
               key={request.id}
               className={`p-3.5 rounded-2xl border transition-all ${
-                isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
+                isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-xs'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold">{getLeaveTypeName(request.leaveType)}</span>
-                  <span className="text-[10px] font-mono text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full">
+                  <span className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{getLeaveTypeName(request.leaveType)}</span>
+                  <span className="text-[10px] font-mono font-bold text-teal-700 dark:text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full">
                     {request.totalDays} {isEn ? 'Days' : 'أيام'}
                   </span>
                 </div>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                  request.status === 'approved' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
-                  request.status === 'pending' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
-                  'bg-rose-500/15 text-rose-400 border-rose-500/20'
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
+                  request.status === 'approved' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30' :
+                  request.status === 'pending' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30' :
+                  'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30'
                 }`}>
                   {getStatusLabel(request.status)}
                 </span>
               </div>
 
               <div className={`text-[11px] grid grid-cols-2 gap-1 p-2 rounded-xl my-2 border ${
-                isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-200'
+                isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-100/80 border-slate-200'
               }`}>
                 <div>
-                  <span className={`block text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+                  <span className={`block text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                     {isEn ? 'Start Date' : 'تاريخ البداية'}
                   </span>
-                  <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{request.startDate}</span>
+                  <span className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{request.startDate}</span>
                 </div>
                 <div>
-                  <span className={`block text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+                  <span className={`block text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                     {isEn ? 'End Date' : 'تاريخ النهاية'}
                   </span>
-                  <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{request.endDate}</span>
+                  <span className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{request.endDate}</span>
                 </div>
               </div>
 
-              <p className={`text-[11px] ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                <span className="font-bold">{isEn ? 'Reason: ' : 'السبب: '}</span>
+              <p className={`text-[11px] font-medium ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
+                <span className="font-black">{isEn ? 'Reason: ' : 'السبب: '}</span>
                 {getReasonLabel(request.reason)}
               </p>
             </div>

@@ -199,7 +199,7 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
             <h1 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {isEn ? 'Attendance & Punch Logs' : 'سجل الدوام والبصمات'}
             </h1>
-            <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
               {isEn ? 'Track punch records and worked hours' : 'تتبع كشوفات البصمة وساعات العمل'}
             </p>
           </div>
@@ -220,69 +220,69 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
       {/* Stats Grid 2x2 */}
       <div className="grid grid-cols-2 gap-2.5">
         <div className={`p-3.5 rounded-2xl border ${
-          isDark ? 'bg-gradient-to-br from-emerald-950/30 to-slate-900 border-emerald-500/30' : 'bg-emerald-50/70 border-emerald-200'
+          isDark ? 'bg-gradient-to-br from-emerald-950/30 to-slate-900 border-emerald-500/30' : 'bg-emerald-50/70 border-emerald-300 shadow-xs'
         }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
-            <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+            <span className="material-symbols-outlined text-emerald-600 text-lg">check_circle</span>
+            <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full">
               {isEn ? 'Present' : 'حضور'}
             </span>
           </div>
-          <p className="text-xl font-black text-emerald-500">
+          <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">
             {currentStats.present} {isEn ? 'Days' : 'أيام'}
           </p>
-          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
             {isEn ? `Out of ${currentStats.total} workdays` : `من أصل ${currentStats.total} يوم عمل`}
           </p>
         </div>
 
         <div className={`p-3.5 rounded-2xl border ${
-          isDark ? 'bg-gradient-to-br from-amber-950/30 to-slate-900 border-amber-500/30' : 'bg-amber-50/70 border-amber-200'
+          isDark ? 'bg-gradient-to-br from-amber-950/30 to-slate-900 border-amber-500/30' : 'bg-amber-50/70 border-amber-300 shadow-xs'
         }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="material-symbols-outlined text-amber-500 text-lg">schedule</span>
-            <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+            <span className="material-symbols-outlined text-amber-600 text-lg">schedule</span>
+            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full">
               {isEn ? 'Late' : 'تأخير'}
             </span>
           </div>
-          <p className="text-xl font-black text-amber-500">
+          <p className="text-xl font-black text-amber-600 dark:text-amber-400">
             {currentStats.late} {isEn ? 'Days' : 'يوم'}
           </p>
-          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
             {isEn ? 'Late past 08:00 AM' : 'تأخير عن 08:00 صباحاً'}
           </p>
         </div>
 
         <div className={`p-3.5 rounded-2xl border ${
-          isDark ? 'bg-gradient-to-br from-rose-950/30 to-slate-900 border-rose-500/30' : 'bg-rose-50/70 border-rose-200'
+          isDark ? 'bg-gradient-to-br from-rose-950/30 to-slate-900 border-rose-500/30' : 'bg-rose-50/70 border-rose-300 shadow-xs'
         }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="material-symbols-outlined text-rose-500 text-lg">cancel</span>
-            <span className="text-[10px] font-bold text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full">
+            <span className="material-symbols-outlined text-rose-600 text-lg">cancel</span>
+            <span className="text-[10px] font-black text-rose-700 dark:text-rose-400 bg-rose-500/15 px-2 py-0.5 rounded-full">
               {isEn ? 'Absent' : 'غياب'}
             </span>
           </div>
-          <p className="text-xl font-black text-rose-500">
+          <p className="text-xl font-black text-rose-600 dark:text-rose-400">
             {currentStats.absent} {isEn ? 'Days' : 'يوم'}
           </p>
-          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
             {isEn ? 'Sick leave / Absence' : 'إجازة مرضية / غياب'}
           </p>
         </div>
 
         <div className={`p-3.5 rounded-2xl border ${
-          isDark ? 'bg-gradient-to-br from-blue-950/30 to-slate-900 border-blue-500/30' : 'bg-blue-50/70 border-blue-200'
+          isDark ? 'bg-gradient-to-br from-blue-950/30 to-slate-900 border-blue-500/30' : 'bg-blue-50/70 border-blue-300 shadow-xs'
         }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="material-symbols-outlined text-blue-500 text-lg">weekend</span>
-            <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full">
+            <span className="material-symbols-outlined text-blue-600 text-lg">weekend</span>
+            <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 bg-blue-500/15 px-2 py-0.5 rounded-full">
               {isEn ? 'Weekend' : 'عطلة'}
             </span>
           </div>
-          <p className="text-xl font-black text-blue-500">
+          <p className="text-xl font-black text-blue-600 dark:text-blue-400">
             {currentStats.weekend} {isEn ? 'Days' : 'أيام'}
           </p>
-          <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
             {isEn ? 'Fri & Sat holidays' : 'عطلات الجمعة والسبت'}
           </p>
         </div>
@@ -290,22 +290,22 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
 
       {/* Monthly Summary Bar */}
       <div className={`p-4 rounded-3xl border ${
-        isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs text-slate-900'
+        isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-300 shadow-xs text-slate-900'
       }`}>
-        <div className="flex items-center justify-between text-xs font-bold mb-2">
+        <div className="flex items-center justify-between text-xs font-black mb-2">
           <span>{isEn ? 'Total Monthly Hours' : 'إجمالي ساعات عمل الشهر'}</span>
-          <span className="text-teal-500 font-mono">
+          <span className="text-teal-600 dark:text-teal-400 font-mono">
             {monthlyStats.totalWorkHours} {isEn ? 'hours' : 'ساعة'}
           </span>
         </div>
-        <div className="w-full bg-slate-700/20 h-2.5 rounded-full overflow-hidden">
+        <div className="w-full bg-slate-200 dark:bg-slate-700/40 h-2.5 rounded-full overflow-hidden">
           <div className="bg-gradient-to-r from-teal-500 to-emerald-400 h-full rounded-full" style={{ width: '85%' }}></div>
         </div>
-        <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1.5">
+        <div className="flex justify-between items-center text-[10px] text-slate-700 dark:text-slate-400 font-bold mt-1.5">
           <span>
             {isEn ? `Daily Avg: ${monthlyStats.avgWorkHours} hrs/day` : `المعدل اليومي: ${monthlyStats.avgWorkHours} ساعة/يوم`}
           </span>
-          <span className="text-emerald-500 font-bold">
+          <span className="text-emerald-700 dark:text-emerald-400 font-black">
             {isEn ? '95% Compliance' : 'التزام 95%'}
           </span>
         </div>
@@ -314,10 +314,10 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
       {/* Daily Attendance Cards (Mobile Log List) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-800'}`}>
             {isEn ? 'Daily Attendance History' : 'سجل أيام الشهر اليومي'}
           </h3>
-          <span className="text-[11px] text-teal-500 font-bold">
+          <span className="text-[11px] text-teal-700 dark:text-teal-400 font-black">
             {mockAttendanceData.length} {isEn ? 'records' : 'سجلات'}
           </span>
         </div>
@@ -328,51 +328,51 @@ export const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ employee
               key={index}
               className={`p-3.5 rounded-2xl border transition-all ${
                 record.status === 'present'
-                  ? isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
+                  ? isDark ? 'bg-[#131b2e] border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-xs'
                   : record.status === 'late'
-                  ? isDark ? 'bg-amber-950/20 border-amber-500/30 text-white' : 'bg-amber-50/60 border-amber-200 text-slate-900'
+                  ? isDark ? 'bg-amber-950/20 border-amber-500/30 text-white' : 'bg-amber-50/70 border-amber-300 text-slate-900 shadow-xs'
                   : record.status === 'absent'
-                  ? isDark ? 'bg-rose-950/20 border-rose-500/30 text-white' : 'bg-rose-50/60 border-rose-200 text-slate-900'
-                  : isDark ? 'bg-slate-900/50 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                  ? isDark ? 'bg-rose-950/20 border-rose-500/30 text-white' : 'bg-rose-50/70 border-rose-300 text-slate-900 shadow-xs'
+                  : isDark ? 'bg-slate-900/50 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900 shadow-xs'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{getDayName(record.day)}</span>
-                  <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{formatDate(record.date)}</span>
+                  <span className={`text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>{formatDate(record.date)}</span>
                 </div>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(record.status)}`}>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border ${getStatusBadge(record.status)}`}>
                   {getStatusText(record.status)}
                 </span>
               </div>
 
               {record.status !== 'weekend' && record.status !== 'absent' ? (
                 <div className={`grid grid-cols-3 gap-2 p-2 rounded-xl text-center text-xs border ${
-                  isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+                  isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-100/80 border-slate-200'
                 }`}>
                   <div>
-                    <span className={`text-[10px] block mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+                    <span className={`text-[10px] block mb-0.5 font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                       {isEn ? 'Check In' : 'الدخول'}
                     </span>
-                    <span className="font-mono font-bold text-emerald-500">{record.checkIn || '--:--'}</span>
+                    <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">{record.checkIn || '--:--'}</span>
                   </div>
                   <div>
-                    <span className={`text-[10px] block mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+                    <span className={`text-[10px] block mb-0.5 font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                       {isEn ? 'Check Out' : 'الخروج'}
                     </span>
-                    <span className="font-mono font-bold text-blue-500">{record.checkOut || '--:--'}</span>
+                    <span className="font-mono font-black text-blue-600 dark:text-blue-400">{record.checkOut || '--:--'}</span>
                   </div>
                   <div>
-                    <span className={`text-[10px] block mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+                    <span className={`text-[10px] block mb-0.5 font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                       {isEn ? 'Duration' : 'المدة'}
                     </span>
-                    <span className={`font-mono font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                    <span className={`font-mono font-black ${isDark ? 'text-teal-400' : 'text-teal-800'}`}>
                       {record.workHours} {isEn ? 'hrs' : 'س'}
                     </span>
                   </div>
                 </div>
               ) : (
-                <p className={`text-xs italic ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                <p className={`text-xs italic font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                   {getNotes(record.notes) || (isEn ? 'No punch registered for this day' : 'لا يوجد بصمة مسجلة لهذا اليوم')}
                 </p>
               )}

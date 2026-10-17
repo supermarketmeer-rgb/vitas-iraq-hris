@@ -2414,5 +2414,68 @@ button[class^="bg-red-100"] *,
   color: #ffffff !important;
 }
 
+/* ================================================================
+   EMPLOYEE MOBILE APP LIGHT MODE TYPOGRAPHY & CONTRAST
+   Ensures all fonts in light mode are solid black / dark slate
+   and never white or washed out.
+   ================================================================ */
+.employee-app-light {
+  color: #0f172a !important;
+  background-color: #f8fafc !important;
+}
 
+.employee-app-light h1,
+.employee-app-light h2,
+.employee-app-light h3,
+.employee-app-light h4,
+.employee-app-light h5,
+.employee-app-light h6 {
+  color: #0f172a !important;
+}
 
+.employee-app-light .text-slate-400 {
+  color: #475569 !important; /* solid slate-600 for readability in light mode */
+}
+
+.employee-app-light .text-slate-500 {
+  color: #334155 !important; /* solid slate-700 for readability in light mode */
+}
+
+.employee-app-light .text-slate-300 {
+  color: #1e293b !important;
+}
+
+.employee-app-light .text-slate-200 {
+  color: #0f172a !important;
+}
+
+.employee-app-light .text-slate-100 {
+  color: #0f172a !important;
+}
+
+/* Ensure text inside white / light cards is crisp black */
+.employee-app-light .bg-white:not([class*="bg-teal-"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not([class*="bg-blue-"]):not([class*="bg-amber-"]) {
+  color: #0f172a !important;
+}
+
+.employee-app-light .bg-slate-50:not([class*="bg-teal-"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not([class*="bg-blue-"]):not([class*="bg-amber-"]) {
+  color: #0f172a !important;
+}
+
+/* Keep white text on solid buttons, badges, and gradient hero cards */
+.employee-app-light .bg-gradient-to-br,
+.employee-app-light .bg-gradient-to-r,
+.employee-app-light .bg-teal-600,
+.employee-app-light .bg-teal-700,
+.employee-app-light .bg-emerald-600,
+.employee-app-light .bg-emerald-700,
+.employee-app-light .bg-rose-500,
+.employee-app-light .bg-rose-600,
+.employee-app-light .bg-blue-600,
+.employee-app-light [class*="bg-teal-600"] *,
+.employee-app-light [class*="bg-teal-700"] *,
+.employee-app-light [class*="bg-emerald-600"] *,
+.employee-app-light [class*="bg-rose-500"] *,
+.employee-app-light [class*="bg-rose-600"] * {
+  color: #ffffff;
+}
