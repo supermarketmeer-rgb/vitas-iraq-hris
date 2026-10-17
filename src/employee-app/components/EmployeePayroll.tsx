@@ -54,7 +54,7 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee: prop
   const ibanNumber = employee?.iban || 'IQ88TBIQ0000000000123456';
   const badgeNo = employee?.badgeNo || employee?.badge_no || 'V167';
   const employeeId = employee?.employeeId || employee?.employee_id || 'VIT-0037';
-  const joinDate = employee?.joinDate || employee?.join_date || employee?.original_start_date || '2023-01-15';
+  const joinDate = employee?.joinDate || employee?.join_date || employee?.originalStartDate || employee?.original_start_date || employee?.contractStartDate || employee?.contract_start_date || '-';
   const branchName = isEn 
     ? (employee?.branchEn || employee?.branch || 'Najaf Office') 
     : (employee?.branch || employee?.location_ar || 'مكتب النجف');

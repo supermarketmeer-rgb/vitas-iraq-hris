@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { EmployeeLogin } from './components/EmployeeLogin';
 import { EmployeeDashboard } from './components/EmployeeDashboard';
 import { EmployeeMessages } from './components/EmployeeMessages';
@@ -14,9 +14,10 @@ import { EmployeeTopTabBar } from './components/EmployeeTopTabBar';
 import { EmployeeContextProvider, useEmployeeContext } from './context/EmployeeContext';
 
 function EmployeeAppMain() {
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<any>(null);
-  const { theme, language, setEmployee, employee: contextEmployee } = useEmployeeContext();
+  const { theme, language, setEmployee, employee: contextEmployee, logout } = useEmployeeContext();
   const [isPhoneMockup, setIsPhoneMockup] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
 
@@ -35,11 +36,25 @@ function EmployeeAppMain() {
     if (contextEmployee) {
       setCurrentEmployee(contextEmployee);
       setIsAuthenticated(true);
+    } else {
+      setCurrentEmployee(null);
+      setIsAuthenticated(false);
     }
   }, [contextEmployee]);
 
   // Check for existing employee authentication on mount
   useEffect(() => {
+    if (window.location.search.includes('logout') || sessionStorage.getItem('employee_logged_out') === 'true') {
+      try {
+        localStorage.removeItem('employee_auth');
+        sessionStorage.removeItem('employee_auth');
+      } catch {}
+      setIsAuthenticated(false);
+      setCurrentEmployee(null);
+      setEmployee(null);
+      return;
+    }
+
     const savedAuth = localStorage.getItem('employee_auth');
     if (savedAuth) {
       try {
@@ -53,18 +68,34 @@ function EmployeeAppMain() {
           setEmployee(emp);
 
           // Rehydrate with real employee data from backend immediately
-          fetch('/api/employees')
-            .then(res => res.json())
-            .then(allEmps => {
-              if (Array.isArray(allEmps) && allEmps.length > 0) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+          fetch(`/api/employees?badge=${encodeURIComponent(bNo)}&id=${encodeURIComponent(emp.id || '')}`, {
+            signal: controller.signal
+          })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              clearTimeout(timeoutId);
+              if (sessionStorage.getItem('employee_logged_out') === 'true' || !localStorage.getItem('employee_auth')) {
+                return;
+              }
+              const allEmps = Array.isArray(data) ? data : (data ? [data] : []);
+              if (allEmps.length > 0) {
                 const found = allEmps.find((e: any) => {
                   const b = String(e.badgeNo || e.badge_no || '').trim().toUpperCase();
                   const eid = String(e.employeeId || e.employee_id || '').trim().toUpperCase();
                   const id = String(e.id || '').trim();
                   return b === bNo || eid === bNo || id === bNo || (bNo === 'V167' && (b === 'V167' || id === '85' || eid === 'VIT-0037'));
-                });
+                }) || (allEmps.length === 1 ? allEmps[0] : null);
                 if (found) {
+                  if (sessionStorage.getItem('employee_logged_out') === 'true' || !localStorage.getItem('employee_auth')) {
+                    return;
+                  }
                   const livePhoto = found.photoUrl || found.photo_url || found.photo || found.avatar || '';
+                  const realHireDate = found.joinDate || found.originalStartDate || found.contractStartDate || found.original_start_date || found.contract_start_date || '';
+                  const realDob = found.dob || found.dateOfBirth || found.date_of_birth || '';
+
                   const liveEmp = {
                     ...emp,
                     id: String(found.id),
@@ -79,15 +110,28 @@ function EmployeeAppMain() {
                     name_ar: found.fullName || found.full_name_ar || emp.name_ar,
                     fullNameEn: found.fullNameEn || found.full_name_en || emp.fullNameEn,
                     department: found.department || emp.department,
+                    departmentEn: found.departmentEn || found.department_en || emp.departmentEn,
                     position: found.jobTitle || found.position_ar || found.position || emp.position,
                     position_ar: found.jobTitle || found.position_ar || found.position || emp.position_ar,
                     positionEn: found.jobTitleEn || found.position_en || emp.positionEn,
                     branch: found.branch || found.location_ar || emp.branch,
+                    branchEn: found.branchEn || found.branch_en || emp.branchEn,
                     salary: found.basicSalary || found.basic_salary || found.salary || emp.salary,
-                    photoUrl: livePhoto || emp.photoUrl || '',
-                    photo_url: livePhoto || emp.photo_url || '',
-                    avatar: livePhoto || emp.avatar || '',
-                    photo: livePhoto || emp.photo || ''
+                    basicSalary: found.basicSalary || found.basic_salary || emp.basicSalary,
+                    joinDate: realHireDate,
+                    originalStartDate: realHireDate,
+                    contractStartDate: found.contractStartDate || found.contract_start_date || realHireDate,
+                    hireDate: realHireDate,
+                    dob: realDob,
+                    dateOfBirth: realDob,
+                    email: found.email || emp.email || '',
+                    phone: found.phone || found.mobile || emp.phone || '',
+                    nationality: found.nationality || emp.nationality || '',
+                    gender: found.gender || emp.gender || '',
+                    photoUrl: livePhoto,
+                    photo_url: livePhoto,
+                    avatar: livePhoto,
+                    photo: livePhoto
                   };
                   setCurrentEmployee(liveEmp);
                   setEmployee(liveEmp);
@@ -108,12 +152,9 @@ function EmployeeAppMain() {
   }, [setEmployee]);
 
   const handleLogin = (employeeData: any) => {
-    const bNo = String(employeeData?.badgeNo || employeeData?.badge_no || '').trim().toUpperCase();
-    if (bNo === 'V167' && !employeeData.photoUrl && !employeeData.photo_url) {
-      employeeData.photoUrl = '/uploads/dina_haider.jpg';
-      employeeData.photo_url = '/uploads/dina_haider.jpg';
-      employeeData.avatar = '/uploads/dina_haider.jpg';
-    }
+    try {
+      sessionStorage.removeItem('employee_logged_out');
+    } catch {}
     setIsAuthenticated(true);
     setCurrentEmployee(employeeData);
     setEmployee(employeeData);
@@ -121,13 +162,23 @@ function EmployeeAppMain() {
       employee: employeeData,
       timestamp: new Date().toISOString()
     }));
+    navigate('/employee-app/profile');
   };
 
   const handleLogout = () => {
+    try {
+      localStorage.removeItem('employee_auth');
+      sessionStorage.removeItem('employee_auth');
+      sessionStorage.setItem('employee_logged_out', 'true');
+    } catch {}
+    if (logout) {
+      logout();
+    } else {
+      setEmployee(null);
+    }
     setIsAuthenticated(false);
     setCurrentEmployee(null);
-    setEmployee(null);
-    localStorage.removeItem('employee_auth');
+    navigate('/employee-app/');
   };
 
   // Restore main admin app theme upon leaving employee portal
@@ -156,19 +207,26 @@ function EmployeeAppMain() {
         : 'bg-[#f8fafc] text-slate-900'
     }`}>
       {/* Main App Container */}
-      <div className={`w-full max-w-md md:max-w-xl h-screen flex flex-col relative overflow-hidden shadow-none md:shadow-2xl md:rounded-3xl md:border-2 ${isDark ? 'employee-app-dark' : 'employee-app-light'} ${
+      <div className={`w-full max-w-md md:max-w-xl h-screen min-h-[100dvh] flex flex-col relative overflow-hidden shadow-none md:shadow-2xl md:rounded-3xl md:border-2 ${isDark ? 'employee-app-dark' : 'employee-app-light'} ${
         isDark ? 'bg-[#0b1120] text-white border-slate-700/80' : 'bg-[#f8fafc] text-slate-900 border-slate-300'
       }`}>
         {/* Top Tab Bar matching the 6 ESS buttons */}
-        {isAuthenticated && <EmployeeTopTabBar />}
+        {isAuthenticated && <EmployeeTopTabBar onLogout={handleLogout} />}
 
         {/* Dynamic Route Content (Main Scrollable Area) */}
-        <div className="flex-1 overflow-y-auto relative no-scrollbar">
+        <div className={`flex-1 overflow-y-auto relative no-scrollbar ${!isAuthenticated ? 'h-full min-h-full flex flex-col justify-center items-center' : ''}`}>
           {!isAuthenticated ? (
             <EmployeeLogin onLogin={handleLogin} />
           ) : (
             <Routes>
-              <Route path="/" element={
+              <Route path="/" element={<Navigate to="/employee-app/profile" replace />} />
+              <Route path="/profile" element={
+                <EmployeeProfile 
+                  employee={currentEmployee} 
+                  onLogout={handleLogout}
+                />
+              } />
+              <Route path="/dashboard" element={
                 <EmployeeDashboard 
                   employee={currentEmployee} 
                   onLogout={handleLogout}
@@ -210,19 +268,13 @@ function EmployeeAppMain() {
                   onLogout={handleLogout}
                 />
               } />
-              <Route path="/profile" element={
-                <EmployeeProfile 
-                  employee={currentEmployee} 
-                  onLogout={handleLogout}
-                />
-              } />
               <Route path="/news" element={
                 <EmployeeNews 
                   employee={currentEmployee} 
                   onLogout={handleLogout}
                 />
               } />
-              <Route path="*" element={<Navigate to="/employee-app/" replace />} />
+              <Route path="*" element={<Navigate to="/employee-app/profile" replace />} />
             </Routes>
           )}
         </div>

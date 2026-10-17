@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeContext } from '../context/EmployeeContext';
-import { Sun, Moon, Globe } from 'lucide-react';
+import { Sun, Moon, Globe, Home } from 'lucide-react';
 import vitasLogo from '../../../assets/VitasLogo.jpeg';
 
 interface EmployeeLoginProps {
@@ -45,19 +45,30 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
       let loggedInUser: any = null;
 
       try {
-        const response = await fetch('/api/employees');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+        const response = await fetch(`/api/employees?badge=${encodeURIComponent(cleanInput)}`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
         if (response.ok) {
-          const allEmps = await response.json();
-          if (Array.isArray(allEmps) && allEmps.length > 0) {
-            const found = allEmps.find((emp: any) => {
+          const data = await response.json();
+          const emps = Array.isArray(data) ? data : (data ? [data] : []);
+          if (emps.length > 0) {
+            const found = emps.find((emp: any) => {
               const bNo = String(emp.badge_no || emp.badgeNo || '').trim().toLowerCase();
               const eId = String(emp.employee_id || emp.employeeId || emp.id || '').trim().toLowerCase();
               return bNo === cleanInput || eId === cleanInput ||
                 (cleanInputAlpha && (bNo.includes(cleanInputAlpha) || eId.includes(cleanInputAlpha)));
-            });
+            }) || (emps.length === 1 ? emps[0] : null);
 
             if (found) {
               const livePhoto = found.photoUrl || found.photo_url || found.avatar || found.photo || '';
+              const realHireDate = found.joinDate || found.originalStartDate || found.contractStartDate || found.original_start_date || found.contract_start_date || '';
+              const realDob = found.dob || found.dateOfBirth || found.date_of_birth || '';
+
               loggedInUser = {
                 id: String(found.id),
                 badgeNo: found.badgeNo || found.badge_no || cleanInput.toUpperCase(),
@@ -80,7 +91,12 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
                 positionEn: found.jobTitleEn || found.position_en || 'Receptionist',
                 branch: found.branch || found.location_ar || 'مكتب النجف',
                 branchEn: found.branch_en || found.branchEn || 'Najaf Office',
-                joinDate: found.contractStartDate || found.contract_start_date || found.originalStartDate || found.original_start_date || '2022-01-01',
+                joinDate: realHireDate,
+                originalStartDate: realHireDate,
+                contractStartDate: found.contractStartDate || found.contract_start_date || realHireDate,
+                hireDate: realHireDate,
+                dob: realDob,
+                dateOfBirth: realDob,
                 salary: found.basicSalary || found.basic_salary || found.salary || 900000,
                 photoUrl: livePhoto,
                 photo_url: livePhoto,
@@ -92,7 +108,7 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
           }
         }
       } catch (err) {
-        console.warn('Live API lookup failed, falling back to static map:', err);
+        console.warn('Live API lookup failed or timed out, falling back to static map:', err);
       }
 
       if (!loggedInUser) {
@@ -120,9 +136,17 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
             positionEn: 'Receptionist',
             branch: 'مكتب النجف',
             branchEn: 'Najaf Office',
-            joinDate: '2022-01-01',
+            joinDate: '2034-02-27',
+            originalStartDate: '2034-02-27',
+            contractStartDate: '2034-02-27',
+            hireDate: '2034-02-27',
+            dob: '1987-02-13',
+            dateOfBirth: '1987-02-13',
             salary: 900000,
             avatar: '',
+            photoUrl: '',
+            photo_url: '',
+            photo: '',
             role: 'Employee'
           };
         } else {
@@ -149,15 +173,23 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
             branch: 'المقر الرئيسي',
             branchEn: 'Headquarters',
             joinDate: '2023-01-15',
+            originalStartDate: '2023-01-15',
+            contractStartDate: '2023-01-15',
+            hireDate: '2023-01-15',
+            dob: '1990-01-01',
+            dateOfBirth: '1990-01-01',
             salary: 1500000,
             avatar: '',
+            photoUrl: '',
+            photo_url: '',
+            photo: '',
             role: 'Employee'
           };
         }
       }
 
       onLogin(loggedInUser);
-      navigate('/employee-app/');
+      navigate('/employee-app/profile');
     } catch {
       setError(isEn ? 'Failed to log in. Please try again.' : 'حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة ثانية.');
     } finally {
@@ -166,9 +198,9 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-4 space-y-5 flex flex-col items-center justify-center min-h-[750px] relative animate-in fade-in duration-300">
+    <div className="w-full max-w-md mx-auto p-4 my-auto flex flex-col items-center justify-center relative animate-in fade-in duration-300 space-y-3.5">
       {/* Top Header Controls with Language and Theme */}
-      <div className="w-full flex items-center justify-between">
+      <div className="w-full flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
           <span className={`text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -177,6 +209,19 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
         </div>
 
         <div className="flex items-center gap-1.5">
+          {/* Back to main HRIS System */}
+          <button
+            onClick={() => navigate('/')}
+            className={`p-1.5 rounded-xl border transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 ${
+              isDark 
+                ? 'bg-slate-800 border-slate-700 text-teal-400 hover:bg-slate-700' 
+                : 'bg-white border-slate-300 text-teal-700 hover:bg-slate-100'
+            }`}
+            title={isEn ? 'Return to HRIS Dashboard' : 'العودة للنظام الرئيسي'}
+          >
+            <Home className="w-4 h-4" />
+          </button>
+
           {/* Language Toggle */}
           <button
             onClick={toggleLanguage}
@@ -329,6 +374,21 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
               </>
             )}
           </button>
+
+          {/* Quick Demo Fill Helper */}
+          <div className="pt-2 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setBadgeNumber('V167');
+                setPassword('123456');
+              }}
+              className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline cursor-pointer font-bold inline-flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-xs">key</span>
+              <span>{isEn ? 'Quick Demo Fill: V167 (Dina Haider)' : 'تعبئة تجريبية سريعة: V167 (دينا حيدر)'}</span>
+            </button>
+          </div>
         </form>
 
         {/* Footer */}

@@ -87,7 +87,10 @@ export const EmployeeEvaluation: React.FC<EmployeeEvaluationProps> = ({ employee
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  const avgScore = (Object.values(ratings).reduce((a, b) => a + b, 0) / Object.values(ratings).length).toFixed(1);
+  const ratingsList = Object.values(ratings).map(v => Number(v) || 0);
+  const avgScore = ratingsList.length > 0 
+    ? (ratingsList.reduce((a, b) => a + b, 0) / ratingsList.length).toFixed(1)
+    : '0.0';
 
   return (
     <div className="w-full max-w-md mx-auto p-4 space-y-4 pb-20 animate-in fade-in">

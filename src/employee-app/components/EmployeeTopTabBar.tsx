@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEmployeeContext } from '../context/EmployeeContext';
+import vitasLogo from '../../../assets/VitasLogo.jpeg';
 import { 
   User, 
   Clock, 
@@ -10,15 +11,35 @@ import {
   Bell,
   Sun,
   Moon,
-  Globe
+  Globe,
+  LogOut,
+  Home
 } from 'lucide-react';
 
-export const EmployeeTopTabBar: React.FC = () => {
+interface EmployeeTopTabBarProps {
+  onLogout?: () => void;
+}
+
+export const EmployeeTopTabBar: React.FC<EmployeeTopTabBarProps> = ({ onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { theme, toggleTheme, language, toggleLanguage, unreadNotifications } = useEmployeeContext();
+  const { theme, toggleTheme, language, toggleLanguage, unreadNotifications, logout } = useEmployeeContext();
   const isDark = theme === 'dark';
   const isEn = language === 'en';
+
+  const handleLogout = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (onLogout) {
+      onLogout();
+    }
+    if (logout) {
+      logout();
+    }
+    navigate('/employee-app/');
+  };
 
   const navItems = [
     { id: 'profile', path: '/employee-app/profile', label: isEn ? 'Profile' : 'حسابي', icon: User },
@@ -33,17 +54,21 @@ export const EmployeeTopTabBar: React.FC = () => {
     <div className={`w-full border-b-2 sticky top-0 z-40 backdrop-blur-md transition-colors ${
       isDark ? 'bg-[#0f172a]/95 border-slate-800' : 'bg-white/95 border-slate-300 shadow-xs'
     }`}>
-      {/* Top Utility Header with Brand, Language Switcher, and Theme Toggle */}
-      <div className={`w-full max-w-md mx-auto px-3.5 pt-2 pb-1.5 flex items-center justify-between gap-2 border-b-[1.5px] ${
+      {/* Top Utility Header with Brand, Language Switcher, Theme Toggle, and Logout */}
+      <div className={`w-full max-w-md mx-auto px-3 pt-2 pb-1.5 flex items-center justify-between gap-1.5 border-b-[1.5px] ${
         isDark ? 'border-slate-800/80' : 'border-slate-200'
       }`}>
         <div 
-          onClick={() => navigate('/employee-app/')} 
+          onClick={() => navigate('/employee-app/profile')} 
           className="flex items-center gap-2 min-w-0 cursor-pointer group"
-          title={isEn ? 'Go to Dashboard' : 'الانتقال للرئيسية'}
+          title={isEn ? 'Go to Profile' : 'الانتقال لحسابي'}
         >
-          <div className="w-7 h-7 rounded-xl bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <span className="material-symbols-outlined text-sm">badge</span>
+          <div className="w-7 h-7 rounded-lg overflow-hidden bg-white border border-teal-500/40 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+            <img 
+              src={vitasLogo} 
+              alt="VITAS Iraq" 
+              className="w-full h-full object-contain p-0.5" 
+            />
           </div>
           <p className={`text-xs font-black truncate transition-colors ${
             isDark ? 'text-white group-hover:text-teal-400' : 'text-slate-900 group-hover:text-teal-700'
@@ -52,19 +77,32 @@ export const EmployeeTopTabBar: React.FC = () => {
           </p>
         </div>
 
-        {/* Global Controls: Language and Theme */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Global Controls: Home, Language, Theme, and Sign Out */}
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Back to main HRIS System */}
+          <button
+            onClick={() => navigate('/')}
+            className={`p-1.5 rounded-xl border-[1.5px] transition-all cursor-pointer shadow-2xs active:scale-95 ${
+              isDark 
+                ? 'bg-slate-800 border-slate-700 text-teal-400 hover:bg-slate-700' 
+                : 'bg-slate-100 border-slate-300 text-teal-700 hover:bg-slate-200'
+            }`}
+            title={isEn ? 'Return to HRIS Dashboard' : 'العودة للنظام الرئيسي'}
+          >
+            <Home className="w-3.5 h-3.5" />
+          </button>
+
           {/* Language Toggle Button */}
           <button
             onClick={toggleLanguage}
-            className={`px-2.5 py-1 rounded-xl text-[11px] font-black border-[1.5px] transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 ${
+            className={`px-2 py-1 rounded-xl text-[11px] font-black border-[1.5px] transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 ${
               isDark 
                 ? 'bg-slate-800 border-slate-700 text-teal-400 hover:bg-slate-700' 
                 : 'bg-slate-100 border-slate-300 text-teal-700 hover:bg-slate-200'
             }`}
             title={isEn ? 'التبديل إلى اللغة العربية' : 'Switch to English'}
           >
-            <Globe className="w-3.5 h-3.5" />
+            <Globe className="w-3 h-3" />
             <span>{isEn ? 'العربية' : 'English'}</span>
           </button>
 
@@ -79,10 +117,25 @@ export const EmployeeTopTabBar: React.FC = () => {
             title={isDark ? (isEn ? 'Switch to Light Mode' : 'التحويل للوضع النهاري') : (isEn ? 'Switch to Dark Mode' : 'التحويل للوضع الليلي')}
           >
             {isDark ? (
-              <Sun className="w-4 h-4 text-amber-400" />
+              <Sun className="w-3.5 h-3.5 text-amber-400" />
             ) : (
-              <Moon className="w-4 h-4 text-slate-700" />
+              <Moon className="w-3.5 h-3.5 text-slate-700" />
             )}
+          </button>
+
+          {/* Sign Out / Logout Button */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={`px-2 py-1 rounded-xl text-[11px] font-black border-[1.5px] transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 ${
+              isDark 
+                ? 'bg-rose-500/15 border-rose-500/30 text-rose-400 hover:bg-rose-500/25' 
+                : 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+            }`}
+            title={isEn ? 'Sign Out' : 'تسجيل الخروج من التطبيق'}
+          >
+            <LogOut className="w-3 h-3" />
+            <span>{isEn ? 'Sign Out' : 'خروج'}</span>
           </button>
         </div>
       </div>

@@ -13,6 +13,7 @@ interface EmployeeContextType {
   setLanguage: (lang: 'ar' | 'en') => void;
   t: (ar: string, en: string) => string;
   setEmployee: (employee: any) => void;
+  logout: () => void;
   refreshEmployee: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
   addNotification: (notification: any) => void;
@@ -24,8 +25,13 @@ interface EmployeeContextType {
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
 
 export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [employee, setEmployee] = useState<any>(() => {
+  const isLoggedOutRef = React.useRef(false);
+
+  const [employee, setEmployeeState] = useState<any>(() => {
     try {
+      if (sessionStorage.getItem('employee_logged_out') === 'true') {
+        return null;
+      }
       const savedAuth = localStorage.getItem('employee_auth');
       if (savedAuth) {
         return JSON.parse(savedAuth).employee;
@@ -33,6 +39,17 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
     } catch {}
     return null;
   });
+
+  const setEmployee = React.useCallback((emp: any) => {
+    if (emp) {
+      isLoggedOutRef.current = false;
+      try {
+        sessionStorage.removeItem('employee_logged_out');
+      } catch {}
+    }
+    setEmployeeState(emp);
+  }, []);
+
   const [notifications, setNotifications] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   
@@ -95,6 +112,18 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
       localStorage.setItem('employee_app_lang', lang);
     } catch {}
   };
+
+  const logout = React.useCallback(() => {
+    isLoggedOutRef.current = true;
+    try {
+      localStorage.removeItem('employee_auth');
+      sessionStorage.removeItem('employee_auth');
+      sessionStorage.setItem('employee_logged_out', 'true');
+    } catch {}
+    setEmployeeState(null);
+    setNotifications([]);
+    setMessages([]);
+  }, []);
 
   const t = React.useCallback((ar: string, en: string) => {
     return language === 'en' ? en : ar;
@@ -203,6 +232,15 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
 
   const refreshEmployee = React.useCallback(async () => {
     try {
+      if (isLoggedOutRef.current || sessionStorage.getItem('employee_logged_out') === 'true') {
+        return;
+      }
+
+      const savedAuth = localStorage.getItem('employee_auth');
+      if (!savedAuth) {
+        return;
+      }
+
       let bNo = '';
       let targetId = '';
       let targetEmpId = '';
@@ -214,8 +252,7 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
       }
 
       if (!bNo) {
-        const savedAuth = localStorage.getItem('employee_auth');
-        if (savedAuth) {
+        try {
           const authData = JSON.parse(savedAuth);
           const emp = authData?.employee;
           if (emp) {
@@ -223,26 +260,53 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
             targetId = String(emp.id || '').trim();
             targetEmpId = String(emp.employeeId || emp.employee_id || '').trim().toUpperCase();
           }
-        }
+        } catch {}
       }
 
-      if (!bNo) bNo = 'V167';
+      // If no authenticated employee or saved auth exists, DO NOT auto-login or fetch!
+      if (!bNo) {
+        return;
+      }
 
-      const res = await fetch('/api/employees');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      const res = await fetch(`/api/employees?badge=${encodeURIComponent(bNo)}&id=${encodeURIComponent(targetId)}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      // Check again if logout occurred during network request
+      if (isLoggedOutRef.current || sessionStorage.getItem('employee_logged_out') === 'true' || !localStorage.getItem('employee_auth')) {
+        return;
+      }
+
       if (!res.ok) return;
-      const allEmps = await res.json();
-      if (!Array.isArray(allEmps) || allEmps.length === 0) return;
+      const data = await res.json();
+      const allEmps = Array.isArray(data) ? data : (data ? [data] : []);
+      if (allEmps.length === 0) return;
 
       const found = allEmps.find((e: any) => {
         const b = String(e.badgeNo || e.badge_no || '').trim().toUpperCase();
         const eid = String(e.employeeId || e.employee_id || '').trim().toUpperCase();
         const id = String(e.id || '').trim();
         return b === bNo || eid === bNo || id === bNo || (targetEmpId && eid === targetEmpId) || (targetId && id === targetId) || (bNo === 'V167' && (b === 'V167' || id === '85' || eid === 'VIT-0037'));
-      });
+      }) || (allEmps.length === 1 ? allEmps[0] : null);
 
       if (found) {
+        if (isLoggedOutRef.current || sessionStorage.getItem('employee_logged_out') === 'true' || !localStorage.getItem('employee_auth')) {
+          return;
+        }
+
         const livePhoto = found.photoUrl || found.photo_url || found.photo || found.avatar || '';
-        setEmployee((prev: any) => {
+        const realHireDate = found.joinDate || found.originalStartDate || found.contractStartDate || found.original_start_date || found.contract_start_date || '';
+        const realDob = found.dob || found.dateOfBirth || found.date_of_birth || '';
+
+        setEmployeeState((prev: any) => {
+          if (!prev || isLoggedOutRef.current || sessionStorage.getItem('employee_logged_out') === 'true' || !localStorage.getItem('employee_auth')) {
+            return null;
+          }
+
           const current = prev || {};
           const updated = {
             ...current,
@@ -258,11 +322,24 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
             name_ar: found.fullName || found.full_name_ar || current.name_ar,
             fullNameEn: found.fullNameEn || found.full_name_en || current.fullNameEn,
             department: found.department || current.department,
+            departmentEn: found.departmentEn || found.department_en || current.departmentEn,
             position: found.jobTitle || found.position_ar || found.position || current.position,
             position_ar: found.jobTitle || found.position_ar || found.position || current.position_ar,
             positionEn: found.jobTitleEn || found.position_en || current.positionEn,
             branch: found.branch || found.location_ar || current.branch,
+            branchEn: found.branchEn || found.branch_en || current.branchEn,
             salary: found.basicSalary || found.basic_salary || found.salary || current.salary,
+            basicSalary: found.basicSalary || found.basic_salary || current.basicSalary,
+            joinDate: realHireDate,
+            originalStartDate: realHireDate,
+            contractStartDate: found.contractStartDate || found.contract_start_date || realHireDate,
+            hireDate: realHireDate,
+            dob: realDob,
+            dateOfBirth: realDob,
+            email: found.email || current.email || '',
+            phone: found.phone || found.mobile || current.phone || '',
+            nationality: found.nationality || current.nationality || '',
+            gender: found.gender || current.gender || '',
             photoUrl: livePhoto,
             photo_url: livePhoto,
             avatar: livePhoto,
@@ -318,6 +395,7 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
       setLanguage,
       t,
       setEmployee,
+      logout,
       refreshEmployee,
       refreshNotifications,
       addNotification,

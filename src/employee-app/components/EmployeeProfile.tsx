@@ -3,10 +3,10 @@ import { useEmployeeContext } from '../context/EmployeeContext';
 
 interface EmployeeProfileProps {
   employee: any;
-  onLogout: () => void;
+  onLogout?: () => void;
 }
 
-export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLogout }) => {
+export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) => {
   const { theme, toggleTheme, language, setEmployee, employee: contextEmployee, refreshEmployee } = useEmployeeContext();
   const currentEmp = contextEmployee || employee;
   const isDark = theme === 'dark';
@@ -40,7 +40,14 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
                         editedEmployee?.photo_url || 
                         editedEmployee?.avatar || 
                         editedEmployee?.photo || 
-                        (String(editedEmployee?.badgeNo || editedEmployee?.badge_no || '').trim().toUpperCase() === 'V167' ? '/uploads/dina_haider.jpg' : null);
+                        null;
+
+  const displayJoinDate = editedEmployee?.joinDate || 
+                          editedEmployee?.originalStartDate || 
+                          editedEmployee?.contractStartDate || 
+                          editedEmployee?.original_start_date || 
+                          editedEmployee?.contract_start_date || 
+                          '-';
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -168,28 +175,11 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
 
   return (
     <div className="w-full max-w-md mx-auto p-4 space-y-4">
-      {/* Mobile Top Header */}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center">
-            <span className="material-symbols-outlined text-xl">person</span>
-          </div>
-          <div>
-            <h1 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {isEn ? 'Profile & Account' : 'الملف الشخصي والحساب'}
-            </h1>
-            <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {isEn ? 'Employee records, salary, and preferences' : 'بيانات الموظف والراتب والإعدادات'}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={onLogout}
-          className="px-3.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs border border-rose-500/20 transition-all cursor-pointer"
-        >
-          {isEn ? 'Sign Out' : 'خروج'}
-        </button>
+      {/* Mobile Top Section Title */}
+      <div className="pt-0.5 px-0.5">
+        <h1 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          {isEn ? 'Profile & Account' : 'الملف الشخصي والحساب'}
+        </h1>
       </div>
 
       {/* Mobile Profile Card */}
@@ -259,7 +249,7 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
           </div>
           <div>
             <span className={`block text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>{isEn ? 'Hire Date' : 'تاريخ التعيين'}</span>
-            <span className={`font-bold text-[11px] ${isDark ? 'text-white' : 'text-slate-900'}`}>{editedEmployee?.joinDate || '2023-01-15'}</span>
+            <span className={`font-bold text-[11px] ${isDark ? 'text-white' : 'text-slate-900'}`}>{displayJoinDate}</span>
           </div>
           <div>
             <span className={`block text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>{isEn ? 'Basic Salary' : 'الراتب الأساسي'}</span>
@@ -268,35 +258,6 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
             </span>
           </div>
         </div>
-      </div>
-
-      {/* Payslip Quick Card */}
-      <div className={`p-4 rounded-3xl border flex items-center justify-between ${
-        isDark ? 'bg-gradient-to-r from-emerald-950/40 via-teal-900/30 to-slate-900 border-emerald-500/30 text-white' : 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200 text-slate-900 shadow-xs'
-      }`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-            <span className="material-symbols-outlined text-xl">payments</span>
-          </div>
-          <div>
-            <h3 className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {isEn ? 'Salary Slip - August 2026' : 'كشف الراتب لشهر أغسطس 2026'}
-            </h3>
-            <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {isEn ? 'Net Salary: ' : 'الراتب صافي: '}
-              {(editedEmployee?.salary || 950000).toLocaleString()} {isEn ? 'IQD' : 'د.ع'}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => alert(isEn 
-            ? `Salary Slip for ${displayName}:\nBasic Salary: ${(editedEmployee?.salary || 950000).toLocaleString()} IQD\nDeductions: 0 IQD\nNet Received: ${(editedEmployee?.salary || 950000).toLocaleString()} IQD`
-            : `كشف الراتب للموظف ${displayName}:\nالراتب الأساسي: ${(editedEmployee?.salary || 950000).toLocaleString()} د.ع\nالمستقطعات: 0 د.ع\nالصافي المستلم: ${(editedEmployee?.salary || 950000).toLocaleString()} د.ع`
-          )}
-          className="px-3 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs shadow-xs cursor-pointer active:scale-95 transition-all"
-        >
-          {isEn ? 'Preview' : 'استعراض'}
-        </button>
       </div>
 
       {/* Mobile Scrollable Tabs */}
@@ -372,7 +333,7 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
                 <label className={`block text-[11px] font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
                   {isEn ? 'Date of Birth' : 'تاريخ الميلاد'}
                 </label>
-                <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{editedEmployee?.dateOfBirth || '1995-04-12'}</p>
+                <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{editedEmployee?.dob || editedEmployee?.dateOfBirth || '-'}</p>
               </div>
               <div>
                 <label className={`block text-[11px] font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
@@ -413,6 +374,13 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onLo
                 {isEn ? 'Department' : 'القسم الإداري'}
               </label>
               <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{displayDept}</p>
+            </div>
+
+            <div>
+              <label className={`block text-[11px] font-bold mb-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                {isEn ? 'Hire Date' : 'تاريخ التعيين'}
+              </label>
+              <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{displayJoinDate}</p>
             </div>
           </div>
         )}

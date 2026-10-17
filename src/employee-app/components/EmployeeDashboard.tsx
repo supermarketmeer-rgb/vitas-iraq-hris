@@ -61,7 +61,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee: 
                         employee?.photo_url || 
                         employee?.avatar || 
                         employee?.photo || 
-                        (String(employee?.badgeNo || employee?.badge_no || '').trim().toUpperCase() === 'V167' ? '/uploads/dina_haider.jpg' : null);
+                        null;
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat(isEn ? 'en-US' : 'ar-IQ', {

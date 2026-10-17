@@ -1095,113 +1095,188 @@ app.get('/api/employees/:id/photo', async (req, res) => {
   }
 });
 
-// Employees
+// Helper functions for formatting employee data
+const formatDateStr = (val) => {
+  if (!val) return '';
+  if (val instanceof Date) {
+    const year = val.getFullYear();
+    const month = String(val.getMonth() + 1).padStart(2, '0');
+    const day = String(val.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  const str = String(val);
+  if (str.includes('T')) return str.split('T')[0];
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return str;
+};
+
+const formatEmployeeRow = (row) => {
+  let childrenList = [];
+  try {
+    if (row.children_details) childrenList = JSON.parse(row.children_details);
+    else if (row.children_json) childrenList = JSON.parse(row.children_json);
+  } catch (e) {}
+
+  const resolvedPhoto = (row.photo_url && row.photo_url.length > 0) ? row.photo_url : ((row.photo && row.photo.length > 0) ? `/api/employees/${row.id}/photo` : null);
+
+  return {
+    id: row.id,
+    employeeId: row.employee_id,
+    employee_id: row.employee_id,
+    badgeNo: row.badge_no,
+    badge_no: row.badge_no,
+    fullName: row.full_name_ar || 'غير محدد',
+    fullNameAr: row.full_name_ar || 'غير محدد',
+    full_name_ar: row.full_name_ar || 'غير محدد',
+    fullNameEn: row.full_name_en || 'N/A',
+    full_name_en: row.full_name_en || 'N/A',
+    email: (row.email && !row.email.startsWith('no-email-') && row.email !== 'N/A') ? row.email : '',
+    personalEmail: (row.personal_email && row.personal_email !== 'N/A') ? row.personal_email : '',
+    phone: row.phone || row.mobile || 'N/A',
+    emergencyPhone: row.emergency_phone || row.emergency_mobile || 'N/A',
+    dob: formatDateStr(row.dob),
+    yearsOfEmployment: row.years_of_employment || 0,
+    yearsInPosition: row.years_in_position || 0,
+    gender: row.gender === 'male' || row.gender === 'Male' ? 'ذكر' : row.gender === 'female' || row.gender === 'Female' ? 'أنثى' : 'غير محدد',
+    maritalStatus: row.marital_status === 'single' ? 'أعزب' : 
+                   row.marital_status === 'married' ? 'متأهل' :
+                   row.marital_status === 'divorced' ? 'مطلق' : 
+                   row.marital_status === 'widow' ? 'أرمل' : 'غير محدد',
+    nationality: row.nationality || 'عراقي',
+    department: row.department || 'غير محدد',
+    jobTitle: row.position_ar || row.position || 'غير محدد',
+    jobTitleEn: row.position_en || row.position || 'N/A',
+    position: row.position_ar || row.position || 'غير محدد',
+    position_ar: row.position_ar || row.position || 'غير محدد',
+    position_en: row.position_en || 'N/A',
+    branch: row.branch || row.location_ar || 'غير محدد',
+    branchEn: row.branch_en || row.location_en || 'N/A',
+    supervisorName: row.supervisor_name || 'غير محدد',
+    workScope: row.work_scope || 'غير محدد',
+    salary: Number(row.salary || 0),
+    basicSalary: Number(row.basic_salary || 0),
+    basic_salary: Number(row.basic_salary || 0),
+    transportationFixed: Number(row.transportation_fixed || 0),
+    fixedBonus: Number(row.fixed_bonus || 0),
+    phoneAllowance: Number(row.phone_allowance || 0),
+    certificateAllowance: Number(row.certificate_allowance || 0),
+    writtenBasicSalaryAr: row.written_basic_salary_ar || '',
+    bankName: row.bank_name || 'غير محدد',
+    iban: row.iban || 'N/A',
+    nationalId: row.national_id || 'N/A',
+    passportNo: row.passport_no || 'N/A',
+    passportExpiry: formatDateStr(row.passport_expiry),
+    photoUrl: resolvedPhoto,
+    photo_url: resolvedPhoto,
+    avatar: resolvedPhoto,
+    photo: resolvedPhoto,
+    spouseName: row.spouse_name || 'غير محدد',
+    spouseEmployedHere: Boolean(row.spouse_employed_here),
+    childrenList: Array.isArray(childrenList) ? childrenList : [],
+    childrenDetails: row.children_details || row.children_json || '',
+    originalStartDate: formatDateStr(row.original_start_date || row.contract_original_start || row.contract_start_date),
+    contractStartDate: formatDateStr(row.contract_start_date),
+    contractEndDate: formatDateStr(row.contract_end_date),
+    probationEndDate: formatDateStr(row.probation_end_date),
+    exitDate: formatDateStr(row.exit_date),
+    termOfContract: row.term_of_contract || '',
+    grade: row.grade || '',
+    trainingsRecord: row.trainings_record || '',
+    warningsRecord: row.warnings_record || '',
+    isSsTaxExempt: Boolean(row.is_ss_tax_exempt),
+    is_ss_tax_exempt: row.is_ss_tax_exempt,
+    ssTaxExemptionReason: row.ss_tax_exemption_reason || '',
+    ss_tax_exemption_reason: row.ss_tax_exemption_reason || '',
+    status: row.status === 'Active' || row.status === 'active' ? 'Active' : 
+           row.status === 'Inactive' || row.status === 'inactive' ? 'On Leave' : 
+           row.status === 'Onboarding' || row.status === 'onboarding' ? 'Onboarding' : 'Active',
+    joinDate: formatDateStr(row.original_start_date || row.contract_original_start || row.contract_start_date)
+  };
+};
+
+// Fast single employee lookup endpoint
+app.get('/api/employees/lookup', async (req, res) => {
+  try {
+    const badge = req.query.badge ? String(req.query.badge).trim() : null;
+    const id = req.query.id ? String(req.query.id).trim() : null;
+    const employeeId = req.query.employee_id || req.query.employeeId ? String(req.query.employee_id || req.query.employeeId).trim() : null;
+
+    if (!badge && !id && !employeeId) {
+      return res.status(400).json({ error: 'Badge, ID, or Employee ID is required' });
+    }
+
+    const conditions = [];
+    const params = [];
+
+    if (badge) {
+      conditions.push('(LOWER(badge_no) = LOWER(?) OR LOWER(employee_id) = LOWER(?))');
+      params.push(badge, badge);
+    }
+    if (id) {
+      conditions.push('(id = ? OR employee_id = ?)');
+      params.push(id, id);
+    }
+    if (employeeId) {
+      conditions.push('(LOWER(employee_id) = LOWER(?) OR LOWER(badge_no) = LOWER(?))');
+      params.push(employeeId, employeeId);
+    }
+
+    const sql = `SELECT * FROM employees WHERE ${conditions.join(' OR ')} LIMIT 1`;
+    const results = await query(sql, params);
+
+    if (!results || results.length === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    res.json(formatEmployeeRow(results[0]));
+  } catch (err) {
+    console.error('Error looking up employee:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Employees list & targeted search
 app.get('/api/employees', async (req, res) => {
   try {
-    const results = await query('SELECT * FROM employees ORDER BY id DESC');
-    const formatDateStr = (val) => {
-      if (!val) return '';
-      if (val instanceof Date) {
-        const year = val.getFullYear();
-        const month = String(val.getMonth() + 1).padStart(2, '0');
-        const day = String(val.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+    const badgeParam = req.query.badge ? String(req.query.badge).trim() : null;
+    const idParam = req.query.id ? String(req.query.id).trim() : null;
+    const employeeIdParam = req.query.employee_id || req.query.employeeId ? String(req.query.employee_id || req.query.employeeId).trim() : null;
+    const qParam = req.query.q ? String(req.query.q).trim() : null;
+
+    let sql = 'SELECT * FROM employees';
+    const params = [];
+
+    if (badgeParam || idParam || employeeIdParam) {
+      const conditions = [];
+      if (badgeParam) {
+        conditions.push('(LOWER(badge_no) = LOWER(?) OR LOWER(employee_id) = LOWER(?))');
+        params.push(badgeParam, badgeParam);
       }
-      const str = String(val);
-      if (str.includes('T')) return str.split('T')[0];
-      const d = new Date(str);
-      if (!isNaN(d.getTime())) {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+      if (idParam) {
+        conditions.push('(id = ? OR employee_id = ?)');
+        params.push(idParam, idParam);
       }
-      return str;
-    };
+      if (employeeIdParam) {
+        conditions.push('(LOWER(employee_id) = LOWER(?) OR LOWER(badge_no) = LOWER(?))');
+        params.push(employeeIdParam, employeeIdParam);
+      }
+      sql += ' WHERE ' + conditions.join(' OR ') + ' LIMIT 5';
+    } else if (qParam) {
+      sql += ' WHERE LOWER(badge_no) LIKE LOWER(?) OR LOWER(employee_id) LIKE LOWER(?) OR LOWER(full_name_ar) LIKE LOWER(?) OR LOWER(full_name_en) LIKE LOWER(?) LIMIT 20';
+      const like = `%${qParam}%`;
+      params.push(like, like, like, like);
+    } else {
+      sql += ' ORDER BY id DESC';
+    }
 
-    const formatted = results.map(row => {
-      let childrenList = [];
-      try {
-        if (row.children_details) childrenList = JSON.parse(row.children_details);
-        else if (row.children_json) childrenList = JSON.parse(row.children_json);
-      } catch (e) {}
-
-        const resolvedPhoto = (row.photo_url && row.photo_url.length > 0) ? row.photo_url : ((row.photo && row.photo.length > 0) ? `/api/employees/${row.id}/photo` : null);
-
-        return {
-          id: row.id,
-          employeeId: row.employee_id,
-          employee_id: row.employee_id,
-          badgeNo: row.badge_no,
-          badge_no: row.badge_no,
-          fullName: row.full_name_ar || 'غير محدد',
-          fullNameAr: row.full_name_ar || 'غير محدد',
-          full_name_ar: row.full_name_ar || 'غير محدد',
-          fullNameEn: row.full_name_en || 'N/A',
-          full_name_en: row.full_name_en || 'N/A',
-          email: (row.email && !row.email.startsWith('no-email-') && row.email !== 'N/A') ? row.email : '',
-          personalEmail: (row.personal_email && row.personal_email !== 'N/A') ? row.personal_email : '',
-          phone: row.phone || row.mobile || 'N/A',
-          emergencyPhone: row.emergency_phone || row.emergency_mobile || 'N/A',
-          dob: formatDateStr(row.dob),
-          yearsOfEmployment: row.years_of_employment || 0,
-          yearsInPosition: row.years_in_position || 0,
-          gender: row.gender === 'male' || row.gender === 'Male' ? 'ذكر' : row.gender === 'female' || row.gender === 'Female' ? 'أنثى' : 'غير محدد',
-          maritalStatus: row.marital_status === 'single' ? 'أعزب' : 
-                         row.marital_status === 'married' ? 'متأهل' :
-                         row.marital_status === 'divorced' ? 'مطلق' : 
-                         row.marital_status === 'widow' ? 'أرمل' : 'غير محدد',
-          nationality: row.nationality || 'عراقي',
-          department: row.department || 'غير محدد',
-          jobTitle: row.position_ar || row.position || 'غير محدد',
-          jobTitleEn: row.position_en || row.position || 'N/A',
-          position: row.position_ar || row.position || 'غير محدد',
-          position_ar: row.position_ar || row.position || 'غير محدد',
-          position_en: row.position_en || 'N/A',
-          branch: row.branch || row.location_ar || 'غير محدد',
-          branchEn: row.branch_en || row.location_en || 'N/A',
-          supervisorName: row.supervisor_name || 'غير محدد',
-          workScope: row.work_scope || 'غير محدد',
-          salary: Number(row.salary || 0),
-          basicSalary: Number(row.basic_salary || 0),
-          basic_salary: Number(row.basic_salary || 0),
-          transportationFixed: Number(row.transportation_fixed || 0),
-          fixedBonus: Number(row.fixed_bonus || 0),
-          phoneAllowance: Number(row.phone_allowance || 0),
-          certificateAllowance: Number(row.certificate_allowance || 0),
-          writtenBasicSalaryAr: row.written_basic_salary_ar || '',
-          bankName: row.bank_name || 'غير محدد',
-          iban: row.iban || 'N/A',
-          nationalId: row.national_id || 'N/A',
-          passportNo: row.passport_no || 'N/A',
-          passportExpiry: formatDateStr(row.passport_expiry),
-          photoUrl: resolvedPhoto,
-          photo_url: resolvedPhoto,
-          avatar: resolvedPhoto,
-          photo: resolvedPhoto,
-          spouseName: row.spouse_name || 'غير محدد',
-        spouseEmployedHere: Boolean(row.spouse_employed_here),
-        childrenList: Array.isArray(childrenList) ? childrenList : [],
-        childrenDetails: row.children_details || row.children_json || '',
-        originalStartDate: formatDateStr(row.original_start_date || row.contract_original_start),
-        contractStartDate: formatDateStr(row.contract_start_date),
-        contractEndDate: formatDateStr(row.contract_end_date),
-        probationEndDate: formatDateStr(row.probation_end_date),
-        exitDate: formatDateStr(row.exit_date),
-        termOfContract: row.term_of_contract || '',
-        grade: row.grade || '',
-        trainingsRecord: row.trainings_record || '',
-        warningsRecord: row.warnings_record || '',
-        isSsTaxExempt: Boolean(row.is_ss_tax_exempt),
-        is_ss_tax_exempt: row.is_ss_tax_exempt,
-        ssTaxExemptionReason: row.ss_tax_exemption_reason || '',
-        ss_tax_exemption_reason: row.ss_tax_exemption_reason || '',
-        status: row.status === 'Active' || row.status === 'active' ? 'Active' : 
-               row.status === 'Inactive' || row.status === 'inactive' ? 'On Leave' : 
-               row.status === 'Onboarding' || row.status === 'onboarding' ? 'Onboarding' : 'Active',
-        joinDate: formatDateStr(row.original_start_date || row.contract_original_start)
-      };
-    });
+    const results = await query(sql, params);
+    const formatted = results.map(formatEmployeeRow);
     res.json(formatted);
   } catch (err) {
     console.error('Error fetching employees:', err);
