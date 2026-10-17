@@ -36,6 +36,21 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
     }
   });
 
+  // Synchronize Employee App theme with document.documentElement for global CSS variant compatibility
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem('employee_app_theme', theme);
+    } catch {}
+  }, [theme]);
+
   const [language, setLanguageState] = useState<'ar' | 'en'>(() => {
     try {
       const savedLang = localStorage.getItem('employee_app_lang');

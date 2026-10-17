@@ -68,7 +68,9 @@ export const EmployeeTopTabBar: React.FC = () => {
       isDark ? 'bg-[#0f172a]/95 border-slate-800' : 'bg-white/95 border-slate-200'
     }`}>
       {/* Top Utility Header with Brand, Language Switcher, and Theme Toggle */}
-      <div className="w-full max-w-md mx-auto px-3.5 pt-2 pb-1.5 flex items-center justify-between gap-2 border-b border-white/5">
+      <div className={`w-full max-w-md mx-auto px-3.5 pt-2 pb-1.5 flex items-center justify-between gap-2 border-b ${
+        isDark ? 'border-white/5' : 'border-slate-100'
+      }`}>
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-6 h-6 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-sm">badge</span>

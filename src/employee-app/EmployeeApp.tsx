@@ -130,16 +130,33 @@ function EmployeeAppMain() {
     localStorage.removeItem('employee_auth');
   };
 
+  // Restore main admin app theme upon leaving employee portal
+  useEffect(() => {
+    return () => {
+      try {
+        const mainTheme = localStorage.getItem('vitas_theme') || 'dark';
+        const root = document.documentElement;
+        if (mainTheme === 'dark') {
+          root.classList.add('dark');
+          root.classList.remove('light');
+        } else {
+          root.classList.add('light');
+          root.classList.remove('dark');
+        }
+      } catch {}
+    };
+  }, []);
+
   const isDark = theme === 'dark';
 
   return (
-    <div dir={language === 'ar' ? 'rtl' : 'ltr'} className={`min-h-screen w-full flex flex-col items-center justify-center p-0 transition-colors duration-300 ${
+    <div dir={language === 'ar' ? 'rtl' : 'ltr'} className={`min-h-screen w-full flex flex-col items-center justify-center p-0 transition-colors duration-300 ${isDark ? 'employee-app-dark' : 'employee-app-light'} ${
       isDark 
         ? 'bg-[#0b1120] text-slate-100' 
         : 'bg-[#f8fafc] text-slate-900'
     }`}>
       {/* Main App Container */}
-      <div className={`w-full max-w-md md:max-w-xl h-screen flex flex-col relative overflow-hidden shadow-none md:shadow-2xl md:rounded-3xl md:border ${
+      <div className={`w-full max-w-md md:max-w-xl h-screen flex flex-col relative overflow-hidden shadow-none md:shadow-2xl md:rounded-3xl md:border ${isDark ? 'employee-app-dark' : 'employee-app-light'} ${
         isDark ? 'bg-[#0b1120] text-white border-slate-800' : 'bg-[#f8fafc] text-slate-900 border-slate-200'
       }`}>
         {/* Top Tab Bar matching the 6 ESS buttons */}

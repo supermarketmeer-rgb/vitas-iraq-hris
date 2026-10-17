@@ -1200,31 +1200,114 @@ html.dark main {
 }
 
 /* Dark Mode Outer Card Containers (1.5px border) */
-html.dark main div[class*="rounded-3xl"],
-html.dark main div[class*="rounded-2xl"],
-html.dark main div[class*="rounded-xl"],
-html.dark .bg-white:not(.print\:bg-white),
-html.dark [class*="bg-white"]:not(.print\:bg-white),
-html.dark div[class*="bg-white"]:not(.print\:bg-white) {
+html.dark main div[class*="rounded-3xl"]:not(.employee-app-light *):not(.employee-app-light),
+html.dark main div[class*="rounded-2xl"]:not(.employee-app-light *):not(.employee-app-light),
+html.dark main div[class*="rounded-xl"]:not(.employee-app-light *):not(.employee-app-light),
+html.dark .bg-white:not(.print\:bg-white):not(.employee-app-light *):not(.employee-app-light),
+html.dark [class*="bg-white"]:not(.print\:bg-white):not(.employee-app-light *):not(.employee-app-light),
+html.dark div[class*="bg-white"]:not(.print\:bg-white):not(.employee-app-light *):not(.employee-app-light) {
   background-color: #0a0c10 !important;
   color: #ffffff !important;
   border: 1.5px solid rgba(255, 255, 255, 0.16) !important;
 }
 
 /* Dark Mode Inner Sub-cards, Boxes, Inputs, Selects & Textareas */
-html.dark main div[class*="rounded-3xl"] div[class*="rounded-2xl"],
-html.dark main div[class*="rounded-2xl"] div[class*="rounded-2xl"],
-html.dark main div[class*="rounded-xl"] div[class*="rounded-xl"],
-html.dark .bg-slate-50,
-html.dark [class*="bg-slate-50"],
-html.dark .bg-slate-100,
-html.dark [class*="bg-slate-100"],
-html.dark input,
-html.dark select,
-html.dark textarea {
+html.dark main div[class*="rounded-3xl"] div[class*="rounded-2xl"]:not(.employee-app-light *):not(.employee-app-light),
+html.dark main div[class*="rounded-2xl"] div[class*="rounded-2xl"]:not(.employee-app-light *):not(.employee-app-light),
+html.dark main div[class*="rounded-xl"] div[class*="rounded-xl"]:not(.employee-app-light *):not(.employee-app-light),
+html.dark .bg-slate-50:not(.employee-app-light *):not(.employee-app-light),
+html.dark [class*="bg-slate-50"]:not(.employee-app-light *):not(.employee-app-light),
+html.dark .bg-slate-100:not(.employee-app-light *):not(.employee-app-light),
+html.dark [class*="bg-slate-100"]:not(.employee-app-light *):not(.employee-app-light),
+html.dark input:not(.employee-app-light *):not(.employee-app-light),
+html.dark select:not(.employee-app-light *):not(.employee-app-light),
+html.dark textarea:not(.employee-app-light *):not(.employee-app-light) {
   background-color: #0a0c10 !important;
   color: #ffffff !important;
   border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
+}
+
+/* ================================================================
+   EMPLOYEE APP - GUARANTEED PURE LIGHT MODE STYLES
+   Ensures that every card, popup, tab, and form box in the employee
+   mobile portal is clean pure white (#ffffff) with crisp dark typography.
+   ================================================================ */
+.employee-app-light .bg-white,
+.employee-app-light [class*="bg-white"]:not([class*="bg-white/10"]):not([class*="bg-white/20"]):not([class*="bg-white/5"]):not(button.bg-teal-600):not(button.bg-emerald-600):not(button.bg-emerald-500):not(button.bg-amber-500):not(button.bg-rose-500) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+.employee-app-light .bg-slate-100,
+.employee-app-light [class*="bg-slate-100"] {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border-color: #e2e8f0 !important;
+}
+
+.employee-app-light .bg-slate-50,
+.employee-app-light [class*="bg-slate-50"] {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+.employee-app-light input:not([type="checkbox"]):not([type="radio"]),
+.employee-app-light select,
+.employee-app-light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.employee-app-light .text-slate-900,
+.employee-app-light [class*="text-slate-900"] {
+  color: #0f172a !important;
+}
+
+.employee-app-light .text-slate-800,
+.employee-app-light [class*="text-slate-800"] {
+  color: #1e293b !important;
+}
+
+.employee-app-light .text-slate-700,
+.employee-app-light [class*="text-slate-700"] {
+  color: #334155 !important;
+}
+
+.employee-app-light .text-slate-600,
+.employee-app-light [class*="text-slate-600"] {
+  color: #475569 !important;
+}
+
+.employee-app-light .text-slate-500,
+.employee-app-light [class*="text-slate-500"] {
+  color: #64748b !important;
+}
+
+.employee-app-light button.bg-teal-600,
+.employee-app-light button[class*="bg-teal-600"],
+.employee-app-light button.bg-emerald-500,
+.employee-app-light button[class*="bg-emerald-500"],
+.employee-app-light button.bg-emerald-600,
+.employee-app-light button[class*="bg-emerald-600"],
+.employee-app-light button.bg-rose-500,
+.employee-app-light button[class*="bg-rose-500"],
+.employee-app-light button.bg-amber-500,
+.employee-app-light button[class*="bg-amber-500"] {
+  color: #ffffff !important;
+}
+
+.employee-app-light button.bg-teal-600 *,
+.employee-app-light button[class*="bg-teal-600"] *,
+.employee-app-light button.bg-emerald-500 *,
+.employee-app-light button[class*="bg-emerald-500"] *,
+.employee-app-light button.bg-emerald-600 *,
+.employee-app-light button[class*="bg-emerald-600"] *,
+.employee-app-light button.bg-rose-500 *,
+.employee-app-light button[class*="bg-rose-500"] * {
+  color: #ffffff !important;
 }
 
 /* Dark Mode Table Rows & Headers */
