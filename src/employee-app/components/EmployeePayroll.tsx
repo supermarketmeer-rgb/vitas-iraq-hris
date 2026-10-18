@@ -352,19 +352,27 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee: prop
   // -------------------------------------------------------------------------------------------------
   // EMPLOYEE METADATA
   // -------------------------------------------------------------------------------------------------
-  const bankName = fullEmployee?.bankName || fullEmployee?.bank_name || 'غير محدد';
+  const bankName = fullEmployee?.bankName || fullEmployee?.bank_name || (isEn ? 'Unspecified' : 'غير محدد');
   const ibanNumber = fullEmployee?.iban || fullEmployee?.bankAccount || fullEmployee?.bank_account || 'N/A';
   const badgeNo = fullEmployee?.badgeNo || fullEmployee?.badge_no || rawEmployee?.badgeNo || rawEmployee?.badge_no || 'V167';
   const employeeId = fullEmployee?.employeeId || fullEmployee?.employee_id || rawEmployee?.employeeId || rawEmployee?.employee_id || 'VIT-0037';
   const joinDate = fullEmployee?.joinDate || fullEmployee?.join_date || fullEmployee?.originalStartDate || fullEmployee?.original_start_date || fullEmployee?.contractStartDate || fullEmployee?.contract_start_date || '2026-10-17';
-  const branchName = fullEmployee?.branchEn || fullEmployee?.location_en || fullEmployee?.branch || fullEmployee?.location_ar || fullEmployee?.location || 'Bassrah';
-  const positionName = fullEmployee?.positionEn || fullEmployee?.jobTitleEn || fullEmployee?.position || fullEmployee?.jobTitle || 'N/A';
-  const deptName = fullEmployee?.departmentEn || fullEmployee?.department || fullEmployee?.dept || 'Credit';
-  const empName = fullEmployee?.nameEn || fullEmployee?.fullNameEn || fullEmployee?.full_name_en || fullEmployee?.name || fullEmployee?.fullName || fullEmployee?.full_name_ar || 'Mustafa Ali Meer';
+  const branchName = isEn 
+    ? (fullEmployee?.branchEn || fullEmployee?.location_en || fullEmployee?.branch || 'Bassrah')
+    : (fullEmployee?.branch || fullEmployee?.location_ar || fullEmployee?.location || 'البصرة');
+  const positionName = isEn 
+    ? (fullEmployee?.positionEn || fullEmployee?.jobTitleEn || fullEmployee?.position || 'N/A')
+    : (fullEmployee?.position_ar || fullEmployee?.position || fullEmployee?.jobTitle || 'غير محدد');
+  const deptName = isEn 
+    ? (fullEmployee?.departmentEn || fullEmployee?.department || fullEmployee?.dept || 'Credit')
+    : (fullEmployee?.department || 'قسم الائتمان');
+  const empName = isEn 
+    ? (fullEmployee?.nameEn || fullEmployee?.fullNameEn || fullEmployee?.full_name_en || fullEmployee?.name || 'Mustafa Ali Meer')
+    : (fullEmployee?.full_name_ar || fullEmployee?.fullNameAr || fullEmployee?.name || fullEmployee?.fullName || 'مصطفى علي مير');
 
-  const activeMonthName = activePeriod.nameEn; // 'October 2026' matching screenshot
-  const activeShortMonth = activePeriod.shortMonthEn;
-  const currencyLabel = 'IQD';
+  const activeMonthName = isEn ? activePeriod.nameEn : activePeriod.nameAr;
+  const activeShortMonth = isEn ? activePeriod.shortMonthEn : activePeriod.shortMonthAr;
+  const currencyLabel = isEn ? 'IQD' : 'د.ع';
   const issueDate = '10/18/2026';
 
   // Navigation handlers for next / previous month
@@ -461,7 +469,7 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
             <label htmlFor="payroll-month-select" className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              Select Month / Period:
+              {isEn ? 'Select Month / Period:' : 'اختر مسير الشهر / الفترة المالية:'}
             </label>
           </div>
 
@@ -473,7 +481,7 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
               className={`p-1.5 rounded-lg border text-xs transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
                 isDark ? 'border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300' : 'border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700'
               }`}
-              title="Previous Month"
+              title={isEn ? 'Previous Month' : 'الشهر السابق'}
             >
               <ChevronRight className="w-3.5 h-3.5 rtl:rotate-0 ltr:rotate-180" />
             </button>
@@ -484,7 +492,7 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
               className={`p-1.5 rounded-lg border text-xs transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
                 isDark ? 'border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300' : 'border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700'
               }`}
-              title="Next Month"
+              title={isEn ? 'Next Month' : 'الشهر التالي'}
             >
               <ChevronLeft className="w-3.5 h-3.5 rtl:rotate-0 ltr:rotate-180" />
             </button>
@@ -493,12 +501,12 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
               className="ms-2 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-sm flex items-center gap-1 cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print</span>
+              <span>{isEn ? 'Print' : 'طباعة'}</span>
             </button>
             <button
               onClick={handleDownloadSlip}
               className="p-1.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
-              title="Download Slip"
+              title={isEn ? 'Download Slip' : 'تحميل القسيمة'}
             >
               <Download className="w-3.5 h-3.5" />
             </button>
@@ -519,7 +527,7 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
           >
             {AVAILABLE_PERIODS.map(p => (
               <option key={p.key} value={p.key}>
-                {p.nameEn} — [{p.statusEn}]
+                {isEn ? `${p.nameEn} — [${p.statusEn}]` : `${p.nameAr} — [${p.statusAr}]`}
               </option>
             ))}
           </select>
@@ -544,57 +552,57 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
         <div className="flex items-start justify-between border-b-2 border-teal-600 pb-4 gap-2">
           <div>
             <h3 className="text-lg sm:text-xl font-black text-teal-800 tracking-tight">
-              VITAS Iraq Microfinance Institution
+              {isEn ? 'VITAS Iraq Microfinance Institution' : 'مؤسسة فيتاس العراق للتمويل الأصغر'}
             </h3>
             <p className="text-xs font-bold text-slate-800 mt-0.5">
-              Official Monthly Payslip Document
+              {isEn ? 'Official Monthly Payslip Document' : 'كشف وقسيمة الراتب الشهري الرسمية'}
             </p>
             <p className="text-[11px] text-slate-600 mt-1">
-              For Month: <span className="text-slate-900 font-bold">{activeMonthName}</span>
+              {isEn ? 'For Month:' : 'عن شهر:'} <span className="text-slate-900 font-bold">{activeMonthName}</span>
             </p>
           </div>
           <div className="text-left font-mono text-[11px] text-slate-600 shrink-0">
-            <p className="font-bold text-teal-800">CONFIDENTIAL PAYSLIP</p>
-            <p>Doc Ref: VTS-PAY-{badgeNo}</p>
-            <p>Issue Date: {issueDate}</p>
+            <p className="font-bold text-teal-800">{isEn ? 'CONFIDENTIAL PAYSLIP' : 'قسيمة راتب سرية ورسمية'}</p>
+            <p>{isEn ? 'Doc Ref:' : 'رمز الوثيقة:'} VTS-PAY-{badgeNo}</p>
+            <p>{isEn ? 'Issue Date:' : 'تاريخ الإصدار:'} {issueDate}</p>
           </div>
         </div>
 
         {/* Employee Info Grid (4 Columns x 2 Rows) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900">
           <div>
-            <span className="text-[10px] text-slate-500 font-semibold block">Employee Name:</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{isEn ? 'Employee Name:' : 'اسم الموظف:'}</span>
             <span className="font-bold text-slate-900 text-sm block">{empName}</span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-500 font-semibold block">Employee ID / Badge:</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{isEn ? 'Employee ID / Badge:' : 'الرقم الوظيفي / الباج:'}</span>
             <span className="font-mono text-teal-800 font-bold text-xs block">{employeeId} ({badgeNo})</span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-500 font-semibold block">Branch / Location:</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{isEn ? 'Branch / Location:' : 'الفرع والموقع:'}</span>
             <span className="font-bold text-slate-900 text-xs block">{branchName}</span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-500 font-semibold block">Dept / Position:</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{isEn ? 'Dept / Position:' : 'القسم / العنوان الوظيفي:'}</span>
             <span className="font-bold text-slate-900 text-xs block">{positionName}</span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-500 font-semibold block">Bank / IBAN:</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{isEn ? 'Bank / IBAN:' : 'المصرف / رقم الحساب:'}</span>
             <span className="font-bold text-slate-900 text-xs block">{bankName}</span>
             <span className="font-mono text-[10px] text-slate-500 block truncate">{ibanNumber}</span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-500 font-semibold block">Join Date:</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{isEn ? 'Join Date:' : 'تاريخ المباشرة:'}</span>
             <span className="font-mono font-bold text-slate-900 text-xs block">{joinDate}</span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-500 font-semibold block">Tax Exemption Status:</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{isEn ? 'Tax Exemption Status:' : 'حالة الخضوع الضريبي:'}</span>
             <span className={`font-bold text-xs block ${isExempt ? 'text-amber-700' : 'text-emerald-700'}`}>
-              {isExempt ? 'Exempt from SS & Tax' : 'Subject to SS & Tax'}
+              {isExempt ? (isEn ? 'Exempt from SS & Tax' : 'معفى من الضمان والضريبة') : (isEn ? 'Subject to SS & Tax' : 'خاضع للضمان والضريبة')}
             </span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-500 font-semibold block">Department:</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{isEn ? 'Department:' : 'القسم الإداري:'}</span>
             <span className="font-bold text-slate-900 text-xs block">{deptName}</span>
           </div>
         </div>
@@ -604,57 +612,57 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
           {/* Earnings Column */}
           <div className="space-y-2">
             <div className="border-b border-slate-200 pb-1.5 flex items-center justify-between">
-              <h4 className="font-bold text-emerald-800 text-xs">Earnings</h4>
+              <h4 className="font-bold text-emerald-800 text-xs">{isEn ? 'Earnings' : 'المستحقات والبدلات'}</h4>
               <span className="material-symbols-outlined text-base text-emerald-700 font-bold">add_circle</span>
             </div>
             <div className="space-y-1.5 text-slate-900 text-xs">
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Nominal Basic Salary:</span>
-                <span className="font-mono font-bold">{basicSalary.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Nominal Basic Salary:' : 'الراتب الاسمي الأساسي:'}</span>
+                <span className="font-mono font-bold">{basicSalary.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Current Month Basic:</span>
-                <span className="font-mono font-bold">{currentMonthBasic.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Current Month Basic:' : 'الراتب الاسمي الفعلي للشهر:'}</span>
+                <span className="font-mono font-bold">{currentMonthBasic.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Phone Allowance:</span>
-                <span className="font-mono font-bold">{phoneAllowance.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Phone Allowance:' : 'بدل الهاتف:'}</span>
+                <span className="font-mono font-bold">{phoneAllowance.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Family Allowance:</span>
-                <span className="font-mono font-bold">{familyAllowance.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Family Allowance:' : 'بدل الزوجية والأولاد:'}</span>
+                <span className="font-mono font-bold">{familyAllowance.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Certificate Allowance:</span>
-                <span className="font-mono font-bold">{certAllowance.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Certificate Allowance:' : 'بدل الشهادة العلمية:'}</span>
+                <span className="font-mono font-bold">{certAllowance.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Incentives:</span>
-                <span className="font-mono font-bold">{incentives.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Incentives:' : 'المحفزات التشجيعية:'}</span>
+                <span className="font-mono font-bold">{incentives.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Transportation:</span>
-                <span className="font-mono font-bold">{transportation.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Transportation:' : 'بدل النقل والمواصلات:'}</span>
+                <span className="font-mono font-bold">{transportation.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Operational Bonus:</span>
-                <span className="font-mono font-bold">{bonus.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Operational Bonus:' : 'المكافآت والمنح التشغيلية:'}</span>
+                <span className="font-mono font-bold">{bonus.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Overtime Pay:</span>
-                <span className="font-mono font-bold">{overtime.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Overtime Pay:' : 'أجر العمل الإضافي:'}</span>
+                <span className="font-mono font-bold">{overtime.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Earned Leave Allowance:</span>
-                <span className="font-mono font-bold">{earnedLeave.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Earned Leave Allowance:' : 'بدل رصيد الإجازات المكتسبة:'}</span>
+                <span className="font-mono font-bold">{earnedLeave.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1 text-xs font-semibold text-teal-800 border-b border-dashed border-teal-300">
-                <span>Total Allowances Added:</span>
-                <span className="font-mono font-bold">{allowancesTotal.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Total Allowances Added:' : 'مجموع البدلات المضافة:'}</span>
+                <span className="font-mono font-bold">{allowancesTotal.toLocaleString()} {currencyLabel}</span>
               </div>
               <div className="flex justify-between py-1.5 font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 px-3 rounded-lg mt-2">
-                <span>Total Gross Salary:</span>
-                <span className="font-mono">{grossSalary.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Total Gross Salary:' : 'إجمالي الراتب الإجمالي (Gross):'}</span>
+                <span className="font-mono">{grossSalary.toLocaleString()} {currencyLabel}</span>
               </div>
             </div>
           </div>
@@ -662,44 +670,44 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
           {/* Deductions Column */}
           <div className="space-y-2">
             <div className="border-b border-slate-200 pb-1.5 flex items-center justify-between">
-              <h4 className="font-bold text-emerald-800 text-xs">Deductions</h4>
+              <h4 className="font-bold text-emerald-800 text-xs">{isEn ? 'Deductions' : 'الاستقطاعات والتأمين'}</h4>
               <span className="material-symbols-outlined text-base text-emerald-700 font-bold">remove_circle</span>
             </div>
             <div className="space-y-1.5 text-slate-900 text-xs">
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Pension & Social Security:</span>
+                <span>{isEn ? 'Pension & Social Security:' : 'استقطاع التقاعد والضمان الاجتماعي:'}</span>
                 <span className="font-mono font-bold text-rose-800">
-                  {isExempt ? '0 IQD' : `-${socialSecurity.toLocaleString()} IQD`}
+                  {isExempt ? (isEn ? '0 IQD (Exempt)' : 'معفى (0 د.ع)') : `-${socialSecurity.toLocaleString()} ${currencyLabel}`}
                 </span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Income Tax:</span>
+                <span>{isEn ? 'Income Tax:' : 'استقطاع ضريبة الدخل:'}</span>
                 <span className="font-mono font-bold text-rose-800">
-                  {isExempt ? '0 IQD' : `-${incomeTax.toLocaleString()} IQD`}
+                  {isExempt ? (isEn ? '0 IQD (Exempt)' : 'معفى (0 د.ع)') : `-${incomeTax.toLocaleString()} ${currencyLabel}`}
                 </span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Health Insurance:</span>
+                <span>{isEn ? 'Health Insurance:' : 'قسط التأمين الصحي:'}</span>
                 <span className="font-mono font-bold text-rose-800">
-                  {isExempt ? '0 IQD' : `-${insurance.toLocaleString()} IQD`}
+                  {isExempt ? (isEn ? '0 IQD (Exempt)' : 'معفى (0 د.ع)') : `-${insurance.toLocaleString()} ${currencyLabel}`}
                 </span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Loan Deduction:</span>
+                <span>{isEn ? 'Loan Deduction:' : 'استقطاع السلف والقروض:'}</span>
                 <span className="font-mono font-bold text-rose-800">
-                  -{loanPayment.toLocaleString()} IQD
+                  -{loanPayment.toLocaleString()} {currencyLabel}
                 </span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/70">
-                <span>Absence & Deductions:</span>
+                <span>{isEn ? 'Absence & Deductions:' : 'استقطاع أيام الغياب والجزاءات:'}</span>
                 <span className="font-mono font-bold text-rose-800">
-                  -{(absenceDeduction + otherDeductions).toLocaleString()} IQD
+                  -{(absenceDeduction + otherDeductions).toLocaleString()} {currencyLabel}
                 </span>
               </div>
               {/* Total Deductions: Exact pink rounded box matching screenshot */}
               <div className="flex justify-between py-1.5 font-bold text-rose-800 bg-[#ffebee]/90 border border-rose-200/80 px-3 rounded-lg mt-2">
-                <span>Total Deductions:</span>
-                <span className="font-mono">-{totalDeductions.toLocaleString()} IQD</span>
+                <span>{isEn ? 'Total Deductions:' : 'إجمالي الاستقطاعات:'}</span>
+                <span className="font-mono">-{totalDeductions.toLocaleString()} {currencyLabel}</span>
               </div>
             </div>
           </div>
@@ -708,9 +716,11 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
         {/* Net Payable Highlight Card */}
         <div className="p-4 rounded-2xl bg-teal-50 border border-teal-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <span className="text-xs font-bold text-slate-700 block">Net Payable Salary:</span>
+            <span className="text-xs font-bold text-slate-700 block">
+              {isEn ? 'Net Payable Salary:' : 'صافي الراتب النهائي مستحق الدفع:'}
+            </span>
             <span className="text-2xl sm:text-3xl font-black text-teal-900 font-mono">
-              {netSalary.toLocaleString()} IQD
+              {netSalary.toLocaleString()} {currencyLabel}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -719,14 +729,14 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
               className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <Printer className="w-4 h-4" />
-              <span>Print Payslip</span>
+              <span>{isEn ? 'Print Payslip' : 'طباعة القسيمة'}</span>
             </button>
             <button
               onClick={handleDownloadSlip}
               className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <Download className="w-4 h-4" />
-              <span>Download</span>
+              <span>{isEn ? 'Download' : 'تحميل الكشف'}</span>
             </button>
           </div>
         </div>
@@ -734,12 +744,16 @@ Generated officially from VITAS Iraq HRMS Portal. Verified and Certified electro
         {/* Official Certification Footer */}
         <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-500">
           <div>
-            <p className="font-bold text-slate-700">VITAS Iraq Microfinance Institution</p>
-            <p className="text-teal-700 font-semibold">Human Resources & Payroll Department • Certified Document</p>
+            <p className="font-bold text-slate-700">
+              {isEn ? 'VITAS Iraq Microfinance Institution' : 'مؤسسة فيتاس العراق للتمويل الأصغر'}
+            </p>
+            <p className="text-teal-700 font-semibold">
+              {isEn ? 'Human Resources & Payroll Department • Certified Document' : 'إدارة الموارد البشرية والرواتب • وثيقة معتمدة وموثقة إلكترونياً'}
+            </p>
           </div>
           <div className="text-left font-mono">
-            <p>Doc Ref: VTS-PAY-{badgeNo}</p>
-            <p>Issue Date: {issueDate}</p>
+            <p>{isEn ? 'Doc Ref:' : 'رمز الوثيقة:'} VTS-PAY-{badgeNo}</p>
+            <p>{isEn ? 'Issue Date:' : 'تاريخ الإصدار:'} {issueDate}</p>
           </div>
         </div>
       </div>
