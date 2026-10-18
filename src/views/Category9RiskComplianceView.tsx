@@ -6,6 +6,7 @@ import { api } from '../api/client';
 import { transliterateEnglishNameToArabic, hasArabicCharacters } from '../utils/nameHelper';
 import { CATEGORY_GROUPS } from '../data/categories';
 import * as XLSX from 'xlsx';
+import { PoliciesSection } from '../components/PoliciesSection';
 
 export const Category9RiskComplianceView: React.FC = () => {
   const {
@@ -498,7 +499,8 @@ export const Category9RiskComplianceView: React.FC = () => {
   const [empDeptFilter, setEmpDeptFilter] = useState<string>('all');
   const [empSearch, setEmpSearch] = useState<string>('');
 
-  // Add New User Modal State
+  // Add New User Modal State & SubTab Switcher (Users vs Policies Mini-Settings)
+  const [rolePermissionsSubTab, setRolePermissionsSubTab] = useState<'users' | 'policies'>('users');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [moduleFilterQuery, setModuleFilterQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
@@ -541,6 +543,74 @@ export const Category9RiskComplianceView: React.FC = () => {
     role: 'Employee' as UserRole,
     notes: 'مخول بالعمل على الموديولات والشاشات المحددة أدناه'
   });
+
+  const [showUserPassword, setShowUserPassword] = useState(false);
+  const [passwordModalUser, setPasswordModalUser] = useState<any | null>(null);
+  const [quickNewPassword, setQuickNewPassword] = useState('');
+  const [showQuickPassword, setShowQuickPassword] = useState(false);
+  const [isSavingQuickPassword, setIsSavingQuickPassword] = useState(false);
+
+  const handleQuickChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordModalUser || !quickNewPassword.trim()) return;
+    if (quickNewPassword.trim().length < 4) {
+      alert(language === 'ar' ? 'كلمة المرور يجب أن تكون 4 أحرف على الأقل' : 'Password must be at least 4 characters');
+      return;
+    }
+    setIsSavingQuickPassword(true);
+    try {
+      const cleanPass = quickNewPassword.trim();
+      // 1. Call server change-password API
+      await api.changePassword({
+        id: passwordModalUser.id,
+        username: passwordModalUser.username,
+        employeeId: passwordModalUser.employee_id,
+        newPassword: cleanPass
+      });
+
+      // 2. Also ensure saveUser updates MySQL users table directly
+      await api.saveUser({
+        id: passwordModalUser.id,
+        username: passwordModalUser.username,
+        password: cleanPass,
+        full_name: passwordModalUser.full_name || passwordModalUser.name,
+        employee_id: passwordModalUser.employee_id,
+        email: passwordModalUser.email
+      }).catch(() => {});
+
+      // 3. Update localStorage custom users if present
+      try {
+        const raw = localStorage.getItem('vitas_custom_users') || '{}';
+        const parsed = JSON.parse(raw);
+        const uKey = (passwordModalUser.username || '').toLowerCase();
+        if (parsed[uKey]) {
+          parsed[uKey].password = cleanPass;
+          localStorage.setItem('vitas_custom_users', JSON.stringify(parsed));
+          api.updateAppSettingsBulk({
+            vitas_custom_users: JSON.stringify(parsed)
+          }).catch(() => {});
+        }
+      } catch (e) {}
+
+      // 4. Refresh users list & broadcast
+      fetchUsersFromDb();
+      window.dispatchEvent(new CustomEvent('vitas:users_changed'));
+
+      const userName = passwordModalUser.full_name || passwordModalUser.name || passwordModalUser.username;
+      setCustomEmpSavedToast(
+        language === 'ar'
+          ? `تم تحديث كلمة المرور للمستخدم (${userName}) بنجاح!`
+          : `Password for (${userName}) updated successfully!`
+      );
+      setTimeout(() => setCustomEmpSavedToast(null), 5000);
+      setPasswordModalUser(null);
+      setQuickNewPassword('');
+    } catch (err: any) {
+      alert(language === 'ar' ? `فشل تحديث كلمة المرور: ${err.message || err}` : `Failed to update password: ${err.message || err}`);
+    } finally {
+      setIsSavingQuickPassword(false);
+    }
+  };
 
   // Granular Permission Helpers
   const getModLevel = (modId: string): 'write' | 'read' | 'none' => {
@@ -1033,33 +1103,37 @@ export const Category9RiskComplianceView: React.FC = () => {
       localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(updatedDelegations));
 
       // 3. Persist to Database users table (and Real-Time sync to Cloud)
-      await api.saveUser({
-        id: newUserForm.id,
-        original_username: newUserForm.originalUsername || undefined,
-        original_employee_id: newUserForm.originalEmployeeId || undefined,
-        original_email: newUserForm.originalEmail || undefined,
-        username: cleanUsername,
-        password: newUserForm.password,
-        full_name: newUserForm.fullNameAr.trim(),
-        name: newUserForm.fullNameAr.trim(),
-        email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
-        job_title: newUserForm.jobTitle.trim(),
-        role: assignedRole,
-        department: newUserForm.department,
-        employee_id: cleanEmpCode,
-        branch: newUserForm.branch,
-        can_manage_employees: fullModules.employees ? 1 : (isExplicitAdmin ? 1 : 0),
-        can_manage_finance: fullModules.payroll ? 1 : 0,
-        can_manage_recruitment: fullModules.recruitment ? 1 : 0,
-        can_manage_settings: fullModules.settings ? 1 : (isExplicitAdmin ? 1 : 0),
-        can_manage_users: isExplicitAdmin ? 1 : 0,
-        status: 'active',
-        allowed_screens: fullModules
-      }).catch((err: any) => {
-        console.warn('Notice saving to users table:', err.message);
-      });
+      try {
+        await api.saveUser({
+          id: newUserForm.id,
+          original_username: newUserForm.originalUsername || undefined,
+          original_employee_id: newUserForm.originalEmployeeId || undefined,
+          original_email: newUserForm.originalEmail || undefined,
+          username: cleanUsername,
+          password: newUserForm.password,
+          full_name: newUserForm.fullNameAr.trim(),
+          name: newUserForm.fullNameAr.trim(),
+          email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
+          job_title: newUserForm.jobTitle.trim(),
+          role: assignedRole,
+          department: newUserForm.department,
+          employee_id: cleanEmpCode,
+          branch: newUserForm.branch,
+          can_manage_employees: fullModules.employees ? 1 : (isExplicitAdmin ? 1 : 0),
+          can_manage_finance: fullModules.payroll ? 1 : 0,
+          can_manage_recruitment: fullModules.recruitment ? 1 : 0,
+          can_manage_settings: fullModules.settings ? 1 : (isExplicitAdmin ? 1 : 0),
+          can_manage_users: isExplicitAdmin ? 1 : 0,
+          status: 'active',
+          allowed_screens: fullModules
+        });
+      } catch (err: any) {
+        alert(language === 'ar' ? `فشل حفظ المستخدم: ${err.message || err}` : `Failed to save user: ${err.message || err}`);
+        return;
+      }
 
       fetchUsersFromDb();
+      window.dispatchEvent(new CustomEvent('vitas:users_changed'));
 
       await api.updateAppSettingsBulk({
         vitas_custom_employee_permissions: JSON.stringify(updatedDelegations),
@@ -1113,12 +1187,16 @@ export const Category9RiskComplianceView: React.FC = () => {
       // 4. Select this user and feedback
       setSelectedEmpId(cleanEmpCode);
       setIsAddUserModalOpen(false);
+      const isEditingUser = Boolean(newUserForm.id);
       setCustomEmpSavedToast(
         language === 'ar'
-          ? `تم حفظ وتحديث حساب المستخدم (${newUserForm.fullNameAr}) ومزامنته مع السرفر السحابي بنجاح!`
-          : `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}) saved and synced to cloud successfully!`
+          ? (isEditingUser
+              ? `تم تحديث بيانات المستخدم (${newUserForm.fullNameAr}) وكلمة المرور والصلاحيات بنجاح!`
+              : `تم حفظ وإنشاء حساب المستخدم (${newUserForm.fullNameAr}) ومزامنته مع السرفر السحابي بنجاح!`)
+          : (isEditingUser
+              ? `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}), password and permissions updated successfully!`
+              : `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}) saved and synced to cloud successfully!`)
       );
-      setTimeout(() => setCustomEmpSavedToast(null), 5000);
       setTimeout(() => setCustomEmpSavedToast(null), 5000);
 
       // Reset form
@@ -1460,6 +1538,15 @@ export const Category9RiskComplianceView: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Interactive HR System Policies & Contract Dates Batch Tool */}
+          <div className="pt-6 border-t border-slate-200 dark:border-white/10">
+            <PoliciesSection
+              language={language}
+              t={t}
+              employees={employees}
+            />
           </div>
         </div>
       )}
@@ -2212,7 +2299,64 @@ export const Category9RiskComplianceView: React.FC = () => {
           MODULE 10: Dynamic Users & Module Permissions (sec-roles-permissions)
           ========================================================================= */}
       {(activeModuleId === 'sec-roles-permissions' || activeModuleId === 'sec-edit-role') && (
-        <div className={`rounded-3xl border shadow-xl overflow-hidden space-y-0 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
+        <div className="space-y-4">
+          {/* SubTab Switcher: User Role & Permission vs Policies & Mini-Settings */}
+          <div className={`p-3 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md ${
+            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+          }`}>
+            <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setRolePermissionsSubTab('users')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  rolePermissionsSubTab === 'users'
+                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
+                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span className="material-symbols-outlined text-lg">manage_accounts</span>
+                <span>{t('أدوار وصلاحيات المستخدمين (RBAC)', 'User Roles & Permissions')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRolePermissionsSubTab('policies')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  rolePermissionsSubTab === 'policies'
+                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
+                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span className="material-symbols-outlined text-lg">policy</span>
+                <span>{t('شاشة مصغرة للإعدادات والسياسات (Policies)', 'Mini Settings & Policies')}</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/30">
+                  {t('تعديل تواريخ العقود', 'Contracts')}
+                </span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 px-2 text-xs text-slate-500 dark:text-slate-400">
+              <span className="material-symbols-outlined text-teal-500 text-base">verified_user</span>
+              <span className="text-[11px] font-medium">
+                {rolePermissionsSubTab === 'policies'
+                  ? t('السياسات والضوابط، وتعديل تواريخ العقود الدائمية بكبسة زر واحدة', 'Central policies & one-click permanent contract dates batch update')
+                  : t('إدارة مستخدمي النظام ومصفوفة الصلاحيات الدقيقة', 'Manage system users and granular RBAC access matrix')}
+              </span>
+            </div>
+          </div>
+
+          {/* Policies & Mini-Settings Tab Content */}
+          {rolePermissionsSubTab === 'policies' && (
+            <PoliciesSection
+              language={language}
+              t={t}
+              employees={employees}
+            />
+          )}
+
+          {/* Users & Permissions Table Content */}
+          {rolePermissionsSubTab === 'users' && (
+            <div className={`rounded-3xl border shadow-xl overflow-hidden space-y-0 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
 
           {/* Prominent Add User CTA Banner */}
           <div className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 ${
@@ -2548,7 +2692,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                         </td>
 
                         <td className="p-3.5 text-center">
-                          <div className="flex items-center justify-center gap-2">
+                          <div className="flex items-center justify-center gap-1.5">
                             {/* Edit Button */}
                             <button
                               type="button"
@@ -2560,7 +2704,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                                   originalEmployeeId: u.employee_id || uCode,
                                   originalEmail: u.email || '',
                                   username: u.username,
-                                  password: u.password || 'Password123!',
+                                  password: u.password || '',
                                   fullNameAr: fullName,
                                   fullNameEn: u.name || fullName,
                                   jobTitle: u.job_title || (u.role && u.role !== 'Employee' ? u.role : '') || 'مسؤول رواتب وحضور',
@@ -2574,12 +2718,28 @@ export const Category9RiskComplianceView: React.FC = () => {
                                   level: 'full',
                                   notes: 'مخول بالعمل على الموديولات المحددة'
                                 });
+                                setBadgeSearchQuery(`${fullName} (${uCode})`);
+                                setShowUserPassword(false);
                                 setIsAddUserModalOpen(true);
                               }}
-                              className="p-1 rounded-lg text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-transparent"
-                              title={t('تعديل الوظيفة والصلاحيات', 'Edit Job Title & Permissions')}
+                              className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-emerald-500/10 hover:bg-emerald-500/20"
+                              title={t('تعديل بيانات وصلاحيات المستخدم', 'Edit User & Permissions')}
                             >
-                              <span className="material-symbols-outlined text-lg">edit</span>
+                              <span className="material-symbols-outlined text-base">edit</span>
+                            </button>
+
+                            {/* Quick Change Password Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPasswordModalUser(u);
+                                setQuickNewPassword(u.password || '');
+                                setShowQuickPassword(false);
+                              }}
+                              className="p-1.5 rounded-lg text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-amber-500/10 hover:bg-amber-500/20"
+                              title={t('تغيير كلمة المرور مباشرة', 'Change Password Directly')}
+                            >
+                              <span className="material-symbols-outlined text-base">key</span>
                             </button>
 
                             {/* Delete Button */}
@@ -2593,16 +2753,17 @@ export const Category9RiskComplianceView: React.FC = () => {
                                 if (confirm(confirmMsg)) {
                                   await api.deleteUser(u.username || u.employee_id || u.id).catch(() => {});
                                   fetchUsersFromDb();
+                                  window.dispatchEvent(new CustomEvent('vitas:users_changed'));
                                   setCustomEmpSavedToast(
                                     language === 'ar' ? `تم حذف حساب المستخدم (${fullName}) بنجاح.` : `User account (${fullName}) deleted.`
                                   );
                                   setTimeout(() => setCustomEmpSavedToast(null), 4000);
                                 }
                               }}
-                              className="p-1 rounded-lg text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-transparent"
+                              className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-rose-500/10 hover:bg-rose-500/20"
                               title={t('حذف المستخدم', 'Delete User')}
                             >
-                              <span className="material-symbols-outlined text-lg">delete</span>
+                              <span className="material-symbols-outlined text-base">delete</span>
                             </button>
                           </div>
                         </td>
@@ -2613,6 +2774,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               </table>
             </div>
           </div>
+        </div>
+          )}
         </div>
       )}
 
@@ -2813,21 +2976,35 @@ export const Category9RiskComplianceView: React.FC = () => {
               isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
             }`}>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold shadow-inner">
-                  <span className="material-symbols-outlined text-2xl">person_add</span>
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shadow-inner ${
+                  newUserForm.id
+                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-teal-500/20 text-teal-600 dark:text-teal-400'
+                }`}>
+                  <span className="material-symbols-outlined text-2xl">
+                    {newUserForm.id ? 'manage_accounts' : 'person_add'}
+                  </span>
                 </div>
                 <div>
                   <h3 className="font-bold text-sm" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                    {t('إنشاء يوزر جديد وتحديد نوع الوظيفة والموديولات', 'Add New User, Job Title & Assign Module Permissions')}
+                    {newUserForm.id
+                      ? (language === 'ar'
+                          ? `تعديل بيانات وصلاحيات المستخدم: ${newUserForm.fullNameAr || newUserForm.username}`
+                          : `Edit User & Permissions: ${newUserForm.fullNameEn || newUserForm.username}`)
+                      : t('إنشاء يوزر جديد وتحديد نوع الوظيفة والموديولات', 'Add New User, Job Title & Assign Module Permissions')
+                    }
                   </h3>
                   <p className="text-slate-500 text-[11px]">
-                    {t('أدخل بيانات المستخدم، حدد نوع الوظيفة، وضع علامة (Tick ✓) على الموديولات المسموحة له', 'Enter user details, specify job title, and check (Tick ✓) the allowed modules')}
+                    {newUserForm.id
+                      ? t('قم بتعديل بيانات الحساب، كلمة المرور، المسمى الوظيفي، أو الصلاحيات الممنوحة للمستخدم', 'Update user credentials, password, job title, or assigned permissions')
+                      : t('أدخل بيانات المستخدم، حدد نوع الوظيفة، وضع علامة (Tick ✓) على الموديولات المسموحة له', 'Enter user details, specify job title, and check (Tick ✓) the allowed modules')
+                    }
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsAddUserModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
               >
                 ✕
               </button>
@@ -3053,19 +3230,38 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                   {/* Password */}
                   <div>
-                    <label className="font-bold text-slate-600 dark:text-slate-400 block text-[11px] mb-1">
-                      {t('كلمة المرور *', 'Password *')}
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Password123!"
-                      value={newUserForm.password}
-                      onChange={e => setNewUserForm(prev => ({ ...prev, password: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs font-mono outline-none ${
-                        isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-600 dark:text-slate-400 text-[11px]">
+                        {newUserForm.id ? t('كلمة المرور (تعديل أو إبقاء الحالية) *', 'Password (Edit or Keep Current) *') : t('كلمة المرور *', 'Password *')}
+                      </label>
+                      {newUserForm.id && (
+                        <span className="text-[10px] text-teal-600 dark:text-teal-400 font-bold">
+                          {t('تحديث فوري', 'Live Update')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showUserPassword ? 'text' : 'password'}
+                        required
+                        placeholder={newUserForm.id ? t('أدخل كلمة المرور الجديدة للتعديل...', 'Enter new password to update...') : 'Password123!'}
+                        value={newUserForm.password}
+                        onChange={e => setNewUserForm(prev => ({ ...prev, password: e.target.value }))}
+                        className={`w-full px-3 py-2 pe-10 rounded-xl border text-xs font-mono outline-none ${
+                          isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowUserPassword(!showUserPassword)}
+                        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        title={showUserPassword ? t('إخفاء', 'Hide') : t('إظهار', 'Show')}
+                      >
+                        <span className="material-symbols-outlined text-base">
+                          {showUserPassword ? 'visibility_off' : 'visibility'}
+                        </span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Job Title - highlighted */}
@@ -3529,24 +3725,162 @@ export const Category9RiskComplianceView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Modal Footer Buttons */}
-              <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-3">
+              {/* Modal Footer Buttons - Sticky at Bottom */}
+              <div className="sticky bottom-0 bg-white/95 dark:bg-[#111827]/95 backdrop-blur-md z-20 py-3.5 px-6 -mx-6 -mb-6 border-t border-slate-200 dark:border-white/10 flex items-center justify-between shadow-2xl">
+                <div className="text-[11px] text-slate-500 font-medium hidden sm:block">
+                  {newUserForm.id
+                    ? t('تعديل الحساب يحدّث قاعدة البيانات فوراً عبر السيرفر والمزامنة السحابية', 'Saving updates DB directly across local & cloud nodes')
+                    : t('يتم حفظ المستخدم فوراً مع الصلاحيات المحددة', 'User and permissions are saved immediately')}
+                </div>
+                <div className="flex items-center gap-3 ms-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddUserModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-white/5 font-bold transition-all text-xs cursor-pointer"
+                  >
+                    {t('إلغاء', 'Cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-lg shadow-teal-600/25 flex items-center gap-2 text-xs cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">{newUserForm.id ? 'save' : 'person_add'}</span>
+                    <span>
+                      {newUserForm.id
+                        ? t('حفظ التعديلات على المستخدم والصلاحيات', 'Save Changes to User & Permissions')
+                        : t('حفظ وإنشاء المستخدم مع الصلاحيات', 'Save & Create User with Permissions')}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          QUICK CHANGE PASSWORD MODAL (DIRECT & INSTANT)
+      ============================================================ */}
+      {passwordModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            {/* Header */}
+            <div className={`p-5 border-b flex items-center justify-between ${
+              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-2xl">key</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                    {t('تغيير كلمة المرور', 'Change User Password')}
+                  </h3>
+                  <p className="text-slate-500 text-[11px]">
+                    {passwordModalUser.full_name || passwordModalUser.name || passwordModalUser.username}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPasswordModalUser(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleQuickChangePassword} className="p-6 space-y-4 text-xs">
+              {/* User summary badge */}
+              <div className={`p-3.5 rounded-2xl border space-y-1.5 ${
+                isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">{t('اسم الدخول:', 'Username:')}</span>
+                  <span className="font-mono font-bold text-teal-600 dark:text-teal-400">{passwordModalUser.username}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">{t('كود الموظف:', 'Employee Code:')}</span>
+                  <span className="font-mono text-slate-700 dark:text-slate-300">{passwordModalUser.employee_id || '-'}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">{t('المسمى الوظيفي:', 'Position:')}</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-semibold">{passwordModalUser.job_title || passwordModalUser.role || '-'}</span>
+                </div>
+              </div>
+
+              {/* Password Input */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 text-xs">
+                    {t('كلمة المرور الجديدة *', 'New Password *')}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+                      let gen = '';
+                      for (let i = 0; i < 10; i++) gen += chars.charAt(Math.floor(Math.random() * chars.length));
+                      setQuickNewPassword(gen);
+                      setShowQuickPassword(true);
+                    }}
+                    className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                  >
+                    <span className="material-symbols-outlined text-xs">autorenew</span>
+                    <span>{t('توليد كلمة عشوائية', 'Generate')}</span>
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type={showQuickPassword ? 'text' : 'password'}
+                    required
+                    value={quickNewPassword}
+                    onChange={e => setQuickNewPassword(e.target.value)}
+                    placeholder={t('أدخل كلمة المرور الجديدة (4 أحرف على الأقل)...', 'Enter new password (min 4 characters)...')}
+                    className={`w-full px-3.5 py-2.5 pe-10 rounded-xl border text-xs font-mono outline-none ${
+                      isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickPassword(!showQuickPassword)}
+                    className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                    title={showQuickPassword ? t('إخفاء', 'Hide') : t('إظهار', 'Show')}
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      {showQuickPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  {t('سيتم تحديث كلمة المرور في قاعدة البيانات فوراً ومزامنتها مع الخادم السحابي.', 'Password updates directly in MySQL and syncs to cloud immediately.')}
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setIsAddUserModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-white/5 font-bold transition-all text-xs cursor-pointer"
+                  onClick={() => setPasswordModalUser(null)}
+                  disabled={isSavingQuickPassword}
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-white/5 font-bold transition-all text-xs cursor-pointer"
                 >
                   {t('إلغاء', 'Cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-lg shadow-teal-600/25 flex items-center gap-2 text-xs cursor-pointer"
+                  disabled={isSavingQuickPassword}
+                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold transition-all shadow-lg shadow-amber-600/25 flex items-center gap-1.5 text-xs cursor-pointer disabled:opacity-50"
                 >
-                  <span className="material-symbols-outlined text-sm">person_add</span>
-                  <span>{t('حفظ وإنشاء المستخدم مع الصلاحيات', 'Save & Create User with Permissions')}</span>
+                  <span className="material-symbols-outlined text-sm">{isSavingQuickPassword ? 'sync' : 'check'}</span>
+                  <span>{isSavingQuickPassword ? t('جاري الحفظ...', 'Saving...') : t('حفظ كلمة المرور', 'Save Password')}</span>
                 </button>
               </div>
-
             </form>
           </div>
         </div>

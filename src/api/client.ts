@@ -87,6 +87,8 @@ export const api = {
   getEmployees: () => apiClient.get('/employees'),
   addEmployee: (employee: any) => apiClient.post('/employees', employee),
   updateEmployee: (employee: any) => apiClient.post('/employees', employee),
+  batchUpdateContractDates: (data: { employeeIds: (string | number)[]; startDate: string; endDate: string }) =>
+    apiClient.post('/employees/batch-contract-dates', data),
   deleteEmployee: (id: string) => apiClient.delete(`/employees/${id}`),
   uploadEmployeePhoto: async (id: string, photoFile: File) => {
     const formData = new FormData();
@@ -224,6 +226,8 @@ export const api = {
   saveUser: (user: any) => apiClient.post('/users', user),
   deleteUser: (identifier: string | number) => apiClient.delete(`/users/${identifier}`),
   changePassword: (data: {
+    id?: number | string;
+    userId?: number | string;
     username?: string;
     employeeId?: string;
     currentPassword?: string;
@@ -338,5 +342,14 @@ export const api = {
   getApiKeys: () => apiClient.get('/security/api-keys'),
   createApiKey: (data: { name: string; permissions?: string; expires_at?: string }) => apiClient.post('/security/api-keys', data),
   deleteApiKey: (id: string) => apiClient.delete(`/security/api-keys/${id}`),
+
+  // Recruitment Committee & Evaluation APIs
+  getCommittees: () => apiClient.get('/recruitment/committees'),
+  notifyCommittee: (data: any) => apiClient.post('/recruitment/committee/notify', data),
+  submitCommitteeEvaluation: (data: any) => apiClient.post('/recruitment/committee/submit-evaluation', data),
+  getCommitteeEvaluations: (params?: { candidateId?: string; committeeId?: string }) => {
+    const q = params ? new URLSearchParams(params as any).toString() : '';
+    return apiClient.get(`/recruitment/committee/evaluations${q ? `?${q}` : ''}`);
+  },
 };
 

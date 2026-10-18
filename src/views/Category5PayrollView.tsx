@@ -1168,6 +1168,8 @@ export const Category5PayrollView: React.FC = () => {
                       {viewMode === 'summary' && (
                         <>
                           <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">incentives</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">transportation</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">bonus</th>
                           <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">overtime</th>
                           <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">earned_leave</th>
                           <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">allowances_total</th>
@@ -1270,7 +1272,17 @@ export const Category5PayrollView: React.FC = () => {
                             <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
                               isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800'
                             }`}>
-                              {((row.incentives || 0) + (row.transportation || 0) + (row.bonus || 0)).toLocaleString()}
+                              {(row.incentives || 0).toLocaleString()}
+                            </td>
+                            <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
+                              isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800'
+                            }`}>
+                              {(row.transportation || 0).toLocaleString()}
+                            </td>
+                            <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
+                              isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800'
+                            }`}>
+                              {(row.bonus || 0).toLocaleString()}
                             </td>
                             <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
                               isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800'
@@ -1467,7 +1479,13 @@ export const Category5PayrollView: React.FC = () => {
                       {viewMode === 'summary' && (
                         <>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>
-                            {((totals.incentives || 0) + (totals.transportation || 0) + (totals.bonus || 0)).toLocaleString()}
+                            {(totals.incentives || 0).toLocaleString()}
+                          </td>
+                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>
+                            {(totals.transportation || 0).toLocaleString()}
+                          </td>
+                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>
+                            {(totals.bonus || 0).toLocaleString()}
                           </td>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>
                             {(totals.overtime || 0).toLocaleString()}
@@ -1722,7 +1740,11 @@ export const Category5PayrollView: React.FC = () => {
                     </h4>
                     <div className="space-y-1.5 text-slate-900">
                       <div className="flex justify-between py-1 border-b border-slate-200">
-                        <span>{t('الراتب الاسمي الفعلي:', 'Basic Salary:')}</span>
+                        <span>{t('الراتب الاسمي الأساسي:', 'Nominal Basic Salary:')}</span>
+                        <span className="font-mono font-bold text-slate-900">{pRow.basic_salary.toLocaleString()} IQD</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-slate-200">
+                        <span>{t('الراتب الاسمي الفعلي للشهر:', 'Current Month Basic:')}</span>
                         <span className="font-mono font-bold text-slate-900">{pRow.current_month_basic.toLocaleString()} IQD</span>
                       </div>
                       <div className="flex justify-between py-1 border-b border-slate-200">
@@ -1738,12 +1760,28 @@ export const Category5PayrollView: React.FC = () => {
                         <span className="font-mono font-bold text-slate-900">{pRow.cert_allowance.toLocaleString()} IQD</span>
                       </div>
                       <div className="flex justify-between py-1 border-b border-slate-200">
-                        <span>{t('بدل النقل والسفر:', 'Transportation:')}</span>
-                        <span className="font-mono font-bold text-slate-900">{pRow.transportation.toLocaleString()} IQD</span>
+                        <span>{t('المحفزات التشجيعية (incentives):', 'Incentives:')}</span>
+                        <span className="font-mono font-bold text-emerald-700">{(pRow.incentives || 0).toLocaleString()} IQD</span>
                       </div>
                       <div className="flex justify-between py-1 border-b border-slate-200">
-                        <span>{t('الأجر الإضافي والمكافآت:', 'Overtime & Bonus:')}</span>
-                        <span className="font-mono font-bold text-slate-900">{(pRow.overtime + pRow.bonus).toLocaleString()} IQD</span>
+                        <span>{t('بدل النقل والمواصلات (transportation):', 'Transportation:')}</span>
+                        <span className="font-mono font-bold text-slate-900">{(pRow.transportation || 0).toLocaleString()} IQD</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-slate-200">
+                        <span>{t('المكافآت والمنح التشغيلية (bonus):', 'Operational Bonus:')}</span>
+                        <span className="font-mono font-bold text-emerald-700">{(pRow.bonus || 0).toLocaleString()} IQD</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-slate-200">
+                        <span>{t('أجر العمل الإضافي (overtime):', 'Overtime Pay:')}</span>
+                        <span className="font-mono font-bold text-emerald-700">{(pRow.overtime || 0).toLocaleString()} IQD</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-slate-200">
+                        <span>{t('بدل الإجازات المكتسبة (earned leave):', 'Earned Leave Allowance:')}</span>
+                        <span className="font-mono font-bold text-emerald-700">{(pRow.earned_leave || 0).toLocaleString()} IQD</span>
+                      </div>
+                      <div className="flex justify-between py-1 text-xs font-semibold text-teal-800 border-b border-dashed border-teal-300">
+                        <span>{t('مجموع البدلات المضافة:', 'Total Allowances Added:')}</span>
+                        <span className="font-mono font-bold">{pRow.allowances_total.toLocaleString()} IQD</span>
                       </div>
                       <div className="flex justify-between py-1.5 font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2 rounded-lg">
                         <span>{t('إجمالي الراتب الإجمالي:', 'Total Gross Salary:')}</span>
@@ -1868,7 +1906,11 @@ export const Category5PayrollView: React.FC = () => {
                         </h4>
                         <div className="space-y-1 text-black">
                           <div className="flex justify-between py-1 border-b border-slate-200">
-                            <span>{t('الراتب الاسمي الفعلي:', 'Basic Salary:')}</span>
+                            <span>{t('الراتب الاسمي الأساسي:', 'Basic Salary:')}</span>
+                            <span className="font-mono">{pRow.basic_salary.toLocaleString()} IQD</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-slate-200">
+                            <span>{t('الراتب الاسمي الفعلي:', 'Current Month Basic:')}</span>
                             <span className="font-mono">{pRow.current_month_basic.toLocaleString()} IQD</span>
                           </div>
                           <div className="flex justify-between py-1 border-b border-slate-200">
@@ -1884,8 +1926,24 @@ export const Category5PayrollView: React.FC = () => {
                             <span className="font-mono">{pRow.cert_allowance.toLocaleString()} IQD</span>
                           </div>
                           <div className="flex justify-between py-1 border-b border-slate-200">
-                            <span>{t('بدل النقل والسفر:', 'Transportation:')}</span>
-                            <span className="font-mono">{pRow.transportation.toLocaleString()} IQD</span>
+                            <span>{t('المحفزات التشجيعية:', 'Incentives:')}</span>
+                            <span className="font-mono">{(pRow.incentives || 0).toLocaleString()} IQD</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-slate-200">
+                            <span>{t('بدل النقل والمواصلات:', 'Transportation:')}</span>
+                            <span className="font-mono">{(pRow.transportation || 0).toLocaleString()} IQD</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-slate-200">
+                            <span>{t('المكافآت والمنح:', 'Bonus:')}</span>
+                            <span className="font-mono">{(pRow.bonus || 0).toLocaleString()} IQD</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-slate-200">
+                            <span>{t('أجر العمل الإضافي:', 'Overtime Pay:')}</span>
+                            <span className="font-mono">{(pRow.overtime || 0).toLocaleString()} IQD</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-slate-200">
+                            <span>{t('بدل الإجازات المكتسبة:', 'Earned Leave:')}</span>
+                            <span className="font-mono">{(pRow.earned_leave || 0).toLocaleString()} IQD</span>
                           </div>
                           <div className="flex justify-between py-1.5 font-bold text-emerald-800 bg-emerald-100 px-2 rounded-lg">
                             <span>{t('إجمالي الراتب الإجمالي:', 'Total Gross Salary:')}</span>
@@ -1910,6 +1968,14 @@ export const Category5PayrollView: React.FC = () => {
                           <div className="flex justify-between py-1 border-b border-slate-200">
                             <span>{t('قسط التأمين الصحي:', 'Health Insurance:')}</span>
                             <span className="font-mono text-rose-800">-{pRow.insurance.toLocaleString()} IQD</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-slate-200">
+                            <span>{t('استقطاع السلف والقروض:', 'Loan Payment:')}</span>
+                            <span className="font-mono text-rose-800">-{(pRow.loan_payment || 0).toLocaleString()} IQD</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-slate-200">
+                            <span>{t('استقطاعات أخرى وجزاءات:', 'Other Deductions:')}</span>
+                            <span className="font-mono text-rose-800">-{(pRow.other_deductions || 0).toLocaleString()} IQD</span>
                           </div>
                           <div className="flex justify-between py-1.5 font-bold text-rose-800 bg-rose-100 px-2 rounded-lg">
                             <span>{t('إجمالي الاستقطاعات:', 'Total Deductions:')}</span>

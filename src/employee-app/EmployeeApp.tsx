@@ -207,7 +207,7 @@ function EmployeeAppMain() {
         : 'bg-[#f8fafc] text-slate-900'
     }`}>
       {/* Main App Container */}
-      <div className={`w-full max-w-md md:max-w-xl h-screen min-h-[100dvh] flex flex-col relative overflow-hidden shadow-none md:shadow-2xl md:rounded-3xl md:border-2 ${isDark ? 'employee-app-dark' : 'employee-app-light'} ${
+      <div className={`w-full max-w-md md:max-w-2xl lg:max-w-3xl h-screen min-h-[100dvh] flex flex-col relative overflow-hidden shadow-none md:shadow-2xl md:rounded-3xl md:border-2 ${isDark ? 'employee-app-dark' : 'employee-app-light'} ${
         isDark ? 'bg-[#0b1120] text-white border-slate-700/80' : 'bg-[#f8fafc] text-slate-900 border-slate-300'
       }`}>
         {/* Top Tab Bar matching the 6 ESS buttons */}

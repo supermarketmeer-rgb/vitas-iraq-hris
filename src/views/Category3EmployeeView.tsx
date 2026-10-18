@@ -126,6 +126,45 @@ export const Category3EmployeeView: React.FC = () => {
     }
   }, [selectedEmpId, employees, language]);
 
+  // Real-time synchronization for employee contract dates and previews without app reload
+  useEffect(() => {
+    const handleEmpUpdates = (e: any) => {
+      const updatedList = e?.detail;
+      if (Array.isArray(updatedList) && updatedList.length > 0) {
+        if (selectedEmpId) {
+          const matching = updatedList.find((emp: any) => {
+            const target = String(selectedEmpId).toLowerCase().trim();
+            return String(emp.id).toLowerCase().trim() === target ||
+                   (emp.employeeId && String(emp.employeeId).toLowerCase().trim() === target) ||
+                   (emp.employee_id && String(emp.employee_id).toLowerCase().trim() === target) ||
+                   (emp.badgeNo && String(emp.badgeNo).toLowerCase().trim() === target);
+          });
+          if (matching) {
+            const clean = (val?: any) => (!val || val === 'N/A' || val === 'غير محدد' ? '' : String(val));
+            const newStart = clean(matching.contractStartDate || matching.contract_start_date);
+            const newEnd = clean(matching.contractEndDate || matching.contract_end_date);
+            if (newStart) setContractStartDate(newStart);
+            if (newEnd) setContractEndDate(newEnd);
+          }
+        }
+        if (contractModalEmployee) {
+          const matching = updatedList.find((emp: any) => {
+            const target = String(contractModalEmployee.id || contractModalEmployee.employeeId || contractModalEmployee.badgeNo).toLowerCase().trim();
+            return String(emp.id).toLowerCase().trim() === target ||
+                   (emp.employeeId && String(emp.employeeId).toLowerCase().trim() === target) ||
+                   (emp.badgeNo && String(emp.badgeNo).toLowerCase().trim() === target);
+          });
+          if (matching) {
+            setContractModalEmployee(matching);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('vitas_employees_updated', handleEmpUpdates);
+    return () => window.removeEventListener('vitas_employees_updated', handleEmpUpdates);
+  }, [selectedEmpId, contractModalEmployee]);
+
   // Delete confirmation modal
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; empId: string; empName: string }>({
     show: false,

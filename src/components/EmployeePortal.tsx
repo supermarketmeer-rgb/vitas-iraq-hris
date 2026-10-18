@@ -939,23 +939,32 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
           {activeTab === 'payroll' && (() => {
             const rawSalary = Number(selectedEmployee?.salary) || (selectedEmployee?.employeeId === 'admin' ? 2200000 : 1350000);
             const basicSalary = selectedEmployee?.basicSalary ? Number(selectedEmployee.basicSalary) : Math.round(rawSalary * 0.72);
-            const phoneAllowance = Number(selectedEmployee?.phoneAllowance ?? selectedEmployee?.phone_allowance ?? (rawSalary >= 2000000 ? 50000 : 0));
+            const absenceDays = Number(selectedEmployee?.absenceDays ?? selectedEmployee?.absence_days ?? 0);
+            const absenceDeduction = Math.round(absenceDays * (basicSalary / 30));
+            const currentMonthBasic = Math.max(0, basicSalary - absenceDeduction);
+            const phoneAllowance = Number(selectedEmployee?.phoneAllowance ?? selectedEmployee?.phone_allowance ?? (rawSalary >= 2000000 ? 50000 : 40000));
             const familyAllowance = Number(
               selectedEmployee?.familyAllowance ?? 
               selectedEmployee?.family_allowance ?? 
-              (selectedEmployee?.maritalStatus === 'متأهل' || selectedEmployee?.maritalStatus === 'married' ? 100000 : (rawSalary >= 2000000 ? 100000 : 0))
+              (selectedEmployee?.maritalStatus === 'متأهل' || selectedEmployee?.maritalStatus === 'married' ? 100000 : (rawSalary >= 2000000 ? 100000 : 50000))
             );
-            const certAllowance = Number(selectedEmployee?.certificateAllowance ?? selectedEmployee?.certificate_allowance ?? (rawSalary >= 2000000 ? 114000 : 0));
+            const certAllowance = Number(selectedEmployee?.certificateAllowance ?? selectedEmployee?.certificate_allowance ?? (rawSalary >= 2000000 ? 114000 : 80000));
+            const incentivesAllowance = Number(selectedEmployee?.incentives ?? 75000);
             const transportAllowance = Number(selectedEmployee?.transportationFixed ?? selectedEmployee?.transportation_fixed ?? 100000);
-            const knownAllowances = basicSalary + phoneAllowance + familyAllowance + certAllowance + transportAllowance;
-            const performanceBonus = Math.max(0, rawSalary - knownAllowances) || (rawSalary >= 2000000 ? 252000 : 120000);
-            const grossSalary = basicSalary + phoneAllowance + familyAllowance + certAllowance + transportAllowance + performanceBonus;
-            const socialSecurityDeduction = Math.round(basicSalary * 0.05);
-            const taxDeduction = Math.round(basicSalary * 0.03);
-            const insuranceDeduction = 0;
-            const loanDeduction = 0;
-            const absenceDeduction = 0;
-            const totalDeductions = socialSecurityDeduction + taxDeduction + insuranceDeduction + loanDeduction + absenceDeduction;
+            const bonusAllowance = Number(selectedEmployee?.fixedBonus ?? selectedEmployee?.fixed_bonus ?? 120000);
+            const overtimeAllowance = Number(selectedEmployee?.overtime ?? 45000);
+            const earnedLeaveAllowance = Number(selectedEmployee?.earnedLeave ?? selectedEmployee?.earned_leave ?? 50000);
+
+            const totalAllowances = phoneAllowance + familyAllowance + certAllowance + incentivesAllowance + transportAllowance + bonusAllowance + overtimeAllowance + earnedLeaveAllowance;
+            const grossSalary = currentMonthBasic + totalAllowances;
+
+            const isExempt = Number(selectedEmployee?.isSsTaxExempt ?? selectedEmployee?.is_ss_tax_exempt ?? 0) === 1;
+            const socialSecurityDeduction = isExempt ? 0 : Math.round(basicSalary * 0.05);
+            const taxDeduction = isExempt ? 0 : Math.round(basicSalary * 0.03);
+            const insuranceDeduction = isExempt ? 0 : 25000;
+            const loanDeduction = Number(selectedEmployee?.loanPayment ?? selectedEmployee?.loan_payment ?? 0);
+            const otherDeductions = Number(selectedEmployee?.otherDeductions ?? selectedEmployee?.other_deductions ?? 0);
+            const totalDeductions = socialSecurityDeduction + taxDeduction + insuranceDeduction + loanDeduction + absenceDeduction + otherDeductions;
             const netSalary = grossSalary - totalDeductions;
 
             const handlePrint = () => {
@@ -976,16 +985,21 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                 date: '2026-10-28', 
                 status: 'paid',
                 basic: basicSalary,
+                currentMonthBasic: currentMonthBasic,
                 phone: phoneAllowance,
                 family: familyAllowance,
                 cert: certAllowance,
+                incentives: incentivesAllowance,
                 transport: transportAllowance,
-                bonus: performanceBonus,
+                bonus: bonusAllowance,
+                overtime: overtimeAllowance,
+                earnedLeave: earnedLeaveAllowance,
                 socialSecurity: socialSecurityDeduction,
                 tax: taxDeduction,
                 insurance: insuranceDeduction,
                 loan: loanDeduction,
                 absence: absenceDeduction,
+                other: otherDeductions,
                 deductions: totalDeductions
               },
               { 
@@ -996,16 +1010,21 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                 date: '2026-09-28', 
                 status: 'paid',
                 basic: basicSalary,
+                currentMonthBasic: currentMonthBasic,
                 phone: phoneAllowance,
                 family: familyAllowance,
                 cert: certAllowance,
+                incentives: incentivesAllowance,
                 transport: transportAllowance,
-                bonus: performanceBonus,
+                bonus: bonusAllowance,
+                overtime: overtimeAllowance,
+                earnedLeave: earnedLeaveAllowance,
                 socialSecurity: socialSecurityDeduction,
                 tax: taxDeduction,
                 insurance: insuranceDeduction,
                 loan: loanDeduction,
                 absence: absenceDeduction,
+                other: otherDeductions,
                 deductions: totalDeductions
               },
               { 
@@ -1016,16 +1035,21 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                 date: '2026-08-27', 
                 status: 'paid',
                 basic: basicSalary,
+                currentMonthBasic: currentMonthBasic,
                 phone: phoneAllowance,
                 family: familyAllowance,
                 cert: certAllowance,
+                incentives: incentivesAllowance,
                 transport: transportAllowance,
-                bonus: performanceBonus,
+                bonus: bonusAllowance,
+                overtime: overtimeAllowance,
+                earnedLeave: earnedLeaveAllowance,
                 socialSecurity: socialSecurityDeduction,
                 tax: taxDeduction,
                 insurance: insuranceDeduction,
                 loan: loanDeduction,
                 absence: absenceDeduction,
+                other: otherDeductions,
                 deductions: totalDeductions
               },
             ];
@@ -1101,10 +1125,14 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                         +{activePayslip.gross.toLocaleString('en-US')} {t('د.ع', 'IQD')}
                       </span>
                     </div>
-                    <div className="space-y-3 text-xs">
+                    <div className="space-y-2.5 text-xs">
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-400">{t('الراتب الاسمي الفعلي', 'Basic Salary')}</span>
-                        <span className="font-bold font-mono">{activePayslip.basic.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
+                        <span className="text-slate-400">{t('الراتب الاسمي الأساسي', 'Nominal Basic Salary')}</span>
+                        <span className="font-bold font-mono text-slate-200">{activePayslip.basic.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">{t('الراتب الاسمي الفعلي', 'Current Month Basic')}</span>
+                        <span className="font-bold font-mono text-teal-400">{(activePayslip.currentMonthBasic ?? activePayslip.basic).toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400">{t('بدل الهاتف', 'Phone Allowance')}</span>
@@ -1119,12 +1147,24 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                         <span className="font-bold font-mono">{activePayslip.cert.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-400">{t('بدل النقل والسفر', 'Transportation Allowance')}</span>
+                        <span className="text-slate-400">{t('المحفزات التشجيعية (Incentives)', 'Incentives Allowance')}</span>
+                        <span className="font-bold font-mono text-emerald-500">+{(activePayslip.incentives || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">{t('بدل النقل والمواصلات (Transportation)', 'Transportation Allowance')}</span>
                         <span className="font-bold font-mono">{activePayslip.transport.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-400">{t('الحوافز ومكافأة الأداء', 'Incentives & Performance Bonus')}</span>
-                        <span className="font-bold font-mono text-emerald-500">+{activePayslip.bonus.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
+                        <span className="text-slate-400">{t('المكافآت والمنح التشغيلية (Bonus)', 'Operational Bonus')}</span>
+                        <span className="font-bold font-mono text-emerald-500">+{(activePayslip.bonus || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">{t('أجر العمل الإضافي (Overtime)', 'Overtime Pay')}</span>
+                        <span className="font-bold font-mono text-emerald-500">+{(activePayslip.overtime || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">{t('بدل الإجازات المكتسبة (Earned Leave)', 'Earned Leave Allowance')}</span>
+                        <span className="font-bold font-mono text-emerald-500">+{(activePayslip.earnedLeave || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
                       </div>
                       <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center font-bold">
                         <span>{t('إجمالي الراتب الإجمالي (Gross)', 'Total Gross Salary')}</span>
@@ -1146,7 +1186,11 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                         -{activePayslip.deductions.toLocaleString('en-US')} {t('د.ع', 'IQD')}
                       </span>
                     </div>
-                    <div className="space-y-3 text-xs">
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">{t('استقطاع أيام الغياب', 'Absence Deductions')}</span>
+                        <span className="font-bold font-mono text-rose-500">-{(activePayslip.absence || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
+                      </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400">{t('استقطاع التقاعد والضمان الاجتماعي (5%)', 'Pension & Social Security (5%)')}</span>
                         <span className="font-bold font-mono text-rose-500">-{activePayslip.socialSecurity.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
@@ -1156,7 +1200,7 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                         <span className="font-bold font-mono text-rose-500">-{activePayslip.tax.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-400">{t('قسط التأمين الصحي', 'Health Insurance')}</span>
+                        <span className="text-slate-400">{t('قسط التأمين الصحي والحياة', 'Health & Life Insurance')}</span>
                         <span className="font-bold font-mono text-slate-400">-{activePayslip.insurance.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
                       </div>
                       <div className="flex justify-between items-center">
@@ -1164,8 +1208,8 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                         <span className="font-bold font-mono text-slate-400">-{activePayslip.loan.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-400">{t('استقطاع الغيابات والجزاءات', 'Absence & Other Deductions')}</span>
-                        <span className="font-bold font-mono text-slate-400">-{activePayslip.absence.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
+                        <span className="text-slate-400">{t('استقطاعات أخرى وجزاءات', 'Other Deductions')}</span>
+                        <span className="font-bold font-mono text-slate-400">-{(activePayslip.other || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
                       </div>
                       <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center font-bold">
                         <span>{t('إجمالي الاستقطاعات', 'Total Deductions')}</span>

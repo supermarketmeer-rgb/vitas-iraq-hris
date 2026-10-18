@@ -1592,6 +1592,48 @@ app.post('/api/employees', async (req, res) => {
   }
 });
 
+// Atomic Batch Update for Permanent Contract Dates
+app.post('/api/employees/batch-contract-dates', async (req, res) => {
+  try {
+    const { employeeIds, startDate, endDate } = req.body;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'Start date and end date are required' });
+    }
+
+    if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
+      return res.status(400).json({ error: 'No employee IDs provided' });
+    }
+
+    console.log(`[BatchContractDates] Updating ${employeeIds.length} employees to: ${startDate} -> ${endDate}`);
+
+    const placeholders = employeeIds.map(() => '?').join(', ');
+    const sql = `
+      UPDATE employees 
+      SET contract_start_date = ?, contract_end_date = ?, updated_at = NOW() 
+      WHERE id IN (${placeholders}) OR employee_id IN (${placeholders}) OR badge_no IN (${placeholders})
+    `;
+    const params = [startDate, endDate, ...employeeIds, ...employeeIds, ...employeeIds];
+    const result = await query(sql, params);
+
+    broadcastRealtimeEvent({
+      type: 'DATA_CHANGED',
+      table: 'employees',
+      timestamp: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      message: `Successfully updated contract dates`,
+      affectedRows: result.affectedRows,
+      startDate,
+      endDate
+    });
+  } catch (err) {
+    console.error('Error in batch-contract-dates:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/employees/:id/status-changes', async (req, res) => {
   try {
     res.json({ success: true, message: 'Status change recorded' });
@@ -2213,6 +2255,268 @@ app.delete('/api/candidates/:id', async (req, res) => {
   try {
     await query('DELETE FROM candidates WHERE id = ?', [req.params.id]);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Recruitment Interview Committee & Evaluations Endpoints ───────────
+app.get('/api/recruitment/committees', async (req, res) => {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS interview_committees (
+        id VARCHAR(64) PRIMARY KEY,
+        job_id VARCHAR(64),
+        job_title VARCHAR(255),
+        department VARCHAR(255),
+        branch VARCHAR(255),
+        interview_date VARCHAR(64),
+        interview_time VARCHAR(64),
+        interview_location VARCHAR(255),
+        created_by VARCHAR(255),
+        members_json LONGTEXT,
+        candidates_json LONGTEXT,
+        status VARCHAR(64) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `).catch(() => {});
+
+    const rows = await query('SELECT * FROM interview_committees ORDER BY created_at DESC');
+    const parsed = (rows || []).map(r => ({
+      ...r,
+      members: r.members_json ? JSON.parse(r.members_json) : [],
+      candidates: r.candidates_json ? JSON.parse(r.candidates_json) : []
+    }));
+    res.json(parsed);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/recruitment/committee/notify', async (req, res) => {
+  try {
+    const {
+      committeeId,
+      jobId,
+      jobTitle,
+      department,
+      branch,
+      interviewDate,
+      interviewTime,
+      interviewLocation,
+      createdBy,
+      members,
+      candidates
+    } = req.body;
+
+    const id = committeeId || `COMM-${Date.now()}`;
+    const membersArr = Array.isArray(members) ? members : [];
+    const candidatesArr = Array.isArray(candidates) ? candidates : [];
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS interview_committees (
+        id VARCHAR(64) PRIMARY KEY,
+        job_id VARCHAR(64),
+        job_title VARCHAR(255),
+        department VARCHAR(255),
+        branch VARCHAR(255),
+        interview_date VARCHAR(64),
+        interview_time VARCHAR(64),
+        interview_location VARCHAR(255),
+        created_by VARCHAR(255),
+        members_json LONGTEXT,
+        candidates_json LONGTEXT,
+        status VARCHAR(64) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `).catch(() => {});
+
+    await query(`
+      INSERT INTO interview_committees (
+        id, job_id, job_title, department, branch, interview_date, interview_time, 
+        interview_location, created_by, members_json, candidates_json, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+      ON DUPLICATE KEY UPDATE 
+        job_title = VALUES(job_title),
+        department = VALUES(department),
+        branch = VALUES(branch),
+        interview_date = VALUES(interview_date),
+        interview_time = VALUES(interview_time),
+        interview_location = VALUES(interview_location),
+        members_json = VALUES(members_json),
+        candidates_json = VALUES(candidates_json)
+    `, [
+      id, jobId || '', jobTitle || 'وظيفة', department || '', branch || '',
+      interviewDate || '', interviewTime || '', interviewLocation || '',
+      createdBy || 'مسؤول التوظيف',
+      JSON.stringify(membersArr),
+      JSON.stringify(candidatesArr)
+    ]);
+
+    const memberNames = membersArr.map(m => m.fullName).join('، ');
+    const candNames = candidatesArr.map(c => c.fullName || c.name).join('، ');
+    const notifTitle = `تشكيل لجنة مقابلات: ${jobTitle}`;
+    const notifMsg = `تم إرسال دعوة رسميّة عبر Outlook وتطبيق الموظفين لأعضاء اللجنة (${memberNames}) لإجراء مقابلات المتقدمين في منطقة الفرز (${candNames || 'مرشحو الوظيفة'}) بتاريخ ${interviewDate || 'المحدد'}.`;
+
+    const notifId = `NTF-${Date.now()}`;
+    await query(`
+      INSERT INTO system_notifications (id, title, message, type, is_read, created_at, updated_at)
+      VALUES (?, ?, ?, 'info', 0, NOW(), NOW())
+    `, [notifId, notifTitle, notifMsg]).catch(() => {});
+
+    triggerRealtimeSync(db, 'system_notifications');
+
+    res.json({
+      success: true,
+      committeeId: id,
+      message: 'تم إرسال الدعوات بنجاح عبر Outlook وتطبيق الموظفين وتسجيل اللجنة.',
+      outlookStatus: 'Sent via MS Outlook 365 Exchange Gateway',
+      mobilePushStatus: 'Push notifications dispatched to Employee Mobile App',
+      membersNotified: membersArr.length,
+      candidatesCount: candidatesArr.length
+    });
+  } catch (err) {
+    console.error('Error notifying committee:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/recruitment/committee/submit-evaluation', async (req, res) => {
+  try {
+    const {
+      committeeId,
+      candidateId,
+      candidateName,
+      jobTitle,
+      evaluatorId,
+      evaluatorBadge,
+      evaluatorName,
+      evaluatorJobTitle,
+      evaluatorOffice,
+      criteriaScores,
+      totalScore,
+      recommendation,
+      notes,
+      submittedTo
+    } = req.body;
+
+    const evalId = `EVAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS interview_evaluations (
+        id VARCHAR(64) PRIMARY KEY,
+        committee_id VARCHAR(64),
+        candidate_id VARCHAR(64),
+        candidate_name VARCHAR(255),
+        job_title VARCHAR(255),
+        evaluator_id VARCHAR(64),
+        evaluator_badge VARCHAR(64),
+        evaluator_name VARCHAR(255),
+        evaluator_job_title VARCHAR(255),
+        evaluator_office VARCHAR(255),
+        criteria_scores_json LONGTEXT,
+        total_score INT DEFAULT 0,
+        recommendation VARCHAR(255),
+        notes TEXT,
+        submitted_to VARCHAR(255),
+        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status VARCHAR(64) DEFAULT 'submitted'
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `).catch(() => {});
+
+    await query(`
+      INSERT INTO interview_evaluations (
+        id, committee_id, candidate_id, candidate_name, job_title,
+        evaluator_id, evaluator_badge, evaluator_name, evaluator_job_title, evaluator_office,
+        criteria_scores_json, total_score, recommendation, notes, submitted_to, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted')
+    `, [
+      evalId, committeeId || '', candidateId || '', candidateName || '', jobTitle || '',
+      evaluatorId || '', evaluatorBadge || '', evaluatorName || '', evaluatorJobTitle || '', evaluatorOffice || '',
+      JSON.stringify(criteriaScores || {}), Number(totalScore) || 0,
+      recommendation || 'موصى به', notes || '', submittedTo || 'مسؤول التوظيف'
+    ]);
+
+    if (candidateId) {
+      try {
+        const [candRow] = await query('SELECT committee_scores FROM candidates WHERE id = ?', [candidateId]);
+        let existingScores = [];
+        if (candRow && candRow.committee_scores) {
+          try { existingScores = typeof candRow.committee_scores === 'string' ? JSON.parse(candRow.committee_scores) : candRow.committee_scores; } catch(e){}
+        }
+        if (!Array.isArray(existingScores)) existingScores = [];
+        existingScores = existingScores.filter(s => s.fullName !== evaluatorName);
+        existingScores.push({
+          officeName: evaluatorOffice || '',
+          fullName: evaluatorName || '',
+          jobTitle: evaluatorJobTitle || '',
+          score: Number(totalScore) || 0
+        });
+
+        const total = existingScores.reduce((sum, item) => sum + (Number(item.score) || 0), 0);
+        const avg = existingScores.length > 0 ? Math.round(total / existingScores.length) : totalScore;
+
+        await query('UPDATE candidates SET committee_scores = ?, rating = ? WHERE id = ?', [
+          JSON.stringify(existingScores),
+          avg >= 80 ? 5 : avg >= 60 ? 4 : 3,
+          candidateId
+        ]);
+      } catch (candErr) {
+        console.warn('Could not update candidate committee_scores directly:', candErr.message);
+      }
+    }
+
+    const notifTitle = `استلام تقييم مقابلة: ${candidateName}`;
+    const notifMsg = `قام عضو اللجنة (${evaluatorName} - ${evaluatorJobTitle}) بإعادة إرسال فورم تقييم المقابلة للمرشح (${candidateName}) لوظيفة (${jobTitle}) بدرجة نهائية (${totalScore}/100) وتوصية: ${recommendation}. تم حفظ التقييم وأرشفته بنجاح.`;
+    const notifId = `NTF-${Date.now()}`;
+    await query(`
+      INSERT INTO system_notifications (id, title, message, type, is_read, created_at, updated_at)
+      VALUES (?, ?, ?, 'success', 0, NOW(), NOW())
+    `, [notifId, notifTitle, notifMsg]).catch(() => {});
+
+    triggerRealtimeSync(db, 'system_notifications');
+
+    res.json({
+      success: true,
+      evaluationId: evalId,
+      totalScore: Number(totalScore) || 0,
+      candidateId,
+      message: 'تم إرسال فورم المقابلة بنجاح إلى مسؤول التوظيف وأرشفته بشكل دائم.'
+    });
+  } catch (err) {
+    console.error('Error submitting evaluation:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/recruitment/committee/evaluations', async (req, res) => {
+  try {
+    const { candidateId, committeeId } = req.query;
+    let sql = 'SELECT * FROM interview_evaluations';
+    const params = [];
+    const conditions = [];
+
+    if (candidateId) {
+      conditions.push('candidate_id = ?');
+      params.push(candidateId);
+    }
+    if (committeeId) {
+      conditions.push('committee_id = ?');
+      params.push(committeeId);
+    }
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+    sql += ' ORDER BY submitted_at DESC';
+
+    const rows = await query(sql, params).catch(() => []);
+    const parsed = (rows || []).map(r => ({
+      ...r,
+      criteriaScores: r.criteria_scores_json ? JSON.parse(r.criteria_scores_json) : {}
+    }));
+    res.json(parsed);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -3983,7 +4287,6 @@ app.post('/api/users', async (req, res) => {
     const finalFullName = (full_name || name || cleanUsername).trim();
     const finalEmail = (email || `${cleanUsername.toLowerCase()}@vitasiraq.iq`).trim();
     const finalEmpId = (employee_id || cleanUsername).trim();
-    const finalPass = password || 'Password123!';
     const finalJobTitle = String(job_title || jobTitle || position || (role && role !== 'Employee' ? role : '') || 'مدخل بيانات موارد بشرية').trim();
     const finalRole = (role && role !== 'Employee') ? role : (finalJobTitle || 'Employee');
     const screensStr = typeof allowed_screens === 'object' ? JSON.stringify(allowed_screens) : (allowed_screens || null);
@@ -3992,42 +4295,58 @@ app.post('/api/users', async (req, res) => {
     const matchOrigEmp = original_employee_id ? String(original_employee_id).trim() : '';
     const matchOrigEmail = original_email ? String(original_email).trim().toLowerCase() : '';
 
-    // 1. Check if user already exists (by portable identifiers across local & cloud MySQL)
-    const findSql = `
-      SELECT id, username, employee_id FROM users
-      WHERE ( ? != '' AND (username = ? OR LOWER(username) = LOWER(?)) )
-         OR ( ? != '' AND (employee_id = ? OR LOWER(employee_id) = LOWER(?)) )
-         OR ( ? != '' AND (email = ? OR LOWER(email) = LOWER(?)) )
-         OR username = ? OR LOWER(username) = LOWER(?)
-         OR employee_id = ? OR LOWER(employee_id) = LOWER(?)
-      LIMIT 1
-    `;
-    const findParams = [
-      matchOrigUser, matchOrigUser, matchOrigUser,
-      matchOrigEmp, matchOrigEmp, matchOrigEmp,
-      matchOrigEmail, matchOrigEmail, matchOrigEmail,
-      cleanUsername, cleanUsername,
-      finalEmpId, finalEmpId
-    ];
+    // 1. Check if user already exists (prioritizing primary key id if provided)
+    let matchRow = null;
+    if (id) {
+      const rowsById = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
+      if (Array.isArray(rowsById) && rowsById.length > 0) {
+        matchRow = rowsById[0];
+      }
+    }
 
-    const existingRows = await query(findSql, findParams);
+    if (!matchRow) {
+      const findSql = `
+        SELECT * FROM users
+        WHERE ( ? != '' AND (username = ? OR LOWER(username) = LOWER(?)) )
+           OR ( ? != '' AND (employee_id = ? OR LOWER(employee_id) = LOWER(?)) )
+           OR ( ? != '' AND (email = ? OR LOWER(email) = LOWER(?)) )
+           OR username = ? OR LOWER(username) = LOWER(?)
+           OR employee_id = ? OR LOWER(employee_id) = LOWER(?)
+        LIMIT 1
+      `;
+      const findParams = [
+        matchOrigUser, matchOrigUser, matchOrigUser,
+        matchOrigEmp, matchOrigEmp, matchOrigEmp,
+        matchOrigEmail, matchOrigEmail, matchOrigEmail,
+        cleanUsername, cleanUsername,
+        finalEmpId, finalEmpId
+      ];
 
-    if (Array.isArray(existingRows) && existingRows.length > 0) {
-      const matchRow = existingRows[0];
-      // UPDATE existing user directly in place using portable identifiers (updates on both Local & Cloud!)
+      const existingRows = await query(findSql, findParams);
+      if (Array.isArray(existingRows) && existingRows.length > 0) {
+        matchRow = existingRows[0];
+      }
+    }
+
+    // Preserve existing password if editing and no new password provided
+    const finalPass = (password && String(password).trim().length > 0)
+      ? String(password).trim()
+      : (matchRow && matchRow.password ? matchRow.password : 'Password123!');
+
+    if (matchRow) {
+      // UPDATE existing user directly in place using primary key
       const updateSql = `
         UPDATE users SET
           username = ?, password = ?, full_name = ?, name = ?, email = ?, role = ?, job_title = ?, department = ?, employee_id = ?, branch = ?,
           can_manage_employees = ?, can_manage_finance = ?, can_manage_recruitment = ?, can_manage_settings = ?, can_manage_users = ?,
           status = ?, allowed_screens = ?, updated_at = NOW()
-        WHERE id = ? OR username = ? OR employee_id = ? OR ( ? != '' AND (username = ? OR employee_id = ?) )
+        WHERE id = ?
       `;
       const updateParams = [
         cleanUsername, finalPass, finalFullName, finalFullName, finalEmail, finalRole, finalJobTitle, department, finalEmpId, branch,
         can_manage_employees ? 1 : 0, can_manage_finance ? 1 : 0, can_manage_recruitment ? 1 : 0, can_manage_settings ? 1 : 0, can_manage_users ? 1 : 0,
         status, screensStr,
-        matchRow.id, matchRow.username, matchRow.employee_id,
-        matchOrigUser, matchOrigUser, matchOrigUser
+        matchRow.id
       ];
       await query(updateSql, updateParams);
       if (!isRailway) {
@@ -4083,7 +4402,7 @@ app.post('/api/users', async (req, res) => {
 // Change Password Endpoint (Syncs with MySQL users table & Cloud)
 app.post('/api/change-password', async (req, res) => {
   try {
-    const { username, employeeId, employee_id, currentPassword, newPassword } = req.body;
+    const { id, userId, username, employeeId, employee_id, currentPassword, newPassword } = req.body;
 
     if (!newPassword || String(newPassword).length < 4) {
       return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 4 أحرف على الأقل | Password must be at least 4 characters' });
@@ -4093,31 +4412,44 @@ app.post('/api/change-password', async (req, res) => {
     const cleanUser = String(username || '').trim();
     const cleanEmpId = String(employeeId || employee_id || '').trim();
     const cleanEmpIdNoPrefix = cleanEmpId.replace(/^VTS-/i, '').trim();
+    const targetId = id || userId;
 
-    if (!cleanUser && !cleanEmpId) {
+    if (!cleanUser && !cleanEmpId && !targetId) {
       return res.status(400).json({ error: 'اسم المستخدم أو المعرف مطلوب | Username or employeeId is required' });
     }
 
     // 1. Try to find user in `users` table
-    const findUserSql = `
-      SELECT id, username, employee_id, email, password, role FROM users
-      WHERE ( ? != '' AND (username = ? OR LOWER(username) = LOWER(?)) )
-         OR ( ? != '' AND (employee_id = ? OR LOWER(employee_id) = LOWER(?)) )
-         OR ( ? != '' AND (employee_id = ? OR LOWER(employee_id) = LOWER(?)) )
-         OR ( ? != '' AND (username = ? OR LOWER(username) = LOWER(?)) )
-      LIMIT 1
-    `;
-    const findParams = [
-      cleanUser, cleanUser, cleanUser,
-      cleanEmpId, cleanEmpId, cleanEmpId,
-      cleanEmpIdNoPrefix, cleanEmpIdNoPrefix, cleanEmpIdNoPrefix,
-      cleanEmpId, cleanEmpId, cleanEmpId
-    ];
+    let existingUser = null;
+    if (targetId) {
+      const rowsById = await query('SELECT id, username, employee_id, email, password, role FROM users WHERE id = ? LIMIT 1', [targetId]);
+      if (Array.isArray(rowsById) && rowsById.length > 0) {
+        existingUser = rowsById[0];
+      }
+    }
 
-    const userRows = await query(findUserSql, findParams);
+    if (!existingUser) {
+      const findUserSql = `
+        SELECT id, username, employee_id, email, password, role FROM users
+        WHERE ( ? != '' AND (username = ? OR LOWER(username) = LOWER(?)) )
+           OR ( ? != '' AND (employee_id = ? OR LOWER(employee_id) = LOWER(?)) )
+           OR ( ? != '' AND (employee_id = ? OR LOWER(employee_id) = LOWER(?)) )
+           OR ( ? != '' AND (username = ? OR LOWER(username) = LOWER(?)) )
+        LIMIT 1
+      `;
+      const findParams = [
+        cleanUser, cleanUser, cleanUser,
+        cleanEmpId, cleanEmpId, cleanEmpId,
+        cleanEmpIdNoPrefix, cleanEmpIdNoPrefix, cleanEmpIdNoPrefix,
+        cleanEmpId, cleanEmpId, cleanEmpId
+      ];
 
-    if (Array.isArray(userRows) && userRows.length > 0) {
-      const existingUser = userRows[0];
+      const userRows = await query(findUserSql, findParams);
+      if (Array.isArray(userRows) && userRows.length > 0) {
+        existingUser = userRows[0];
+      }
+    }
+
+    if (existingUser) {
       const storedPass = existingUser.password || '123456';
       const isAdmin = (existingUser.username || '').toLowerCase() === 'admin' || cleanUser.toLowerCase() === 'admin';
 

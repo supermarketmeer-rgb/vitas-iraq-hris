@@ -219,6 +219,65 @@ export interface CommitteeScore {
   score: number; // الدرجة من 100
 }
 
+export interface CommitteeMember {
+  id: string;
+  employeeId: string; // آيدي الموظف
+  badgeNo: string; // باج الموظف
+  fullName: string; // اسم الموظف
+  jobTitle: string; // عنوانه الوظيفي
+  officeName: string; // المكتب
+  email?: string;
+  phone?: string;
+  role: 'رئيس اللجنة' | 'عضو لجنة' | 'مقرر اللجنة';
+  status: 'invitation_sent' | 'confirmed' | 'evaluation_submitted';
+  evaluationFormUrl?: string; // رابط فتح فورم التقييم الإلكتروني في تطبيق الموظف
+  confirmedAt?: string;
+  submittedAt?: string;
+  totalScore?: number;
+}
+
+export interface InterviewCommittee {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  department: string;
+  branch: string;
+  interviewDate: string;
+  interviewTime: string;
+  interviewLocation: string;
+  createdBy: string;
+  members: CommitteeMember[];
+  candidates: Array<{ id: string; fullName: string; phone?: string; email?: string }>;
+  status: 'active' | 'completed' | 'cancelled';
+  createdAt?: string;
+}
+
+export interface InterviewEvaluationRecord {
+  id: string;
+  committeeId: string;
+  candidateId: string;
+  candidateName: string;
+  jobTitle: string;
+  evaluatorId: string;
+  evaluatorBadge: string;
+  evaluatorName: string;
+  evaluatorJobTitle: string;
+  evaluatorOffice: string;
+  criteriaScores: {
+    appearance: number; // المظهر واللباقة المهنية (15)
+    qualification: number; // المؤهل العلمي والمعرفة بالوظيفة (20)
+    experience: number; // الخبرات السابقة والإنجازات (25)
+    technical: number; // الكفاءة التقنية وحل المشكلات (20)
+    communication: number; // مهارات التواصل وسرعة البديهة (20)
+  };
+  totalScore: number;
+  recommendation: 'موصى بقبوله للتعيين' | 'اجتياز للمقابلة النهائية' | 'قائمة الاحتياط' | 'مرفوض';
+  notes: string;
+  submittedTo: string;
+  submittedAt: string;
+  status: 'submitted';
+}
+
 export interface AssetRecord {
   id: string;
   assetTag: string;

@@ -41,6 +41,48 @@ export async function initDatabase(pool, force = false) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
           `);
 
+          // Ensure interview committees and evaluations tables exist
+          await query(`
+            CREATE TABLE IF NOT EXISTS interview_committees (
+              id VARCHAR(64) PRIMARY KEY,
+              job_id VARCHAR(64),
+              job_title VARCHAR(255),
+              department VARCHAR(255),
+              branch VARCHAR(255),
+              interview_date VARCHAR(64),
+              interview_time VARCHAR(64),
+              interview_location VARCHAR(255),
+              created_by VARCHAR(255),
+              members_json LONGTEXT,
+              candidates_json LONGTEXT,
+              status VARCHAR(64) DEFAULT 'active',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          `);
+
+          await query(`
+            CREATE TABLE IF NOT EXISTS interview_evaluations (
+              id VARCHAR(64) PRIMARY KEY,
+              committee_id VARCHAR(64),
+              candidate_id VARCHAR(64),
+              candidate_name VARCHAR(255),
+              job_title VARCHAR(255),
+              evaluator_id VARCHAR(64),
+              evaluator_badge VARCHAR(64),
+              evaluator_name VARCHAR(255),
+              evaluator_job_title VARCHAR(255),
+              evaluator_office VARCHAR(255),
+              criteria_scores_json LONGTEXT,
+              total_score INT DEFAULT 0,
+              recommendation VARCHAR(255),
+              notes TEXT,
+              submitted_to VARCHAR(255),
+              submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              status VARCHAR(64) DEFAULT 'submitted'
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          `);
+
           // Ensure company_profile table and default profile exist
           await query(`
             CREATE TABLE IF NOT EXISTS company_profile (

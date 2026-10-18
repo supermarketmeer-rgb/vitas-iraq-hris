@@ -34,6 +34,22 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
   const [activeFilter, setActiveFilter] = useState<'all' | 'urgent' | 'new_emp' | 'permanent' | 'month'>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Live reactive employees state
+  const [liveEmployees, setLiveEmployees] = useState<Employee[]>(employees);
+  React.useEffect(() => {
+    setLiveEmployees(employees);
+  }, [employees]);
+
+  React.useEffect(() => {
+    const handleLiveSync = (e: any) => {
+      if (Array.isArray(e?.detail) && e.detail.length > 0) {
+        setLiveEmployees(e.detail);
+      }
+    };
+    window.addEventListener('vitas_employees_updated', handleLiveSync);
+    return () => window.removeEventListener('vitas_employees_updated', handleLiveSync);
+  }, []);
+
   // Helper to detect if contract is for a new employee (عقد موظف جديد / فترة تجربة)
   const isNewEmployeeContract = (emp: any): boolean => {
     const term = String(
@@ -61,7 +77,7 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
 
     const items: ContractAlertItem[] = [];
 
-    employees.forEach((emp: any) => {
+    liveEmployees.forEach((emp: any) => {
       const isNew = isNewEmployeeContract(emp);
       
       const startRaw = emp.contractStartDate || emp.contract_start_date || emp.originalStartDate || emp.original_start_date || emp.joinDate;

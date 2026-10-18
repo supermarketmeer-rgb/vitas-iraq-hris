@@ -49,6 +49,7 @@ interface AppContextType {
   // Domain Data state & handlers
   employees: Employee[];
   setEmployees: (employees: Employee[]) => void;
+  refreshEmployees: () => Promise<void>;
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
   updateEmployee: (employee: Employee) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
@@ -581,7 +582,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (e) {}
     }, 4000);
 
-    return () => clearInterval(interval);
+    const handleCustomEmpUpdate = (e: any) => {
+      if (e?.detail && Array.isArray(e.detail) && e.detail.length > 0) {
+        setEmployees(e.detail);
+        try { localStorage.setItem('vitas_employees', JSON.stringify(e.detail)); } catch {}
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('vitas_employees_updated', handleCustomEmpUpdate);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('vitas_employees_updated', handleCustomEmpUpdate);
+      }
+    };
   }, [loadData]);
 
   // Auto-generate live active system notifications if notifications list is empty
@@ -885,16 +901,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const refreshEmployees = async () => {
+  const refreshEmployees = useCallback(async () => {
     try {
       const freshList = await api.getEmployees();
-      if (Array.isArray(freshList)) {
+      if (Array.isArray(freshList) && freshList.length > 0) {
         setEmployees(freshList);
+        try {
+          localStorage.setItem('vitas_employees', JSON.stringify(freshList));
+        } catch (e) {}
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('vitas_employees_updated', { detail: freshList }));
+          window.dispatchEvent(new CustomEvent('vitas:data_refreshed', { detail: { table: 'employees' } }));
+          window.dispatchEvent(new Event('storage'));
+        }
       }
     } catch (err) {
       console.warn('Could not refresh employees list from API:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const handleForceRefresh = (e: any) => {
+      if (!e?.detail || !e.detail.table || e.detail.table === 'employees') {
+        refreshEmployees();
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('vitas:force_refresh_employees', handleForceRefresh);
+      window.addEventListener('vitas:data_refreshed', handleForceRefresh);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('vitas:force_refresh_employees', handleForceRefresh);
+        window.removeEventListener('vitas:data_refreshed', handleForceRefresh);
+      }
+    };
+  }, [refreshEmployees]);
 
   const addLeaveRequest = async (req: Omit<LeaveRequest, 'id' | 'appliedDate' | 'status'>) => {
     try {

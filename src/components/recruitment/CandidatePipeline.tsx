@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Candidate, JobVacancy, CommitteeScore } from '../../types';
+import { Candidate, JobVacancy, CommitteeScore, CommitteeMember, InterviewCommittee, InterviewEvaluationRecord } from '../../types';
 import { api } from '../../api/client';
 import { SearchableComboBox } from '../SearchableComboBox';
 import { getCandidateDisplayName, transliterateEnglishNameToArabic } from '../../utils/nameHelper';
@@ -455,6 +455,554 @@ export const CandidatePipeline: React.FC = () => {
     }
     return (groupedCandidates[stage]?.length || 0) > 0;
   });
+
+  // ─── Interview Committee & Electronic Evaluation Workflow State ─────────
+  const openVacancies = React.useMemo(() => {
+    return syncedJobVacancies.filter(j => j.status === 'مفتوحة' || j.status === 'Open' || !j.status);
+  }, [syncedJobVacancies]);
+  const hasOpenJobs = openVacancies.length > 0;
+
+  const [interviewCommittees, setInterviewCommittees] = useState<InterviewCommittee[]>(() => {
+    try {
+      const saved = localStorage.getItem('vitas_interview_committees');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [archivedEvaluations, setArchivedEvaluations] = useState<InterviewEvaluationRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('vitas_archived_evaluations');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vitas_interview_committees', JSON.stringify(interviewCommittees));
+    } catch {}
+  }, [interviewCommittees]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vitas_archived_evaluations', JSON.stringify(archivedEvaluations));
+    } catch {}
+  }, [archivedEvaluations]);
+
+  // Sync committees & evaluations with server on mount
+  useEffect(() => {
+    const fetchCommitteesData = async () => {
+      try {
+        const [commRes, evalRes] = await Promise.all([
+          api.getCommittees().catch(() => []),
+          api.getCommitteeEvaluations().catch(() => [])
+        ]);
+        if (Array.isArray(commRes) && commRes.length > 0) {
+          setInterviewCommittees(prev => {
+            const map = new Map<string, InterviewCommittee>();
+            prev.forEach(c => map.set(c.id, c));
+            commRes.forEach(c => map.set(c.id, c));
+            return Array.from(map.values());
+          });
+        }
+        if (Array.isArray(evalRes) && evalRes.length > 0) {
+          setArchivedEvaluations(prev => {
+            const map = new Map<string, InterviewEvaluationRecord>();
+            prev.forEach(e => map.set(e.id, e));
+            evalRes.forEach(e => map.set(e.id, e));
+            return Array.from(map.values());
+          });
+        }
+      } catch (e) {
+        console.warn('Could not sync committees from server:', e);
+      }
+    };
+    fetchCommitteesData();
+  }, []);
+
+  // Committee Formation Modal State
+  const [showCommitteeModal, setShowCommitteeModal] = useState(false);
+  const [committeeJobId, setCommitteeJobId] = useState<string>('');
+  const [committeeInterviewDate, setCommitteeInterviewDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    return d.toISOString().split('T')[0];
+  });
+  const [committeeInterviewTime, setCommitteeInterviewTime] = useState<string>('10:00');
+  const [committeeInterviewLocation, setCommitteeInterviewLocation] = useState<string>('مقر شركة فيتاس العراق - بغداد المنصور / قاعة اللجان الرئيسية');
+  const [committeeMembersList, setCommitteeMembersList] = useState<CommitteeMember[]>([]);
+  const [committeeCandidatesList, setCommitteeCandidatesList] = useState<Array<{ id: string; fullName: string; phone?: string; email?: string }>>([]);
+
+  // Member search input & auto-matched employee
+  const [memberSearchQuery, setMemberSearchQuery] = useState<string>('');
+  const [matchedEmployee, setMatchedEmployee] = useState<any | null>(null);
+  const [selectedMemberRole, setSelectedMemberRole] = useState<'رئيس اللجنة' | 'عضو لجنة' | 'مقرر اللجنة'>('عضو لجنة');
+  const [isSendingCommitteeInvites, setIsSendingCommitteeInvites] = useState(false);
+  const [showInviteSentSuccessModal, setShowInviteSentSuccessModal] = useState(false);
+  const [lastSentCommittee, setLastSentCommittee] = useState<InterviewCommittee | null>(null);
+  const [copiedLinkMemberId, setCopiedLinkMemberId] = useState<string | null>(null);
+
+  // Allow early access preview override for HR recruiter testing before scheduled interview date
+  const [allowEarlyAccessOverride, setAllowEarlyAccessOverride] = useState<boolean>(false);
+
+  // Electronic Interview Evaluation Form Modal (تطبيق الموظف)
+  const [showEvaluationFormModal, setShowEvaluationFormModal] = useState(false);
+  const [activeEvaluationCandidate, setActiveEvaluationCandidate] = useState<Candidate | null>(null);
+  const [activeEvaluationMember, setActiveEvaluationMember] = useState<CommitteeMember | null>(null);
+  const [activeEvaluationCommitteeId, setActiveEvaluationCommitteeId] = useState<string>('');
+  const [criteriaScores, setCriteriaScores] = useState({
+    appearance: 14,      // Max 15
+    qualification: 18,   // Max 20
+    experience: 22,      // Max 25
+    technical: 18,       // Max 20
+    communication: 18    // Max 20
+  });
+  const [evaluationRecommendation, setEvaluationRecommendation] = useState<'موصى بقبوله للتعيين' | 'اجتياز للمقابلة النهائية' | 'قائمة الاحتياط' | 'مرفوض'>('موصى بقبوله للتعيين');
+  const [evaluationNotes, setEvaluationNotes] = useState<string>('المرشح يتمتع بكفاءة ممتازة ومؤهلات تتوافق تماماً مع متطلبات الوظيفة. لديه لباقة وسرعة بديهة واستجابة مهنية عالية.');
+  const [isSubmittingEvaluation, setIsSubmittingEvaluation] = useState(false);
+  const [showEvaluationSuccessModal, setShowEvaluationSuccessModal] = useState(false);
+  const [lastSavedEvaluation, setLastSavedEvaluation] = useState<InterviewEvaluationRecord | null>(null);
+
+  // Archived Evaluations Modal
+  const [showArchivedEvaluationsModal, setShowArchivedEvaluationsModal] = useState(false);
+  const [selectedEvaluationDetail, setSelectedEvaluationDetail] = useState<InterviewEvaluationRecord | null>(null);
+
+  // Helper to fetch all candidates in screening applying for a specific job
+  const getCandidatesForJobInScreening = (jobId: string) => {
+    const targetJob = syncedJobVacancies.find(j => String(j.id) === String(jobId));
+    return candidates.filter(c => {
+      const inScreening = normalizeStage(c.stage) === 'فرز المتقدمين';
+      const matchesJob = String(c.appliedJobId) === String(jobId) || (targetJob && (c.jobTitle === targetJob.title || getTitleName(c.jobTitle) === getTitleName(targetJob.title)));
+      return inScreening && matchesJob;
+    });
+  };
+
+  // Auto-search employee by Employee ID or Badge No or Name
+  useEffect(() => {
+    const q = memberSearchQuery.trim().toLowerCase();
+    if (!q) {
+      setMatchedEmployee(null);
+      return;
+    }
+    const founds = employees.filter(emp => {
+      const empId = String(emp.employeeId || emp.employee_id || emp.id || '').toLowerCase();
+      const badge = String(emp.badgeNo || emp.badge_no || '').toLowerCase();
+      const nameAr = String(emp.fullNameAr || emp.full_name_ar || '').toLowerCase();
+      const nameEn = String(emp.fullName || emp.full_name_en || '').toLowerCase();
+      return empId === q || badge === q || empId.includes(q) || badge.includes(q) || nameAr.includes(q) || nameEn.includes(q);
+    });
+    if (founds.length > 0) {
+      const exact = founds.find(e => {
+        const eid = String(e.employeeId || e.employee_id || e.id || '').toLowerCase();
+        const b = String(e.badgeNo || e.badge_no || '').toLowerCase();
+        return eid === q || b === q;
+      });
+      setMatchedEmployee(exact || founds[0]);
+    } else {
+      setMatchedEmployee(null);
+    }
+  }, [memberSearchQuery, employees]);
+
+  // Support opening direct evaluation link from URL on mobile/browser
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const params = new URLSearchParams(window.location.search);
+      const isEvalView = params.get('view') === 'eval' || params.get('eval') === '1';
+      const cid = params.get('cid');
+      const memberEmpId = params.get('m');
+      const candId = params.get('cand');
+
+      if (isEvalView && (memberEmpId || cid)) {
+        const comm = interviewCommittees.find(c => c.id === cid) || lastSentCommittee;
+        const member = comm?.members?.find(m => m.employeeId === memberEmpId || m.id === memberEmpId) || 
+                       committeeMembersList.find(m => m.employeeId === memberEmpId || m.id === memberEmpId);
+        const cand = candidates.find(c => c.id === candId);
+
+        if (member) {
+          handleOpenEvaluationFormInApp(member, cand);
+        }
+      }
+    } catch {}
+  }, [interviewCommittees, committeeMembersList, candidates]);
+
+  const handleOpenCommitteeModalForStage = (candidatesInStage: Candidate[]) => {
+    if (!hasOpenJobs) {
+      alert('لا يمكن إضافة لجنة المقابلات لعدم وجود وظائف مفتوحة حالياً في النظام.');
+      return;
+    }
+    let targetJob = openVacancies[0];
+    if (selectedJobId !== 'all') {
+      const found = openVacancies.find(j => String(j.id) === String(selectedJobId));
+      if (found) targetJob = found;
+    } else if (candidatesInStage.length > 0) {
+      const firstCand = candidatesInStage[0];
+      const found = openVacancies.find(j => String(j.id) === String(firstCand.appliedJobId) || j.title === firstCand.jobTitle);
+      if (found) targetJob = found;
+    }
+
+    const selJobId = targetJob ? String(targetJob.id) : (openVacancies[0] ? String(openVacancies[0].id) : '');
+    setCommitteeJobId(selJobId);
+
+    // Get all candidates applying for this job in screening stage
+    const relatedCands = getCandidatesForJobInScreening(selJobId);
+    const candsToUse = relatedCands.length > 0 ? relatedCands : candidatesInStage;
+    const cands = candsToUse.map(c => ({
+      id: c.id,
+      fullName: getCandidateDisplayName(c, language),
+      phone: c.phone,
+      email: c.email
+    }));
+    setCommitteeCandidatesList(cands);
+
+    const existing = interviewCommittees.find(comm => String(comm.jobId) === selJobId);
+    if (existing && existing.members && existing.members.length > 0) {
+      setCommitteeMembersList(existing.members);
+      setCommitteeInterviewDate(existing.interviewDate || committeeInterviewDate);
+      setCommitteeInterviewTime(existing.interviewTime || '10:00');
+      setCommitteeInterviewLocation(existing.interviewLocation || committeeInterviewLocation);
+    } else {
+      setCommitteeMembersList([]);
+    }
+
+    setMemberSearchQuery('');
+    setMatchedEmployee(null);
+    setShowCommitteeModal(true);
+  };
+
+  const handleOpenCommitteeModalForCandidate = (cand: Candidate) => {
+    if (!hasOpenJobs) {
+      alert('لا يمكن إضافة لجنة المقابلات لعدم وجود وظائف مفتوحة حالياً في النظام.');
+      return;
+    }
+    const targetJob = openVacancies.find(j => String(j.id) === String(cand.appliedJobId) || j.title === cand.jobTitle) || openVacancies[0];
+    const selJobId = targetJob ? String(targetJob.id) : '';
+    setCommitteeJobId(selJobId);
+
+    // Get all candidates applying for this same job in screening stage
+    const relatedCands = getCandidatesForJobInScreening(selJobId);
+    const candsToUse = relatedCands.length > 0 ? relatedCands : [cand];
+    setCommitteeCandidatesList(candsToUse.map(c => ({
+      id: c.id,
+      fullName: getCandidateDisplayName(c, language),
+      phone: c.phone,
+      email: c.email
+    })));
+
+    const existing = interviewCommittees.find(comm => String(comm.jobId) === selJobId);
+    if (existing && existing.members && existing.members.length > 0) {
+      setCommitteeMembersList(existing.members);
+      setCommitteeInterviewDate(existing.interviewDate || committeeInterviewDate);
+      setCommitteeInterviewTime(existing.interviewTime || '10:00');
+      setCommitteeInterviewLocation(existing.interviewLocation || committeeInterviewLocation);
+    } else {
+      setCommitteeMembersList([]);
+    }
+
+    setMemberSearchQuery('');
+    setMatchedEmployee(null);
+    setShowCommitteeModal(true);
+  };
+
+  const handleAddMemberToCommittee = () => {
+    if (!matchedEmployee) {
+      alert('يرجى كتابة آيدي الموظف أو رقم الباج لاختيار الموظف أولاً.');
+      return;
+    }
+
+    const empId = matchedEmployee.employeeId || matchedEmployee.employee_id || matchedEmployee.id;
+    const badgeNo = matchedEmployee.badgeNo || matchedEmployee.badge_no || '---';
+    const fullName = matchedEmployee.fullNameAr || matchedEmployee.fullName || matchedEmployee.full_name_ar || 'موظف فيتاس';
+    const jobTitle = matchedEmployee.jobTitle || matchedEmployee.position_ar || matchedEmployee.position || 'موظف';
+    const officeName = matchedEmployee.branch || matchedEmployee.location || 'المقر الرئيسي';
+
+    if (committeeMembersList.some(m => String(m.employeeId) === String(empId))) {
+      alert('هذا الموظف مضاف بالفعل في تشكيل اللجنة الحالي.');
+      return;
+    }
+
+    const newMember: CommitteeMember = {
+      id: `MEM-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      employeeId: String(empId),
+      badgeNo: String(badgeNo),
+      fullName: String(fullName),
+      jobTitle: String(jobTitle),
+      officeName: String(officeName),
+      email: matchedEmployee.email || matchedEmployee.work_email || '',
+      phone: matchedEmployee.phone || matchedEmployee.mobile || '',
+      role: selectedMemberRole,
+      status: 'invitation_sent',
+      evaluationFormUrl: ''
+    };
+
+    setCommitteeMembersList(prev => [...prev, newMember]);
+    setMemberSearchQuery('');
+    setMatchedEmployee(null);
+  };
+
+  const handleRemoveMemberFromCommittee = (index: number) => {
+    setCommitteeMembersList(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSendCommitteeInvites = async () => {
+    if (!committeeJobId) {
+      alert('يرجى اختيار الوظيفة المعنية في مرحلة الفرز.');
+      return;
+    }
+    if (committeeMembersList.length === 0) {
+      alert('يرجى إضافة عضو واحد على الأقل في لجنة المقابلات.');
+      return;
+    }
+
+    setIsSendingCommitteeInvites(true);
+    const targetJob = syncedJobVacancies.find(j => String(j.id) === String(committeeJobId));
+    const targetJobTitle = targetJob ? getTitleName(targetJob.title) || targetJob.title : 'وظيفة شاغرة';
+    const newCommitteeId = `COMM-${Date.now()}`;
+
+    // Generate direct evaluation link for each member (تطبيق الموظف)
+    const updatedMembers: CommitteeMember[] = committeeMembersList.map(m => {
+      const firstCandId = committeeCandidatesList[0]?.id || '';
+      const formUrl = `${window.location.origin}/?module=recruitment&view=eval&cid=${newCommitteeId}&m=${encodeURIComponent(m.employeeId)}&cand=${firstCandId}`;
+      return {
+        ...m,
+        status: 'invitation_sent',
+        evaluationFormUrl: formUrl
+      };
+    });
+
+    const committeeData: InterviewCommittee = {
+      id: newCommitteeId,
+      jobId: String(committeeJobId),
+      jobTitle: targetJobTitle,
+      department: targetJob?.department || 'إدارة العمليات والائتمان',
+      branch: targetJob?.location || 'بغداد المنصور',
+      interviewDate: committeeInterviewDate,
+      interviewTime: committeeInterviewTime,
+      interviewLocation: committeeInterviewLocation,
+      createdBy: 'مسؤول التوظيف',
+      members: updatedMembers,
+      candidates: committeeCandidatesList,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      await api.notifyCommittee(committeeData).catch(() => {});
+
+      setInterviewCommittees(prev => {
+        const filtered = prev.filter(c => String(c.jobId) !== String(committeeJobId));
+        return [committeeData, ...filtered];
+      });
+
+      setCommitteeMembersList(updatedMembers);
+      setLastSentCommittee(committeeData);
+
+      addNotification({
+        title: 'تم إرسال دعوات لجنة المقابلات',
+        message: `تم إرسال دعوات رسميّة عبر Outlook وتطبيق الموظفين لأعضاء اللجنة (${updatedMembers.map(m => m.fullName).join('، ')}) لمقابلة وظيفة (${targetJobTitle}).`,
+        type: 'success'
+      });
+
+      setShowInviteSentSuccessModal(true);
+    } catch (err: any) {
+      console.error('Error sending committee invites:', err);
+      alert('حدث خطأ أثناء إرسال الدعوات: ' + err.message);
+    } finally {
+      setIsSendingCommitteeInvites(false);
+    }
+  };
+
+  const handleConfirmMemberParticipation = (memberId: string) => {
+    const updated = committeeMembersList.map(m => {
+      if (m.id === memberId || m.employeeId === memberId) {
+        return {
+          ...m,
+          status: 'confirmed' as const,
+          confirmedAt: new Date().toISOString()
+        };
+      }
+      return m;
+    });
+
+    setCommitteeMembersList(updated);
+
+    setInterviewCommittees(prev => prev.map(c => {
+      const hasMember = c.members.some(m => m.id === memberId || m.employeeId === memberId);
+      if (hasMember) {
+        return {
+          ...c,
+          members: c.members.map(m => (m.id === memberId || m.employeeId === memberId) ? { ...m, status: 'confirmed' as const, confirmedAt: new Date().toISOString() } : m)
+        };
+      }
+      return c;
+    }));
+
+    const member = committeeMembersList.find(m => m.id === memberId || m.employeeId === memberId);
+    addNotification({
+      title: 'تأكيد مشاركة في اللجنة',
+      message: `أكّد عضو اللجنة (${member?.fullName || 'الموظف'}) مشاركته في المقابلة. تم إرسال رابط فورم التقييم الإلكتروني لتطبيق الموظف.`,
+      type: 'info'
+    });
+  };
+
+  const handleCopyFormLink = (url: string, memberId: string) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(url);
+    }
+    setCopiedLinkMemberId(memberId);
+    setTimeout(() => setCopiedLinkMemberId(null), 3000);
+  };
+
+  const handleSwitchCandidateInEvaluation = (cand: Candidate, member?: CommitteeMember) => {
+    const evaluator = member || activeEvaluationMember;
+    setActiveEvaluationCandidate(cand);
+    if (!evaluator) return;
+
+    // Check if evaluator already evaluated this candidate
+    const existing = archivedEvaluations.find(e => 
+      e.candidateId === cand.id && 
+      (e.evaluatorId === evaluator.employeeId || e.evaluatorBadge === evaluator.badgeNo)
+    );
+
+    if (existing) {
+      setCriteriaScores(existing.criteriaScores || {
+        appearance: 14, qualification: 18, experience: 22, technical: 18, communication: 18
+      });
+      setEvaluationRecommendation((existing.recommendation as any) || 'موصى بقبوله للتعيين');
+      setEvaluationNotes(existing.notes || '');
+    } else {
+      setCriteriaScores({
+        appearance: 14, qualification: 18, experience: 22, technical: 18, communication: 18
+      });
+      setEvaluationRecommendation('موصى بقبوله للتعيين');
+      const jobName = getTitleName(cand.jobTitle) || cand.jobTitle;
+      setEvaluationNotes(`المرشح (${getCandidateDisplayName(cand, language)}) يتمتع بكفاءة ممتازة ومؤهلات تتوافق تماماً مع متطلبات الوظيفة (${jobName}).`);
+    }
+  };
+
+  const handleOpenEvaluationFormInApp = (member: CommitteeMember, cand?: Candidate) => {
+    const targetComm = interviewCommittees.find(c => 
+      c.id === activeEvaluationCommitteeId || 
+      c.members?.some(m => m.id === member.id || m.employeeId === member.employeeId)
+    ) || lastSentCommittee;
+
+    const candsForComm = candidates.filter(c => 
+      committeeCandidatesList.some(cl => String(cl.id) === String(c.id)) ||
+      (targetComm?.jobId && String(c.appliedJobId) === String(targetComm.jobId) && normalizeStage(c.stage) === 'فرز المتقدمين')
+    );
+
+    const candidateToEval = cand || candsForComm[0] || screeningCandidate || (candidates.find(c => committeeCandidatesList.some(cl => cl.id === c.id)) || candidates[0]);
+
+    setActiveEvaluationMember(member);
+    setActiveEvaluationCandidate(candidateToEval || null);
+    setActiveEvaluationCommitteeId(targetComm?.id || lastSentCommittee?.id || 'COMM-001');
+
+    if (candidateToEval) {
+      handleSwitchCandidateInEvaluation(candidateToEval, member);
+    }
+    setShowEvaluationFormModal(true);
+  };
+
+  const handleSubmitEvaluationToRecruiter = async () => {
+    if (!activeEvaluationMember || !activeEvaluationCandidate) return;
+
+    setIsSubmittingEvaluation(true);
+    const totalScore = criteriaScores.appearance + criteriaScores.qualification + criteriaScores.experience + criteriaScores.technical + criteriaScores.communication;
+
+    const evalRecord: InterviewEvaluationRecord = {
+      id: `EVAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      committeeId: activeEvaluationCommitteeId || 'COMM-001',
+      candidateId: activeEvaluationCandidate.id,
+      candidateName: getCandidateDisplayName(activeEvaluationCandidate, language),
+      jobTitle: getTitleName(activeEvaluationCandidate.jobTitle) || activeEvaluationCandidate.jobTitle,
+      evaluatorId: activeEvaluationMember.employeeId,
+      evaluatorBadge: activeEvaluationMember.badgeNo,
+      evaluatorName: activeEvaluationMember.fullName,
+      evaluatorJobTitle: activeEvaluationMember.jobTitle,
+      evaluatorOffice: activeEvaluationMember.officeName,
+      criteriaScores: { ...criteriaScores },
+      totalScore,
+      recommendation: evaluationRecommendation,
+      notes: evaluationNotes,
+      submittedTo: 'مسؤول التوظيف',
+      submittedAt: new Date().toISOString(),
+      status: 'submitted'
+    };
+
+    try {
+      await api.submitCommitteeEvaluation({
+        ...evalRecord,
+        candidateName: evalRecord.candidateName
+      }).catch(() => {});
+
+      const existingScores = Array.isArray(activeEvaluationCandidate.committeeScores) ? [...activeEvaluationCandidate.committeeScores] : [];
+      const filteredScores = existingScores.filter(s => s.fullName !== activeEvaluationMember.fullName);
+      filteredScores.push({
+        officeName: activeEvaluationMember.officeName,
+        fullName: activeEvaluationMember.fullName,
+        jobTitle: activeEvaluationMember.jobTitle,
+        score: totalScore
+      });
+
+      const totalSum = filteredScores.reduce((sum, item) => sum + (Number(item.score) || 0), 0);
+      const avg = filteredScores.length > 0 ? Math.round(totalSum / filteredScores.length) : totalScore;
+
+      updateCandidate(activeEvaluationCandidate.id, {
+        committeeScores: filteredScores,
+        finalScore: avg,
+        rating: avg >= 80 ? 5 : avg >= 60 ? 4 : 3,
+        committeeOpinion: `${evaluationRecommendation} - ملاحظات: ${evaluationNotes.slice(0, 100)}`
+      });
+
+      // Update archivedEvaluations: replace if exists, or prepend
+      setArchivedEvaluations(prev => {
+        const withoutThis = prev.filter(e => !(e.candidateId === activeEvaluationCandidate.id && (e.evaluatorId === activeEvaluationMember.employeeId || e.evaluatorBadge === activeEvaluationMember.badgeNo)));
+        return [evalRecord, ...withoutThis];
+      });
+      setLastSavedEvaluation(evalRecord);
+
+      // Check if all committee candidates have been evaluated by this member
+      const sessionCands = candidates.filter(c => 
+        committeeCandidatesList.some(cl => String(cl.id) === String(c.id)) ||
+        (activeEvaluationCommitteeId && String(c.appliedJobId) === String(committeeJobId) && normalizeStage(c.stage) === 'فرز المتقدمين')
+      );
+      const allEvaluatedByMember = sessionCands.length > 0 && sessionCands.every(c => 
+        c.id === activeEvaluationCandidate.id || 
+        archivedEvaluations.some(e => e.candidateId === c.id && (e.evaluatorId === activeEvaluationMember.employeeId || e.evaluatorBadge === activeEvaluationMember.badgeNo))
+      );
+
+      if (allEvaluatedByMember) {
+        setCommitteeMembersList(prev => prev.map(m => {
+          if (m.id === activeEvaluationMember.id || m.employeeId === activeEvaluationMember.employeeId) {
+            return {
+              ...m,
+              status: 'evaluation_submitted',
+              submittedAt: new Date().toISOString(),
+              totalScore
+            };
+          }
+          return m;
+        }));
+      }
+
+      addNotification({
+        title: 'تم استلام استمارة تقييم مقابلة من عضو اللجنة',
+        message: `قام عضو اللجنة (${activeEvaluationMember.fullName} - ${activeEvaluationMember.jobTitle}) بإعادة إرسال استمارة تقييم المقابلة للمرشح (${evalRecord.candidateName}) بدرجة (${totalScore}/100) وتوصية: ${evaluationRecommendation}. تم توثيق وحفظ الفورم بالأرشيف الدائم.`,
+        type: 'success'
+      });
+
+      setShowEvaluationFormModal(false);
+      setShowEvaluationSuccessModal(true);
+    } catch (err: any) {
+      console.error('Error submitting evaluation:', err);
+      alert('حدث خطأ أثناء إرسال استمارة المقابلة: ' + err.message);
+    } finally {
+      setIsSubmittingEvaluation(false);
+    }
+  };
 
   const handleRejectCandidate = (candidate: Candidate) => {
     const jobTitle = getTitleName(candidate.jobTitle) || candidate.jobTitle;
@@ -1395,6 +1943,49 @@ export const CandidatePipeline: React.FC = () => {
                   {groupedCandidates[stage]?.length || 0} {t('مرشح متقدم', 'candidates')}
                 </span>
               </div>
+
+              {/* Committee Formation & Archive buttons strictly when applicants are present in Screening stage */}
+              {normalizeStage(stage) === 'فرز المتقدمين' && (groupedCandidates[stage]?.length || 0) > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    disabled={!hasOpenJobs}
+                    onClick={() => handleOpenCommitteeModalForStage(groupedCandidates[stage])}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-md ${
+                      hasOpenJobs
+                        ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-teal-600 hover:from-purple-700 hover:to-teal-700 text-white shadow-purple-500/25 hover:scale-[1.02]'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-700 cursor-not-allowed opacity-75'
+                    }`}
+                    title={
+                      hasOpenJobs
+                        ? 'تشكيل لجنة المقابلات وإرسال الدعوات عبر أوتلوك وتطبيق الموظفين'
+                        : 'زر إضافة لجنة غير ممكن لعدم وجود وظائف مفتوحة حالياً'
+                    }
+                  >
+                    <span className="material-symbols-outlined text-base">group_add</span>
+                    <span>إضافة لجنة المقابلات</span>
+                    {!hasOpenJobs && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                        معطل: لا توجد وظائف مفتوحة
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowArchivedEvaluationsModal(true)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all border ${
+                      isDark
+                        ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
+                        : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700'
+                    }`}
+                    title="سجل استمارات تقييم المقابلات المؤرشفة للرجوع إليها في أي وقت"
+                  >
+                    <span className="material-symbols-outlined text-sm text-teal-500">folder_open</span>
+                    <span>أرشيف التقييمات ({archivedEvaluations.length})</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Applicant Cards Grid (3 Cards Per Row on Desktop Layout) */}
@@ -1452,6 +2043,22 @@ export const CandidatePipeline: React.FC = () => {
 
                       {/* Committee Evaluations Button & Score Circle Badge at Top Right (Solid Black Font, Normal Weight) */}
                       <div className="flex flex-col items-center shrink-0 gap-1.5">
+                        {normalizedCurrentStage === 'فرز المتقدمين' && (
+                          <button
+                            type="button"
+                            disabled={!hasOpenJobs}
+                            onClick={() => handleOpenCommitteeModalForCandidate(candidate)}
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm border ${
+                              hasOpenJobs
+                                ? 'bg-purple-500/15 hover:bg-purple-500/25 text-purple-700 dark:text-purple-300 border-purple-500/40'
+                                : 'bg-slate-200 dark:bg-slate-800 text-slate-400 border-slate-300 dark:border-slate-700 cursor-not-allowed opacity-60'
+                            }`}
+                            title={hasOpenJobs ? "تشكيل أو إدارة لجنة المقابلة لهذا المتقدم" : "معطل: لا توجد وظائف مفتوحة"}
+                          >
+                            <span className="material-symbols-outlined text-[12px] text-purple-600 dark:text-purple-400">group_add</span>
+                            <span>لجنة المقابلات</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => openCommitteeScoresModal(candidate)}
@@ -2994,6 +3601,1482 @@ export const CandidatePipeline: React.FC = () => {
                 <span className="material-symbols-outlined text-base">save</span>
                 حفظ وتأكيد تقييمات اللجنة
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 1. Interview Committee Formation Modal ────────────────────── */}
+      {showCommitteeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
+          <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden transition-all my-auto ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+          }`}>
+            {/* Modal Header */}
+            <div className={`p-5 border-b flex items-center justify-between shrink-0 ${
+              isDark ? 'border-slate-800 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-sm">
+                  <span className="material-symbols-outlined text-2xl">group_add</span>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold flex items-center gap-2">
+                    <span>تشكيل وإدارة لجنة المقابلات</span>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                      مرحلة الفرز
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    إضافة أعضاء اللجنة بالآيدي أو الباج وإرسال الدعوات الرسمية عبر Outlook وتطبيق الموظفين
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCommitteeModal(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 overflow-y-auto flex-1">
+              {/* Job Vacancy & Screening Candidates Context */}
+              <div className={`p-4 rounded-xl border space-y-3 ${
+                isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm text-purple-500">work</span>
+                      الوظيفة الشاغرة المستهدفة (المفتوحة حالياً):
+                    </label>
+                    <select
+                      value={committeeJobId}
+                      onChange={e => {
+                        const newJobId = e.target.value;
+                        setCommitteeJobId(newJobId);
+                        const relCands = getCandidatesForJobInScreening(newJobId);
+                        setCommitteeCandidatesList(relCands.map(c => ({
+                          id: c.id,
+                          fullName: getCandidateDisplayName(c, language),
+                          phone: c.phone,
+                          email: c.email
+                        })));
+                        const existing = interviewCommittees.find(comm => String(comm.jobId) === newJobId);
+                        if (existing && existing.members && existing.members.length > 0) {
+                          setCommitteeMembersList(existing.members);
+                          setCommitteeInterviewDate(existing.interviewDate || committeeInterviewDate);
+                          setCommitteeInterviewTime(existing.interviewTime || '10:00');
+                          setCommitteeInterviewLocation(existing.interviewLocation || committeeInterviewLocation);
+                        }
+                      }}
+                      disabled={!hasOpenJobs}
+                      className={`w-full px-3 py-2 rounded-xl text-xs font-medium border transition-all ${
+                        isDark 
+                          ? 'bg-slate-800 border-slate-700 text-white focus:border-purple-500' 
+                          : 'bg-white border-slate-300 text-slate-900 focus:border-purple-600'
+                      }`}
+                    >
+                      {openVacancies.map(j => (
+                        <option key={j.id} value={j.id}>
+                          {getTitleName(j.title) || j.title} — {j.department} ({j.location})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {!hasOpenJobs && (
+                    <div className="p-2.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm">warning</span>
+                      زر إضافة لجنة غير ممكن لعدم وجود وظائف مفتوحة حالياً.
+                    </div>
+                  )}
+                </div>
+
+                {/* Candidates in Screening Info */}
+                <div>
+                  <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs text-teal-500">person_search</span>
+                    <span>المتقدمون في منطقة الفرز المجدولون للمقابلة ({committeeCandidatesList.length}):</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {committeeCandidatesList.map(cand => (
+                      <span
+                        key={cand.id}
+                        className={`text-xs px-3 py-1 rounded-lg border flex items-center gap-1.5 font-bold ${
+                          isDark ? 'bg-slate-800/80 border-slate-700 text-teal-300' : 'bg-white border-slate-200 text-teal-800 shadow-sm'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-xs text-teal-500">person</span>
+                        <span>{cand.fullName}</span>
+                        {cand.phone && <span className="text-[10px] text-slate-400 font-normal">({cand.phone})</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Interview Schedule Details */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-200 dark:border-slate-800 text-xs">
+                  <div>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">
+                      📅 تاريخ المقابلة:
+                    </label>
+                    <input
+                      type="date"
+                      value={committeeInterviewDate}
+                      onChange={e => setCommitteeInterviewDate(e.target.value)}
+                      className={`w-full px-3 py-1.5 rounded-lg border text-xs ${
+                        isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">
+                      ⏰ توقيت المقابلة:
+                    </label>
+                    <input
+                      type="time"
+                      value={committeeInterviewTime}
+                      onChange={e => setCommitteeInterviewTime(e.target.value)}
+                      className={`w-full px-3 py-1.5 rounded-lg border text-xs ${
+                        isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">
+                      📍 قاعة / مكان المقابلة:
+                    </label>
+                    <input
+                      type="text"
+                      value={committeeInterviewLocation}
+                      onChange={e => setCommitteeInterviewLocation(e.target.value)}
+                      placeholder="قاعة الاجتماعات الرئيسية / أونلاين عبر Teams"
+                      className={`w-full px-3 py-1.5 rounded-lg border text-xs ${
+                        isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Committee Member Smart Search & Instant 5-Fields Auto-Fill ── */}
+              <div className={`p-5 rounded-xl border space-y-4 ${
+                isDark ? 'bg-slate-900/40 border-purple-500/20' : 'bg-purple-50/40 border-purple-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                    <span className="material-symbols-outlined text-base">badge</span>
+                    <span>إضافة أعضاء اللجنة (يكفي كتابة آيدي الموظف أو رقم الباج)</span>
+                  </h4>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    بحث فوري في قاعدة بيانات الموظفين ({employees.length} موظف)
+                  </span>
+                </div>
+
+                {/* Live Search Input */}
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
+                    search
+                  </span>
+                  <input
+                    type="text"
+                    value={memberSearchQuery}
+                    onChange={e => setMemberSearchQuery(e.target.value)}
+                    placeholder="اكتب آيدي الموظف (مثال: VTS-1001) أو رقم الباج أو اسم الموظف..."
+                    className={`w-full pr-10 pl-4 py-2.5 rounded-xl text-xs font-medium border transition-all ${
+                      isDark 
+                        ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:border-purple-500' 
+                        : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-purple-600 shadow-sm'
+                    }`}
+                  />
+                  {memberSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setMemberSearchQuery('')}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      مسح
+                    </button>
+                  )}
+                </div>
+
+                {/* Instant 5-Fields Card When Matched */}
+                {matchedEmployee ? (
+                  <div className="p-4 rounded-xl border border-teal-500/60 bg-teal-500/10 space-y-3 transition-all animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-lg">verified</span>
+                        <span className="text-xs font-bold text-teal-700 dark:text-teal-300">
+                          تم العثور على الموظف ومطابقة بياناته تلقائياً
+                        </span>
+                      </div>
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-800 dark:text-teal-200 font-mono font-bold">
+                        {matchedEmployee.employeeId || matchedEmployee.employee_id || matchedEmployee.id}
+                      </span>
+                    </div>
+
+                    {/* The EXACT 5 Requested Fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 text-xs">
+                      {/* 1. المكتب */}
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                      }`}>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs text-teal-500">apartment</span>
+                          <span>المكتب / الفرع</span>
+                        </div>
+                        <div className="font-bold text-slate-900 dark:text-white truncate">
+                          {matchedEmployee.branch || matchedEmployee.location || 'المقر الرئيسي'}
+                        </div>
+                      </div>
+
+                      {/* 2. آيدي الموظف */}
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                      }`}>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs text-teal-500">pin</span>
+                          <span>آيدي الموظف</span>
+                        </div>
+                        <div className="font-bold text-slate-900 dark:text-white font-mono truncate">
+                          {matchedEmployee.employeeId || matchedEmployee.employee_id || matchedEmployee.id}
+                        </div>
+                      </div>
+
+                      {/* 3. باج الموظف */}
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                      }`}>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs text-teal-500">badge</span>
+                          <span>باج الموظف</span>
+                        </div>
+                        <div className="font-bold text-slate-900 dark:text-white font-mono truncate">
+                          {matchedEmployee.badgeNo || matchedEmployee.badge_no || '---'}
+                        </div>
+                      </div>
+
+                      {/* 4. اسم الموظف */}
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                      }`}>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs text-teal-500">person</span>
+                          <span>اسم الموظف</span>
+                        </div>
+                        <div className="font-bold text-slate-900 dark:text-white truncate">
+                          {matchedEmployee.fullNameAr || matchedEmployee.fullName || matchedEmployee.full_name_ar}
+                        </div>
+                      </div>
+
+                      {/* 5. عنوانه الوظيفي */}
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                      }`}>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs text-teal-500">work</span>
+                          <span>عنوانه الوظيفي</span>
+                        </div>
+                        <div className="font-bold text-slate-900 dark:text-white truncate">
+                          {matchedEmployee.jobTitle || matchedEmployee.position_ar || matchedEmployee.position || 'موظف'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Member Role & Add Button */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          دور العضو في اللجنة:
+                        </label>
+                        <select
+                          value={selectedMemberRole}
+                          onChange={e => setSelectedMemberRole(e.target.value as any)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
+                            isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                        >
+                          <option value="رئيس اللجنة">رئيس اللجنة (Committee Chair)</option>
+                          <option value="عضو لجنة">عضو لجنة (Committee Member)</option>
+                          <option value="مقرر اللجنة">مقرر اللجنة (Committee Secretary)</option>
+                        </select>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddMemberToCommittee}
+                        className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition-all hover:scale-[1.02]"
+                      >
+                        <span className="material-symbols-outlined text-sm">person_add</span>
+                        <span>إضافة لتشكيل اللجنة</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : memberSearchQuery.trim() ? (
+                  <div className="p-3.5 rounded-xl border border-dashed border-amber-500/40 bg-amber-500/10 text-center text-xs text-amber-600 dark:text-amber-400">
+                    لم يتم العثور على موظف يطابق الرقم أو الاسم المدخل. يرجى التأكد من صحة رقم الآيدي أو رقم الباج.
+                  </div>
+                ) : null}
+              </div>
+
+              {/* ── Table / Cards of Formed Committee Members ── */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-purple-500">groups</span>
+                    <span>أعضاء اللجنة المضافون ({committeeMembersList.length}):</span>
+                  </h4>
+                  {committeeMembersList.length > 0 && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      يتم إرسال الدعوة ورابط فورم المقابلة لكل عضو مسجل أدناه
+                    </span>
+                  )}
+                </div>
+
+                {committeeMembersList.length === 0 ? (
+                  <div className={`p-8 rounded-xl border border-dashed text-center space-y-2 ${
+                    isDark ? 'border-slate-800 bg-slate-900/20' : 'border-slate-300 bg-slate-50'
+                  }`}>
+                    <span className="material-symbols-outlined text-3xl text-slate-400">group_off</span>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      لم تتم إضافة أعضاء للجنة حتى الآن. استخدم حقل البحث أعلاه بكتابة آيدي أو باج الموظف.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {committeeMembersList.map((member, idx) => (
+                      <div
+                        key={member.id}
+                        className={`p-3.5 rounded-xl border transition-all ${
+                          isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-50 border-slate-200 shadow-sm'
+                        }`}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                          {/* Member Info */}
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs shrink-0">
+                              {idx + 1}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h5 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                  {member.fullName}
+                                </h5>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                  member.role === 'رئيس اللجنة' 
+                                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                                    : 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30'
+                                }`}>
+                                  {member.role}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
+                                <span>💼 {member.jobTitle}</span>
+                                <span>• 🏢 {member.officeName}</span>
+                                <span className="font-mono">🆔 {member.employeeId}</span>
+                                <span className="font-mono">🪪 باج: {member.badgeNo}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Member Status & Direct Interactive Actions */}
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                            {/* Status Badge */}
+                            {member.status === 'invitation_sent' && (
+                              <span className="text-[10px] px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 font-bold flex items-center gap-1">
+                                <span className="material-symbols-outlined text-xs">mail</span>
+                                <span>تم إرسال الدعوة</span>
+                              </span>
+                            )}
+                            {member.status === 'confirmed' && (
+                              <span className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold flex items-center gap-1">
+                                <span className="material-symbols-outlined text-xs">check_circle</span>
+                                <span>أكّد المشاركة</span>
+                              </span>
+                            )}
+                            {member.status === 'evaluation_submitted' && (
+                              <span className="text-[10px] px-2.5 py-1 rounded-lg bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 font-bold flex items-center gap-1">
+                                <span className="material-symbols-outlined text-xs">assignment_turned_in</span>
+                                <span>أكمل التقييم</span>
+                              </span>
+                            )}
+
+                            {/* Date Lock Indicator */}
+                            {Boolean(committeeInterviewDate && new Date().toISOString().split('T')[0] < committeeInterviewDate && !allowEarlyAccessOverride) ? (
+                              <span className="text-[10px] px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold flex items-center gap-1" title="الفورم يفتح لأعضاء اللجنة يوم المقابلة حصراً">
+                                <span className="material-symbols-outlined text-xs">lock</span>
+                                <span>يفتح يوم المقابلة ({committeeInterviewDate})</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold flex items-center gap-1">
+                                <span className="material-symbols-outlined text-xs">lock_open</span>
+                                <span>متاح للتقييم اليوم</span>
+                              </span>
+                            )}
+
+                            {/* Candidate Evaluation Count by this Member */}
+                            {(() => {
+                              const evalsCount = archivedEvaluations.filter(e => (e.evaluatorId === member.employeeId || e.evaluatorBadge === member.badgeNo) && committeeCandidatesList.some(cl => cl.id === e.candidateId)).length;
+                              if (evalsCount > 0) {
+                                return (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-lg bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 font-bold flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-xs">how_to_reg</span>
+                                    <span>قيّم ({evalsCount} من {committeeCandidatesList.length || 1})</span>
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+
+                            {/* Simulation: Member confirms participation */}
+                            {member.status === 'invitation_sent' && (
+                              <button
+                                type="button"
+                                onClick={() => handleConfirmMemberParticipation(member.id)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 transition-all shadow-sm"
+                                title="محاكاة تأكيد العضو على المشاركة عبر تطبيق الموظف أو البريد"
+                              >
+                                <span className="material-symbols-outlined text-xs">done_all</span>
+                                <span>تأكيد المشاركة</span>
+                              </button>
+                            )}
+
+                            {/* Direct Form Link & Open Form in App button */}
+                            {(member.status === 'confirmed' || member.status === 'invitation_sent' || member.status === 'evaluation_submitted') && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyFormLink(member.evaluationFormUrl || `${window.location.origin}/?module=recruitment&view=eval&cid=${committeeJobId}&m=${encodeURIComponent(member.employeeId)}`, member.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 border border-indigo-500/40 text-[11px] font-bold flex items-center gap-1 transition-all"
+                                  title="نسخ رابط استمارة التقييم الخاصة بالعضو لإرسالها لموبايله"
+                                >
+                                  <span className="material-symbols-outlined text-xs">content_copy</span>
+                                  <span>{copiedLinkMemberId === member.id ? 'تم النسخ!' : 'نسخ رابط الفورم'}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEvaluationFormInApp(member)}
+                                  className="px-3 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-bold flex items-center gap-1 transition-all shadow-sm"
+                                  title="فتح استمارة المقابلات الإلكترونية لتطبيق الموظف"
+                                >
+                                  <span className="material-symbols-outlined text-xs">open_in_new</span>
+                                  <span>فتح الفورم بالتطبيق</span>
+                                </button>
+                              </>
+                            )}
+
+                            {/* Remove button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMemberFromCommittee(idx)}
+                              className="text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 p-1 rounded-lg transition-colors"
+                              title="إزالة العضو"
+                            >
+                              <span className="material-symbols-outlined text-base">delete</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Direct Form Link Banner */}
+                        {member.evaluationFormUrl && (
+                          <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between gap-2 text-[11px]">
+                            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate">
+                              <span className="material-symbols-outlined text-xs text-indigo-500">smartphone</span>
+                              <span className="font-semibold shrink-0">رابط الاستمارة (موبايل العضو):</span>
+                              <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate dir-ltr">
+                                {member.evaluationFormUrl}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-purple-600 dark:text-purple-400 shrink-0 font-medium">
+                              يفتح يوم المقابلة ({committeeInterviewDate}) لتقييم المتقدمين ({committeeCandidatesList.length})
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className={`p-4 border-t flex items-center justify-between gap-3 shrink-0 ${
+              isDark ? 'border-slate-800 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <button
+                type="button"
+                onClick={() => setShowCommitteeModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+              >
+                إغلاق
+              </button>
+
+              <button
+                type="button"
+                disabled={isSendingCommitteeInvites || committeeMembersList.length === 0 || !hasOpenJobs}
+                onClick={handleSendCommitteeInvites}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg transition-all ${
+                  isSendingCommitteeInvites || committeeMembersList.length === 0 || !hasOpenJobs
+                    ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-teal-600 hover:from-purple-700 hover:to-teal-700 text-white shadow-purple-500/25 hover:scale-[1.02]'
+                }`}
+              >
+                {isSendingCommitteeInvites ? (
+                  <>
+                    <span className="material-symbols-outlined text-sm animate-spin">refresh</span>
+                    <span>جارٍ إرسال الدعوات عبر Outlook والتطبيق...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-base">send</span>
+                    <span>إرسال الدعوات الرسمية عبر Outlook وتطبيق الموظفين</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 2. Invitation Sent Preview Modal (Outlook & Mobile App) ──────── */}
+      {showInviteSentSuccessModal && lastSentCommittee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className={`w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden my-auto ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+          }`}>
+            <div className="p-6 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 mx-auto flex items-center justify-center shadow-lg">
+                <span className="material-symbols-outlined text-4xl">check_circle</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">تم إرسال الدعوات الرسمية بنجاح!</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  تم إرسال الإشعارات وتفاصيل المقابلة عبر Outlook وتطبيق الموظفين لأعضاء اللجنة المحددين
+                </p>
+              </div>
+
+              {/* Outlook Email Preview Card */}
+              <div className={`text-right p-4 rounded-xl border text-xs space-y-2.5 ${
+                isDark ? 'bg-slate-900/80 border-slate-700' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                  <span className="font-bold flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                    <span className="material-symbols-outlined text-sm">mail</span>
+                    معاينة رسالة Microsoft Outlook 365:
+                  </span>
+                  <span className="text-[10px] text-slate-400">Sent via Exchange Server</span>
+                </div>
+                <div className="space-y-1">
+                  <div><strong>الموضوع:</strong> [دعوة رسمية] المشاركة في لجنة مقابلات وظيفة ({lastSentCommittee.jobTitle})</div>
+                  <div><strong>إلى:</strong> {lastSentCommittee.members.map(m => m.fullName).join('، ')}</div>
+                  <div><strong>المكان والموعد:</strong> {lastSentCommittee.interviewLocation} — {lastSentCommittee.interviewDate} ({lastSentCommittee.interviewTime})</div>
+                  <div className="pt-2 text-slate-600 dark:text-slate-300 leading-relaxed border-t border-slate-200 dark:border-slate-800">
+                    نظراً لكفاءتكم وخبرتكم، يرجى حضور مقابلة المتقدمين في منطقة الفرز للوظيفة المذكورة أعلاه. عند تأكيدكم المشاركة، سيصلكم رابط فورم المقابلة الإلكتروني لاستخدامه عبر تطبيق الموظف وإعادة إرساله بالدرجات لمسؤول التوظيف.
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Form Links for Members with Copy Buttons */}
+              <div className="text-right space-y-2">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  روابط فتح فورم المقابلات في تطبيق الموظف (تم إنشاؤها وإرسالها للأعضاء):
+                </label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {lastSentCommittee.members.map(member => (
+                    <div
+                      key={member.id}
+                      className={`p-2.5 rounded-lg border flex items-center justify-between gap-2 text-xs ${
+                        isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="font-bold truncate">{member.fullName} ({member.role})</div>
+                        <div className="text-[10px] text-slate-400 truncate dir-ltr">{member.evaluationFormUrl}</div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyFormLink(member.evaluationFormUrl || '', member.id)}
+                          className="px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold"
+                        >
+                          {copiedLinkMemberId === member.id ? 'تم النسخ!' : 'نسخ الرابط'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowInviteSentSuccessModal(false);
+                            handleConfirmMemberParticipation(member.id);
+                            handleOpenEvaluationFormInApp(member);
+                          }}
+                          className="px-2.5 py-1 rounded bg-teal-600 text-white text-[11px] font-bold hover:bg-teal-500"
+                        >
+                          تجربة الفورم
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowInviteSentSuccessModal(false)}
+                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md"
+                >
+                  حسناً، فهمت
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 3. Electronic Interview Evaluation Form Modal (تطبيق الموظف) ───── */}
+      {showEvaluationFormModal && activeEvaluationMember && activeEvaluationCandidate && (() => {
+        const activeComm = interviewCommittees.find(c => 
+          c.id === activeEvaluationCommitteeId || 
+          c.members?.some(m => m.id === activeEvaluationMember.id || m.employeeId === activeEvaluationMember.employeeId)
+        ) || lastSentCommittee;
+
+        const scheduledDate = activeComm?.interviewDate || committeeInterviewDate;
+        const todayDateStr = new Date().toISOString().split('T')[0];
+        const isDateLocked = !allowEarlyAccessOverride && Boolean(scheduledDate && todayDateStr < scheduledDate);
+
+        // Fetch candidates for this interview session
+        const candidatesForSession = candidates.filter(c => 
+          committeeCandidatesList.some(cl => String(cl.id) === String(c.id)) ||
+          (activeComm?.jobId && String(c.appliedJobId) === String(activeComm.jobId) && normalizeStage(c.stage) === 'فرز المتقدمين')
+        );
+        const sessionCandidates = candidatesForSession.length > 0 
+          ? candidatesForSession 
+          : [activeEvaluationCandidate];
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+            <div className={`w-full max-w-3xl max-h-[94vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden my-auto ${
+              isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+            }`}>
+              {/* App Mockup Top Header */}
+              <div className="bg-gradient-to-r from-teal-700 via-indigo-700 to-purple-800 text-white p-4 shrink-0 flex items-center justify-between shadow-md">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                    <span className="material-symbols-outlined text-2xl">smartphone</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white font-mono font-bold">
+                        VITAS EMPLOYEE APP
+                      </span>
+                      <span className="text-xs text-white/80">تطبيق الموظف</span>
+                    </div>
+                    <h3 className="text-sm font-bold mt-0.5">استمارة تقييم المقابلة الشخصية الإلكترونية</h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowEvaluationFormModal(false)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10"
+                >
+                  <span className="material-symbols-outlined text-xl">close</span>
+                </button>
+              </div>
+
+              {/* Locked Screen if Date has not arrived yet */}
+              {isDateLocked ? (
+                <div className="p-8 text-center space-y-6 overflow-y-auto flex-1">
+                  <div className="relative inline-block mx-auto">
+                    <div className="w-20 h-20 rounded-2xl bg-amber-500/15 border-2 border-amber-500/40 text-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/10">
+                      <span className="material-symbols-outlined text-5xl">lock_clock</span>
+                    </div>
+                    <span className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs shadow">
+                      <span className="material-symbols-outlined text-sm">calendar_today</span>
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 max-w-lg mx-auto">
+                    <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 inline-block">
+                      مقفلة وفقاً لضوابط حوكمة المقابلات
+                    </span>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                      استمارة التقييم تفتح يوم المقابلة فقط
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      عزيزي عضو اللجنة <strong>({activeEvaluationMember.fullName})</strong>، تماشياً مع سياسة التوظيف المعتمدة، يتم تفعيل استمارة التقييم الإلكترونية في صباح يوم المقابلة المحدد أدناه لضمان النزاهة والتقييم المباشر للمتقدمين أثناء المقابلة.
+                    </p>
+                  </div>
+
+                  {/* Interview Schedule Details */}
+                  <div className={`p-4 rounded-2xl border text-right text-xs space-y-3 max-w-lg mx-auto ${
+                    isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-50 border-slate-200 shadow-sm'
+                  }`}>
+                    <div className="font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1.5 pb-2 border-b border-slate-200 dark:border-slate-800">
+                      <span className="material-symbols-outlined text-sm">event</span>
+                      <span>تفاصيل جلسة المقابلة المجدولة:</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">📅 تاريخ المقابلة المحدد:</span>
+                        <strong className="text-sm text-purple-600 dark:text-purple-400 font-mono">{scheduledDate}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">⏰ توقيت المقابلة:</span>
+                        <strong className="text-sm font-mono">{activeComm?.interviewTime || committeeInterviewTime || '10:00 صباحاً'}</strong>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 block">💼 الوظيفة:</span>
+                        <strong>{activeComm?.jobTitle || 'وظيفة معنية'}</strong>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 block">📍 مكان المقابلة:</span>
+                        <span>{activeComm?.interviewLocation || committeeInterviewLocation}</span>
+                      </div>
+                      <div className="col-span-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                        <span className="text-[10px] text-slate-400 block mb-1.5">👥 المتقدمون للمقابلة ({sessionCandidates.length} متقدمين):</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {sessionCandidates.map(c => (
+                            <span key={c.id} className="px-2.5 py-1 rounded-lg bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 text-[11px] font-semibold flex items-center gap-1">
+                              <span className="material-symbols-outlined text-xs">person</span>
+                              <span>{getCandidateDisplayName(c, language)}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recruiter Testing Override Button */}
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 max-w-lg mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-amber-500">info</span>
+                      <span>تاريخ اليوم: {todayDateStr}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setAllowEarlyAccessOverride(true)}
+                      className="px-4 py-2 rounded-xl bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/40 text-purple-700 dark:text-purple-300 font-bold flex items-center gap-1.5 transition-all"
+                      title="صلاحية مسؤول التوظيف لمعاينة وتجربة الاستمارة قبل تاريخ المقابلة"
+                    >
+                      <span className="material-symbols-outlined text-sm">lock_open</span>
+                      <span>فتح الاستمارة للمعاينة والتجربة (مسؤول التوظيف)</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Unlocked Form Body */
+                <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                  {/* Evaluator 5 Fields Summary Card */}
+                  <div className={`p-4 rounded-xl border space-y-2.5 ${
+                    isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="text-xs font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm">badge</span>
+                      <span>بيانات عضو اللجنة المقيم (الموظف المستخدم للفورم):</span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                      <div className={`p-2 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                        <span className="text-[10px] text-slate-500 block">🏢 المكتب</span>
+                        <strong className="truncate block">{activeEvaluationMember.officeName}</strong>
+                      </div>
+                      <div className={`p-2 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                        <span className="text-[10px] text-slate-500 block">🆔 آيدي الموظف</span>
+                        <strong className="truncate block font-mono">{activeEvaluationMember.employeeId}</strong>
+                      </div>
+                      <div className={`p-2 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                        <span className="text-[10px] text-slate-500 block">🪪 باج الموظف</span>
+                        <strong className="truncate block font-mono">{activeEvaluationMember.badgeNo}</strong>
+                      </div>
+                      <div className={`p-2 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                        <span className="text-[10px] text-slate-500 block">👤 اسم الموظف</span>
+                        <strong className="truncate block">{activeEvaluationMember.fullName}</strong>
+                      </div>
+                      <div className={`p-2 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                        <span className="text-[10px] text-slate-500 block">💼 عنوانه الوظيفي</span>
+                        <strong className="truncate block">{activeEvaluationMember.jobTitle}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Multi-Candidate Selection Tabs (كل متقدم لديه استمارة تقييم منفصلة باسمه) */}
+                  <div className={`p-3.5 rounded-xl border space-y-2.5 ${
+                    isDark ? 'bg-purple-950/20 border-purple-500/30' : 'bg-purple-50/60 border-purple-200'
+                  }`}>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm">groups</span>
+                        <span>المتقدمون للمقابلة لهذه الوظيفة ({sessionCandidates.length} متقدمين):</span>
+                      </span>
+                      <span className="text-[11px] text-teal-600 dark:text-teal-400 font-bold">
+                        لكل متقدم استمارة تقييم مستقلة باسمه
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                      {sessionCandidates.map((cand, idx) => {
+                        const isSelected = activeEvaluationCandidate.id === cand.id;
+                        const existingEval = archivedEvaluations.find(e => 
+                          e.candidateId === cand.id && 
+                          (e.evaluatorId === activeEvaluationMember.employeeId || e.evaluatorBadge === activeEvaluationMember.badgeNo)
+                        );
+
+                        return (
+                          <button
+                            key={cand.id}
+                            type="button"
+                            onClick={() => handleSwitchCandidateInEvaluation(cand)}
+                            className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+                              isSelected
+                                ? 'bg-purple-600 text-white border-purple-500 shadow-md ring-2 ring-purple-400/50'
+                                : isDark
+                                  ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                                  : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100 shadow-sm'
+                            }`}
+                          >
+                            <span className="w-5 h-5 rounded-full bg-white/20 text-center text-[10px] flex items-center justify-center font-mono">
+                              {idx + 1}
+                            </span>
+                            <span>{getCandidateDisplayName(cand, language)}</span>
+                            {existingEval ? (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5 ${
+                                isSelected ? 'bg-emerald-400 text-slate-900' : 'bg-emerald-500/20 text-emerald-600 border border-emerald-500/40'
+                              }`}>
+                                <span className="material-symbols-outlined text-[10px]">check</span>
+                                <span>{existingEval.totalScore}/100</span>
+                              </span>
+                            ) : (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
+                                isSelected ? 'bg-amber-300 text-slate-900' : 'bg-amber-500/20 text-amber-600 border border-amber-500/40'
+                              }`}>
+                                بانتظار التقييم
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Active Candidate Header */}
+                  <div className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs ${
+                    isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">الاستمارة الحالية مخصصة لتقييم المتقدم:</span>
+                      <strong className="text-sm text-teal-600 dark:text-teal-400">
+                        {getCandidateDisplayName(activeEvaluationCandidate, language)}
+                      </strong>
+                    </div>
+                    <div className="flex items-center gap-3 text-slate-500">
+                      <span>💼 {getTitleName(activeEvaluationCandidate.jobTitle) || activeEvaluationCandidate.jobTitle}</span>
+                      {activeEvaluationCandidate.phone && <span>📞 {activeEvaluationCandidate.phone}</span>}
+                      {activeEvaluationCandidate.email && <span>✉️ {activeEvaluationCandidate.email}</span>}
+                    </div>
+                  </div>
+
+                  {/* ── The 5 Evaluation Criteria & Scores (Total 100) ── */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm text-teal-500">grading</span>
+                        <span>محاور التقييم ومعايير المقابلة الخمسة (المجموع الكلي: 100 درجة):</span>
+                      </h4>
+
+                      {/* Live Total Score Indicator */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold">الدرجة النهائية:</span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold font-mono border ${
+                          (criteriaScores.appearance + criteriaScores.qualification + criteriaScores.experience + criteriaScores.technical + criteriaScores.communication) >= 80
+                            ? 'bg-emerald-500/20 text-emerald-600 border-emerald-500/40'
+                            : (criteriaScores.appearance + criteriaScores.qualification + criteriaScores.experience + criteriaScores.technical + criteriaScores.communication) >= 60
+                              ? 'bg-amber-500/20 text-amber-600 border-amber-500/40'
+                              : 'bg-rose-500/20 text-rose-600 border-rose-500/40'
+                        }`}>
+                          {criteriaScores.appearance + criteriaScores.qualification + criteriaScores.experience + criteriaScores.technical + criteriaScores.communication} / 100
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Criterion 1 */}
+                    <div className={`p-3.5 rounded-xl border space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className="flex items-center justify-between text-xs">
+                        <div>
+                          <strong className="text-slate-900 dark:text-white">1. المظهر العام واللباقة والاتزان المهني</strong>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                            الهندام، الحضور، الثقة بالنفس، الانضباط في لغة الجسد والتعبير
+                          </span>
+                        </div>
+                        <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">
+                          {criteriaScores.appearance} / 15
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="15"
+                        value={criteriaScores.appearance}
+                        onChange={e => setCriteriaScores(prev => ({ ...prev, appearance: Number(e.target.value) }))}
+                        className="w-full accent-teal-600 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Criterion 2 */}
+                    <div className={`p-3.5 rounded-xl border space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className="flex items-center justify-between text-xs">
+                        <div>
+                          <strong className="text-slate-900 dark:text-white">2. المؤهل الأكاديمي والمعرفة الأساسية بالوظيفة</strong>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                            ملاءمة التخصص العلمي، المعرفة بقوانين التمويل الأصغر والعمل المصرفي
+                          </span>
+                        </div>
+                        <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">
+                          {criteriaScores.qualification} / 20
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="20"
+                        value={criteriaScores.qualification}
+                        onChange={e => setCriteriaScores(prev => ({ ...prev, qualification: Number(e.target.value) }))}
+                        className="w-full accent-teal-600 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Criterion 3 */}
+                    <div className={`p-3.5 rounded-xl border space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className="flex items-center justify-between text-xs">
+                        <div>
+                          <strong className="text-slate-900 dark:text-white">3. الخبرات العملية السابقة وسجل الإنجازات</strong>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                            السنوات الفعلية في مناصب مشابهة، قصص النجاح في التعامل مع العملاء
+                          </span>
+                        </div>
+                        <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">
+                          {criteriaScores.experience} / 25
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="25"
+                        value={criteriaScores.experience}
+                        onChange={e => setCriteriaScores(prev => ({ ...prev, experience: Number(e.target.value) }))}
+                        className="w-full accent-teal-600 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Criterion 4 */}
+                    <div className={`p-3.5 rounded-xl border space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className="flex items-center justify-between text-xs">
+                        <div>
+                          <strong className="text-slate-900 dark:text-white">4. الكفاءة التقنية والتخصصية وسرعة حل المشكلات</strong>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                            استخدام برامج الحاسوب والأنظمة البنكية، المنطقية والقدرة على التفكير التحليلي
+                          </span>
+                        </div>
+                        <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">
+                          {criteriaScores.technical} / 20
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="20"
+                        value={criteriaScores.technical}
+                        onChange={e => setCriteriaScores(prev => ({ ...prev, technical: Number(e.target.value) }))}
+                        className="w-full accent-teal-600 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Criterion 5 */}
+                    <div className={`p-3.5 rounded-xl border space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className="flex items-center justify-between text-xs">
+                        <div>
+                          <strong className="text-slate-900 dark:text-white">5. مهارات التواصل وسرعة الاستجابة والذكاء التفاعلي</strong>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                            الإقناع، التفاوض، الإصغاء الجيد والهدوء تحت ضغط الأسئلة
+                          </span>
+                        </div>
+                        <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">
+                          {criteriaScores.communication} / 20
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="20"
+                        value={criteriaScores.communication}
+                        onChange={e => setCriteriaScores(prev => ({ ...prev, communication: Number(e.target.value) }))}
+                        className="w-full accent-teal-600 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Recommendation Radio Options */}
+                  <div className="space-y-2 text-xs">
+                    <label className="font-bold text-slate-700 dark:text-slate-200 block">
+                      التوصية المهنية النهائية للجنة:
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {[
+                        { val: 'موصى بقبوله للتعيين', label: 'قبول وتعيين', icon: 'check_circle' },
+                        { val: 'اجتياز للمقابلة النهائية', label: 'مقابلة ثانية', icon: 'trending_up' },
+                        { val: 'قائمة الاحتياط', label: 'قائمة الاحتياط', icon: 'pause_circle' },
+                        { val: 'مرفوض', label: 'اعتذار / مرفوض', icon: 'cancel' }
+                      ].map(item => (
+                        <button
+                          key={item.val}
+                          type="button"
+                          onClick={() => setEvaluationRecommendation(item.val as any)}
+                          className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
+                            evaluationRecommendation === item.val
+                              ? 'border-teal-500 bg-teal-500/20 text-teal-700 dark:text-teal-300 shadow-sm'
+                              : isDark ? 'bg-slate-800/80 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-sm">{item.icon}</span>
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Detailed Notes */}
+                  <div className="space-y-1 text-xs">
+                    <label className="font-bold text-slate-700 dark:text-slate-200 block">
+                      ملاحظات المقابلة ونقاط القوة وجوانب التطوير:
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={evaluationNotes}
+                      onChange={e => setEvaluationNotes(e.target.value)}
+                      placeholder="اكتب ملاحظاتك وتوصياتك التفصيلية هنا ليطلع عليها مسؤول التوظيف..."
+                      className={`w-full p-3 rounded-xl border text-xs leading-relaxed ${
+                        isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
+                      }`}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Actions Footer */}
+              <div className={`p-4 border-t flex items-center justify-between gap-3 shrink-0 ${
+                isDark ? 'border-slate-800 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setShowEvaluationFormModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-800"
+                >
+                  {isDateLocked ? 'إغلاق' : 'إلغاء'}
+                </button>
+
+                {!isDateLocked && (
+                  <button
+                    type="button"
+                    disabled={isSubmittingEvaluation}
+                    onClick={handleSubmitEvaluationToRecruiter}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-teal-500/25 transition-all hover:scale-[1.02]"
+                  >
+                    {isSubmittingEvaluation ? (
+                      <>
+                        <span className="material-symbols-outlined text-sm animate-spin">refresh</span>
+                        <span>جارٍ الإرسال والأرشفة...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-base">send_and_archive</span>
+                        <span>إرسال استمارة تقييم ({getCandidateDisplayName(activeEvaluationCandidate, language)}) لمسؤول التوظيف</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ─── 4. Evaluation Received & Archived Confirmation Modal ───────── */}
+      {showEvaluationSuccessModal && lastSavedEvaluation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className={`w-full max-w-lg rounded-2xl border shadow-2xl p-6 text-center space-y-4 my-auto ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+          }`}>
+            <div className="w-16 h-16 rounded-full bg-teal-500/20 text-teal-500 mx-auto flex items-center justify-center shadow-lg">
+              <span className="material-symbols-outlined text-4xl">task_alt</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">تم استلام تقييم المقابلة وأرشفته بنجاح!</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                تم إرسال استمارة المقابلة إلى مسؤول التوظيف وتحديث درجات المرشح في شاشة الفرز تلقائياً
+              </p>
+            </div>
+
+            <div className={`p-4 rounded-xl border text-right text-xs space-y-2 ${
+              isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className="flex justify-between">
+                <span className="text-slate-400">المرشح:</span>
+                <strong>{lastSavedEvaluation.candidateName}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">الوظيفة:</span>
+                <span>{lastSavedEvaluation.jobTitle}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">عضو اللجنة المقيم:</span>
+                <span>{lastSavedEvaluation.evaluatorName} ({lastSavedEvaluation.evaluatorJobTitle})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">المكتب:</span>
+                <span>{lastSavedEvaluation.evaluatorOffice}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">الدرجة النهائية:</span>
+                <span className="font-bold text-teal-600 dark:text-teal-400 font-mono text-sm">{lastSavedEvaluation.totalScore} / 100</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">التوصية:</span>
+                <strong className="text-purple-600 dark:text-purple-400">{lastSavedEvaluation.recommendation}</strong>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-400">
+                <span>رقم الأرشفة المرجعي:</span>
+                <span className="font-mono">{lastSavedEvaluation.id}</span>
+              </div>
+            </div>
+
+            {/* If there are other candidates in this committee session that activeEvaluationMember has not evaluated yet */}
+            {(() => {
+              if (!activeEvaluationMember) return null;
+              const sessionCands = candidates.filter(c => 
+                committeeCandidatesList.some(cl => String(cl.id) === String(c.id)) ||
+                (activeEvaluationCommitteeId && String(c.appliedJobId) === String(committeeJobId) && normalizeStage(c.stage) === 'فرز المتقدمين')
+              );
+              const unevaluated = sessionCands.filter(c => 
+                c.id !== lastSavedEvaluation.candidateId && 
+                !archivedEvaluations.some(e => e.candidateId === c.id && (e.evaluatorId === activeEvaluationMember.employeeId || e.evaluatorBadge === activeEvaluationMember.badgeNo))
+              );
+
+              if (unevaluated.length > 0) {
+                const nextCand = unevaluated[0];
+                return (
+                  <div className={`p-3 rounded-xl border text-right space-y-2 ${
+                    isDark ? 'bg-purple-950/20 border-purple-500/30' : 'bg-purple-50/70 border-purple-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">person_pin</span>
+                        <span>متبقي ({unevaluated.length}) متقدم لهذه الوظيفة بانتظار تقييمك:</span>
+                      </span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        {getCandidateDisplayName(nextCand, language)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEvaluationSuccessModal(false);
+                        handleSwitchCandidateInEvaluation(nextCand);
+                        setShowEvaluationFormModal(true);
+                      }}
+                      className="w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md"
+                    >
+                      <span>الشروع في تقييم ({getCandidateDisplayName(nextCand, language)}) الآن</span>
+                      <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                    </button>
+                  </div>
+                );
+              }
+              return (
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold text-center">
+                  🎉 أحسنت! تم إكمال تقييم جميع المتقدمين المخصصين لهذه اللجنة بنجاح.
+                </div>
+              );
+            })()}
+
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedEvaluationDetail(lastSavedEvaluation);
+                  setShowArchivedEvaluationsModal(true);
+                  setShowEvaluationSuccessModal(false);
+                }}
+                className="px-4 py-2.5 rounded-xl border border-teal-500/50 bg-teal-500/10 text-teal-700 dark:text-teal-300 text-xs font-bold flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">print</span>
+                <span>استعراض وطباعة الاستمارة</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowEvaluationSuccessModal(false)}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold"
+              >
+                إغلاق والعودة للفرز
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 5. Archived Evaluations Modal (الرجوع إليه بأي وقت) ───────── */}
+      {showArchivedEvaluationsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden my-auto ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+          }`}>
+            <div className={`p-4 border-b flex items-center justify-between shrink-0 ${
+              isDark ? 'border-slate-800 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-500 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-xl">folder_special</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">أرشيف استمارات تقييم المقابلات الدائم</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    الرجوع إلى جميع استمارات التقييم المرسلة من أعضاء لجان المقابلات في أي وقت
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowArchivedEvaluationsModal(false);
+                  setSelectedEvaluationDetail(null);
+                }}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              {selectedEvaluationDetail ? (
+                /* Single Archived Evaluation Detailed Printable View */
+                <div className={`p-6 rounded-2xl border space-y-5 ${
+                  isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-md'
+                }`}>
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEvaluationDetail(null)}
+                      className="text-xs font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1 hover:underline"
+                    >
+                      <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                      <span>العودة لقائمة الأرشيف</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-sm">print</span>
+                      <span>طباعة الاستمارة PDF</span>
+                    </button>
+                  </div>
+
+                  {/* Header of the Form */}
+                  <div className="text-center space-y-1">
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                      شركة فيتاس العراق للتمويل الأصغر — قسم الموارد البشرية
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      استمارة تقييم مقابلة عمل رسمية ومؤرشفة إلكترونياً
+                    </p>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      رقم الأرشفة: {selectedEvaluationDetail.id} • تاريخ التقديم: {new Date(selectedEvaluationDetail.submittedAt).toLocaleString('ar-IQ')}
+                    </span>
+                  </div>
+
+                  {/* 5 Evaluator Fields */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                      <span className="text-[10px] text-slate-400 block">🏢 المكتب</span>
+                      <strong>{selectedEvaluationDetail.evaluatorOffice}</strong>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                      <span className="text-[10px] text-slate-400 block">🆔 آيدي الموظف</span>
+                      <strong className="font-mono">{selectedEvaluationDetail.evaluatorId}</strong>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                      <span className="text-[10px] text-slate-400 block">🪪 باج الموظف</span>
+                      <strong className="font-mono">{selectedEvaluationDetail.evaluatorBadge}</strong>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                      <span className="text-[10px] text-slate-400 block">👤 اسم الموظف</span>
+                      <strong>{selectedEvaluationDetail.evaluatorName}</strong>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                      <span className="text-[10px] text-slate-400 block">💼 عنوانه الوظيفي</span>
+                      <strong>{selectedEvaluationDetail.evaluatorJobTitle}</strong>
+                    </div>
+                  </div>
+
+                  {/* Candidate Info */}
+                  <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                    isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">المرشح المقابل:</span>
+                      <strong className="text-sm">{selectedEvaluationDetail.candidateName}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">الوظيفة المتقدم لها:</span>
+                      <strong>{selectedEvaluationDetail.jobTitle}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">مرسل إلى:</span>
+                      <strong>{selectedEvaluationDetail.submittedTo}</strong>
+                    </div>
+                  </div>
+
+                  {/* Score Breakdown Table */}
+                  <div className="space-y-2 text-xs">
+                    <h5 className="font-bold">تفاصيل الدرجات الممنوحة للمحاور:</h5>
+                    <div className={`rounded-xl border overflow-hidden ${
+                      isDark ? 'border-slate-700' : 'border-slate-200'
+                    }`}>
+                      <table className="w-full text-right text-xs">
+                        <thead className={isDark ? 'bg-slate-800' : 'bg-slate-100'}>
+                          <tr>
+                            <th className="p-2.5">المحور</th>
+                            <th className="p-2.5 text-center">الحد الأقصى</th>
+                            <th className="p-2.5 text-center">الدرجة الممنوحة</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                          <tr>
+                            <td className="p-2.5">1. المظهر العام واللباقة والاتزان المهني</td>
+                            <td className="p-2.5 text-center font-mono">15</td>
+                            <td className="p-2.5 text-center font-mono font-bold text-teal-600 dark:text-teal-400">
+                              {selectedEvaluationDetail.criteriaScores?.appearance || 0}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="p-2.5">2. المؤهل الأكاديمي والمعرفة الأساسية بالوظيفة</td>
+                            <td className="p-2.5 text-center font-mono">20</td>
+                            <td className="p-2.5 text-center font-mono font-bold text-teal-600 dark:text-teal-400">
+                              {selectedEvaluationDetail.criteriaScores?.qualification || 0}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="p-2.5">3. الخبرات العملية السابقة وسجل الإنجازات</td>
+                            <td className="p-2.5 text-center font-mono">25</td>
+                            <td className="p-2.5 text-center font-mono font-bold text-teal-600 dark:text-teal-400">
+                              {selectedEvaluationDetail.criteriaScores?.experience || 0}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="p-2.5">4. الكفاءة التقنية والتخصصية وحل المشكلات</td>
+                            <td className="p-2.5 text-center font-mono">20</td>
+                            <td className="p-2.5 text-center font-mono font-bold text-teal-600 dark:text-teal-400">
+                              {selectedEvaluationDetail.criteriaScores?.technical || 0}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="p-2.5">5. مهارات التواصل وسرعة الاستجابة والذكاء التفاعلي</td>
+                            <td className="p-2.5 text-center font-mono">20</td>
+                            <td className="p-2.5 text-center font-mono font-bold text-teal-600 dark:text-teal-400">
+                              {selectedEvaluationDetail.criteriaScores?.communication || 0}
+                            </td>
+                          </tr>
+                          <tr className={isDark ? 'bg-slate-800/80 font-bold' : 'bg-slate-100 font-bold'}>
+                            <td className="p-2.5">المجموع الكلي النهائي</td>
+                            <td className="p-2.5 text-center font-mono">100</td>
+                            <td className="p-2.5 text-center font-mono text-sm text-purple-600 dark:text-purple-400">
+                              {selectedEvaluationDetail.totalScore} / 100
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Recommendation & Notes */}
+                  <div className={`p-4 rounded-xl border space-y-2 text-xs ${
+                    isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">التوصية النهائية:</span>
+                      <strong className="text-sm text-emerald-600 dark:text-emerald-400">
+                        {selectedEvaluationDetail.recommendation}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">ملاحظات عضو اللجنة:</span>
+                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed mt-0.5">
+                        {selectedEvaluationDetail.notes || 'لا توجد ملاحظات إضافية.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* List of Archived Evaluations */
+                archivedEvaluations.length === 0 ? (
+                  <div className="p-10 text-center space-y-2 text-slate-400">
+                    <span className="material-symbols-outlined text-4xl">inventory_2</span>
+                    <p className="text-xs">لا توجد استمارات تقييم مؤرشفة حتى الآن.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {archivedEvaluations.map(record => (
+                      <div
+                        key={record.id}
+                        className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs transition-all hover:border-teal-500/50 ${
+                          isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-50 border-slate-200 shadow-sm'
+                        }`}
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <strong className="text-sm text-slate-900 dark:text-white truncate">
+                              {record.candidateName}
+                            </strong>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-teal-500/20 text-teal-700 dark:text-teal-300 font-bold">
+                              {record.jobTitle}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold">
+                              {record.recommendation}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2">
+                            <span>👤 المقيم: {record.evaluatorName} ({record.evaluatorJobTitle})</span>
+                            <span>• 🏢 {record.evaluatorOffice}</span>
+                            <span>• 📅 {new Date(record.submittedAt).toLocaleDateString('ar-IQ')}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-center">
+                            <span className="text-[10px] text-slate-400 block">الدرجة</span>
+                            <span className="font-bold text-sm font-mono text-teal-600 dark:text-teal-400">
+                              {record.totalScore} / 100
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedEvaluationDetail(record)}
+                            className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1 shadow-sm"
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            <span>عرض الاستمارة</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
             </div>
           </div>
         </div>
