@@ -419,6 +419,7 @@ export const Category3EmployeeView: React.FC = () => {
   const [fullNameEn, setFullNameEn] = useState('');
   const [empCode, setEmpCode] = useState('');
   const [badgeNo, setBadgeNo] = useState('');
+  const [waid, setWaid] = useState('');
   const [dob, setDob] = useState('');
   const [email, setEmail] = useState('');
   const [personalEmail, setPersonalEmail] = useState('');
@@ -797,6 +798,7 @@ export const Category3EmployeeView: React.FC = () => {
     setFullNameEn(clean(emp.fullNameEn || emp.full_name_en || emp.name_en));
     setEmpCode(clean(emp.employeeId || emp.employee_id || emp.empCode || (targetId ? `VTS-${targetId}` : '')));
     setBadgeNo(clean(emp.badgeNo || emp.badge_no));
+    setWaid(clean(emp.waid || emp.wa_id));
     setDob(clean(emp.dob || emp.date_of_birth));
     setEmail(clean(emp.email));
     setPersonalEmail(clean(emp.personalEmail || emp.personal_email));
@@ -895,6 +897,7 @@ export const Category3EmployeeView: React.FC = () => {
     setFullNameEn('');
     setEmpCode('');
     setBadgeNo('');
+    setWaid('');
     setDob('');
     setEmail('');
     setPersonalEmail('');
@@ -1221,6 +1224,8 @@ export const Category3EmployeeView: React.FC = () => {
       employeeId: finalEmployeeId,
       badge_no: finalBadgeNo,
       badgeNo: finalBadgeNo,
+      waid: waid.trim(),
+      wa_id: waid.trim(),
       full_name_ar: fullName,
       full_name_en: fullNameEn || fullName, // full_name_en is required in schema
       email,
@@ -1283,6 +1288,8 @@ export const Category3EmployeeView: React.FC = () => {
       employee_id: finalEmployeeId,
       badgeNo: finalBadgeNo,
       badge_no: finalBadgeNo,
+      waid: waid.trim(),
+      wa_id: waid.trim(),
       fullName,
       fullNameAr: fullName,
       full_name_ar: fullName,
@@ -1831,6 +1838,20 @@ export const Category3EmployeeView: React.FC = () => {
                       value={badgeNo}
                       onChange={e => setBadgeNo(e.target.value)}
                       className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">
+                      {t('معرف الحوافز (WAID)', 'Incentives WAID')}
+                      <span className="text-[10px] text-teal-600 font-normal mr-1 font-mono">({t('لتحميل الحوافز', 'For Incentives')})</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={t('مثال: WA-1008', 'Example: WA-1008')}
+                      value={waid}
+                      onChange={e => setWaid(e.target.value)}
+                      className="w-full bg-[#0a0c10] border border-teal-500/30 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-teal-300 font-mono focus:outline-none focus:border-teal-400 placeholder:text-slate-500"
                     />
                   </div>
 
@@ -3352,6 +3373,12 @@ export const Category3EmployeeView: React.FC = () => {
                       <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-indigo-600/20 border-indigo-500/30 text-indigo-400' : 'bg-indigo-50 border-indigo-200/80 text-indigo-700'} font-mono font-bold shadow-sm flex items-center gap-1.5`}>
                         <span className={`text-[10px] ${isDark ? 'text-indigo-400/80' : 'text-indigo-600/80'} font-sans font-semibold`}>{t('الباج:', 'Badge:')}</span>
                         {selectedEmployee.badgeNo || selectedEmployee.badge_no}
+                      </span>
+                    )}
+                    {(selectedEmployee.waid || selectedEmployee.wa_id) && (
+                      <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-teal-600/20 border-teal-500/30 text-teal-300' : 'bg-teal-50 border-teal-200/80 text-teal-700'} font-mono font-bold shadow-sm flex items-center gap-1.5`}>
+                        <span className={`text-[10px] ${isDark ? 'text-teal-400/80' : 'text-teal-600/80'} font-sans font-semibold`}>{t('WAID:', 'WAID:')}</span>
+                        {selectedEmployee.waid || selectedEmployee.wa_id}
                       </span>
                     )}
                     <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-purple-600/20 border-purple-500/30 text-purple-400' : 'bg-purple-50 border-purple-200/80 text-purple-700'} font-bold shadow-sm`}>

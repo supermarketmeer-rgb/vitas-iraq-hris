@@ -2,6 +2,16 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
 import { generatePayrollTemplateExcel, parsePayrollExcel } from '../utils/payrollExcelHelper';
+import {
+  PayrollLegalSettings,
+  TaxBracketConfig,
+  FullPayrollTaxResult,
+  EmployeeInputForCalculation,
+  getDefaultLegalSettings,
+  getDefaultTaxBrackets,
+  calculateCombinedPayrollTaxAndSecurity
+} from '../utils/iraqPayrollTaxEngine';
+import { CalculationTraceDetailsModal } from '../components/payroll/CalculationTraceDetailsModal';
 
 interface EmployeeAdjustment {
   absenceDays?: number;
@@ -70,6 +80,52 @@ export const Category5PayrollView: React.FC = () => {
 
   // Office Email Sending Modal State
   const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
+
+  // Central Iraqi Legal Settings & Tax Brackets State
+  const [legalSettings, setLegalSettings] = useState<PayrollLegalSettings>(getDefaultLegalSettings());
+  const [taxBrackets, setTaxBrackets] = useState<TaxBracketConfig[]>(getDefaultTaxBrackets());
+  const [traceCalculationResult, setTraceCalculationResult] = useState<FullPayrollTaxResult | null>(null);
+  const [traceModalRow, setTraceModalRow] = useState<any | null>(null);
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetch('/api/tax-module/legal-settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.active) setLegalSettings(d.active); })
+      .catch(() => {});
+    fetch('/api/tax-module/tax-brackets')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (Array.isArray(d) && d.length > 0) setTaxBrackets(d); })
+      .catch(() => {});
+  }, []);
+
+  const handleOpenTraceModal = (row: any) => {
+    const isMarried = row.marital_status === 'married' || row.marital_status === 'متزوج' || row.marital_status === 'متأهل';
+    const empInput: EmployeeInputForCalculation = {
+      id: row.id,
+      full_name_ar: row.name_ar || row.name,
+      basic_salary: Number(row.basic_salary) || 0,
+      marital_status: isMarried ? 'married' : 'single',
+      children_count: row.children_count || 0,
+      spouse_has_income: false,
+      is_ss_tax_exempt: Number(row.is_ss_tax_exempt) === 1,
+      exemption_reason: row.ss_tax_exemption_reason,
+      allowances: {
+        housing: Number(row.housing_allowance) || 0,
+        transport: Number(row.transportation) || 0,
+        phone: Number(row.phone_allowance) || 0,
+        cert: Number(row.cert_allowance) || 0,
+        overtime: Number(row.overtime) || 0,
+        bonus: Number(row.bonus) || 0,
+        incentives: Number(row.incentives) || 0,
+        family: Number(row.family_allowance) || 0
+      }
+    };
+    const res = calculateCombinedPayrollTaxAndSecurity(empInput, legalSettings, taxBrackets);
+    setTraceCalculationResult(res);
+    setTraceModalRow(row);
+    setIsTraceModalOpen(true);
+  };
   const [emailForm, setEmailForm] = useState<{
     officeName: string;
     managerEmail: string;
@@ -414,9 +470,32 @@ export const Category5PayrollView: React.FC = () => {
       const gross_salary = current_month_basic + allowances_total;
 
       // Deductions Fields: social_security, income_tax, insurance
-      // 7. social_security
-      const socialSecurityRate = parseFloat(appSettings['social_security_rate_default'] || '5') / 100;
-      const auto_social_security = isExemptFromSsTax ? 0 : Math.round(basic_salary * socialSecurityRate);
+      // Central Iraqi Social Security & Income Tax Calculation
+      const combinedCalc = calculateCombinedPayrollTaxAndSecurity(
+        {
+          id: emp.id,
+          basic_salary: current_month_basic,
+          marital_status: isMarried ? 'married' : 'single',
+          children_count: childCount,
+          spouse_has_income: false,
+          is_ss_tax_exempt: isExemptFromSsTax,
+          exemption_reason: emp.ss_tax_exemption_reason,
+          allowances: {
+            housing: Number(emp.housingAllowance ?? emp.housing_allowance ?? 0),
+            transport: transportation,
+            phone: phone_allowance,
+            cert: cert_allowance,
+            overtime,
+            bonus,
+            incentives,
+            family: family_allowance
+          }
+        },
+        legalSettings,
+        taxBrackets
+      );
+
+      const auto_social_security = isExemptFromSsTax ? 0 : combinedCalc.item_5_employee_ss_amount;
       const social_security = adj.socialSecurity !== undefined ? adj.socialSecurity : auto_social_security;
 
       // Health and Life Insurance deduction
@@ -425,24 +504,14 @@ export const Category5PayrollView: React.FC = () => {
         ? insuranceSetting
         : Math.round(basic_salary * 0.01));
 
-      // 8. income_tax calculation
+      // 8. income_tax calculation (Central Engine)
       const customTaxRate = parseFloat(appSettings['income_tax_rate_default'] || '');
-      let auto_income_tax = 0;
-      if (!isExemptFromSsTax) {
-        if (!isNaN(customTaxRate) && customTaxRate > 0) {
-          auto_income_tax = Math.round(basic_salary * (customTaxRate / 100));
-        } else {
-          const monthlyExemption = isMarried ? (375000 + childCount * 16667) : 208333;
-          const taxableBase = Math.max(0, gross_salary - social_security - monthlyExemption);
-          if (taxableBase > 0) {
-            let b1 = Math.min(taxableBase, 250000) * 0.03;
-            let b2 = taxableBase > 250000 ? Math.min(taxableBase - 250000, 250000) * 0.05 : 0;
-            let b3 = taxableBase > 500000 ? Math.min(taxableBase - 500000, 500000) * 0.10 : 0;
-            let b4 = taxableBase > 1000000 ? (taxableBase - 1000000) * 0.15 : 0;
-            auto_income_tax = Math.round(b1 + b2 + b3 + b4);
-          }
-        }
-      }
+      const auto_income_tax = isExemptFromSsTax
+        ? 0
+        : (!isNaN(customTaxRate) && customTaxRate > 0
+            ? Math.round(basic_salary * (customTaxRate / 100))
+            : combinedCalc.item_16_monthly_tax);
+
       const income_tax = adj.incomeTax !== undefined ? adj.incomeTax : auto_income_tax;
 
       const deductions_calc = social_security + income_tax + insurance;
@@ -960,6 +1029,16 @@ export const Category5PayrollView: React.FC = () => {
             </select>
           </div>
 
+          {/* Quick Link to Incentives Engine */}
+          <button
+            onClick={() => setActiveModuleId('payroll-incentives-module')}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs shadow-lg shadow-teal-600/30 transition-all flex items-center gap-1.5 cursor-pointer"
+            title={t('الانتقال لنظام ومحرك احتساب الحوافز المستقل', 'Open Standalone Incentives & Entitlements Engine')}
+          >
+            <span className="material-symbols-outlined text-sm">military_tech</span>
+            <span>{t('نظام الحوافز (Incentives)', 'Incentives Engine')}</span>
+          </button>
+
           {/* Period Status Badge & Lock/Unlock Buttons */}
           {isPeriodLocked ? (
             <div className="flex items-center gap-2">
@@ -1416,7 +1495,7 @@ export const Category5PayrollView: React.FC = () => {
                               onClick={() => handleOpenEditAdjustment(row)}
                               className={`px-2 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
                                 isPeriodLocked
-                                  ? 'bg-white/5 text-slate-500 cursor-not-allowed'
+                                    ? 'bg-white/5 text-slate-500 cursor-not-allowed'
                                   : isDark
                                     ? 'bg-teal-600 text-white shadow-md hover:bg-teal-600/40 border border-teal-500/30'
                                     : 'bg-teal-600 text-white shadow-md hover:bg-teal-100 border border-teal-300'
@@ -1425,6 +1504,20 @@ export const Category5PayrollView: React.FC = () => {
                             >
                               <span className="material-symbols-outlined text-sm">edit_note</span>
                               <span>{t('تعديل', 'Edit')}</span>
+                            </button>
+
+                            {/* View Tax & Security Trace Button (Section 7) */}
+                            <button
+                              onClick={() => handleOpenTraceModal(row)}
+                              className={`px-2 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border shadow-xs ${
+                                isDark
+                                  ? 'bg-teal-500/10 text-teal-300 hover:bg-teal-500/20 border-teal-500/30'
+                                  : 'bg-teal-50 text-teal-800 hover:bg-teal-100 border-teal-200'
+                              }`}
+                              title={t('معاينة تفاصيل ومعادلة الضمان والضريبة (18 عنصراً)', 'View Tax & SS Calculation Trace')}
+                            >
+                              <span className="material-symbols-outlined text-sm">receipt_long</span>
+                              <span>{t('المعادلة', 'Trace')}</span>
                             </button>
 
                             {/* Release / On Hold Toggle Button */}
@@ -3088,6 +3181,16 @@ export const Category5PayrollView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Iraqi Tax & Social Security Calculation Trace Modal (18 Items & Formulas) */}
+      <CalculationTraceDetailsModal
+        isOpen={isTraceModalOpen}
+        onClose={() => setIsTraceModalOpen(false)}
+        result={traceCalculationResult}
+        employeeName={traceModalRow?.name_ar || traceModalRow?.name || 'الموظف'}
+        employeeCode={traceModalRow?.emp_no || traceModalRow?.id || 'EMP'}
+        lang={language as any}
+      />
     </div>
   );
 };

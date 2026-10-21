@@ -253,6 +253,11 @@ export function isModuleAuthorized(
   perms: UserEffectivePermissions,
   currentRole: string
 ): boolean {
+  // Developer-only module: Settings & Security is strictly for the developer and must NEVER be visible or accessible to any user regardless of permissions
+  if (moduleId === 'sys-settings-security' || moduleId === 'settings-security') {
+    return false;
+  }
+
   if (perms.isSuperAdmin) return true;
 
   // Admin users are always authorized to manage user roles and permissions

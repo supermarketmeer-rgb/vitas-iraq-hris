@@ -63,6 +63,8 @@ export interface Employee {
   employee_id?: string;
   badgeNo?: string;
   badge_no?: string;
+  waid?: string;
+  wa_id?: string;
   fullName: string;
   fullNameAr?: string;
   full_name_ar?: string;

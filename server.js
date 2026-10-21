@@ -40,9 +40,11 @@ import {
 } from './database/documentRoutingEngine.js';
 import { testGraphConnection, getGraphConfig } from './database/msGraphService.js';
 import { getPushNotificationStatus } from './database/mobilePushService.js';
+import { registerTaxModuleRoutes } from './src/tax_module/server/taxRoutes.js';
 
 import http from 'http';
 import { spawn } from 'child_process';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -165,7 +167,7 @@ app.use('/apply/assets', express.static(path.join(__dirname, 'dist', 'assets')))
 app.use('/portal/assets', express.static(path.join(__dirname, 'dist', 'assets')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Configure multer for memory storage (for image and PDF upload as binary data)
+// Configure multer for memory storage with strict MIME type and extension validation
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
@@ -173,17 +175,26 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024 // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Accept images and PDF files
-    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const allowedExts = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf']);
+    const allowedMimes = new Set([
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'application/pdf'
+    ]);
+
+    if (allowedMimes.has((file.mimetype || '').toLowerCase()) && allowedExts.has(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Only image and PDF files are allowed'));
+      cb(new Error('Invalid file type. Only JPG, PNG, WEBP and PDF files are allowed. SVG and executable files are rejected for security.'));
     }
   }
 });
 
 // MySQL Connection Pool
-console.log('Attempting to connect to MySQL pool with config:', config);
+console.log('Connecting to MySQL pool for database:', config.database, 'on host:', config.host);
 const db = mysql.createPool({
   ...config,
   waitForConnections: true,
@@ -541,7 +552,7 @@ app.post('/api/security/api-keys', async (req, res) => {
   try {
     const { name, permissions, expires_at } = req.body;
     const id = `KEY-${Math.floor(1000 + Math.random() * 9000)}`;
-    const key = `vts_live_sk_${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}`;
+    const key = `vts_live_sk_${crypto.randomBytes(24).toString('hex')}`;
     await query(
       `INSERT INTO api_keys (id, name, api_key, status, permissions, expires_at) VALUES (?, ?, ?, 'نشط', ?, ?)`,
       [id, name || 'New API Key', key, permissions || 'read_write', expires_at || null]
@@ -1020,6 +1031,7 @@ const loadEmployeeColumns = async () => {
   try {
     await query("ALTER TABLE employees MODIFY COLUMN photo_url LONGTEXT").catch(() => {});
     await query("ALTER TABLE employees MODIFY COLUMN photo LONGBLOB").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN waid VARCHAR(50) NULL AFTER badge_no").catch(() => {});
     const cols = await query('SHOW COLUMNS FROM employees');
     employeeTableColumns = new Set(cols.map(c => c.Field));
     console.log('Detected employees table columns:', Array.from(employeeTableColumns));
@@ -1131,6 +1143,8 @@ const formatEmployeeRow = (row) => {
     employee_id: row.employee_id,
     badgeNo: row.badge_no,
     badge_no: row.badge_no,
+    waid: row.waid || '',
+    wa_id: row.waid || '',
     fullName: row.full_name_ar || 'غير محدد',
     fullNameAr: row.full_name_ar || 'غير محدد',
     full_name_ar: row.full_name_ar || 'غير محدد',
@@ -1424,6 +1438,7 @@ app.post('/api/employees', async (req, res) => {
     const candidateData = {
       employee_id: employeeId,
       badge_no: badgeNo,
+      waid: data.waid || data.wa_id || null,
       full_name_ar: fullNameAr,
       full_name_en: fullNameEn,
       email: email,
@@ -1508,6 +1523,16 @@ app.post('/api/employees', async (req, res) => {
       if (existingByBadge && existingByBadge.length > 0) {
         existing = existingByBadge;
         targetDbId = existingByBadge[0].id;
+      }
+    }
+
+    // 3.5. Match by exact waid if provided
+    const cleanWaid = typeof data.waid === 'string' ? data.waid.trim() : (typeof data.wa_id === 'string' ? data.wa_id.trim() : '');
+    if ((!existing || existing.length === 0) && cleanWaid !== '' && cleanWaid !== 'N/A') {
+      const existingByWaid = await query('SELECT id FROM employees WHERE waid = ?', [cleanWaid]);
+      if (existingByWaid && existingByWaid.length > 0) {
+        existing = existingByWaid;
+        targetDbId = existingByWaid[0].id;
       }
     }
 
@@ -4242,7 +4267,12 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/users', async (req, res) => {
   try {
     const users = await query('SELECT * FROM users ORDER BY id ASC');
-    res.json(users);
+    // Strip sensitive password field before sending response to client
+    const safeUsers = (users || []).map(u => {
+      const { password, ...safe } = u;
+      return safe;
+    });
+    res.json(safeUsers);
   } catch (err) {
     console.error('Error fetching users:', err);
     res.status(500).json({ error: err.message });
@@ -4408,6 +4438,10 @@ app.post('/api/change-password', async (req, res) => {
       return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 4 أحرف على الأقل | Password must be at least 4 characters' });
     }
 
+    if (!currentPassword || String(currentPassword).trim() === '') {
+      return res.status(400).json({ error: 'كلمة المرور الحالية مطلوبة | Current password is required' });
+    }
+
     const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
     const cleanUser = String(username || '').trim();
     const cleanEmpId = String(employeeId || employee_id || '').trim();
@@ -4453,16 +4487,14 @@ app.post('/api/change-password', async (req, res) => {
       const storedPass = existingUser.password || '123456';
       const isAdmin = (existingUser.username || '').toLowerCase() === 'admin' || cleanUser.toLowerCase() === 'admin';
 
-      // If current password provided, verify it
-      if (currentPassword !== undefined && currentPassword !== null && currentPassword !== '') {
-        const isCurrentValid = 
-          currentPassword === storedPass ||
-          (isAdmin && (currentPassword === 'admin123' || currentPassword === 'admin')) ||
-          (!existingUser.password && currentPassword === '123456');
+      // Verify current password strictly
+      const isCurrentValid = 
+        currentPassword === storedPass ||
+        (isAdmin && (currentPassword === 'admin123' || currentPassword === 'admin')) ||
+        (!existingUser.password && currentPassword === '123456');
 
-        if (!isCurrentValid) {
-          return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة | Current password is incorrect' });
-        }
+      if (!isCurrentValid) {
+        return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة | Current password is incorrect' });
       }
 
       const updateSql = `UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?`;
@@ -4492,11 +4524,9 @@ app.post('/api/change-password', async (req, res) => {
 
     if (Array.isArray(empRows) && empRows.length > 0) {
       const emp = empRows[0];
-      // Default password for fresh employee accounts is '123456'
-      if (currentPassword !== undefined && currentPassword !== null && currentPassword !== '') {
-        if (currentPassword !== '123456') {
-          return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة | Current password is incorrect' });
-        }
+      // Verify current password for employee account
+      if (currentPassword !== '123456' && currentPassword !== (emp.password || '')) {
+        return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة | Current password is incorrect' });
       }
 
       const newUsername = emp.badge_no || emp.employee_id || cleanUser;
@@ -4524,28 +4554,7 @@ app.post('/api/change-password', async (req, res) => {
       return res.json({ success: true, message: 'Password updated successfully' });
     }
 
-    // 3. Fallback: create user directly if not in employees either
-    if (currentPassword !== undefined && currentPassword !== null && currentPassword !== '') {
-      if (currentPassword !== '123456') {
-        return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة | Current password is incorrect' });
-      }
-    }
-    const finalUsername = cleanUser || cleanEmpId;
-    const insertFallbackSql = `
-      INSERT INTO users (
-        username, password, full_name, name, email, role, job_title, department, employee_id, branch, status, updated_at
-      ) VALUES (?, ?, ?, ?, ?, 'Employee', 'Employee', 'عام', ?, 'المقر الرئيسي', 'active', NOW())
-      ON DUPLICATE KEY UPDATE password = VALUES(password), updated_at = NOW()
-    `;
-    const fallbackParams = [
-      finalUsername, newPassword, finalUsername, finalUsername, `${finalUsername.toLowerCase()}@vitasiraq.iq`, cleanEmpId || finalUsername
-    ];
-    await query(insertFallbackSql, fallbackParams);
-    if (!isRailway) {
-      executeCloudQuery(insertFallbackSql, fallbackParams).catch(() => {});
-    }
-    triggerRealtimeSync(db, 'users');
-    return res.json({ success: true, message: 'Password updated successfully' });
+    return res.status(404).json({ error: 'المستخدم غير موجود | User not found' });
   } catch (err) {
     console.error('Error changing password:', err);
     res.status(500).json({ error: err.message });
@@ -4806,6 +4815,13 @@ app.delete('/api/news/:id', async (req, res) => {
 // Clear all operational system data while strictly preserving Users, Roles, Settings, Contracts, and Policies
 app.post('/api/reset-data', async (req, res) => {
   try {
+    // Require explicit confirmation key to prevent unauthorized or accidental data wipes
+    const { confirmation_key } = req.body || {};
+    const expectedKey = process.env.RESET_CONFIRMATION_KEY || 'VITAS_RESET_SECURE_CONFIRM_2026';
+    if (!confirmation_key || confirmation_key !== expectedKey) {
+      return res.status(403).json({ error: 'Unauthorized: Data reset requires a valid confirmation key' });
+    }
+
     // 1. Explicit set of tables that MUST BE PRESERVED
     const PRESERVED_TABLES = new Set([
       // Users & Auth & Roles & Permissions
@@ -4951,12 +4967,12 @@ app.post('/api/notify/application-receipt', async (req, res) => {
       status: 'SENT_SILENTLY'
     };
 
-    const uploadsDir = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    const logsDir = path.join(__dirname, 'logs');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
     }
 
-    const logFile = path.join(uploadsDir, 'notifications_dispatch_log.json');
+    const logFile = path.join(logsDir, 'notifications_dispatch_log.json');
     let logs = [];
     if (fs.existsSync(logFile)) {
       try {
@@ -5034,11 +5050,7 @@ setInterval(autoCloseExpiredJobsAtCutoff, 10000);
 autoCloseExpiredJobsAtCutoff();
 
 // Register Social Security & Income Tax Module Routes
-import('./src/tax_module/server/taxRoutes.js').then(({ registerTaxModuleRoutes }) => {
-  registerTaxModuleRoutes(app, query);
-}).catch(err => {
-  console.error('Error initializing tax module routes:', err);
-});
+registerTaxModuleRoutes(app, query);
 
 // ============================================================
 // BIOMETRIC ATTENDANCE & SQL SERVER SYNC API ROUTES
@@ -5544,6 +5556,8 @@ app.post('/api/routing/run-acceptance-tests', async (req, res) => {
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads') && !req.path.startsWith('/hr_drivers')) {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  } else if (req.path.startsWith('/api')) {
+    res.status(404).json({ error: 'Endpoint not found' });
   }
 });
 

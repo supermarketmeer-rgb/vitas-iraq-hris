@@ -433,34 +433,19 @@ export const Sidebar: React.FC = () => {
           id="sidebar-footer-controls"
           className="p-1.5 border-t border-[#1e2a44] bg-[#06080d] flex items-center gap-1.5"
         >
-          {/* Settings & Security Button (Available ONLY if user has settings permissions) */}
-          {(userPerms.isSuperAdmin || userPerms.settings) ? (
-            <button
-              onClick={() => handleSelectModule('sys-settings-security')}
-              className={`flex-1 px-2.5 h-8 rounded-xl flex items-center gap-2 transition-all text-[11px] font-normal cursor-pointer ${
-                activeModuleId === 'sys-settings-security'
-                  ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
-                  : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-teal-400 border border-slate-800/80'
-              }`}
-              title={t('الإعدادات والأمان', 'Settings & Security')}
-            >
-              <span className="material-symbols-outlined text-base">settings</span>
-              <span className="truncate">{t('الإعدادات والأمان', 'Settings & Security')}</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => handleSelectModule('emp-profile')}
-              className={`flex-1 px-2.5 h-8 rounded-xl flex items-center gap-2 transition-all text-[11px] font-normal cursor-pointer ${
-                activeModuleId === 'emp-profile'
-                  ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
-                  : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-teal-400 border border-slate-800/80'
-              }`}
-              title={t('ملفي الوظيفي', 'My Profile')}
-            >
-              <span className="material-symbols-outlined text-base">person</span>
-              <span className="truncate">{t('ملفي الوظيفي', 'My Profile')}</span>
-            </button>
-          )}
+          {/* Employee Profile Button (Settings & Security is hidden from all users) */}
+          <button
+            onClick={() => handleSelectModule('emp-profile')}
+            className={`flex-1 px-2.5 h-8 rounded-xl flex items-center gap-2 transition-all text-[11px] font-normal cursor-pointer ${
+              activeModuleId === 'emp-profile'
+                ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
+                : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-teal-400 border border-slate-800/80'
+            }`}
+            title={t('ملفي الوظيفي', 'My Profile')}
+          >
+            <span className="material-symbols-outlined text-base">person</span>
+            <span className="truncate">{t('ملفي الوظيفي', 'My Profile')}</span>
+          </button>
 
           {/* Language AR/EN Toggle Button */}
           <button

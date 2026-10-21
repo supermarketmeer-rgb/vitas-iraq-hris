@@ -1,6 +1,15 @@
 import express from 'express';
+import { ensureLegalTables } from './ensureLegalTables.js';
+import {
+  calculateCombinedPayrollTaxAndSecurity,
+  validateTaxBrackets,
+  getDefaultLegalSettings,
+  getDefaultTaxBrackets
+} from '../../utils/iraqPayrollTaxEngine.ts';
 
 export function registerTaxModuleRoutes(app, query) {
+  // Ensure tables conforming to Law 18 of 2023 & Law 113 of 1982
+  ensureLegalTables(query);
   // 1. Dashboard Overview Stats & Calculations
   app.get('/api/tax-module/dashboard', async (req, res) => {
     try {
@@ -905,6 +914,261 @@ export function registerTaxModuleRoutes(app, query) {
   // 27. Audit Logs Sync Bridge
   app.post('/api/tax-module/audit-logs/sync-bridge', async (req, res) => {
     res.json({ success: true, message: 'Audit bridge sync completed successfully' });
+  });
+
+  // 28. Get Legal Settings (Current Active & All Versions)
+  app.get('/api/tax-module/legal-settings', async (req, res) => {
+    console.log('[DEBUG /api/tax-module/legal-settings] Request received');
+    try {
+      const rows = await query('SELECT * FROM payroll_legal_settings ORDER BY created_at DESC').catch((err) => {
+        console.error('[DEBUG /api/tax-module/legal-settings] query error:', err);
+        return [];
+      });
+      const parseJsonSafely = (val, fallback) => {
+        if (!val) return fallback;
+        if (Array.isArray(val)) return val;
+        try { return JSON.parse(val); } catch (e) { return fallback; }
+      };
+
+      const mapped = (Array.isArray(rows) ? rows : []).map(r => ({
+        ...r,
+        ss_employee_rate: Number(r.ss_employee_rate),
+        ss_employer_rate: Number(r.ss_employer_rate),
+        ss_insured_salary_rate: Number(r.ss_insured_salary_rate),
+        ss_minimum_insured_salary: r.ss_minimum_insured_salary !== null ? Number(r.ss_minimum_insured_salary) : null,
+        ss_maximum_insured_salary: r.ss_maximum_insured_salary !== null ? Number(r.ss_maximum_insured_salary) : null,
+        ss_eligible_components: parseJsonSafely(r.ss_eligible_components, ['basic_salary', 'housing', 'transport', 'living']),
+        tax_personal_allowance: Number(r.tax_personal_allowance),
+        tax_spouse_allowance: Number(r.tax_spouse_allowance),
+        tax_child_allowance: Number(r.tax_child_allowance),
+        tax_eligible_children_limit: Number(r.tax_eligible_children_limit),
+        tax_spouse_income_condition: Boolean(r.tax_spouse_income_condition),
+        tax_employee_insurance_deductible: Boolean(r.tax_employee_insurance_deductible),
+        tax_other_allowed_deductions: Number(r.tax_other_allowed_deductions),
+        tax_payroll_periods_per_year: Number(r.tax_payroll_periods_per_year),
+        tax_eligible_components: parseJsonSafely(r.tax_eligible_components, ['basic_salary', 'housing', 'transport', 'living', 'food', 'overtime', 'bonus'])
+      }));
+
+      const activeMapped = mapped.find(r => r.status === 'ACTIVE') || mapped[0] || getDefaultLegalSettings();
+
+      res.json({
+        success: true,
+        active: activeMapped,
+        all_versions: mapped
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 29. Save/Update Legal Settings & Sync with App Settings and Audit Logs
+  app.put('/api/tax-module/legal-settings/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const b = req.body;
+      const user = req.user?.username || req.body.updated_by || 'HR Admin';
+
+      // 1. Fetch previous state for audit log
+      const [prevRows] = await query('SELECT * FROM payroll_legal_settings WHERE id = ?', [id]).catch(() => [[]]);
+      const prevData = prevRows && prevRows[0] ? prevRows[0] : null;
+
+      // 2. Update record
+      await query(`
+        UPDATE payroll_legal_settings SET
+          version_name = ?,
+          status = ?,
+          effective_from = ?,
+          effective_to = ?,
+          ss_employee_rate = ?,
+          ss_employer_rate = ?,
+          ss_insured_salary_rate = ?,
+          ss_minimum_insured_salary = ?,
+          ss_maximum_insured_salary = ?,
+          ss_eligible_components = ?,
+          tax_personal_allowance = ?,
+          tax_spouse_allowance = ?,
+          tax_child_allowance = ?,
+          tax_eligible_children_limit = ?,
+          tax_spouse_income_condition = ?,
+          tax_employee_insurance_deductible = ?,
+          tax_other_allowed_deductions = ?,
+          tax_taxable_income_method = ?,
+          tax_payroll_periods_per_year = ?,
+          tax_rounding_method = ?,
+          tax_eligible_components = ?,
+          legal_reference = ?,
+          notes = ?,
+          updated_by = ?
+        WHERE id = ?
+      `, [
+        b.version_name,
+        b.status || 'ACTIVE',
+        b.effective_from,
+        b.effective_to || null,
+        b.ss_employee_rate,
+        b.ss_employer_rate,
+        b.ss_insured_salary_rate,
+        b.ss_minimum_insured_salary !== null ? b.ss_minimum_insured_salary : null,
+        b.ss_maximum_insured_salary !== null ? b.ss_maximum_insured_salary : null,
+        JSON.stringify(b.ss_eligible_components || ['basic_salary']),
+        b.tax_personal_allowance,
+        b.tax_spouse_allowance,
+        b.tax_child_allowance,
+        b.tax_eligible_children_limit,
+        b.tax_spouse_income_condition ? 1 : 0,
+        b.tax_employee_insurance_deductible ? 1 : 0,
+        b.tax_other_allowed_deductions || 0,
+        b.tax_taxable_income_method || 'ANNUAL_STANDARD',
+        b.tax_payroll_periods_per_year || 12,
+        b.tax_rounding_method || 'NEAREST_1000',
+        JSON.stringify(b.tax_eligible_components || ['basic_salary']),
+        b.legal_reference || '',
+        b.notes || '',
+        user,
+        id
+      ]);
+
+      // 3. Keep app_settings and tax_calculation_parameters in sync
+      await query('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?', ['social_security_employee_share', String(b.ss_employee_rate), String(b.ss_employee_rate)]).catch(() => {});
+      await query('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?', ['social_security_company_share', String(b.ss_employer_rate), String(b.ss_employer_rate)]).catch(() => {});
+      await query('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?', ['social_security_rate_default', String(b.ss_employee_rate), String(b.ss_employee_rate)]).catch(() => {});
+
+      await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "SS_EMPLOYEE_RATE"', [b.ss_employee_rate]).catch(() => {});
+      await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "SS_EMPLOYER_RATE"', [b.ss_employer_rate]).catch(() => {});
+      await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "TAX_PERSONAL_EXEMPTION"', [b.tax_personal_allowance]).catch(() => {});
+      await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "TAX_SPOUSE_EXEMPTION"', [b.tax_spouse_allowance]).catch(() => {});
+      await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "TAX_DEPENDENT_EXEMPTION"', [b.tax_child_allowance]).catch(() => {});
+
+      // 4. Record Audit Log
+      const auditId = `audit_${Date.now()}`;
+      await query(`
+        INSERT INTO tax_audit_logs (id, user, role, action, target_entity, target_id, target_name_ar, summary_ar, summary_en, details_before, details_after)
+        VALUES (?, ?, 'HR_ADMIN', 'UPDATE', 'payroll_legal_settings', ?, ?, ?, ?, ?, ?)
+      `, [
+        auditId,
+        user,
+        id,
+        b.version_name || id,
+        `تحديث الإعدادات القانونية للضمان والضريبة (${b.version_code || id}) بواسطة ${user}`,
+        `Updated legal settings for social security & tax (${b.version_code || id}) by ${user}`,
+        prevData ? JSON.stringify(prevData) : null,
+        JSON.stringify(b)
+      ]).catch(() => {});
+
+      res.json({ success: true, id, message: 'تم حفظ وتحديث الإعدادات القانونية بنجاح' });
+    } catch (err) {
+      console.error('Error updating legal settings:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 30. Create New Legal Settings Version (Protects historical runs)
+  app.post('/api/tax-module/legal-settings/new-version', async (req, res) => {
+    try {
+      const b = req.body;
+      const user = req.user?.username || req.body.created_by || 'HR Admin';
+      const id = `legal_set_${Date.now()}`;
+
+      // Archive previous active if requested
+      if (b.status === 'ACTIVE') {
+        await query('UPDATE payroll_legal_settings SET status = "ARCHIVED" WHERE status = "ACTIVE"').catch(() => {});
+      }
+
+      await query(`
+        INSERT INTO payroll_legal_settings (
+          id, version_code, version_name, status, effective_from, effective_to,
+          ss_employee_rate, ss_employer_rate, ss_insured_salary_rate,
+          ss_minimum_insured_salary, ss_maximum_insured_salary, ss_eligible_components,
+          tax_personal_allowance, tax_spouse_allowance, tax_child_allowance,
+          tax_eligible_children_limit, tax_spouse_income_condition,
+          tax_employee_insurance_deductible, tax_other_allowed_deductions,
+          tax_taxable_income_method, tax_payroll_periods_per_year,
+          tax_rounding_method, tax_eligible_components,
+          legal_reference, notes, created_by, approved_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id,
+        b.version_code,
+        b.version_name,
+        b.status || 'ACTIVE',
+        b.effective_from || new Date().toISOString().substring(0, 10),
+        b.effective_to || null,
+        b.ss_employee_rate || 5.0,
+        b.ss_employer_rate || 12.0,
+        b.ss_insured_salary_rate || 100.0,
+        b.ss_minimum_insured_salary !== null ? b.ss_minimum_insured_salary : 350000,
+        b.ss_maximum_insured_salary !== null ? b.ss_maximum_insured_salary : 5000000,
+        JSON.stringify(b.ss_eligible_components || ['basic_salary']),
+        b.tax_personal_allowance || 2500000,
+        b.tax_spouse_allowance || 2000000,
+        b.tax_child_allowance || 200000,
+        b.tax_eligible_children_limit || 4,
+        b.tax_spouse_income_condition !== false ? 1 : 0,
+        b.tax_employee_insurance_deductible !== false ? 1 : 0,
+        b.tax_other_allowed_deductions || 0,
+        b.tax_taxable_income_method || 'ANNUAL_STANDARD',
+        b.tax_payroll_periods_per_year || 12,
+        b.tax_rounding_method || 'NEAREST_1000',
+        JSON.stringify(b.tax_eligible_components || ['basic_salary']),
+        b.legal_reference || '',
+        b.notes || '',
+        user,
+        b.approved_by || 'HR Director'
+      ]);
+
+      // Record Audit
+      const auditId = `audit_${Date.now()}`;
+      await query(`
+        INSERT INTO tax_audit_logs (id, user, role, action, target_entity, target_id, target_name_ar, summary_ar, summary_en, details_after)
+        VALUES (?, ?, 'HR_ADMIN', 'CREATE_VERSION', 'payroll_legal_settings', ?, ?, ?, ?, ?)
+      `, [
+        auditId,
+        user,
+        id,
+        b.version_name,
+        `إنشاء إصدار قانوني جديد (${b.version_code})`,
+        `Created new legal settings version (${b.version_code})`,
+        JSON.stringify(b)
+      ]).catch(() => {});
+
+      res.json({ success: true, id, message: 'تم إنشاء الإصدار القانوني الجديد بنجاح' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 31. Validate Progressive Tax Brackets (Check Gaps, Overlaps & Continuity)
+  app.post('/api/tax-module/validate-brackets', (req, res) => {
+    try {
+      const { brackets } = req.body;
+      const result = validateTaxBrackets(brackets || []);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 32. Preview Calculation & Trace (Supports Sandbox / Testing / Any Employee)
+  app.post('/api/tax-module/preview-calculation', (req, res) => {
+    try {
+      const employee = req.body.employee || req.body;
+      const activeSettings = req.body.settings || getDefaultLegalSettings();
+      const activeBrackets = req.body.brackets || getDefaultTaxBrackets();
+      const calculation = calculateCombinedPayrollTaxAndSecurity(employee, activeSettings, activeBrackets);
+      res.json({ success: true, calculation });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 33. Get Audit Logs
+  app.get('/api/tax-module/audit-logs', async (req, res) => {
+    try {
+      const rows = await query('SELECT * FROM tax_audit_logs ORDER BY timestamp DESC LIMIT 100').catch(() => []);
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   console.log('[TAX MODULE] All API routes registered successfully on /api/tax-module/*');

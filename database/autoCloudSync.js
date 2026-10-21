@@ -6,6 +6,8 @@ let isSyncing = false;
 let isFullSyncing = false;
 let lastSyncTimestamp = null;
 let realtimeSyncTimeout = null;
+let sseDebounceTimer = null;
+let lastSseSyncTriggerTime = 0;
 const pendingTablesToSync = new Set();
 const sseClients = new Set();
 
@@ -190,9 +192,17 @@ export function startCloudRealtimeListener(localPool) {
               try {
                 const event = JSON.parse(line.slice(6));
                 if (event.type === 'DATA_CHANGED') {
-                  console.log(`[REALTIME BRIDGE ⚡] Cloud edit detected on [${event.table || 'ALL'}] -> Pulling instantly to Local MySQL!`);
-                  await syncLocalToCloud(localPool, false, event.table && event.table !== 'all' ? [event.table] : null, true);
                   broadcastRealtimeEvent(event);
+                  if (event.table && event.table !== 'all') {
+                    if (sseDebounceTimer) clearTimeout(sseDebounceTimer);
+                    sseDebounceTimer = setTimeout(async () => {
+                      if (isSyncing || isFullSyncing) return;
+                      if (Date.now() - lastSseSyncTriggerTime < 10000) return;
+                      lastSseSyncTriggerTime = Date.now();
+                      console.log(`[REALTIME BRIDGE ⚡] Cloud edit detected on [${event.table}] -> Pulling targeted table to Local MySQL`);
+                      await syncTargetedTables(localPool, [event.table], true).catch(() => {});
+                    }, 3000);
+                  }
                 }
               } catch (e) {}
             }
@@ -711,8 +721,8 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
     let totalPulledToLocal = 0;
     let totalRowsDeleted = 0;
 
-    // Process tables in parallel chunks of 10
-    const CHUNK_SIZE = 10;
+    // Process tables in parallel chunks of 3 to avoid pool exhaustion
+    const CHUNK_SIZE = 3;
     for (let i = 0; i < allTables.length; i += CHUNK_SIZE) {
       const chunk = allTables.slice(i, i + CHUNK_SIZE);
       await Promise.all(chunk.map(async (table) => {

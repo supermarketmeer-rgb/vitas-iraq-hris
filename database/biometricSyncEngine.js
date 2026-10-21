@@ -1,7 +1,8 @@
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import util from 'util';
 
 const execPromise = util.promisify(exec);
+const execFilePromise = util.promisify(execFile);
 
 // Dynamically attempt to import mssql package if available
 let sqlModule = null;
@@ -247,10 +248,43 @@ export async function saveBiometricConfig(pool, newConfig) {
 }
 
 /**
+ * Validates and strictly sanitizes biometric server connection parameters
+ */
+export function validateBiometricConfig(rawConfig = {}) {
+  const host = String(rawConfig.host || '127.0.0.1').trim();
+  const port = Number(rawConfig.port) || 1433;
+  const dbName = String(rawConfig.db_name || 'att').trim();
+  const username = String(rawConfig.username || 'sa').trim();
+  const password = String(rawConfig.password || '');
+  const tableName = String(rawConfig.table_name || 'iclock_transaction').trim();
+  const authMode = rawConfig.auth_mode === 'windows' ? 'windows' : 'sql';
+
+  // Strict regex validations to prevent any injection
+  if (!/^[a-zA-Z0-9.\-_]+$/.test(host)) {
+    throw new Error('Invalid host format. Only alphanumeric characters, dots, dashes, and underscores are allowed.');
+  }
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('Invalid port number. Must be between 1 and 65535.');
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(dbName)) {
+    throw new Error('Invalid database name. Only alphanumeric characters and underscores are allowed.');
+  }
+  if (!/^[a-zA-Z0-9_\-\.\@]+$/.test(username)) {
+    throw new Error('Invalid username format.');
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
+    throw new Error('Invalid table name format. Only alphanumeric characters and underscores are allowed.');
+  }
+
+  return { host, port, db_name: dbName, username, password, table_name: tableName, auth_mode: authMode };
+}
+
+/**
  * Execute a SQL query on MS SQL Server via mssql package or PowerShell SqlClient fallback
  */
-export async function executeSqlServerQuery(config, sqlQuery) {
+export async function executeSqlServerQuery(rawConfig, sqlQuery) {
   const startTime = Date.now();
+  const config = validateBiometricConfig(rawConfig);
 
   // Strategy 1: Try with mssql module if available
   if (!sqlModule) {
@@ -264,9 +298,9 @@ export async function executeSqlServerQuery(config, sqlQuery) {
     const isWindowsAuth = config.auth_mode === 'windows';
 
     const connConfig = {
-      server: config.host || 'localhost',
-      port: Number(config.port) || 1433,
-      database: config.db_name || 'att',
+      server: config.host,
+      port: config.port,
+      database: config.db_name,
       options: {
         encrypt: false,
         trustServerCertificate: true,
@@ -277,8 +311,8 @@ export async function executeSqlServerQuery(config, sqlQuery) {
     };
 
     if (!isWindowsAuth) {
-      connConfig.user = config.username || 'sa';
-      connConfig.password = config.password || '';
+      connConfig.user = config.username;
+      connConfig.password = config.password;
     } else {
       connConfig.options.trustedConnection = true;
     }
@@ -290,30 +324,36 @@ export async function executeSqlServerQuery(config, sqlQuery) {
       const latency = Date.now() - startTime;
       return { success: true, rows: result.recordset || [], latency_ms: latency, driver: 'mssql-node' };
     } catch (nodeErr) {
-      console.log('[BIOMETRIC ENGINE] mssql node driver attempt failed, falling back to PowerShell SqlClient:', nodeErr.message);
+      console.log('[BIOMETRIC ENGINE] mssql node driver attempt failed, falling back to secure PowerShell SqlClient:', nodeErr.message);
     }
   }
 
   // Strategy 2: Native Windows PowerShell System.Data.SqlClient Bridge
   // Highly resilient on Windows LAN environments and supports Windows Integrated Auth automatically
   try {
-    const isWinAuth = config.auth_mode === 'windows' || !config.username;
-    let connStr = '';
-    
-    if (isWinAuth) {
-      connStr = `Server=${config.host},${config.port};Database=${config.db_name};Integrated Security=True;TrustServerCertificate=True;Connect Timeout=5;`;
-    } else {
-      connStr = `Server=${config.host},${config.port};Database=${config.db_name};User Id=${config.username};Password='${config.password}';TrustServerCertificate=True;Connect Timeout=5;`;
-    }
+    const isWinAuth = config.auth_mode === 'windows';
+    const b64Password = Buffer.from(config.password, 'utf8').toString('base64');
+    const b64Query = Buffer.from(sqlQuery, 'utf8').toString('base64');
 
-    const cleanSql = sqlQuery.replace(/"/g, '`"').replace(/\n/g, ' ');
+    // Build PowerShell script using SqlConnectionStringBuilder & Base64 decoding to guarantee zero command/script injection
     const psScript = `
       [System.Reflection.Assembly]::LoadWithPartialName("System.Data") | Out-Null
-      $conn = New-Object System.Data.SqlClient.SqlConnection("${connStr}")
+      $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder
+      $builder.DataSource = "${config.host},${config.port}"
+      $builder.InitialCatalog = "${config.db_name}"
+      $builder.TrustServerCertificate = $true
+      $builder.ConnectTimeout = 5
+      if (${isWinAuth ? '$true' : '$false'}) {
+        $builder.IntegratedSecurity = $true
+      } else {
+        $builder.UserID = "${config.username}"
+        $builder.Password = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("${b64Password}"))
+      }
+      $conn = New-Object System.Data.SqlClient.SqlConnection($builder.ConnectionString)
       try {
         $conn.Open()
         $cmd = $conn.CreateCommand()
-        $cmd.CommandText = "${cleanSql}"
+        $cmd.CommandText = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("${b64Query}"))
         $cmd.CommandTimeout = 10
         $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($cmd)
         $dataset = New-Object System.Data.DataSet
@@ -326,7 +366,16 @@ export async function executeSqlServerQuery(config, sqlQuery) {
       }
     `;
 
-    const { stdout, stderr } = await execPromise(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${psScript.replace(/\r?\n/g, ' ')}"`, { timeout: 12000 });
+    // Encode the entire script as UTF-16LE Base64 for PowerShell -EncodedCommand (immune to shell parsing)
+    const encodedCommand = Buffer.from(psScript, 'utf16le').toString('base64');
+    const { stdout, stderr } = await execFilePromise('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-EncodedCommand',
+      encodedCommand
+    ], { timeout: 12000 });
     
     if (stderr && stderr.trim().length > 0 && !stdout) {
       throw new Error(stderr.trim());
@@ -354,16 +403,17 @@ export async function executeSqlServerQuery(config, sqlQuery) {
 /**
  * Test connectivity to MS SQL Server
  */
-export async function testBiometricConnection(config) {
+export async function testBiometricConnection(rawConfig) {
+  const config = validateBiometricConfig(rawConfig);
   try {
-    const tableName = config.table_name || 'iclock_transaction';
+    const tableName = config.table_name;
     
-    // First test basic SELECT
+    // Test basic SELECT using sanitized tableName
     const testQuery = `
       SELECT 
         @@VERSION as server_version,
-        (SELECT COUNT(*) FROM dbo.${tableName}) as total_punches,
-        (SELECT TOP 1 punch_time FROM dbo.${tableName} ORDER BY punch_time DESC) as latest_punch
+        (SELECT COUNT(*) FROM dbo.[${tableName}]) as total_punches,
+        (SELECT TOP 1 punch_time FROM dbo.[${tableName}] ORDER BY punch_time DESC) as latest_punch
     `;
 
     const result = await executeSqlServerQuery(config, testQuery);

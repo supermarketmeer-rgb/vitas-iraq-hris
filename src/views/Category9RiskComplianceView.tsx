@@ -2733,7 +2733,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                               type="button"
                               onClick={() => {
                                 setPasswordModalUser(u);
-                                setQuickNewPassword(u.password || '');
+                                setQuickNewPassword('');
                                 setShowQuickPassword(false);
                               }}
                               className="p-1.5 rounded-lg text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-amber-500/10 hover:bg-amber-500/20"

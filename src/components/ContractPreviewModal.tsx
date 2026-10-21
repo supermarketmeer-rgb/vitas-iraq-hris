@@ -227,23 +227,35 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
     return rem ? `${milWord} و ${numberToArabicWords(rem)}` : milWord;
   };
 
+  // HTML escaping helper to prevent DOM XSS in contract preview
+  const escapeHtml = (str: any): string => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
   // Safe string helper for replacing placeholders in clauses
   // Safe string helper for replacing placeholders in clauses with exact Word bold & underline styling
   const replacePlaceholders = (text: string, rich: boolean = true): string => {
     if (!text || !employee) return text || '';
 
-    const empNameAr = employee.fullName || employee.full_name_ar || employee.name_ar || employee.name || '';
-    const empNameEn = employee.fullNameEn || employee.full_name_en || employee.name_en || empNameAr;
-    const empId = employee.employeeId || employee.employee_id || (employee.id ? `VTS-${employee.id}` : '');
-    const badgeNo = employee.badgeNo || employee.badge_no || empId;
-    const jobTitleAr = employee.jobTitle || employee.position_ar || employee.position || '';
-    const deptAr = employee.department || employee.department_ar || '';
-    const branchAr = employee.branch || employee.location_ar || '';
-    const city = employee.city || employee.branch || employee.location_ar || 'بغداد';
+    const rawEmpNameAr = employee.fullName || employee.full_name_ar || employee.name_ar || employee.name || '';
+    const empNameAr = escapeHtml(rawEmpNameAr);
+    const empNameEn = escapeHtml(employee.fullNameEn || employee.full_name_en || employee.name_en || rawEmpNameAr);
+    const empId = escapeHtml(employee.employeeId || employee.employee_id || (employee.id ? `VTS-${employee.id}` : ''));
+    const badgeNo = escapeHtml(employee.badgeNo || employee.badge_no || empId);
+    const jobTitleAr = escapeHtml(employee.jobTitle || employee.position_ar || employee.position || '');
+    const deptAr = escapeHtml(employee.department || employee.department_ar || '');
+    const branchAr = escapeHtml(employee.branch || employee.location_ar || '');
+    const city = escapeHtml(employee.city || employee.branch || employee.location_ar || 'بغداد');
     const rawPhone = employee.phone || employee.mobile || employee.phone_number || employee.phoneNumber || employee.mobileNo || employee.emergencyPhone || '';
-    const phone = formatIraqiPhoneNumber(rawPhone) || rawPhone || '';
-    const email = employee.personalEmail || employee.personal_email || employee.email || '';
-    const birthDate = employee.dob || employee.birthDate || employee.birth_date || '';
+    const phone = escapeHtml(formatIraqiPhoneNumber(rawPhone) || rawPhone || '');
+    const email = escapeHtml(employee.personalEmail || employee.personal_email || employee.email || '');
+    const birthDate = escapeHtml(employee.dob || employee.birthDate || employee.birth_date || '');
 
     const basicSalaryNum = Number(employee.basicSalary || employee.salary || 0);
     const basicSalaryPlain = basicSalaryNum > 0 ? `${basicSalaryNum.toLocaleString()}` : '0';

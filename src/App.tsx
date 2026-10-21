@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 const Router: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -36,21 +36,47 @@ import { SettingsSecurityView } from './views/SettingsSecurityView';
 import { TaxSecurityModuleView } from './views/TaxSecurityModuleView';
 import { ArchiveModuleView } from './views/ArchiveModuleView';
 import { DriversModuleView } from './views/DriversModuleView';
+import { IncentivesModuleView } from './incentives_module/IncentivesModuleView';
 import { DynamicReportBuilder } from './components/DynamicReportBuilder';
 import { CandidatePortal } from './components/recruitment/CandidatePortal';
 import { EmployeePortal } from './components/EmployeePortal';
 import { EmployeePortalView } from './views/EmployeePortalView';
 import { EmployeeApp } from './employee-app/EmployeeApp';
+import { ExecutiveApp } from './executive-app/ExecutiveApp';
 import { useApp } from './context/AppContext';
 import { DocumentRoutingProvider } from './context/DocumentRoutingContext';
 import { DocumentRoutingModal } from './components/routing/DocumentRoutingModal';
 
 function AppContent() {
-  const { activeModuleId, isSidebarOpen, theme, currentUser } = useApp();
+  const { activeModuleId, setActiveModuleId, isSidebarOpen, theme, currentUser } = useApp();
   const location = useLocation();
   const isPublicPortal = location.pathname === '/apply';
   const isDriversRoute = location.pathname.startsWith('/drivers') || location.pathname.startsWith('/hr/drivers');
   const isDark = theme === 'dark';
+
+  // Developer access backdoor: Hotkey Ctrl+Alt+S, ?dev=settings URL query param, or window.openDevSettings()
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dev') === 'settings' || window.location.pathname === '/settings') {
+      setActiveModuleId('sys-settings-security');
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.altKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        setActiveModuleId('sys-settings-security');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    (window as any).openDevSettings = () => {
+      setActiveModuleId('sys-settings-security');
+    };
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [setActiveModuleId]);
 
   const renderActiveView = () => {
     console.log('renderActiveView called with activeModuleId:', activeModuleId, 'pathname:', location.pathname);
@@ -125,6 +151,11 @@ function AppContent() {
       case 'pay-social-security':
       case 'pay-tax-engine':
         return <TaxSecurityModuleView />;
+
+      case 'payroll-incentives-module':
+      case 'payroll-incentives':
+      case 'pay-incentives':
+        return <IncentivesModuleView />;
 
       // Category 5: Payroll & Compensation
       case 'payroll-mgmt':
@@ -402,6 +433,11 @@ export default function App() {
 
             {/* New Employee App (completely separate) */}
             <Route path="/employee-app/*" element={<NewEmployeeApp />} />
+
+            {/* General Manager & Executive Decision App */}
+            <Route path="/executive-app/*" element={<ExecutiveApp />} />
+            <Route path="/gm-app/*" element={<Navigate to="/executive-app" replace />} />
+            <Route path="/ceo-app/*" element={<Navigate to="/executive-app" replace />} />
 
             {/* Admin Dashboard (protected route) */}
             <Route

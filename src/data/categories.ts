@@ -273,6 +273,13 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         titleEn: 'Social Security & Tax Engine',
         icon: 'policy',
         description: 'إدارة وقواعد الضمان الاجتماعي (قانون 18) وضريبة الدخل (قانون 113) وتتبع المحاكاة'
+      },
+      {
+        id: 'payroll-incentives-module',
+        title: 'نظام ومحرك احتساب الحوافز (Incentives)',
+        titleEn: 'Incentives & Commission Engine',
+        icon: 'military_tech',
+        description: 'إدارة واحتساب حوافز مسؤولي القروض ومسؤولي الفرق، محرك المعادلات واستيراد الإكسل'
       }
     ]
   },
@@ -686,7 +693,8 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         title: 'الإعدادات والأمان',
         titleEn: 'Settings & Security',
         icon: 'settings',
-        description: 'إدارة تفضيلات النظام، اللغة، السمة، وإعدادات الأمان'
+        description: 'إدارة تفضيلات النظام، اللغة، السمة، وإعدادات الأمان',
+        hidden: true
       }
     ]
   },

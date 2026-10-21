@@ -5,6 +5,8 @@ import * as XLSX from 'xlsx';
 import { DesktopSyncSettings } from '../components/DesktopSyncSettings';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { PoliciesSection } from '../components/PoliciesSection';
+import { IraqLegalTaxSettingsSection } from '../components/payroll/IraqLegalTaxSettingsSection';
+import { IncentivesDevConfigView } from '../incentives_module/components/IncentivesDevConfigView';
 
 interface TabConfig {
   id: string;
@@ -106,7 +108,9 @@ export const SettingsSecurityView: React.FC = () => {
     { id: 'status-changes', icon: 'published_with_changes', labelAr: 'تغيير الحالة', labelEn: 'Status Change' },
     { id: 'trainings', icon: 'school', labelAr: 'التدريبات', labelEn: 'Trainings' },
     { id: 'allowances', icon: 'settings_suggest', labelAr: 'السياسات', labelEn: 'Policies' },
+    { id: 'iraq-tax-security', icon: 'policy', labelAr: 'إعدادات الضمان الاجتماعي وضريبة الدخل — العراق', labelEn: 'Social Security & Tax Settings (Iraq)' },
     { id: 'templates', icon: 'edit_document', labelAr: 'القوالب', labelEn: 'Templates' },
+    { id: 'incentives-engine-dev', icon: 'functions', labelAr: 'محرك الحوافز (إعدادات المطور والمعادلات)', labelEn: 'Incentives Engine (Developer & Formulas)' },
     { id: 'desktop-sync', icon: 'desktop_windows', labelAr: 'إعدادات Desktop والمزامنة', labelEn: 'Desktop & Sync' },
     { id: 'maintenance', icon: 'warning', labelAr: 'الصيانة', labelEn: 'Maintenance' },
   ];
@@ -892,6 +896,7 @@ export const SettingsSecurityView: React.FC = () => {
           'الاسم الكامل (إنجليزي)': sanitizeCellText(emp.fullNameEn || emp.full_name_en || emp.name_en || ''),
           'رمز الموظف': sanitizeCellText(emp.employeeId || emp.employee_id || emp.empCode || ''),
           'رقم البادج': sanitizeCellText(emp.badgeNo || emp.badge_no || ''),
+          'معرف الحوافز (WAID)': sanitizeCellText(emp.waid || emp.wa_id || ''),
           'تاريخ الميلاد': sanitizeCellText(emp.dob || ''),
           'البريد الإلكتروني المؤسسي': sanitizeCellText(emp.email || ''),
           'البريد الإلكتروني الشخصي': sanitizeCellText(emp.personalEmail || emp.personal_email || ''),
@@ -1361,6 +1366,7 @@ export const SettingsSecurityView: React.FC = () => {
               empCode = `VTS-${1000 + importedEmployees.length + 1}`;
             }
             const badgeNo = getVal(row, ['Badge Number', 'badgeNo', 'badge_no', 'رقم البادج', 'البادج', 'رقم الهوية', 'Badge']);
+            const waid = getVal(row, ['WAID', 'waid', 'wa_id', 'معرف الحوافز', 'كود الحوافز', 'معرف الحوافز (WAID)', 'Incentives ID', 'Incentives WAID']);
             const dob = parseExcelDate(getVal(row, ['Date of Birth', 'dob', 'تاريخ الميلاد', 'تاريخ ولادة', 'DOB', 'Birth Date']));
             const email = getVal(row, ['Email', 'email', 'البريد الإلكتروني المؤسسي', 'البريد الإلكتروني', 'البريد الالكتروني', 'الإيميل', 'الايميل', 'البريد المؤسسي']);
             const personalEmail = getVal(row, ['Personal Email', 'personalEmail', 'personal_email', 'البريد الإلكتروني الشخصي', 'البريد الشخصي', 'الايميل الشخصي']);
@@ -1456,6 +1462,7 @@ export const SettingsSecurityView: React.FC = () => {
               fullNameEn,
               empCode,
               badgeNo,
+              waid,
               dob,
               email,
               personalEmail,
@@ -1648,6 +1655,10 @@ export const SettingsSecurityView: React.FC = () => {
           />
         )}
 
+        {activeTab === 'incentives-engine-dev' && (
+          <IncentivesDevConfigView isDark={theme === 'dark'} />
+        )}
+
         {activeTab === 'desktop-sync' && (
           <DesktopSyncSettings />
         )}
@@ -1693,6 +1704,9 @@ export const SettingsSecurityView: React.FC = () => {
             isSaving={isSavingSettings}
             employees={employees}
           />
+        )}
+        {activeTab === 'iraq-tax-security' && (
+          <IraqLegalTaxSettingsSection language={language as any} />
         )}
         {activeTab === 'templates' && (
           <TemplatesSection

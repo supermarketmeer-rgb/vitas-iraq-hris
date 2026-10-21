@@ -722,17 +722,79 @@ export const Category11SupportHelpView: React.FC = () => {
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('تطبيق الموبايل المباشر لمتابعة الإجازات، الراتب والدوام من هاتفك الذكي', 'Mobile app for tracking leaves, payslips & attendance on your smartphone')}</p>
           </div>
 
-          <div className="flex justify-center gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            {/* General Manager Executive App */}
+            <div className={`p-4 rounded-2xl border text-start space-y-2.5 ${
+              isDark ? 'bg-gradient-to-br from-amber-500/10 to-slate-900 border-amber-500/30' : 'bg-amber-50/60 border-amber-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold text-amber-500 uppercase tracking-wider">
+                  EXECUTIVE SUITE
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold">
+                  GM & Leadership
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-slate-100 dark:text-slate-100 light:text-slate-900" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                {t('تطبيق المدير العام والقيادة التنفيذية', 'General Manager Decision Suite')}
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                {t('لوحة اتخاذ القرارات والمصادقات اللحظية، ومتابعة أداء الـ 16 فرعاً وإصدار الأوامر الإدارية.',
+                   'Real-time decision cockpit, approvals, 16-branch telemetry and executive decrees on mobile.')}
+              </p>
+              <a
+                href="/executive-app"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">shield_person</span>
+                <span>{t('تشغيل تطبيق المدير العام', 'Open GM Mobile App')}</span>
+              </a>
+            </div>
+
+            {/* Employee Self-Service App */}
+            <div className={`p-4 rounded-2xl border text-start space-y-2.5 ${
+              isDark ? 'bg-gradient-to-br from-teal-500/10 to-slate-900 border-teal-500/30' : 'bg-teal-50/60 border-teal-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold text-teal-400 uppercase tracking-wider">
+                  EMPLOYEE ESS
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 text-[9px] font-bold">
+                  All Staff
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-slate-100 dark:text-slate-100 light:text-slate-900" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                {t('تطبيق الموظف الذاتي (ESS)', 'Employee Self-Service App')}
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                {t('بوابة الموظف للهواتف الذكية لمتابعة الحضور، الإجازات، الراتب الشهري، والإشعارات.',
+                   'Employee companion for leaves, payslips, live attendance and notifications.')}
+              </p>
+              <a
+                href="/employee-app"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">person</span>
+                <span>{t('تشغيل تطبيق الموظف', 'Open Employee App')}</span>
+              </a>
+            </div>
+          </div>
+
+          <div className="flex justify-center gap-3 pt-2">
             <button
               onClick={() => alert('جاري تجهيز حزمة تثبيت أندرويد VITAS_HRMS.apk')}
-              className="px-5 py-2.5 rounded-xl bg-[#0a0c10] hover:bg-slate-800 text-white font-bold text-xs border border-white/10 flex items-center gap-2 transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-[#0a0c10] hover:bg-slate-800 text-white font-bold text-xs border border-white/10 flex items-center gap-2 transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-teal-400">android</span>
               {t('تحميل لنظام Android (APK)', 'Download Android (APK)')}
             </button>
             <button
               onClick={() => alert('سيتم تحويلك إلى متجر Apple App Store')}
-              className="px-5 py-2.5 rounded-xl bg-[#0a0c10] hover:bg-slate-800 text-white font-bold text-xs border border-white/10 flex items-center gap-2 transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-[#0a0c10] hover:bg-slate-800 text-white font-bold text-xs border border-white/10 flex items-center gap-2 transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-teal-400">apple</span>
               {t('تحميل لنظام iOS App Store', 'Download iOS App Store')}

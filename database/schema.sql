@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS employees (
     id VARCHAR(50) PRIMARY KEY,
     employee_id VARCHAR(50) UNIQUE NOT NULL,
     badge_no VARCHAR(50) NULL,
+    waid VARCHAR(50) NULL,
     full_name_ar VARCHAR(255) NOT NULL,
     full_name_en VARCHAR(255) NULL,
     email VARCHAR(255) UNIQUE NOT NULL,

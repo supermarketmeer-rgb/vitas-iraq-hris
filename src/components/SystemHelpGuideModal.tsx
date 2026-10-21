@@ -25,7 +25,11 @@ export const SystemHelpGuideModal: React.FC<SystemHelpGuideModalProps> = ({ isOp
   const isDark = theme === 'dark';
 
   const categories = useMemo(() => {
-    return isAr ? ARABIC_SYSTEM_GUIDE : ENGLISH_SYSTEM_GUIDE;
+    const raw = isAr ? ARABIC_SYSTEM_GUIDE : ENGLISH_SYSTEM_GUIDE;
+    return raw.map(cat => ({
+      ...cat,
+      modules: cat.modules.filter(m => m.id !== 'sys-settings-security')
+    }));
   }, [isAr]);
 
   const filteredCategories = useMemo(() => {
