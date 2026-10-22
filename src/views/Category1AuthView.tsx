@@ -129,23 +129,14 @@ export const Category1AuthView: React.FC = () => {
   return (
     <div className="auth-view-container space-y-6 animate-in fade-in duration-300">
       {/* Top Banner Header */}
-      <div className="p-6 rounded-3xl bg-[#0a0c10] border border-teal-500/30 shadow-2xl flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-[11px] font-mono text-teal-400 uppercase tracking-widest font-normal">
-              1. AUTHENTICATION & SECURITY • تسجيل الدخول والأمان
-            </span>
-          </div>
-          <h1 className="text-2xl font-normal text-white text-white-force drop-shadow-sm flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-white text-white-force drop-shadow-sm flex items-center gap-2">
             <span className="material-symbols-outlined text-teal-400 text-3xl">shield_lock</span>
             {activeModuleId === 'auth-secure' && t('تسجيل الدخول الآمن وتوجيه الأدوار', 'Secure Login & Role Routing')}
             {activeModuleId === 'auth-sso' && t('تسجيل الدخول المؤسسي (Corporate SSO)', 'Corporate Single Sign-On (SSO)')}
             {activeModuleId === 'auth-biometric' && t('المصادقة والتحقق البيومتري', 'Biometric Authentication & Verification')}
           </h1>
-          <p className="text-xs text-slate-400 mt-1 font-normal">
-            {t('منظومة المصادقة المعززة وتوجيه الصلاحيات لموظفي ومسؤولي فيتاس العراق', 'Enhanced authentication and role routing system for VITAS Iraq staff')}
-          </p>
         </div>
 
         {/* Top Module Sub-Buttons Bar */}
@@ -249,7 +240,7 @@ export const Category1AuthView: React.FC = () => {
                 <div className="flex items-center justify-between pb-3 border-b border-white/10">
                   <h2 className="text-sm font-normal text-white flex items-center gap-2">
                     <span className="material-symbols-outlined text-teal-400">admin_panel_settings</span>
-                    {t('محاكي الدخول وتوجيه الأدوار الذكي', 'Role-Based Authentication Simulator')}
+                    {t('محاكي الدخول وتوجيه الأدوار', 'Role-Based Authentication Simulator')}
                   </h2>
                   <span className="text-[10px] font-mono font-normal text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                     MFA Enabled

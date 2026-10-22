@@ -452,7 +452,7 @@ const SCHEMA_TABLES: TableSummary[] = [
   },
   {
     name: 'approval_requests',
-    uiScreen: 'نظام الموافقة الذكي والموافقات المتعددة المستويات (Cat 4 & Cat 10)',
+    uiScreen: 'نظام الموافقة والموافقات المتعددة المستويات (Cat 4 & Cat 10)',
     module: 'Workflows & Approvals',
     columnsCount: 11,
     description: 'طلبات الموافقات على الإجازات والمشتريات والتنقلات من القيادات',

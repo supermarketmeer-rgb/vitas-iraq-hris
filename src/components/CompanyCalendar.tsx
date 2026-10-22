@@ -1251,241 +1251,242 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className={`fixed inset-0 ${colors.modalOverlay} flex items-center justify-center z-50 p-4`}
+              className={`fixed inset-0 ${colors.modalOverlay} flex items-center justify-center z-50 p-4 backdrop-blur-sm`}
               onClick={() => setShowHolidayModal(false)}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className={`${colors.modalBg} ${colors.modalBorder} rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto ${isDark ? '' : 'shadow-xl'}`}
+                className={`${colors.modalBg} ${colors.modalBorder} rounded-2xl w-full max-w-lg max-h-[88vh] flex flex-col overflow-hidden shadow-2xl`}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className={`text-xl font-bold ${colors.text}`}>
-                      {language === 'ar' ? 'تعيين عطل' : 'Set Holidays'}
-                    </h3>
+                {/* Fixed Header */}
+                <div className={`p-5 px-6 flex items-center justify-between border-b ${colors.divider} shrink-0`}>
+                  <h3 className={`text-xl font-bold ${colors.text}`}>
+                    {language === 'ar' ? 'تعيين عطل' : 'Set Holidays'}
+                  </h3>
+                  <button
+                    onClick={() => setShowHolidayModal(false)}
+                    className={`p-2 rounded-lg ${colors.buttonBg} ${colors.buttonHover} transition-all`}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Scrollable Form Body */}
+                <div className="p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
+                  <div className="grid grid-cols-2 gap-4">
                     <button
-                      onClick={() => setShowHolidayModal(false)}
-                      className={`p-2 rounded-lg ${colors.buttonBg} ${colors.buttonHover} transition-all`}
+                      type="button"
+                      onClick={() => {
+                        setSelectedHolidayType('official');
+                        setShowBranchSelectionModal(false);
+                      }}
+                      className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                        selectedHolidayType === 'official'
+                          ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20 shadow-sm'
+                          : 'border-gray-200 dark:border-white/10 hover:border-teal-300'
+                      }`}
                     >
-                      <X size={20} />
+                      <CalendarCheck 
+                        className={`mx-auto mb-2 transition-colors ${
+                          selectedHolidayType === 'official'
+                            ? 'text-teal-600 dark:text-teal-400'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`} 
+                        size={32} 
+                      />
+                      <div className={`text-center font-bold transition-colors ${
+                        selectedHolidayType === 'official'
+                          ? 'text-teal-700 dark:text-teal-300'
+                          : isDark ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        {language === 'ar' ? 'عطل رسمية' : 'Official Holidays'}
+                      </div>
+                      <div className={`text-center text-xs mt-1 transition-colors ${
+                        selectedHolidayType === 'official'
+                          ? 'text-teal-600 dark:text-teal-400 font-medium'
+                          : isDark ? 'text-slate-400' : 'text-slate-500'
+                      }`}>
+                        {language === 'ar' ? 'تطبق على جميع الفروع' : 'Apply to all branches'}
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedHolidayType('emergency');
+                        setShowBranchSelectionModal(true);
+                      }}
+                      className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                        selectedHolidayType === 'emergency'
+                          ? 'border-red-500 bg-red-50 dark:bg-red-900/20 shadow-sm'
+                          : 'border-gray-200 dark:border-white/10 hover:border-red-300'
+                      }`}
+                    >
+                      <CalendarX 
+                        className={`mx-auto mb-2 transition-colors ${
+                          selectedHolidayType === 'emergency'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`} 
+                        size={32} 
+                      />
+                      <div className={`text-center font-bold transition-colors ${
+                        selectedHolidayType === 'emergency'
+                          ? 'text-red-700 dark:text-red-300'
+                          : isDark ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        {language === 'ar' ? 'عطل طارئة' : 'Emergency Holidays'}
+                      </div>
+                      <div className={`text-center text-xs mt-1 transition-colors ${
+                        selectedHolidayType === 'emergency'
+                          ? 'text-red-600 dark:text-red-400 font-medium'
+                          : isDark ? 'text-slate-400' : 'text-slate-500'
+                      }`}>
+                        {language === 'ar' ? 'اختيار الفروع المتأثرة' : 'Select affected branches'}
+                      </div>
                     </button>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedHolidayType('official');
-                          setShowBranchSelectionModal(false);
-                        }}
-                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                          selectedHolidayType === 'official'
-                            ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20 shadow-sm'
-                            : 'border-gray-200 dark:border-white/10 hover:border-teal-300'
-                        }`}
-                      >
-                        <CalendarCheck 
-                          className={`mx-auto mb-2 transition-colors ${
-                            selectedHolidayType === 'official'
-                              ? 'text-teal-600 dark:text-teal-400'
-                              : 'text-slate-400 dark:text-slate-500'
-                          }`} 
-                          size={32} 
-                        />
-                        <div className={`text-center font-bold transition-colors ${
-                          selectedHolidayType === 'official'
-                            ? 'text-teal-700 dark:text-teal-300'
-                            : isDark ? 'text-slate-300' : 'text-slate-700'
-                        }`}>
-                          {language === 'ar' ? 'عطل رسمية' : 'Official Holidays'}
-                        </div>
-                        <div className={`text-center text-xs mt-1 transition-colors ${
-                          selectedHolidayType === 'official'
-                            ? 'text-teal-600 dark:text-teal-400 font-medium'
-                            : isDark ? 'text-slate-400' : 'text-slate-500'
-                        }`}>
-                          {language === 'ar' ? 'تطبق على جميع الفروع' : 'Apply to all branches'}
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedHolidayType('emergency');
-                          setShowBranchSelectionModal(true);
-                        }}
-                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                          selectedHolidayType === 'emergency'
-                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20 shadow-sm'
-                            : 'border-gray-200 dark:border-white/10 hover:border-red-300'
-                        }`}
-                      >
-                        <CalendarX 
-                          className={`mx-auto mb-2 transition-colors ${
-                            selectedHolidayType === 'emergency'
-                              ? 'text-red-600 dark:text-red-400'
-                              : 'text-slate-400 dark:text-slate-500'
-                          }`} 
-                          size={32} 
-                        />
-                        <div className={`text-center font-bold transition-colors ${
-                          selectedHolidayType === 'emergency'
-                            ? 'text-red-700 dark:text-red-300'
-                            : isDark ? 'text-slate-300' : 'text-slate-700'
-                        }`}>
-                          {language === 'ar' ? 'عطل طارئة' : 'Emergency Holidays'}
-                        </div>
-                        <div className={`text-center text-xs mt-1 transition-colors ${
-                          selectedHolidayType === 'emergency'
-                            ? 'text-red-600 dark:text-red-400 font-medium'
-                            : isDark ? 'text-slate-400' : 'text-slate-500'
-                        }`}>
-                          {language === 'ar' ? 'اختيار الفروع المتأثرة' : 'Select affected branches'}
-                        </div>
-                      </button>
+                  <div className="space-y-3">
+                    <div>
+                      <label className={`block ${colors.labelColor} mb-1 text-sm font-medium`}>
+                        {language === 'ar' ? 'اسم العطلة (عربي)' : 'Holiday Name (Arabic)'}
+                      </label>
+                      <input
+                        type="text"
+                        value={holidayFormData.name_ar}
+                        onChange={(e) => setHolidayFormData({ ...holidayFormData, name_ar: e.target.value })}
+                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} ${colors.inputPlaceholder} focus:outline-none focus:border-teal-500/50`}
+                        placeholder={language === 'ar' ? 'مثال: عيد الفطر' : 'Example: Eid al-Fitr'}
+                      />
                     </div>
 
-                    <div className="space-y-3">
-                      <div>
-                        <label className={`block ${colors.labelColor} mb-1`}>
-                          {language === 'ar' ? 'اسم العطلة (عربي)' : 'Holiday Name (Arabic)'}
-                        </label>
-                        <input
-                          type="text"
-                          value={holidayFormData.name_ar}
-                          onChange={(e) => setHolidayFormData({ ...holidayFormData, name_ar: e.target.value })}
-                          className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} ${colors.inputPlaceholder} focus:outline-none focus:border-teal-500/50`}
-                          placeholder={language === 'ar' ? 'مثال: عيد الفطر' : 'Example: Eid al-Fitr'}
-                        />
-                      </div>
-
-                      <div>
-                        <label className={`block ${colors.labelColor} mb-1`}>
-                          {language === 'ar' ? 'اسم العطلة (إنجليزي)' : 'Holiday Name (English)'}
-                        </label>
-                        <input
-                          type="text"
-                          value={holidayFormData.name_en}
-                          onChange={(e) => setHolidayFormData({ ...holidayFormData, name_en: e.target.value })}
-                          className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} ${colors.inputPlaceholder} focus:outline-none focus:border-teal-500/50`}
-                          placeholder={language === 'ar' ? 'مثال: Eid al-Fitr' : 'Example: Eid al-Fitr'}
-                        />
-                      </div>
-
-                      <div>
-                        <label className={`block ${colors.labelColor} mb-1`}>
-                          {language === 'ar' ? 'التاريخ' : 'Date'}
-                        </label>
-                        <input
-                          type="date"
-                          value={holidayFormData.holiday_date}
-                          onChange={(e) => setHolidayFormData({ ...holidayFormData, holiday_date: e.target.value })}
-                          className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
-                        />
-                      </div>
-
-                      <div>
-                        <label className={`block ${colors.labelColor} mb-1`}>
-                          {language === 'ar' ? 'نوع العطلة' : 'Holiday Type'}
-                        </label>
-                        <select
-                          value={holidayFormData.holiday_type}
-                          onChange={(e) => setHolidayFormData({ ...holidayFormData, holiday_type: e.target.value })}
-                          className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
-                        >
-                          <option value="national">{language === 'ar' ? 'وطني' : 'National'}</option>
-                          <option value="religious">{language === 'ar' ? 'ديني' : 'Religious'}</option>
-                          <option value="company">{language === 'ar' ? 'شركة' : 'Company'}</option>
-                          <option value="optional">{language === 'ar' ? 'اختياري' : 'Optional'}</option>
-                        </select>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="is_recurring"
-                          checked={holidayFormData.is_recurring}
-                          onChange={(e) => setHolidayFormData({ ...holidayFormData, is_recurring: e.target.checked })}
-                          className={`w-4 h-4 ${colors.checkboxBg} ${colors.checkboxBorder} rounded focus:ring-teal-500`}
-                        />
-                        <label htmlFor="is_recurring" className={`${colors.labelColor}`}>
-                          {language === 'ar' ? 'عطلة متكررة سنوياً' : 'Recurring annual holiday'}
-                        </label>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="is_paid"
-                          checked={holidayFormData.is_paid}
-                          onChange={(e) => setHolidayFormData({ ...holidayFormData, is_paid: e.target.checked })}
-                          className={`w-4 h-4 ${colors.checkboxBg} ${colors.checkboxBorder} rounded focus:ring-teal-500`}
-                        />
-                        <label htmlFor="is_paid" className={`${colors.labelColor}`}>
-                          {language === 'ar' ? 'عطلة مدفوعة' : 'Paid holiday'}
-                        </label>
-                      </div>
+                    <div>
+                      <label className={`block ${colors.labelColor} mb-1 text-sm font-medium`}>
+                        {language === 'ar' ? 'اسم العطلة (إنجليزي)' : 'Holiday Name (English)'}
+                      </label>
+                      <input
+                        type="text"
+                        value={holidayFormData.name_en}
+                        onChange={(e) => setHolidayFormData({ ...holidayFormData, name_en: e.target.value })}
+                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} ${colors.inputPlaceholder} focus:outline-none focus:border-teal-500/50`}
+                        placeholder={language === 'ar' ? 'مثال: Eid al-Fitr' : 'Example: Eid al-Fitr'}
+                      />
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t ${colors.divider}">
-                      <button
-                        onClick={() => setShowHolidayModal(false)}
-                        className={`px-4 py-2 rounded-lg ${colors.buttonBg} ${colors.buttonHover} ${colors.buttonText} transition-all`}
+                    <div>
+                      <label className={`block ${colors.labelColor} mb-1 text-sm font-medium`}>
+                        {language === 'ar' ? 'التاريخ' : 'Date'}
+                      </label>
+                      <input
+                        type="date"
+                        value={holidayFormData.holiday_date}
+                        onChange={(e) => setHolidayFormData({ ...holidayFormData, holiday_date: e.target.value })}
+                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block ${colors.labelColor} mb-1 text-sm font-medium`}>
+                        {language === 'ar' ? 'نوع العطلة' : 'Holiday Type'}
+                      </label>
+                      <select
+                        value={holidayFormData.holiday_type}
+                        onChange={(e) => setHolidayFormData({ ...holidayFormData, holiday_type: e.target.value })}
+                        className={`w-full px-4 py-2 ${colors.inputBg} ${colors.inputBorder} rounded-lg ${colors.inputText} focus:outline-none focus:border-teal-500/50`}
                       >
-                        {language === 'ar' ? 'إلغاء' : 'Cancel'}
-                      </button>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const holidayData = {
-                              ...holidayFormData,
-                              is_emergency: selectedHolidayType === 'emergency',
-                              scope: selectedHolidayType === 'emergency' && selectedBranches.length > 0 ? 'specific_branches' : 'all_branches',
-                              created_by: 'ADMIN001'
-                            };
+                        <option value="national">{language === 'ar' ? 'وطني' : 'National'}</option>
+                        <option value="religious">{language === 'ar' ? 'ديني' : 'Religious'}</option>
+                        <option value="company">{language === 'ar' ? 'شركة' : 'Company'}</option>
+                        <option value="optional">{language === 'ar' ? 'اختياري' : 'Optional'}</option>
+                      </select>
+                    </div>
 
-                            const result: any = await api.addCalendarHoliday(holidayData);
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="checkbox"
+                        id="is_recurring"
+                        checked={holidayFormData.is_recurring}
+                        onChange={(e) => setHolidayFormData({ ...holidayFormData, is_recurring: e.target.checked })}
+                        className={`w-4 h-4 ${colors.checkboxBg} ${colors.checkboxBorder} rounded focus:ring-teal-500`}
+                      />
+                      <label htmlFor="is_recurring" className={`${colors.labelColor} text-sm select-none cursor-pointer`}>
+                        {language === 'ar' ? 'عطلة متكررة سنوياً' : 'Recurring annual holiday'}
+                      </label>
+                    </div>
 
-                            // If emergency holiday with specific branches, add branch associations
-                            if (selectedHolidayType === 'emergency' && selectedBranches.length > 0 && result?.id) {
-                              await api.addHolidayBranches(result.id, selectedBranches);
-                            }
-
-                            // Reload holidays
-                            const year = currentDate.getFullYear();
-                            const holidaysData = await api.getCalendarHolidays({ year: year.toString() });
-                            setHolidays(Array.isArray(holidaysData) ? holidaysData : []);
-
-                            setShowHolidayModal(false);
-                            setShowBranchSelectionModal(false);
-                            setHolidayFormData({
-                              name_ar: '',
-                              name_en: '',
-                              description_ar: '',
-                              description_en: '',
-                              holiday_date: '',
-                              is_recurring: true,
-                              holiday_type: 'national',
-                              is_paid: true
-                            });
-                            setSelectedBranches([]);
-                          } catch (error: any) {
-                            console.error('Error adding holiday:', error);
-                            const msg = error?.message ? `: ${error.message}` : '';
-                            alert((language === 'ar' ? 'خطأ في إضافة العطلة' : 'Error adding holiday') + msg);
-                          }
-                        }}
-                        className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-semibold transition-all"
-                        disabled={!holidayFormData.name_ar || !holidayFormData.name_en || !holidayFormData.holiday_date}
-                      >
-                        {language === 'ar' ? 'حفظ العطلة' : 'Save Holiday'}
-                      </button>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="is_paid"
+                        checked={holidayFormData.is_paid}
+                        onChange={(e) => setHolidayFormData({ ...holidayFormData, is_paid: e.target.checked })}
+                        className={`w-4 h-4 ${colors.checkboxBg} ${colors.checkboxBorder} rounded focus:ring-teal-500`}
+                      />
+                      <label htmlFor="is_paid" className={`${colors.labelColor} text-sm select-none cursor-pointer`}>
+                        {language === 'ar' ? 'عطلة مدفوعة' : 'Paid holiday'}
+                      </label>
                     </div>
                   </div>
+                </div>
+
+                {/* Fixed Footer */}
+                <div className={`p-4 px-6 border-t ${colors.divider} flex justify-end gap-3 shrink-0 bg-gray-50/50 dark:bg-white/[0.02]`}>
+                  <button
+                    onClick={() => setShowHolidayModal(false)}
+                    className={`px-4 py-2 rounded-xl ${colors.buttonBg} ${colors.buttonHover} ${colors.buttonText} transition-all font-medium`}
+                  >
+                    {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const holidayData = {
+                          ...holidayFormData,
+                          is_emergency: selectedHolidayType === 'emergency',
+                          scope: selectedHolidayType === 'emergency' && selectedBranches.length > 0 ? 'specific_branches' : 'all_branches',
+                          created_by: 'ADMIN001'
+                        };
+
+                        const result: any = await api.addCalendarHoliday(holidayData);
+
+                        // If emergency holiday with specific branches, add branch associations
+                        if (selectedHolidayType === 'emergency' && selectedBranches.length > 0 && result?.id) {
+                          await api.addHolidayBranches(result.id, selectedBranches);
+                        }
+
+                        // Reload holidays
+                        const year = currentDate.getFullYear();
+                        const holidaysData = await api.getCalendarHolidays({ year: year.toString() });
+                        setHolidays(Array.isArray(holidaysData) ? holidaysData : []);
+
+                        setShowHolidayModal(false);
+                        setShowBranchSelectionModal(false);
+                        setHolidayFormData({
+                          name_ar: '',
+                          name_en: '',
+                          description_ar: '',
+                          description_en: '',
+                          holiday_date: '',
+                          is_recurring: true,
+                          holiday_type: 'national',
+                          is_paid: true
+                        });
+                        setSelectedBranches([]);
+                      } catch (error: any) {
+                        console.error('Error adding holiday:', error);
+                        const msg = error?.message ? `: ${error.message}` : '';
+                        alert((language === 'ar' ? 'خطأ في إضافة العطلة' : 'Error adding holiday') + msg);
+                      }
+                    }}
+                    className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold transition-all shadow-md shadow-teal-500/20"
+                    disabled={!holidayFormData.name_ar || !holidayFormData.name_en || !holidayFormData.holiday_date}
+                  >
+                    {language === 'ar' ? 'حفظ العطلة' : 'Save Holiday'}
+                  </button>
                 </div>
               </motion.div>
             </motion.div>
@@ -1499,96 +1500,118 @@ export const CompanyCalendar: React.FC<CompanyCalendarProps> = ({ language = 'ar
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className={`fixed inset-0 ${colors.modalOverlay} flex items-center justify-center z-50 p-4`}
+              className={`fixed inset-0 ${colors.modalOverlay} flex items-center justify-center z-[60] p-4 backdrop-blur-sm`}
               onClick={() => setShowBranchSelectionModal(false)}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className={`${colors.modalBg} ${colors.modalBorder} rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto ${isDark ? '' : 'shadow-xl'}`}
+                className={`${colors.modalBg} ${colors.modalBorder} rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden shadow-2xl`}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className={`text-xl font-bold ${colors.text}`}>
-                      {language === 'ar' ? 'اختيار الفروع المتأثرة' : 'Select Affected Branches'}
-                    </h3>
-                    <button
-                      onClick={() => setShowBranchSelectionModal(false)}
-                      className={`p-2 rounded-lg ${colors.buttonBg} ${colors.buttonHover} transition-all`}
-                    >
-                      <X size={20} />
-                    </button>
+                {/* Fixed Header */}
+                <div className={`p-5 px-6 flex items-center justify-between border-b ${colors.divider} shrink-0`}>
+                  <h3 className={`text-xl font-bold ${colors.text}`}>
+                    {language === 'ar' ? 'اختيار الفروع المتأثرة' : 'Select Affected Branches'}
+                  </h3>
+                  <button
+                    onClick={() => setShowBranchSelectionModal(false)}
+                    className={`p-2 rounded-lg ${colors.buttonBg} ${colors.buttonHover} transition-all`}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Single Smooth Scrollable Container: Top to Bottom without Nested Traps */}
+                <div className="p-6 overflow-y-auto flex-1 space-y-4 overscroll-contain">
+                  {/* Select All Branches */}
+                  <div 
+                    onClick={() => {
+                      if (selectedBranches.length === branches.length && branches.length > 0) {
+                        setSelectedBranches([]);
+                      } else {
+                        setSelectedBranches(branches.map(b => b.id));
+                      }
+                    }}
+                    className="flex items-center gap-3 p-3.5 rounded-xl bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-500/30 cursor-pointer hover:border-teal-400 transition-all select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      id="select_all_branches"
+                      checked={selectedBranches.length === branches.length && branches.length > 0}
+                      onChange={() => {}}
+                      className={`w-4 h-4 ${colors.checkboxBg} ${colors.checkboxBorder} rounded focus:ring-teal-500 cursor-pointer pointer-events-none`}
+                    />
+                    <label htmlFor="select_all_branches" className={`${colors.labelColor} font-semibold cursor-pointer select-none flex-1`}>
+                      {language === 'ar' ? 'اختيار جميع الفروع' : 'Select All Branches'}
+                    </label>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-500/30">
-                      <input
-                        type="checkbox"
-                        id="select_all_branches"
-                        checked={selectedBranches.length === branches.length && branches.length > 0}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedBranches(branches.map(b => b.id));
-                          } else {
-                            setSelectedBranches([]);
-                          }
-                        }}
-                        className={`w-4 h-4 ${colors.checkboxBg} ${colors.checkboxBorder} rounded focus:ring-teal-500`}
-                      />
-                      <label htmlFor="select_all_branches" className={`${colors.labelColor} font-semibold`}>
-                        {language === 'ar' ? 'اختيار جميع الفروع' : 'Select All Branches'}
-                      </label>
-                    </div>
-
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {branches.map((branch) => (
-                        <div key={branch.id} className={`flex items-center gap-2 p-3 rounded-lg ${colors.buttonBg} border ${colors.border}`}>
+                  {/* Branch List - Unified smooth scrolling with proper spacing */}
+                  <div className="space-y-2 pb-2">
+                    {branches.map((branch) => {
+                      const isSelected = selectedBranches.includes(branch.id);
+                      return (
+                        <div 
+                          key={branch.id} 
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedBranches(selectedBranches.filter(id => id !== branch.id));
+                            } else {
+                              setSelectedBranches([...selectedBranches, branch.id]);
+                            }
+                          }}
+                          className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
+                            isSelected 
+                              ? 'bg-teal-50/50 dark:bg-teal-900/10 border-teal-400 dark:border-teal-500/50' 
+                              : `${colors.buttonBg} ${colors.border} hover:border-teal-500/40`
+                          }`}
+                        >
                           <input
                             type="checkbox"
                             id={`branch_${branch.id}`}
-                            checked={selectedBranches.includes(branch.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedBranches([...selectedBranches, branch.id]);
-                              } else {
-                                setSelectedBranches(selectedBranches.filter(id => id !== branch.id));
-                              }
-                            }}
-                            className={`w-4 h-4 ${colors.checkboxBg} ${colors.checkboxBorder} rounded focus:ring-teal-500`}
+                            checked={isSelected}
+                            onChange={() => {}}
+                            className={`w-4 h-4 ${colors.checkboxBg} ${colors.checkboxBorder} rounded focus:ring-teal-500 cursor-pointer pointer-events-none`}
                           />
-                          <label htmlFor={`branch_${branch.id}`} className={`${colors.labelColor}`}>
-                            {language === 'ar' ? branch.name : branch.name_en || branch.name}
+                          <label htmlFor={`branch_${branch.id}`} className={`${colors.labelColor} cursor-pointer select-none flex-1 font-medium`}>
+                            {language === 'ar' ? (branch.name_ar || branch.name) : (branch.name_en || branch.name || branch.name_ar)}
                           </label>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                    {selectedBranches.length > 0 && (
-                      <div className={`p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30`}>
-                        <p className={`text-sm ${colors.textSecondary}`}>
-                          {language === 'ar' 
-                            ? `سيتم تطبيق العطلة على ${selectedBranches.length} فرع` 
-                            : `Holiday will be applied to ${selectedBranches.length} branch(es)`}
-                        </p>
-                      </div>
+                {/* Fixed Footer: Always visible at bottom, never cut off */}
+                <div className={`p-4 px-6 border-t ${colors.divider} flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 bg-gray-50/50 dark:bg-white/[0.02]`}>
+                  <div className="text-sm font-medium">
+                    {selectedBranches.length > 0 ? (
+                      <span className="text-teal-600 dark:text-teal-400">
+                        {language === 'ar' 
+                          ? `سيتم تطبيق العطلة على ${selectedBranches.length} فرع` 
+                          : `Holiday will be applied to ${selectedBranches.length} branch(es)`}
+                      </span>
+                    ) : (
+                      <span className={colors.secondaryText}>
+                        {language === 'ar' ? 'لم يتم اختيار أي فرع' : 'No branches selected'}
+                      </span>
                     )}
-
-                    <div className="flex justify-end gap-3 pt-4 border-t ${colors.divider}">
-                      <button
-                        onClick={() => setShowBranchSelectionModal(false)}
-                        className={`px-4 py-2 rounded-lg ${colors.buttonBg} ${colors.buttonHover} ${colors.buttonText} transition-all`}
-                      >
-                        {language === 'ar' ? 'إلغاء' : 'Cancel'}
-                      </button>
-                      <button
-                        onClick={() => setShowBranchSelectionModal(false)}
-                        className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-semibold transition-all"
-                      >
-                        {language === 'ar' ? 'تأكيد' : 'Confirm'}
-                      </button>
-                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    <button
+                      onClick={() => setShowBranchSelectionModal(false)}
+                      className={`px-4 py-2 rounded-xl ${colors.buttonBg} ${colors.buttonHover} ${colors.buttonText} transition-all font-medium`}
+                    >
+                      {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button
+                      onClick={() => setShowBranchSelectionModal(false)}
+                      className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold transition-all shadow-md shadow-teal-500/20"
+                    >
+                      {language === 'ar' ? 'تأكيد' : 'Confirm'}
+                    </button>
                   </div>
                 </div>
               </motion.div>

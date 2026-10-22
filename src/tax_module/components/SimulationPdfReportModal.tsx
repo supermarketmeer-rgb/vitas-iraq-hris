@@ -190,7 +190,7 @@ Engine Verification: PASSED (All deterministic calculation rules verified)
               <div className="flex items-center gap-2">
                 <Building2 className="w-6 h-6 text-indigo-600" />
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white print:text-black">
-                  {lang === 'ar' ? 'محرك القواعد والرواتب الذكي - تقرير محاكاة مفصل' : 'HRMS Rules Engine - Simulation Audit Report'}
+                  {lang === 'ar' ? 'محرك القواعد والرواتب - تقرير محاكاة مفصل' : 'HRMS Rules Engine - Simulation Audit Report'}
                 </h1>
               </div>
               <p className="text-xs text-slate-500 print:text-slate-600 mt-1">

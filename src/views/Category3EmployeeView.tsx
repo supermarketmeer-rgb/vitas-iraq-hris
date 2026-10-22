@@ -7,7 +7,11 @@ import { CompanyNews } from '../components/CompanyNews';
 import { Employee, EmployeeChild } from '../types';
 import { api } from '../api/client';
 import { ContractPreviewModal } from '../components/ContractPreviewModal';
+import { ContractArchiveModal } from '../components/ContractArchiveModal';
 import { ContractRenewalAlertsModal } from '../components/ContractRenewalAlertsModal';
+import { StatusChangeTable } from '../components/StatusChangeTable';
+import { TrainingTable } from '../components/TrainingTable';
+import { WarningTable } from '../components/WarningTable';
 import { getBranchName } from '../utils/branchHelper';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { DynamicHrisModule } from '../components/OrgModule/DynamicHrisModule';
@@ -33,7 +37,7 @@ export const Category3EmployeeView: React.FC = () => {
 
   // Selected employee for profile view
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
-  const [profileViewTab, setProfileViewTab] = useState<'overview' | 'personal' | 'job' | 'contracts' | 'financial' | 'identity' | 'family'>('overview');
+  const [profileViewTab, setProfileViewTab] = useState<'overview' | 'personal' | 'job' | 'contracts' | 'financial' | 'identity' | 'family' | 'status-change' | 'trainings' | 'warnings'>('overview');
   const [profileSearchQuery, setProfileSearchQuery] = useState('');
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [avatarImgError, setAvatarImgError] = useState(false);
@@ -47,6 +51,15 @@ export const Category3EmployeeView: React.FC = () => {
     setIsContractModalOpen(true);
   };
 
+  // Contract Archive modal (for reviewing all past/current contracts)
+  const [isContractArchiveOpen, setIsContractArchiveOpen] = useState(false);
+  const [contractArchiveEmployee, setContractArchiveEmployee] = useState<any>(null);
+
+  const handleOpenContractArchive = (emp: any) => {
+    setContractArchiveEmployee(emp);
+    setIsContractArchiveOpen(true);
+  };
+
   // Contract renewal & evaluation alerts modal state
   const [showRenewalAlertsModal, setShowRenewalAlertsModal] = useState(false);
 
@@ -54,6 +67,7 @@ export const Category3EmployeeView: React.FC = () => {
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
   const [isSavingEmployee, setIsSavingEmployee] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+  const [directoryViewMode, setDirectoryViewMode] = useState<'table' | 'rows' | 'cards'>('table');
 
   // Calculate urgent contract alerts count (<= 7 days or overdue)
   const urgentContractAlertsCount = useMemo(() => {
@@ -182,6 +196,8 @@ export const Category3EmployeeView: React.FC = () => {
     id: '',
     name: ''
   });
+  const [branchSearchQuery, setBranchSearchQuery] = useState('');
+  const [branchesViewMode, setBranchesViewMode] = useState<'table' | 'rows' | 'cards'>('table');
 
   // Positions management
   const [showPositionModal, setShowPositionModal] = useState(false);
@@ -211,18 +227,48 @@ export const Category3EmployeeView: React.FC = () => {
   // Search state for employee directory
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter employees based on search query
+  // Filter employees based on search query (البادج، الاسم، المكتب، العنوان الوظيفي، القسم)
   const filteredEmployees = employees.filter(emp => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase().trim();
     return (
-      emp.fullName?.toLowerCase().includes(query) ||
-      emp.fullNameEn?.toLowerCase().includes(query) ||
-      emp.employeeId?.toLowerCase().includes(query) ||
-      emp.email?.toLowerCase().includes(query) ||
-      emp.jobTitle?.toLowerCase().includes(query) ||
-      emp.department?.toLowerCase().includes(query) ||
-      emp.branch?.toLowerCase().includes(query)
+      // البادج
+      (emp.employeeId && String(emp.employeeId).toLowerCase().includes(query)) ||
+      (emp.employee_id && String(emp.employee_id).toLowerCase().includes(query)) ||
+      (emp.badgeNo && String(emp.badgeNo).toLowerCase().includes(query)) ||
+      (emp.badge_no && String(emp.badge_no).toLowerCase().includes(query)) ||
+      // الاسم
+      (emp.fullName && emp.fullName.toLowerCase().includes(query)) ||
+      (emp.fullNameEn && emp.fullNameEn.toLowerCase().includes(query)) ||
+      (emp.full_name && String(emp.full_name).toLowerCase().includes(query)) ||
+      (emp.full_name_ar && String(emp.full_name_ar).toLowerCase().includes(query)) ||
+      (emp.full_name_en && String(emp.full_name_en).toLowerCase().includes(query)) ||
+      (emp.name_ar && String(emp.name_ar).toLowerCase().includes(query)) ||
+      (emp.name_en && String(emp.name_en).toLowerCase().includes(query)) ||
+      // المكتب / الفرع
+      (emp.branch && emp.branch.toLowerCase().includes(query)) ||
+      (emp.branchEn && emp.branchEn.toLowerCase().includes(query)) ||
+      (emp.branch_ar && String(emp.branch_ar).toLowerCase().includes(query)) ||
+      (emp.branch_en && String(emp.branch_en).toLowerCase().includes(query)) ||
+      (emp.location_ar && String(emp.location_ar).toLowerCase().includes(query)) ||
+      (emp.location_en && String(emp.location_en).toLowerCase().includes(query)) ||
+      (emp.office && String(emp.office).toLowerCase().includes(query)) ||
+      (emp.office_ar && String(emp.office_ar).toLowerCase().includes(query)) ||
+      (emp.office_en && String(emp.office_en).toLowerCase().includes(query)) ||
+      // العنوان الوظيفي
+      (emp.jobTitle && emp.jobTitle.toLowerCase().includes(query)) ||
+      (emp.jobTitleEn && emp.jobTitleEn.toLowerCase().includes(query)) ||
+      (emp.job_title && String(emp.job_title).toLowerCase().includes(query)) ||
+      (emp.job_title_ar && String(emp.job_title_ar).toLowerCase().includes(query)) ||
+      (emp.job_title_en && String(emp.job_title_en).toLowerCase().includes(query)) ||
+      (emp.position && String(emp.position).toLowerCase().includes(query)) ||
+      (emp.position_ar && String(emp.position_ar).toLowerCase().includes(query)) ||
+      (emp.position_en && String(emp.position_en).toLowerCase().includes(query)) ||
+      // القسم
+      (emp.department && emp.department.toLowerCase().includes(query)) ||
+      (emp.departmentEn && emp.departmentEn.toLowerCase().includes(query)) ||
+      (emp.department_ar && String(emp.department_ar).toLowerCase().includes(query)) ||
+      (emp.department_en && String(emp.department_en).toLowerCase().includes(query))
     );
   });
 
@@ -1444,24 +1490,27 @@ export const Category3EmployeeView: React.FC = () => {
     { id: 7, title: t('التدريبات والسجل الإداري', 'Trainings & Record'), icon: 'history_edu', desc: t('الدورات والإنذارات والحالة', 'Courses, Warnings & Status') },
   ];
 
-  console.log('>>> [DEBUG_RENDER] Category3 render:', { activeModuleId, selectedEmpId, fullName, fullNameEn, empCode });
+  const filteredBranches = branchLocations.filter(branch => {
+    if (!branchSearchQuery.trim()) return true;
+    const q = branchSearchQuery.toLowerCase().trim();
+    return (
+      (branch.name && String(branch.name).toLowerCase().includes(q)) ||
+      (branch.name_ar && String(branch.name_ar).toLowerCase().includes(q)) ||
+      (branch.name_en && String(branch.name_en).toLowerCase().includes(q)) ||
+      (branch.city && String(branch.city).toLowerCase().includes(q)) ||
+      (branch.city_ar && String(branch.city_ar).toLowerCase().includes(q)) ||
+      (branch.city_en && String(branch.city_en).toLowerCase().includes(q)) ||
+      (branch.address && String(branch.address).toLowerCase().includes(q)) ||
+      (branch.phone && String(branch.phone).toLowerCase().includes(q))
+    );
+  });
 
   return (
-    <div className={`${(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'space-y-3' : 'space-y-6'} animate-in fade-in duration-300`}>
-      {/* Top Banner */}
-      <div className={`${(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'p-3.5 sm:p-4 rounded-2xl' : 'p-6 rounded-3xl'} border transition-all flex flex-wrap items-center justify-between gap-3 ${
-        isDark 
-          ? 'bg-[#0a0c10] border-white/10 shadow-xl text-white' 
-          : 'bg-white border-slate-200 shadow-sm text-slate-900'
-      }`}>
+    <div className={`${activeModuleId === 'emp-profile' ? 'space-y-2' : (activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'space-y-3' : 'space-y-6'} animate-in fade-in duration-300`}>
+      {/* Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className={`material-symbols-outlined text-sm ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>group</span>
-            <span className={`text-[11px] font-mono uppercase tracking-widest font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
-              EMPLOYEE MANAGEMENT SYSTEM
-            </span>
-          </div>
-          <h1 className={`${(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'text-lg sm:text-xl' : 'text-2xl'} font-black drop-shadow-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <h1 className={`${activeModuleId === 'emp-profile' ? 'text-base sm:text-lg' : (activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'text-lg sm:text-xl' : 'text-2xl'} font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {activeModuleId === 'emp-directory' && t('دليل الموظفين المؤسسي', 'Corporate Employee Directory')}
             {activeModuleId === 'emp-hr-directory' && t('دليل الموظفين الشامل - إدارة الموارد البشرية', 'Comprehensive Employee Directory - HR')}
             {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
@@ -1476,71 +1525,11 @@ export const Category3EmployeeView: React.FC = () => {
             {activeModuleId === 'emp-calendar' && t('تقويم الفعاليات والعطل الرسمية', 'Events & Official Holidays Calendar')}
             {activeModuleId === 'emp-news' && t('مركز الأخبار والتنويهات الداخلية', 'Internal News & Announcements Center')}
           </h1>
-          <p className={`${(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'text-[11px] mt-0.5' : 'text-xs mt-1'} font-normal ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            {t('إدارة كاملة للبيانات الوظيفية وسجلات العاملين بفرص خالية من البيانات الافتراضية', 'Comprehensive management of employee records and workforce data')}
-          </p>
         </div>
 
-        {(activeModuleId === 'emp-directory' || activeModuleId === 'emp-hr-directory') && (
+        {/* Action buttons for other modules if any */}
+        {(activeModuleId !== 'emp-directory' && activeModuleId !== 'emp-hr-directory') && (
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Contract Renewal & Evaluation Alerts Button */}
-            <button
-              onClick={() => setShowRenewalAlertsModal(true)}
-              className={`relative px-4 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all flex items-center gap-2 ${
-                urgentContractAlertsCount > 0
-                  ? 'bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white shadow-rose-600/30 ring-2 ring-rose-500/50 animate-pulse'
-                  : isDark
-                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 shadow-black/20'
-                  : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-slate-200'
-              }`}
-              title={t('تنبيهات العقود والتجديد والتقييم', 'Contract Renewal & Evaluation Alerts')}
-            >
-              <span className={`material-symbols-outlined text-sm ${urgentContractAlertsCount > 0 ? 'animate-bounce text-white' : isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                {urgentContractAlertsCount > 0 ? 'notifications_active' : 'history_edu'}
-              </span>
-              <span>{t('تنبيهات العقود والتجديد', 'Contract Alerts')}</span>
-
-              {/* Red Notification Badge with Ping Animation */}
-              {urgentContractAlertsCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-5 w-5 bg-rose-600 text-[10px] font-black text-white items-center justify-center shadow-md border-2 border-white dark:border-slate-900">
-                    {urgentContractAlertsCount}
-                  </span>
-                </span>
-              )}
-            </button>
-            {canWrite() && (
-              <>
-                <button
-                  onClick={() => {
-                    handleResetForm();
-                    setActiveTab(1);
-                    setActiveModuleId('emp-add');
-                  }}
-                  className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-sm">person_add</span>
-                  {t('تسجيل موظف جديد', 'Register New Employee')}
-                </button>
-
-                <button
-                  onClick={handleAddPosition}
-                  className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-sm">work</span>
-                  {t('إضافة وظيفة جديدة', 'Add New Position')}
-                </button>
-
-                <button
-                  onClick={handleAddBranch}
-                  className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-sm">add_location_alt</span>
-                  {t('إضافة Location جديد', 'Add New Location')}
-                </button>
-              </>
-            )}
             {isReadOnly() && (
               <span className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5 shadow-sm">
                 <span className="material-symbols-outlined text-sm">visibility</span>
@@ -1554,25 +1543,171 @@ export const Category3EmployeeView: React.FC = () => {
       {/* Directory View */}
       {(activeModuleId === 'emp-directory' || activeModuleId === 'emp-hr-directory') && (
         <div className="space-y-4">
-          {/* Search Field */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder={language === 'ar' ? 'بحث عن موظف...' : 'Search employee...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full px-4 py-3 pr-12 rounded-xl text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                theme === 'dark'
-                  ? 'bg-[#0a0c10] border border-white/10 text-white placeholder-slate-500 focus:border-blue-500/50'
-                  : 'bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-blue-500 shadow-sm'
-              }`}
-            />
-            <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+          {/* Row containing Search Field + Smaller Action Buttons on the SAME LINE */}
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
+            {/* Search Field (flex-1) */}
+            <div className="relative flex-1 min-w-[260px]">
+              <input
+                type="text"
+                placeholder={
+                  language === 'ar'
+                    ? 'بحث بالبادج، الاسم، المكتب، العنوان الوظيفي، القسم...'
+                    : 'Search by Badge, Name, Office, Job Title, Department...'
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`w-full h-10 px-3.5 ps-3.5 pe-10 rounded-xl text-xs transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/20 ${
+                  theme === 'dark'
+                    ? 'bg-[#0a0c10] border border-white/10 text-white placeholder-slate-500 focus:border-teal-500/50'
+                    : 'bg-[#eef2f6] border border-slate-300 text-slate-900 placeholder-slate-500 focus:border-teal-500 focus:bg-white shadow-2xs'
+                }`}
+              />
+              <span className={`material-symbols-outlined text-lg absolute top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none ${
+                language === 'ar' ? 'left-3' : 'right-3'
+              }`}>
+                search
+              </span>
+            </div>
+
+            {/* Action buttons (Slightly smaller, on same line as search) */}
+            <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+              {/* Contract Renewal & Evaluation Alerts Button */}
+              <button
+                type="button"
+                onClick={() => setShowRenewalAlertsModal(true)}
+                className={`relative h-10 px-3 py-1.5 rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                  urgentContractAlertsCount > 0
+                    ? 'bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white shadow-rose-600/30 ring-2 ring-rose-500/50 animate-pulse'
+                    : isDark
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10'
+                    : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-2xs'
+                }`}
+                title={t('تنبيهات العقود والتجديد والتقييم', 'Contract Renewal & Evaluation Alerts')}
+              >
+                <span className={`material-symbols-outlined text-base ${urgentContractAlertsCount > 0 ? 'animate-bounce text-white' : isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                  {urgentContractAlertsCount > 0 ? 'notifications_active' : 'history_edu'}
+                </span>
+                <span className="whitespace-nowrap">{t('تنبيهات العقود', 'Contract Alerts')}</span>
+
+                {urgentContractAlertsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-600 text-[9px] font-black text-white items-center justify-center shadow-xs border border-white dark:border-slate-900">
+                      {urgentContractAlertsCount}
+                    </span>
+                  </span>
+                )}
+              </button>
+
+              {canWrite() && (
+                <>
+                  {/* Register New Employee */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleResetForm();
+                      setActiveTab(1);
+                      setActiveModuleId('emp-add');
+                    }}
+                    className="h-10 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  >
+                    <span className="material-symbols-outlined text-base">person_add</span>
+                    <span>+Employee</span>
+                  </button>
+
+                  {/* Add New Position */}
+                  <button
+                    type="button"
+                    onClick={handleAddPosition}
+                    className="h-10 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  >
+                    <span className="material-symbols-outlined text-base">work</span>
+                    <span>+Position</span>
+                  </button>
+
+                  {/* Add New Location */}
+                  <button
+                    type="button"
+                    onClick={handleAddBranch}
+                    className="h-10 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  >
+                    <span className="material-symbols-outlined text-base">add_location_alt</span>
+                    <span>+Location</span>
+                  </button>
+                </>
+              )}
+
+              {isReadOnly() && (
+                <span className="h-10 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5 shadow-2xs whitespace-nowrap">
+                  <span className="material-symbols-outlined text-base">visibility</span>
+                  <span>{t('قراءة فقط', 'Read-Only')}</span>
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className={`flex items-center justify-between text-xs font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
-            <span>{t('سجل الموظفين المسجلين', 'Registered Employee Directory')} ({filteredEmployees.length}/{employees.length})</span>
-            <span className="text-slate-400 font-mono">{t('حقول قاعدة البيانات hrms_pro_db', 'hrms_pro_db database fields')}</span>
+          {/* Directory Toolbar: Count & View Switcher */}
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className={`flex items-center gap-2 font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+              <span className={`material-symbols-outlined text-base ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
+                badge
+              </span>
+              <span>{t('سجل الموظفين المسجلين', 'Registered Employee Directory')}</span>
+              <span className={`px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold ${
+                theme === 'dark' ? 'bg-[#06080d] text-teal-400 border border-teal-500/30' : 'bg-teal-50 text-teal-800 border border-teal-200'
+              }`}>
+                {filteredEmployees.length} / {employees.length}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* View Switcher: Table Rows (Raw) / Record Strips / Cards */}
+              <div className={`flex items-center p-0.5 rounded-xl border ${
+                theme === 'dark' ? 'bg-[#06080d] border-white/10' : 'bg-[#e2e8f0] border-slate-300'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setDirectoryViewMode('table')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    directoryViewMode === 'table'
+                      ? (theme === 'dark' ? 'bg-teal-600 text-white shadow-xs' : 'bg-white text-teal-800 shadow-xs')
+                      : (theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
+                  }`}
+                  title={t('عرض جدول السجلات (Row)', 'Table Rows View')}
+                >
+                  <span className="material-symbols-outlined text-base">table_rows</span>
+                  <span className="hidden sm:inline">{t('جدول السجلات Raw', 'Rows Table')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDirectoryViewMode('rows')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    directoryViewMode === 'rows'
+                      ? (theme === 'dark' ? 'bg-teal-600 text-white shadow-xs' : 'bg-white text-teal-800 shadow-xs')
+                      : (theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
+                  }`}
+                  title={t('عرض شرائط السجلات الأفقية', 'Horizontal Record Strips')}
+                >
+                  <span className="material-symbols-outlined text-base">view_agenda</span>
+                  <span className="hidden sm:inline">{t('سجلات أفقية', 'Record Strips')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDirectoryViewMode('cards')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    directoryViewMode === 'cards'
+                      ? (theme === 'dark' ? 'bg-teal-600 text-white shadow-xs' : 'bg-white text-teal-800 shadow-xs')
+                      : (theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
+                  }`}
+                  title={t('عرض البطاقات', 'Cards Grid View')}
+                >
+                  <span className="material-symbols-outlined text-base">grid_view</span>
+                  <span className="hidden sm:inline">{t('بطاقات', 'Cards')}</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           {filteredEmployees.length === 0 ? (
@@ -1583,7 +1718,294 @@ export const Category3EmployeeView: React.FC = () => {
               actionText={searchQuery ? undefined : t("إضافة الموظف الأول الآن", "Add First Employee Now")}
               onAction={searchQuery ? undefined : () => setActiveModuleId('emp-add')}
             />
+          ) : directoryViewMode === 'table' ? (
+            /* VIEW 1: TABLE ROWS (RAW) - PRIMARY VIEW */
+            <div className={`overflow-x-auto rounded-2xl border transition-all ${
+              theme === 'dark'
+                ? 'bg-[#0a0c10] border-white/10 shadow-xl'
+                : 'bg-[#eef2f6] border-slate-300 shadow-xs'
+            }`}>
+              <table className={`w-full text-xs ${language === 'en' ? 'text-left' : 'text-right'} border-collapse`}>
+                <thead className={`border-b select-none app-table-header ${
+                  theme === 'dark'
+                    ? 'bg-[#06080d] text-slate-300 border-white/10'
+                    : 'bg-[#94a3b8] text-slate-950 border-slate-500 font-bold'
+                }`}>
+                  <tr>
+                    <th className="py-3 px-3 text-center w-12 font-bold">#</th>
+                    <th className="py-3 px-4 font-bold">{t('الموظف', 'Employee')}</th>
+                    <th className="py-3 px-3 font-bold text-center whitespace-nowrap">{t('كود الموظف', 'Badge / ID')}</th>
+                    <th className="py-3 px-4 font-bold whitespace-nowrap">{t('المسمى الوظيفي', 'Job Title')}</th>
+                    <th className="py-3 px-4 font-bold whitespace-nowrap">{t('القسم / الإدارة', 'Department')}</th>
+                    <th className="py-3 px-4 font-bold whitespace-nowrap">{t('الفرع والموقع', 'Branch Location')}</th>
+                    <th className="py-3 px-4 font-bold whitespace-nowrap">{t('البريد الإلكتروني', 'Email')}</th>
+                    <th className="py-3 px-4 font-bold text-center whitespace-nowrap">{t('الإجراءات', 'Actions')}</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y font-medium ${
+                  theme === 'dark'
+                    ? 'divide-white/5 text-slate-200'
+                    : 'divide-slate-300/70 text-slate-800'
+                }`}>
+                  {filteredEmployees.map((emp, idx) => {
+                    const empTargetId = emp.id || emp.employeeId || emp.employee_id;
+                    return (
+                      <tr
+                        key={emp.id}
+                        className={`transition-colors ${
+                          theme === 'dark'
+                            ? 'hover:bg-white/5'
+                            : 'hover:bg-[#e2e8f0]'
+                        }`}
+                      >
+                        {/* Index */}
+                        <td className="py-3 px-3 text-center font-mono text-slate-400">
+                          {idx + 1}
+                        </td>
+
+                        {/* Employee Avatar & Name */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-xl font-bold flex items-center justify-center border overflow-hidden shadow-xs shrink-0 ${
+                              emp.photoUrl
+                                ? (theme === 'dark' ? 'bg-[#1a1f2e] border-teal-500/30' : 'bg-white border-slate-300')
+                                : (theme === 'dark' ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-teal-100/70 text-teal-800 border-teal-200')
+                            }`}>
+                              {emp.photoUrl ? (
+                                <img src={emp.photoUrl} alt={getEmpFullName(emp)} className="w-full h-full object-contain p-0.5" />
+                              ) : (
+                                <span>{getEmpFullName(emp)?.slice(0, 1) || 'U'}</span>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className={`font-bold text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'} truncate`}>
+                                {getEmpFullName(emp)}
+                              </div>
+                              <div className="text-[11px] text-slate-400 md:hidden font-mono">
+                                {emp.employeeId || '-'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Employee ID Badge */}
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          <span className={`px-2.5 py-1 rounded-lg font-mono font-bold text-xs border ${
+                            theme === 'dark'
+                              ? 'bg-[#06080d] text-teal-400 border-teal-500/30'
+                              : 'bg-teal-50 text-teal-800 border-teal-200/90 shadow-2xs'
+                          }`}>
+                            {emp.employeeId || '-'}
+                          </span>
+                        </td>
+
+                        {/* Job Title */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className={`font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-700'}`}>
+                            {getEmpJobTitle(emp)}
+                          </span>
+                        </td>
+
+                        {/* Department */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className={`font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                            {getEmpDepartment(emp)}
+                          </span>
+                        </td>
+
+                        {/* Branch */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`material-symbols-outlined text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                              location_on
+                            </span>
+                            <span className={`font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                              {getEmpBranch(emp)}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Email */}
+                        <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                          {emp.email ? (
+                            <a href={`mailto:${emp.email}`} className="hover:text-teal-600 dark:hover:text-teal-400 underline-offset-2 hover:underline">
+                              {emp.email}
+                            </a>
+                          ) : '-'}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            {/* Edit Icon (Green) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                try { sessionStorage.setItem('vitas_editing_emp_id', String(empTargetId)); } catch (err) {}
+                                handleLoadEmployeeData(emp);
+                                setActiveModuleId('emp-edit');
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="p-1.5 rounded-lg text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                              title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
+                            >
+                              <span className="material-symbols-outlined text-lg">edit</span>
+                            </button>
+
+                            {/* Contract Preview & Print Icon (Blue) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleOpenContractPreview(emp);
+                              }}
+                              className="p-1.5 rounded-lg text-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                              title={t('معاينة وطباعة عقد العمل', 'Preview and Print Employment Contract')}
+                            >
+                              <span className="material-symbols-outlined text-lg">description</span>
+                            </button>
+
+                            {/* Delete Icon (Red) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar });
+                              }}
+                              className="p-1.5 rounded-lg text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                              title={t('حذف الموظف', 'Delete Employee')}
+                            >
+                              <span className="material-symbols-outlined text-lg">delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : directoryViewMode === 'rows' ? (
+            /* VIEW 2: HORIZONTAL RECORD STRIPS (RAW) */
+            <div className="space-y-2.5">
+              {filteredEmployees.map((emp) => {
+                const empTargetId = emp.id || emp.employeeId || emp.employee_id;
+                return (
+                  <div
+                    key={emp.id}
+                    className={`p-3.5 px-4 rounded-2xl border flex flex-wrap md:flex-nowrap items-center justify-between gap-3 transition-all ${
+                      theme === 'dark'
+                        ? 'bg-[#0a0c10] border-white/10 hover:border-teal-500/40 hover:bg-white/5 text-slate-200'
+                        : 'bg-[#eef2f6] border-slate-300 hover:border-teal-400 hover:bg-[#e2e8f0] text-slate-900 shadow-2xs'
+                    }`}
+                  >
+                    {/* Left: Avatar + Name + Title */}
+                    <div className="flex items-center gap-3 min-w-[240px]">
+                      <div className={`w-10 h-10 rounded-xl font-bold flex items-center justify-center border overflow-hidden shadow-xs shrink-0 ${
+                        emp.photoUrl
+                          ? (theme === 'dark' ? 'bg-[#1a1f2e] border-teal-500/30' : 'bg-white border-slate-300')
+                          : (theme === 'dark' ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-teal-100/70 text-teal-800 border-teal-200')
+                      }`}>
+                        {emp.photoUrl ? (
+                          <img src={emp.photoUrl} alt={getEmpFullName(emp)} className="w-full h-full object-contain p-0.5" />
+                        ) : (
+                          <span className="text-base font-bold">{getEmpFullName(emp)?.slice(0, 1) || 'U'}</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                            {getEmpFullName(emp)}
+                          </h3>
+                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                            theme === 'dark'
+                              ? 'bg-[#06080d] text-teal-400 border-teal-500/30'
+                              : 'bg-teal-50 text-teal-800 border-teal-200 shadow-2xs'
+                          }`}>
+                            {emp.employeeId || '-'}
+                          </span>
+                        </div>
+                        <p className={`text-xs font-semibold mt-0.5 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-700'}`}>
+                          {getEmpJobTitle(emp)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Middle: Department, Branch, Email */}
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-8 text-xs flex-1">
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">{t('القسم', 'Department')}</span>
+                        <span className={`font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-slate-800'}`}>
+                          {getEmpDepartment(emp)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">{t('الفرع والموقع', 'Branch Location')}</span>
+                        <span className={`font-medium flex items-center gap-1 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-800'}`}>
+                          <span className="material-symbols-outlined text-xs text-slate-400">location_on</span>
+                          {getEmpBranch(emp)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">{t('البريد الإلكتروني', 'Email')}</span>
+                        <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                          {emp.email || '-'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right: Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          try { sessionStorage.setItem('vitas_editing_emp_id', String(empTargetId)); } catch (err) {}
+                          handleLoadEmployeeData(emp);
+                          setActiveModuleId('emp-edit');
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="p-1.5 rounded-lg text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                        title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
+                      >
+                        <span className="material-symbols-outlined text-lg">edit</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleOpenContractPreview(emp);
+                        }}
+                        className="p-1.5 rounded-lg text-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                        title={t('معاينة وطباعة عقد العمل', 'Preview and Print Employment Contract')}
+                      >
+                        <span className="material-symbols-outlined text-lg">description</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar });
+                        }}
+                        className="p-1.5 rounded-lg text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                        title={t('حذف الموظف', 'Delete Employee')}
+                      >
+                        <span className="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
+            /* VIEW 3: CARDS GRID VIEW */
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredEmployees.map(emp => (
                 <div
@@ -1591,7 +2013,7 @@ export const Category3EmployeeView: React.FC = () => {
                   className={`p-5 rounded-2xl border transition-all shadow-lg flex flex-col justify-between ${
                     theme === 'dark'
                       ? 'bg-[#111827] border-white/10 hover:border-blue-500/40'
-                      : 'bg-white border-slate-200 hover:border-blue-500/40 shadow-slate-200/50'
+                      : 'bg-[#eef2f6] border-slate-300 hover:border-blue-500/40 shadow-xs'
                   }`}
                 >
                   <div className="space-y-3">
@@ -1599,8 +2021,8 @@ export const Category3EmployeeView: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className={`w-11 h-11 rounded-xl font-black text-lg flex items-center justify-center shadow overflow-hidden shrink-0 ${
                           emp.photoUrl
-                            ? (theme === 'dark' ? 'bg-[#1a1f2e] border border-blue-500/30' : 'bg-white border border-slate-200')
-                            : (theme === 'dark' ? 'bg-teal-600/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200')
+                            ? (theme === 'dark' ? 'bg-[#1a1f2e] border border-blue-500/30' : 'bg-white border border-slate-300')
+                            : (theme === 'dark' ? 'bg-teal-600/20 text-blue-400 border border-blue-500/30' : 'bg-teal-100/70 text-teal-800 border border-teal-200')
                         }`}>
                           {emp.photoUrl ? (
                             <img src={emp.photoUrl} alt={getEmpFullName(emp)} className="w-full h-full object-contain p-0.5" />
@@ -1616,7 +2038,7 @@ export const Category3EmployeeView: React.FC = () => {
                       <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
                         theme === 'dark'
                           ? 'bg-[#0a0c10] text-blue-400 border-blue-500/20'
-                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                          : 'bg-teal-50 text-teal-800 border-teal-200'
                       }`}>
                         {emp.employeeId || '-'}
                       </span>
@@ -1625,7 +2047,7 @@ export const Category3EmployeeView: React.FC = () => {
                     <div className={`p-3 rounded-xl text-xs space-y-1 border ${
                       theme === 'dark'
                         ? 'bg-[#0a0c10] text-slate-400 border-white/5'
-                        : 'bg-slate-50 text-slate-600 border-slate-200'
+                        : 'bg-[#e2e8f0] text-slate-700 border-slate-300/80'
                     }`}>
                       <p className="flex justify-between">
                         <span>{t('القسم:', 'Department:')}</span>
@@ -1643,7 +2065,7 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div className={`pt-4 border-t mt-4 flex items-center justify-between gap-1 ${
-                    theme === 'dark' ? 'border-white/10' : 'border-slate-200'
+                    theme === 'dark' ? 'border-white/10' : 'border-slate-300'
                   }`}>
                     {(() => {
                       const empTargetId = emp.id || emp.employeeId || emp.employee_id;
@@ -3186,22 +3608,12 @@ export const Category3EmployeeView: React.FC = () => {
 
       {/* Employee Full 7-Tabs Profile View (HR Employees Profiles) */}
       {activeModuleId === 'emp-profile' && (
-        <div className="max-w-5xl mx-auto space-y-6">
-          {/* Top Dynamic Search & Selector Bar (Replaces static name buttons) */}
-          <div className={`${profileColors.background} p-4 rounded-2xl border ${profileColors.border} ${profileColors.shadow} space-y-3`}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className={`text-xs font-bold ${profileColors.text} flex items-center gap-1.5`}>
-                <span className={`material-symbols-outlined ${isDark ? 'text-blue-400' : 'text-blue-600'} text-base`}>search</span>
-                البحث والتنقل الديناميكي بين الموظفين (HR Employees Profiles)
-              </span>
-              <span className={`text-[11px] font-mono ${profileColors.textSecondary} font-bold ${isDark ? 'bg-white/5' : 'bg-slate-100'} px-2 py-0.5 rounded-full border ${profileColors.border}`}>
-                {t('إجمالي الموظفين:', 'Total Employees:')} {employees.length}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="max-w-7xl mx-auto space-y-2.5">
+          {/* Top Dynamic Search & Selector Bar on ONE row */}
+          <div className={`${profileColors.background} px-3.5 py-2 rounded-2xl border ${profileColors.border} ${profileColors.shadow}`}>
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
               {/* Dynamic Auto-complete Search Box */}
-              <div className="relative">
+              <div className="relative flex-1 min-w-[200px]">
                 <input
                   type="text"
                   placeholder={t('ابحث باسم الموظف، الرقم الوظيفي، أو الفرع للتنقل...', 'Search by employee name, ID, or branch to navigate...')}
@@ -3211,9 +3623,9 @@ export const Category3EmployeeView: React.FC = () => {
                     setIsSearchDropdownOpen(true);
                   }}
                   onFocus={() => setIsSearchDropdownOpen(true)}
-                  className={`w-full ${profileColors.inputBg} border ${profileColors.inputBorder} rounded-xl px-3.5 py-2.5 pr-10 text-xs ${profileColors.inputText} focus:outline-none focus:border-blue-500 ${isDark ? 'focus:bg-[#111827]' : 'focus:bg-white'} transition-all shadow-sm font-bold ${profileColors.inputPlaceholder}`}
+                  className={`w-full ${profileColors.inputBg} border ${profileColors.inputBorder} rounded-xl px-3 py-1.5 pr-8 text-xs ${profileColors.inputText} focus:outline-none focus:border-teal-500 ${isDark ? 'focus:bg-[#111827]' : 'focus:bg-white'} transition-all shadow-xs font-bold ${profileColors.inputPlaceholder}`}
                 />
-                <span className={`material-symbols-outlined absolute right-3 top-2.5 ${profileColors.textSecondary} text-sm`}>
+                <span className={`material-symbols-outlined absolute right-2.5 top-1.5 ${profileColors.textSecondary} text-sm select-none`}>
                   search
                 </span>
 
@@ -3260,7 +3672,7 @@ export const Category3EmployeeView: React.FC = () => {
               </div>
 
               {/* Direct Select Menu */}
-              <div>
+              <div className="flex-1 min-w-[200px]">
                 <select
                   value={selectedEmployee ? String(selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id || '') : ''}
                   onChange={(e) => {
@@ -3277,7 +3689,7 @@ export const Category3EmployeeView: React.FC = () => {
                       setProfileSearchQuery(getEmpFullName(found));
                     }
                   }}
-                  className={`w-full ${profileColors.inputBg} border ${profileColors.inputBorder} rounded-xl px-3.5 py-2.5 text-xs ${profileColors.inputText} focus:outline-none focus:border-blue-500 ${isDark ? 'focus:bg-[#111827]' : 'focus:bg-white'} transition-all shadow-sm font-bold`}
+                  className={`w-full ${profileColors.inputBg} border ${profileColors.inputBorder} rounded-xl px-3 py-1.5 text-xs ${profileColors.inputText} focus:outline-none focus:border-teal-500 ${isDark ? 'focus:bg-[#111827]' : 'focus:bg-white'} transition-all shadow-xs font-bold`}
                 >
                   <option value="" disabled>-- {t('اختر موظفاً مباشرة للتنقل السريع', 'Select an employee directly for fast navigation')} --</option>
                   {employees.map(emp => {
@@ -3290,6 +3702,11 @@ export const Category3EmployeeView: React.FC = () => {
                   })}
                 </select>
               </div>
+
+              {/* Total Employees Count Badge */}
+              <span className={`text-[11px] font-mono ${profileColors.textSecondary} font-bold ${isDark ? 'bg-white/5' : 'bg-slate-100'} px-2.5 py-1 rounded-xl border ${profileColors.border} shrink-0 whitespace-nowrap`}>
+                {t('إجمالي الموظفين:', 'Total Employees:')} {employees.length}
+              </span>
             </div>
           </div>
 
@@ -3300,431 +3717,484 @@ export const Category3EmployeeView: React.FC = () => {
               description="استخدم حقل البحث أو القائمة المنسدلة أعلاه لاختيار موظف واستعراض ملفه."
             />
           ) : (
-            <div className="space-y-6">
-              {/* CENTERED HERO CARD */}
-              <section className={`flex flex-col items-center justify-center text-center p-8 rounded-3xl ${profileColors.cardBg} border ${profileColors.cardBorder} ${profileColors.shadow} relative overflow-hidden ${profileColors.text}`}>
+            <>
+              {/* THE LARGE PROFILE WINDOW */}
+              <div className={`p-3.5 sm:p-4 rounded-2xl ${profileColors.cardBg} border ${profileColors.cardBorder} ${profileColors.shadow} relative overflow-hidden ${profileColors.text}`}>
                 {/* Background decorative soft ambient light */}
-                <div className={`absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 ${isDark ? 'bg-blue-500/5' : 'bg-blue-500/10'} blur-3xl rounded-full pointer-events-none`} />
+                <div className={`absolute -top-24 left-1/4 w-96 h-96 ${isDark ? 'bg-teal-500/5' : 'bg-teal-500/10'} blur-3xl rounded-full pointer-events-none`} />
 
-                {/* Avatar with Ring & Status Badge & Edit Photo Overlay Icon */}
-                <div className="relative group mb-5">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-teal-400 via-teal-300 to-teal-500 rounded-2xl blur-md opacity-50 group-hover:opacity-80 transition-all duration-500" />
+                <div className="flex flex-col lg:flex-row items-start gap-4 lg:gap-6 relative z-10 [direction:ltr]">
+                  {/* LEFT PANE: Photo at Top-Left, Name, Badges, Action Buttons (Print Contract & Edit Employee) */}
+                  <div className="w-full lg:w-60 xl:w-64 shrink-0 flex flex-col items-center text-center space-y-2.5">
+                    {/* Photo Frame at top-left */}
+                    <div className="relative group">
+                      <div className="absolute -inset-1.5 bg-gradient-to-r from-teal-400 via-teal-300 to-teal-500 rounded-2xl blur-sm opacity-50 group-hover:opacity-80 transition-all duration-300" />
 
-                  {/* Photo Avatar Frame (Matches 3:4 Portrait ID Photos) */}
-                  <div className={`relative w-40 h-52 rounded-2xl border-4 ${isDark ? 'border-[#1a1f2e]' : 'border-white'} ${isDark ? 'bg-[#1a1f2e]' : 'bg-white'} shadow-2xl overflow-hidden flex items-center justify-center ${isDark ? 'text-blue-400' : 'text-blue-600'} text-4xl font-black shrink-0`}>
-                    {selectedEmployee.photoUrl && !avatarImgError ? (
-                      <img
-                        src={selectedEmployee.photoUrl}
-                        alt={selectedEmployee.fullName}
-                        className="w-full h-full object-contain p-1 rounded-xl"
-                        onError={() => setAvatarImgError(true)}
-                      />
-                    ) : (
-                      <div className={`w-full h-full ${isDark ? 'bg-gradient-to-br from-teal-900/30 via-teal-800/30 to-teal-900/30' : 'bg-gradient-to-br from-teal-50 via-teal-100 to-teal-50'} flex flex-col items-center justify-center ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
-                        <span className="material-symbols-outlined text-6xl">person</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Status Indicator Badge (Bottom Right Corner) */}
-                  <span className={`absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full border-4 ${isDark ? 'border-[#1a1f2e]' : 'border-white'} z-10 ${
-                    selectedEmployee.status === 'Active' ? 'bg-emerald-500 shadow-md shadow-emerald-500/40' : 'bg-amber-500'
-                  }`} title={selectedEmployee.status} />
-
-                  {/* EDIT PHOTO / PROFILE OVERLAY ICON BUTTON (Only for users with Write permission) */}
-                  {canWrite() && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const tId = selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id;
-                        try { sessionStorage.setItem('vitas_editing_emp_id', String(tId)); } catch (err) {}
-                        handleLoadEmployeeData(selectedEmployee);
-                        setActiveModuleId('emp-edit');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className="absolute -bottom-2 -left-2 w-10 h-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white border-2 border-white shadow-xl flex items-center justify-center z-20 transition-all hover:scale-110 active:scale-95 group/edit cursor-pointer"
-                      title={t('تعديل بيانات وصورة الموظف', 'Edit Employee Profile')}
-                    >
-                      <span className="material-symbols-outlined text-base">edit</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Employee Title & Badges Row */}
-                <div className="space-y-3 max-w-xl">
-                  <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'} tracking-wide font-cairo`}>
-                    {getEmpFullName(selectedEmployee)}
-                  </h1>
-                  {(language === 'en' ? selectedEmployee.fullName : selectedEmployee.fullNameEn) && (
-                    <p className={`text-sm font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'} font-mono`}>
-                      {language === 'en' ? selectedEmployee.fullName : selectedEmployee.fullNameEn}
-                    </p>
-                  )}
-
-                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs">
-                    <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-teal-600/20 border-blue-500/30 text-blue-400' : 'bg-blue-50 border-blue-200/80 text-blue-700'} font-bold shadow-sm`}>
-                      {getEmpJobTitle(selectedEmployee)}
-                    </span>
-                    <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border-emerald-200/80 text-emerald-700'} font-mono font-bold shadow-sm flex items-center gap-1.5`}>
-                      <span className={`text-[10px] ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'} font-sans font-semibold`}>{t('الرقم الوظيفي:', 'Emp ID:')}</span>
-                      {selectedEmployee.employeeId || selectedEmployee.employee_id || '-'}
-                    </span>
-                    {(selectedEmployee.badgeNo || selectedEmployee.badge_no) && (
-                      <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-indigo-600/20 border-indigo-500/30 text-indigo-400' : 'bg-indigo-50 border-indigo-200/80 text-indigo-700'} font-mono font-bold shadow-sm flex items-center gap-1.5`}>
-                        <span className={`text-[10px] ${isDark ? 'text-indigo-400/80' : 'text-indigo-600/80'} font-sans font-semibold`}>{t('الباج:', 'Badge:')}</span>
-                        {selectedEmployee.badgeNo || selectedEmployee.badge_no}
-                      </span>
-                    )}
-                    {(selectedEmployee.waid || selectedEmployee.wa_id) && (
-                      <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-teal-600/20 border-teal-500/30 text-teal-300' : 'bg-teal-50 border-teal-200/80 text-teal-700'} font-mono font-bold shadow-sm flex items-center gap-1.5`}>
-                        <span className={`text-[10px] ${isDark ? 'text-teal-400/80' : 'text-teal-600/80'} font-sans font-semibold`}>{t('WAID:', 'WAID:')}</span>
-                        {selectedEmployee.waid || selectedEmployee.wa_id}
-                      </span>
-                    )}
-                    <span className={`px-4 py-1.5 rounded-full ${isDark ? 'bg-purple-600/20 border-purple-500/30 text-purple-400' : 'bg-purple-50 border-purple-200/80 text-purple-700'} font-bold shadow-sm`}>
-                      {getEmpBranch(selectedEmployee)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenContractPreview(selectedEmployee)}
-                      className="px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105"
-                      title={t('معاينة وطباعة عقد العمل للموظف', 'Preview and Print Employee Contract')}
-                    >
-                      <span className="material-symbols-outlined text-xs">print</span>
-                      <span>{t('طباعة العقد', 'Print Contract')}</span>
-                    </button>
-                    {canWrite() && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const tId = selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id;
-                          try { sessionStorage.setItem('vitas_editing_emp_id', String(tId)); } catch (err) {}
-                          handleLoadEmployeeData(selectedEmployee);
-                          setActiveModuleId('emp-edit');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="px-4 py-1.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105"
-                        title={t('تعديل بيانات وسجل الموظف', 'Edit Employee Data')}
-                      >
-                        <span className="material-symbols-outlined text-xs">edit</span>
-                        <span>{t('تعديل الموظف', 'Edit Employee')}</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* TABBED NAVIGATION BAR */}
-              <nav className="flex justify-center sticky top-20 z-30">
-                <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl ${isDark ? 'bg-[#1a1f2e]/95 backdrop-blur-xl border-white/10' : 'bg-white/95 backdrop-blur-xl border-slate-200'} shadow-xl overflow-x-auto no-scrollbar max-w-full`}>
-                  {[
-                    { id: 'overview', label: t('نظرة عامة', 'Overview'), icon: 'grid_view' },
-                    { id: 'personal', label: t('المعلومات الشخصية', 'Personal'), icon: 'person' },
-                    { id: 'job', label: t('الوظيفة والخدمة', 'Job & Service'), icon: 'badge' },
-                    { id: 'contracts', label: t('تفاصيل العقود', 'Contracts'), icon: 'description' },
-                    { id: 'financial', label: t('البيانات المالية', 'Financial'), icon: 'payments' },
-                    { id: 'identity', label: t('الوثائق والهوية', 'Identity'), icon: 'id_card' },
-                    { id: 'family', label: t('الأسرة والسجلات', 'Family & Records'), icon: 'family_restroom' }
-                  ].map(tab => {
-                    const isActive = profileViewTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setProfileViewTab(tab.id as any)}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-                          isActive
-                            ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/30 scale-[1.02]'
-                            : isDark
-                            ? 'text-slate-400 hover:text-white hover:bg-white/10'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-sm">{tab.icon}</span>
-                        {tab.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </nav>
-
-              {/* TAB CONTENT PANELS */}
-              <div className={`p-6 rounded-3xl ${profileColors.cardBg} border ${profileColors.cardBorder} ${profileColors.shadow} space-y-6 text-xs ${profileColors.text}`}>
-                {/* 1. OVERVIEW TAB */}
-                {profileViewTab === 'overview' && (
-                  <div className="space-y-6 animate-in fade-in duration-200">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-sm`}>
-                        <span className={`${profileColors.textSecondary} text-[11px] block`}>{t('الراتب الأساسي', 'Basic Salary')}</span>
-                        <span className={`text-lg font-black ${isDark ? 'text-emerald-400' : 'text-emerald-600'} font-mono`}>
-                          {selectedEmployee.basicSalary || selectedEmployee.salary ? (selectedEmployee.basicSalary || selectedEmployee.salary).toLocaleString() + ' د.ع' : '-'}
-                        </span>
-                      </div>
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-sm`}>
-                        <span className={`${profileColors.textSecondary} text-[11px] block`}>{t('تاريخ المباشرة ورقم الباج', 'Start Date and Badge Number')}</span>
-                        <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>
-                          {selectedEmployee.joinDate && selectedEmployee.joinDate !== 'N/A' ? selectedEmployee.joinDate : '-'} ({(selectedEmployee.employeeId || selectedEmployee.badgeNo || selectedEmployee.badge_no || (selectedEmployee.id ? `VTS-${selectedEmployee.id}` : '-'))})
-                        </span>
-                      </div>
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-sm`}>
-                        <span className={`${profileColors.textSecondary} text-[11px] block`}>{t('القسم والفرع', 'Department and Branch')}</span>
-                        <span className={`text-sm font-bold ${isDark ? 'text-blue-400' : 'text-blue-700'} truncate block`}>
-                          {getEmpDepartment(selectedEmployee)} • {getEmpBranch(selectedEmployee)}
-                        </span>
-                      </div>
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-sm`}>
-                        <span className={`${profileColors.textSecondary} text-[11px] block`}>{t('نوع العقد والدرجة', 'Contract Type and Grade')}</span>
-                        <span className={`text-sm font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'} truncate block`}>
-                          {selectedEmployee.termOfContract || t('عقد محدد', 'Fixed Contract')} ({selectedEmployee.grade || 'G-4'})
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-3 shadow-sm`}>
-                        <h3 className={`font-bold ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-1.5 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-2`}>
-                          <span className="material-symbols-outlined text-sm">contact_mail</span>
-                          {t('معلومات التواصل والبريد', 'Contact & Email Info')}
-                        </h3>
-                        <p className={`${profileColors.textSecondary} flex justify-between`}>
-                          <span>{t('البريد الإلكتروني المؤسسي:', 'Corporate Email:')}</span>
-                          <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold`}>{selectedEmployee.email && selectedEmployee.email !== 'N/A' ? selectedEmployee.email : '-'}</span>
-                        </p>
-                        <p className={`${profileColors.textSecondary} flex justify-between`}>
-                          <span>{t('هاتف التواصل:', 'Contact Phone:')}</span>
-                          <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold`}>{selectedEmployee.phone && selectedEmployee.phone !== 'N/A' ? selectedEmployee.phone : '-'}</span>
-                        </p>
-                        <p className={`${profileColors.textSecondary} flex justify-between`}>
-                          <span>{t('المشرف المباشر:', 'Direct Supervisor:')}</span>
-                          <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.supervisorName || t('غير محدد', 'Not specified')}</span>
-                        </p>
-                      </div>
-
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-3 shadow-sm`}>
-                        <h3 className={`font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'} flex items-center gap-1.5 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-2`}>
-                          <span className="material-symbols-outlined text-sm">account_balance</span>
-                          {t('البيانات المصرفية والهوية', 'Banking & Identity Data')}
-                        </h3>
-                        <p className={`${profileColors.textSecondary} flex justify-between`}>
-                          <span>{t('المصرف المعتمد:', 'Approved Bank:')}</span>
-                          <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.bankName && selectedEmployee.bankName !== 'N/A' ? selectedEmployee.bankName : '-'}</span>
-                        </p>
-                        <p className={`${profileColors.textSecondary} flex justify-between`}>
-                          <span>{t('رقم الـ IBAN:', 'IBAN Number:')}</span>
-                          <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold`}>{selectedEmployee.iban && selectedEmployee.iban !== 'N/A' ? selectedEmployee.iban : '-'}</span>
-                        </p>
-                        <p className={`${profileColors.textSecondary} flex justify-between`}>
-                          <span>{t('البطاقة الوطنية:', 'National ID Card:')}</span>
-                          <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold`}>{selectedEmployee.nationalId && selectedEmployee.nationalId !== 'N/A' ? selectedEmployee.nationalId : '-'}</span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 2. PERSONAL TAB */}
-                {profileViewTab === 'personal' && (
-                  <div className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className={`font-bold text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-2 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-2`}>
-                      <span className="material-symbols-outlined text-base">person</span>
-                      {t('بيانات الهوية الشخصية والتواصل', 'Personal Identity & Contact Data')}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('الاسم الكامل بالعربية:', 'Full Name (Arabic):')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.fullName}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('الاسم الكامل بالإنجليزية:', 'Full Name (English):')} <span className={`${isDark ? 'text-blue-400' : 'text-blue-700'} font-mono font-bold`}>{selectedEmployee.fullNameEn && selectedEmployee.fullNameEn !== 'N/A' ? selectedEmployee.fullNameEn : (dictEn[selectedEmployee.fullName] || '-')}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('الجنسية:', 'Nationality:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee.nationality || t('عراقي', 'Iraqi')}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('تاريخ الميلاد:', 'Date of Birth:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.dob && selectedEmployee.dob !== 'N/A' ? selectedEmployee.dob : '-'}</span></p>
-                      </div>
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('الجنس:', 'Gender:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee.gender || t('غير محدد', 'Not specified')}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('الحالة الاجتماعية:', 'Marital Status:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee.maritalStatus || t('غير محدد', 'Not specified')}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('البريد الشخصي:', 'Personal Email:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.personalEmail && selectedEmployee.personalEmail !== 'N/A' ? selectedEmployee.personalEmail : '-'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('رقم الهاتف:', 'Phone Number:')} <span className={`${isDark ? 'text-emerald-400' : 'text-emerald-600'} font-mono font-bold`}>{selectedEmployee.phone && selectedEmployee.phone !== 'N/A' ? formatIraqiPhoneNumber(selectedEmployee.phone) : (selectedEmployee.mobile ? formatIraqiPhoneNumber(selectedEmployee.mobile) : '-')}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('هاتف الطوارئ:', 'Emergency Phone:')} <span className={`${isDark ? 'text-rose-400' : 'text-rose-600'} font-mono font-bold`}>{selectedEmployee.emergencyPhone && selectedEmployee.emergencyPhone !== 'N/A' ? formatIraqiPhoneNumber(selectedEmployee.emergencyPhone) : '-'}</span></p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. JOB TAB */}
-                {profileViewTab === 'job' && (
-                  <div className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className={`font-bold text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-2 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-2`}>
-                      <span className="material-symbols-outlined text-base">badge</span>
-                      {t('بيانات الوظيفة والهيكل الإداري', 'Job & Administrative Structure Data')}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('المسمى الوظيفي بالعربية:', 'Job Title (Arabic):')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.jobTitle}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('المسمى الوظيفي بالإنجليزية:', 'Job Title (English):')} <span className={`${isDark ? 'text-blue-400' : 'text-blue-700'} font-mono font-bold`}>{selectedEmployee.jobTitleEn && selectedEmployee.jobTitleEn !== 'N/A' ? selectedEmployee.jobTitleEn : (dictEn[selectedEmployee.jobTitle] || '-')}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('القسم / الإدارة:', 'Department / Admin:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{getEmpDepartment(selectedEmployee)}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('الفرع أو موقع العمل:', 'Branch / Location:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'}`}>{getEmpBranch(selectedEmployee)}</span></p>
-                      </div>
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('المشرف المباشر:', 'Direct Supervisor:')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.supervisorName || t('غير محدد', 'Not specified')}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('نطاق العمل:', 'Work Scope:')} <span className={`${isDark ? 'text-purple-400' : 'text-purple-700'} font-bold`}>{selectedEmployee.workScope || t('ميداني ومكتبي', 'Field and office')}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('سنوات الخدمة الإجمالية:', 'Total Years of Service:')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-700'} font-mono font-bold`}>{selectedEmployee.yearsOfEmployment || 0} {t('سنوات', 'years')}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('سنوات الخدمة بالمنصب:', 'Years in Position:')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-700'} font-mono font-bold`}>{selectedEmployee.yearsInPosition || 0} {t('سنوات', 'years')}</span></p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 4. CONTRACTS TAB */}
-                {profileViewTab === 'contracts' && (
-                  <div className="space-y-4 animate-in fade-in duration-200">
-                    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-3`}>
-                      <h3 className={`font-bold text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-2`}>
-                        <span className="material-symbols-outlined text-base">description</span>
-                        {t('تفاصيل العقد والدرجة الوظيفية', 'Contract & Job Grade Details')}
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenContractPreview(selectedEmployee)}
-                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-blue-600/25 transition-all flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-98 w-fit"
-                      >
-                        <span className="material-symbols-outlined text-sm">print</span>
-                        <span>{t('معاينة وطباعة عقد العمل', 'Preview & Print Contract')}</span>
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('نوع وشروط العقد:', 'Contract Type & Terms:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.termOfContract || t('عقد محدد المدة', 'Fixed-term contract')}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('الدرجة الوظيفية:', 'Job Grade:')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.grade || 'G-4'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('تاريخ التعيين الأصلي:', 'Original Hire Date:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.originalStartDate || selectedEmployee.joinDate || '-'}</span></p>
-                      </div>
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('تاريخ بداية العقد الحالي:', 'Current Contract Start Date:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.contractStartDate && selectedEmployee.contractStartDate !== 'N/A' ? selectedEmployee.contractStartDate : '-'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('تاريخ انتهاء العقد:', 'Contract End Date:')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-700'} font-mono font-bold`}>{selectedEmployee.contractEndDate && selectedEmployee.contractEndDate !== 'N/A' ? selectedEmployee.contractEndDate : '-'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('انتهاء فترة التجربة:', 'Probation End Date:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.probationEndDate && selectedEmployee.probationEndDate !== 'N/A' ? selectedEmployee.probationEndDate : '-'}</span></p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 5. FINANCIAL TAB */}
-                {profileViewTab === 'financial' && (
-                  <div className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className={`font-bold text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-2 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-2`}>
-                      <span className="material-symbols-outlined text-base">payments</span>
-                      {t('تفاصيل الراتب والبدلات والمصرف', 'Salary, Allowances & Bank Details')}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('الراتب الأساسي:', 'Basic Salary:')} <span className={`${isDark ? 'text-emerald-400' : 'text-emerald-700'} font-mono font-bold`}>{selectedEmployee.basicSalary ? selectedEmployee.basicSalary.toLocaleString() + ' د.ع' : '-'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('الراتب كتابة باللغة العربية:', 'Salary in Arabic Writing:')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.writtenBasicSalaryAr && selectedEmployee.writtenBasicSalaryAr !== 'N/A' ? selectedEmployee.writtenBasicSalaryAr : '-'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('بدل النقل الثابت:', 'Fixed Transportation Allowance:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.transportationFixed ? selectedEmployee.transportationFixed.toLocaleString() + ' د.ع' : '0'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('المكافأة الثابتة:', 'Fixed Bonus:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.fixedBonus ? selectedEmployee.fixedBonus.toLocaleString() + ' د.ع' : '0'}</span></p>
-                      </div>
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('بدل الهاتف:', 'Phone Allowance:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.phoneAllowance ? selectedEmployee.phoneAllowance.toLocaleString() + ' د.ع' : '0'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('بدل الشهادة:', 'Certificate Allowance:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.certificateAllowance ? selectedEmployee.certificateAllowance.toLocaleString() + ' د.ع' : '0'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('المصرف المعتمد للرواتب:', 'Approved Bank for Salaries:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.bankName && selectedEmployee.bankName !== 'N/A' ? selectedEmployee.bankName : '-'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('رقم الحساب IBAN:', 'IBAN Account Number:')} <span className={`${isDark ? 'text-blue-400' : 'text-blue-700'} font-mono font-bold`}>{selectedEmployee.iban && selectedEmployee.iban !== 'N/A' ? selectedEmployee.iban : '-'}</span></p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 6. IDENTITY TAB */}
-                {profileViewTab === 'identity' && (
-                  <div className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className={`font-bold text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-2 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-2`}>
-                      <span className="material-symbols-outlined text-base">id_card</span>
-                      {t('الوثائق الثبوتية ورقم الباج', 'Identity Documents and Badge Number')}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('رقم البطاقة الوطنية:', 'National ID Number:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold`}>{selectedEmployee.nationalId && selectedEmployee.nationalId !== 'N/A' ? selectedEmployee.nationalId : '-'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('رقم جواز السفر:', 'Passport Number:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold`}>{selectedEmployee.passportNo && selectedEmployee.passportNo !== 'N/A' ? selectedEmployee.passportNo : '-'}</span></p>
-                      </div>
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('تاريخ نفاد الجواز:', 'Passport Expiry Date:')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-700'} font-mono`}>{selectedEmployee.passportExpiry && selectedEmployee.passportExpiry !== 'N/A' ? selectedEmployee.passportExpiry : '-'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('رقم الباج الوظيفي:', 'Employee Badge Number:')} <span className={`${isDark ? 'text-blue-400' : 'text-blue-700'} font-mono font-bold`}>{selectedEmployee.employeeId || selectedEmployee.badgeNo || selectedEmployee.badge_no || (selectedEmployee.id ? `VTS-${selectedEmployee.id}` : '-')}</span></p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 7. FAMILY TAB */}
-                {profileViewTab === 'family' && (
-                  <div className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className={`font-bold text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-2 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-2`}>
-                      <span className="material-symbols-outlined text-base">family_restroom</span>
-                      {t('سجل عائلة الموظف، التدريب والإنذارات', 'Employee Family Record, Training & Warnings')}
-                    </h3>
-                    <div className="space-y-4">
-                      <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-2 shadow-sm`}>
-                        <p className={`${profileColors.textSecondary}`}>{t('اسم الزوج / الزوجة:', 'Spouse Name:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.spouseName && selectedEmployee.spouseName !== 'N/A' ? selectedEmployee.spouseName : '-'}</span></p>
-                        <p className={`${profileColors.textSecondary}`}>{t('هل الزوج يعمل بالمؤسسة؟', 'Does spouse work at the institution?')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.spouseEmployedHere ? t('نعم', 'Yes') : t('لا', 'No')}</span></p>
-                        {selectedEmployee.spouseEmployedHere && (
-                          <p className={`${profileColors.textSecondary}`}>{t('ملاحظة: تم تغيير الحالة الاجتماعية إلى أعزب للغرض من البدلات', 'Note: Marital status changed to Single for allowance purposes')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-600'} font-bold`}>{t('أعزب', 'Single')}</span></p>
+                      {/* Photo Avatar Frame (Matches 3:4 Portrait ID Photos) */}
+                      <div className={`relative w-32 h-42 rounded-2xl border-2 ${isDark ? 'border-[#1a1f2e]' : 'border-white'} ${isDark ? 'bg-[#1a1f2e]' : 'bg-white'} shadow-xl overflow-hidden flex items-center justify-center ${isDark ? 'text-blue-400' : 'text-blue-600'} text-3xl font-black shrink-0`}>
+                        {selectedEmployee.photoUrl && !avatarImgError ? (
+                          <img
+                            src={selectedEmployee.photoUrl}
+                            alt={selectedEmployee.fullName}
+                            className="w-full h-full object-contain p-1 rounded-xl"
+                            onError={() => setAvatarImgError(true)}
+                          />
+                        ) : (
+                          <div className={`w-full h-full ${isDark ? 'bg-gradient-to-br from-teal-900/30 via-teal-800/30 to-teal-900/30' : 'bg-gradient-to-br from-teal-50 via-teal-100 to-teal-50'} flex flex-col items-center justify-center ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
+                            <span className="material-symbols-outlined text-5xl">person</span>
+                          </div>
                         )}
                       </div>
 
-                      {/* Children table */}
-                      {selectedEmployee.childrenList && selectedEmployee.childrenList.length > 0 ? (
-                        <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-3 shadow-sm`}>
-                          <h4 className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold text-xs flex items-center gap-1.5`}>
-                            <span className="material-symbols-outlined text-sm">child_care</span>
-                            {t('قائمة الأبناء', 'Children List')} ({selectedEmployee.childrenList.length})
-                          </h4>
-                          <div className={`rounded-xl border ${isDark ? 'border-white/10' : 'border-slate-200'} overflow-hidden ${isDark ? 'bg-[#1a1f2e]' : 'bg-white'}`}>
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className={`${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-700'} font-bold`}>
-                                  <th className="px-3 py-2 text-right">{t('الاسم', 'Name')}</th>
-                                  <th className="px-3 py-2 text-right">{t('الصلة', 'Relation')}</th>
-                                  <th className="px-3 py-2 text-right">{t('تاريخ الميلاد', 'Date of Birth')}</th>
-                                  <th className="px-3 py-2 text-right">{t('العمر الحسباني', 'Calculated Age')}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {selectedEmployee.childrenList.map((child, idx) => {
-                                  const age = child.dob ? Math.floor((Date.now() - new Date(child.dob).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : (child.age || 0);
-                                  return (
-                                    <tr key={idx} className={`border-t ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-                                      <td className={`px-3 py-2 ${isDark ? 'text-white' : 'text-slate-900'} font-medium`}>{child.name && child.name !== 'N/A' ? child.name : '-'}</td>
-                                      <td className="px-3 py-2">
-                                        <span className={`px-2 py-0.5 rounded-full font-bold ${
-                                          child.relation === 'ولد' || child.relation === 'Son'
-                                            ? isDark ? 'bg-teal-600/20 text-blue-400' : 'bg-blue-100 text-blue-700'
-                                            : isDark ? 'bg-pink-600/20 text-pink-400' : 'bg-pink-100 text-pink-700'
-                                        }`}>{child.relation && child.relation !== 'N/A' ? child.relation : '-'}</span>
-                                      </td>
-                                      <td className={`px-3 py-2 ${profileColors.textSecondary} font-mono`}>{child.dob && child.dob !== 'N/A' ? child.dob : '-'}</td>
-                                      <td className="px-3 py-2">
-                                        <span className={`${isDark ? 'bg-amber-600/20 text-amber-400' : 'bg-amber-100 text-amber-800'} px-2 py-0.5 rounded-full font-mono font-bold`}>{age || 0} سنة</span>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
+                      {/* Status Indicator Badge (Bottom Right Corner) */}
+                      <span className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 ${isDark ? 'border-[#1a1f2e]' : 'border-white'} z-10 ${
+                        selectedEmployee.status === 'Active' ? 'bg-emerald-500 shadow-md shadow-emerald-500/40' : 'bg-amber-500'
+                      }`} title={selectedEmployee.status} />
+
+                      {/* EDIT PHOTO / PROFILE OVERLAY ICON BUTTON */}
+                      {canWrite() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const tId = selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id;
+                            try { sessionStorage.setItem('vitas_editing_emp_id', String(tId)); } catch (err) {}
+                            handleLoadEmployeeData(selectedEmployee);
+                            setActiveModuleId('emp-edit');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="absolute -bottom-1 -left-1 w-7 h-7 rounded-full bg-teal-600 hover:bg-teal-500 text-white flex items-center justify-center shadow-md shadow-teal-600/40 border-2 border-white dark:border-[#1a1f2e] transition-all hover:scale-110 cursor-pointer z-10"
+                          title={t('تعديل صورة أو بيانات الموظف', 'Edit photo or details')}
+                        >
+                          <span className="material-symbols-outlined text-xs">edit</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Employee Name & Titles */}
+                    <div className="space-y-0.5">
+                      <h2 className={`text-base font-black ${isDark ? 'text-white' : 'text-slate-900'} tracking-tight font-cairo leading-tight`}>
+                        {getEmpFullName(selectedEmployee)}
+                      </h2>
+                      {(language === 'en' ? selectedEmployee.fullName : selectedEmployee.fullNameEn) && (
+                        <p className={`text-[11px] font-semibold ${isDark ? 'text-teal-400' : 'text-teal-700'} font-mono`}>
+                          {language === 'en' ? selectedEmployee.fullName : selectedEmployee.fullNameEn}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Badges List */}
+                    <div className="flex flex-wrap items-center justify-center gap-1 text-[11px]">
+                      <span className={`px-2 py-0.5 rounded-full ${isDark ? 'bg-teal-600/20 border-teal-500/30 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-700'} font-bold shadow-xs`}>
+                        {getEmpJobTitle(selectedEmployee)}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'} font-mono font-bold shadow-xs flex items-center gap-1`}>
+                        <span className={`text-[9px] ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'} font-sans font-semibold`}>{t('الرقم:', 'ID:')}</span>
+                        {selectedEmployee.employeeId || selectedEmployee.employee_id || '-'}
+                      </span>
+                      {(selectedEmployee.badgeNo || selectedEmployee.badge_no) && (
+                        <span className={`px-2 py-0.5 rounded-full ${isDark ? 'bg-indigo-600/20 border-indigo-500/30 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'} font-mono font-bold shadow-xs flex items-center gap-1`}>
+                          <span className={`text-[9px] ${isDark ? 'text-indigo-400/80' : 'text-indigo-600/80'} font-sans font-semibold`}>{t('الباج:', 'Badge:')}</span>
+                          {selectedEmployee.badgeNo || selectedEmployee.badge_no}
+                        </span>
+                      )}
+                      {(selectedEmployee.waid || selectedEmployee.wa_id) && (
+                        <span className={`px-2 py-0.5 rounded-full ${isDark ? 'bg-teal-600/20 border-teal-500/30 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-700'} font-mono font-bold shadow-xs flex items-center gap-1`}>
+                          <span className={`text-[9px] ${isDark ? 'text-teal-400/80' : 'text-teal-600/80'} font-sans font-semibold`}>WAID:</span>
+                          {selectedEmployee.waid || selectedEmployee.wa_id}
+                        </span>
+                      )}
+                      <span className={`px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-600/20 border-purple-500/30 text-purple-400' : 'bg-purple-50 border-purple-200 text-purple-700'} font-bold shadow-xs`}>
+                        {getEmpBranch(selectedEmployee)}
+                      </span>
+                    </div>
+
+                    {/* Action Buttons: Print Contract & Edit Employee (Fixed in place under employee photo & badges) */}
+                    <div className="flex flex-col gap-1.5 w-full pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenContractPreview(selectedEmployee)}
+                        className="w-full h-8 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01] active:scale-98"
+                        title={t('معاينة وطباعة عقد العمل للموظف', 'Preview and Print Employee Contract')}
+                      >
+                        <span className="material-symbols-outlined text-sm">print</span>
+                        <span>{t('طباعة العقد', 'Print Contract')}</span>
+                      </button>
+                      {canWrite() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const tId = selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id;
+                            try { sessionStorage.setItem('vitas_editing_emp_id', String(tId)); } catch (err) {}
+                            handleLoadEmployeeData(selectedEmployee);
+                            setActiveModuleId('emp-edit');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="w-full h-8 px-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01] active:scale-98"
+                          title={t('تعديل بيانات وسجل الموظف', 'Edit Employee Data')}
+                        >
+                          <span className="material-symbols-outlined text-sm">edit</span>
+                          <span>{t('تعديل الموظف', 'Edit Employee')}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* RIGHT PANE: Tab Content Panels on Top + Tab Navigation Bar at the Bottom */}
+                  <div className={`flex-1 min-w-0 w-full space-y-2.5 ${language === 'ar' ? '[direction:rtl]' : '[direction:ltr]'}`}>
+                    {/* TAB CONTENT PANELS ("النوافذ التابعة لكل تاب") */}
+                    <div className={`p-3 sm:p-3.5 rounded-xl border ${
+                      isDark ? 'bg-[#06080d]/80 border-white/10' : 'bg-white border-slate-200 shadow-xs'
+                    } space-y-2.5 text-xs ${profileColors.text} min-h-[175px]`}>
+                      {/* 1. OVERVIEW TAB */}
+                      {profileViewTab === 'overview' && (
+                        <div className="space-y-2.5 animate-in fade-in duration-200">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                            <div className={`p-2 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-0.5 shadow-xs`}>
+                              <span className={`${profileColors.textSecondary} text-[10px] block`}>{t('الراتب الأساسي', 'Basic Salary')}</span>
+                              <span className={`text-sm sm:text-base font-black ${isDark ? 'text-emerald-400' : 'text-emerald-600'} font-mono`}>
+                                {selectedEmployee.basicSalary || selectedEmployee.salary ? (selectedEmployee.basicSalary || selectedEmployee.salary).toLocaleString() + ' د.ع' : '-'}
+                              </span>
+                            </div>
+                            <div className={`p-2 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-0.5 shadow-xs`}>
+                              <span className={`${profileColors.textSecondary} text-[10px] block`}>{t('تاريخ المباشرة ورقم الباج', 'Start Date & Badge')}</span>
+                              <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'} font-mono truncate block`}>
+                                {selectedEmployee.joinDate && selectedEmployee.joinDate !== 'N/A' ? selectedEmployee.joinDate : '-'} ({(selectedEmployee.employeeId || selectedEmployee.badgeNo || selectedEmployee.badge_no || (selectedEmployee.id ? `VTS-${selectedEmployee.id}` : '-'))})
+                              </span>
+                            </div>
+                            <div className={`p-2 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-0.5 shadow-xs`}>
+                              <span className={`${profileColors.textSecondary} text-[10px] block`}>{t('القسم والفرع', 'Department & Branch')}</span>
+                              <span className={`text-xs font-bold ${isDark ? 'text-blue-400' : 'text-blue-700'} truncate block`}>
+                                {getEmpDepartment(selectedEmployee)} • {getEmpBranch(selectedEmployee)}
+                              </span>
+                            </div>
+                            <div className={`p-2 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-0.5 shadow-xs`}>
+                              <span className={`${profileColors.textSecondary} text-[10px] block`}>{t('نوع العقد والدرجة', 'Contract Type & Grade')}</span>
+                              <span className={`text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'} truncate block`}>
+                                {selectedEmployee.termOfContract || t('عقد محدد', 'Fixed Contract')} ({selectedEmployee.grade || 'G-4'})
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-500 text-xs">
-                          {t('لا يوجد أبناء مسجلون للموظف', 'No children registered for the employee')}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1.5 shadow-xs text-xs`}>
+                              <h3 className={`font-bold ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-1.5 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-1 text-xs`}>
+                                <span className="material-symbols-outlined text-sm">contact_mail</span>
+                                {t('معلومات التواصل والبريد', 'Contact & Email Info')}
+                              </h3>
+                              <p className={`${profileColors.textSecondary} flex justify-between`}>
+                                <span>{t('البريد الإلكتروني المؤسسي:', 'Corporate Email:')}</span>
+                                <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold truncate max-w-[180px]`}>{selectedEmployee.email && selectedEmployee.email !== 'N/A' ? selectedEmployee.email : '-'}</span>
+                              </p>
+                              <p className={`${profileColors.textSecondary} flex justify-between`}>
+                                <span>{t('هاتف التواصل:', 'Contact Phone:')}</span>
+                                <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold`}>{selectedEmployee.phone && selectedEmployee.phone !== 'N/A' ? selectedEmployee.phone : '-'}</span>
+                              </p>
+                              <p className={`${profileColors.textSecondary} flex justify-between`}>
+                                <span>{t('المشرف المباشر:', 'Direct Supervisor:')}</span>
+                                <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold truncate max-w-[180px]`}>{selectedEmployee.supervisorName || t('غير محدد', 'Not specified')}</span>
+                              </p>
+                            </div>
+
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1.5 shadow-xs text-xs`}>
+                              <h3 className={`font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'} flex items-center gap-1.5 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-1 text-xs`}>
+                                <span className="material-symbols-outlined text-sm">account_balance</span>
+                                {t('البيانات المصرفية والهوية', 'Banking & Identity Data')}
+                              </h3>
+                              <p className={`${profileColors.textSecondary} flex justify-between`}>
+                                <span>{t('المصرف المعتمد:', 'Approved Bank:')}</span>
+                                <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold truncate max-w-[180px]`}>{selectedEmployee.bankName && selectedEmployee.bankName !== 'N/A' ? selectedEmployee.bankName : '-'}</span>
+                              </p>
+                              <p className={`${profileColors.textSecondary} flex justify-between`}>
+                                <span>{t('رقم الـ IBAN:', 'IBAN Number:')}</span>
+                                <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold truncate max-w-[180px]`}>{selectedEmployee.iban && selectedEmployee.iban !== 'N/A' ? selectedEmployee.iban : '-'}</span>
+                              </p>
+                              <p className={`${profileColors.textSecondary} flex justify-between`}>
+                                <span>{t('البطاقة الوطنية:', 'National ID Card:')}</span>
+                                <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold`}>{selectedEmployee.nationalId && selectedEmployee.nationalId !== 'N/A' ? selectedEmployee.nationalId : '-'}</span>
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 shadow-sm">
-                          <span className="text-teal-700 font-bold block mb-1">{t('سجل الدورات التدريبية:', 'Training Courses Record:')}</span>
-                          <p className="text-slate-700">{selectedEmployee.trainingsRecord || t('لا يوجد سجل دورات مسجل', 'No training courses recorded')}</p>
+                      {/* 2. PERSONAL TAB */}
+                      {profileViewTab === 'personal' && (
+                        <div className="space-y-2 animate-in fade-in duration-200">
+                          <h3 className={`font-bold text-xs ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-1.5 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-1`}>
+                            <span className="material-symbols-outlined text-sm">person</span>
+                            {t('بيانات الهوية الشخصية والتواصل', 'Personal Identity & Contact Data')}
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('الاسم الكامل بالعربية:', 'Full Name (Arabic):')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.fullName}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('الاسم الكامل بالإنجليزية:', 'Full Name (English):')} <span className={`${isDark ? 'text-blue-400' : 'text-blue-700'} font-mono font-bold`}>{selectedEmployee.fullNameEn && selectedEmployee.fullNameEn !== 'N/A' ? selectedEmployee.fullNameEn : (dictEn[selectedEmployee.fullName] || '-')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('الجنسية:', 'Nationality:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee.nationality || t('عراقي', 'Iraqi')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('تاريخ الميلاد:', 'Date of Birth:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.dob && selectedEmployee.dob !== 'N/A' ? selectedEmployee.dob : '-'}</span></p>
+                            </div>
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('الجنس:', 'Gender:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee.gender || t('غير محدد', 'Not specified')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('الحالة الاجتماعية:', 'Marital Status:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee.maritalStatus || t('غير محدد', 'Not specified')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('البريد الشخصي:', 'Personal Email:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono truncate`}>{selectedEmployee.personalEmail && selectedEmployee.personalEmail !== 'N/A' ? selectedEmployee.personalEmail : '-'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('رقم الهاتف:', 'Phone Number:')} <span className={`${isDark ? 'text-emerald-400' : 'text-emerald-600'} font-mono font-bold`}>{selectedEmployee.phone && selectedEmployee.phone !== 'N/A' ? formatIraqiPhoneNumber(selectedEmployee.phone) : (selectedEmployee.mobile ? formatIraqiPhoneNumber(selectedEmployee.mobile) : '-')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('هاتف الطوارئ:', 'Emergency Phone:')} <span className={`${isDark ? 'text-rose-400' : 'text-rose-600'} font-mono font-bold`}>{selectedEmployee.emergencyPhone && selectedEmployee.emergencyPhone !== 'N/A' ? formatIraqiPhoneNumber(selectedEmployee.emergencyPhone) : '-'}</span></p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 shadow-sm">
-                          <span className="text-rose-600 font-bold block mb-1">{t('سجل التنبيهات والإنذارات:', 'Warnings and Alerts Record:')}</span>
-                          <p className="text-slate-700">{selectedEmployee.warningsRecord || t('لا يوجد سجل عقوبات أو إنذارات', 'No penalties or warnings recorded')}</p>
+                      )}
+
+                      {/* 3. JOB TAB */}
+                      {profileViewTab === 'job' && (
+                        <div className="space-y-2 animate-in fade-in duration-200">
+                          <h3 className={`font-bold text-xs ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-1.5 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-1`}>
+                            <span className="material-symbols-outlined text-sm">badge</span>
+                            {t('بيانات الوظيفة والهيكل الإداري', 'Job & Administrative Structure Data')}
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('المسمى الوظيفي بالعربية:', 'Job Title (Arabic):')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.jobTitle}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('المسمى الوظيفي بالإنجليزية:', 'Job Title (English):')} <span className={`${isDark ? 'text-blue-400' : 'text-blue-700'} font-mono font-bold`}>{selectedEmployee.jobTitleEn && selectedEmployee.jobTitleEn !== 'N/A' ? selectedEmployee.jobTitleEn : (dictEn[selectedEmployee.jobTitle] || '-')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('القسم / الإدارة:', 'Department / Admin:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{getEmpDepartment(selectedEmployee)}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('الفرع أو موقع العمل:', 'Branch / Location:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'}`}>{getEmpBranch(selectedEmployee)}</span></p>
+                            </div>
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('المشرف المباشر:', 'Direct Supervisor:')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.supervisorName || t('غير محدد', 'Not specified')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('نطاق العمل:', 'Work Scope:')} <span className={`${isDark ? 'text-purple-400' : 'text-purple-700'} font-bold`}>{selectedEmployee.workScope || t('ميداني ومكتبي', 'Field and office')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('سنوات الخدمة الإجمالية:', 'Total Years of Service:')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-700'} font-mono font-bold`}>{selectedEmployee.yearsOfEmployment || 0} {t('سنوات', 'years')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('سنوات الخدمة بالمنصب:', 'Years in Position:')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-700'} font-mono font-bold`}>{selectedEmployee.yearsInPosition || 0} {t('سنوات', 'years')}</span></p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
+
+                      {/* 4. CONTRACTS TAB */}
+                      {profileViewTab === 'contracts' && (
+                        <div className="space-y-2 animate-in fade-in duration-200">
+                          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-1`}>
+                            <h3 className={`font-bold text-xs ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-1.5`}>
+                              <span className="material-symbols-outlined text-sm">description</span>
+                              {t('تفاصيل العقد والدرجة الوظيفية', 'Contract & Job Grade Details')}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenContractArchive(selectedEmployee)}
+                              className="px-3 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-sm shadow-blue-600/25 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-98 w-fit"
+                              title={t('أرشيف ومعاينة وطباعة جميع العقود السابقة والحالية', 'Preview & Print All Contracts Archive')}
+                            >
+                              <span className="material-symbols-outlined text-sm">print</span>
+                              <span>{t('معاينة وطباعة عقد العمل', 'Preview & Print Contract')}</span>
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('نوع وشروط العقد:', 'Contract Type & Terms:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.termOfContract || t('عقد محدد المدة', 'Fixed-term contract')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('الدرجة الوظيفية:', 'Job Grade:')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.grade || 'G-4'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('تاريخ التعيين الأصلي:', 'Original Hire Date:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.originalStartDate || selectedEmployee.joinDate || '-'}</span></p>
+                            </div>
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('تاريخ بداية العقد الحالي:', 'Current Contract Start Date:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.contractStartDate && selectedEmployee.contractStartDate !== 'N/A' ? selectedEmployee.contractStartDate : '-'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('تاريخ انتهاء العقد:', 'Contract End Date:')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-700'} font-mono font-bold`}>{selectedEmployee.contractEndDate && selectedEmployee.contractEndDate !== 'N/A' ? selectedEmployee.contractEndDate : '-'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('انتهاء فترة التجربة:', 'Probation End Date:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.probationEndDate && selectedEmployee.probationEndDate !== 'N/A' ? selectedEmployee.probationEndDate : '-'}</span></p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 5. FINANCIAL TAB */}
+                      {profileViewTab === 'financial' && (
+                        <div className="space-y-2 animate-in fade-in duration-200">
+                          <h3 className={`font-bold text-xs ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-1.5 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-1`}>
+                            <span className="material-symbols-outlined text-base">payments</span>
+                            {t('تفاصيل الراتب والبدلات والمصرف', 'Salary, Allowances & Bank Details')}
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('الراتب الأساسي:', 'Basic Salary:')} <span className={`${isDark ? 'text-emerald-400' : 'text-emerald-700'} font-mono font-bold`}>{selectedEmployee.basicSalary ? selectedEmployee.basicSalary.toLocaleString() + ' د.ع' : '-'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('الراتب كتابة باللغة العربية:', 'Salary in Arabic Writing:')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.writtenBasicSalaryAr && selectedEmployee.writtenBasicSalaryAr !== 'N/A' ? selectedEmployee.writtenBasicSalaryAr : '-'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('بدل النقل الثابت:', 'Fixed Transportation Allowance:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.transportationFixed ? selectedEmployee.transportationFixed.toLocaleString() + ' د.ع' : '0'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('المكافأة الثابتة:', 'Fixed Bonus:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.fixedBonus ? selectedEmployee.fixedBonus.toLocaleString() + ' د.ع' : '0'}</span></p>
+                            </div>
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('بدل الهاتف:', 'Phone Allowance:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.phoneAllowance ? selectedEmployee.phoneAllowance.toLocaleString() + ' د.ع' : '0'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('بدل الشهادة:', 'Certificate Allowance:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.certificateAllowance ? selectedEmployee.certificateAllowance.toLocaleString() + ' د.ع' : '0'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('المصرف المعتمد للرواتب:', 'Approved Bank for Salaries:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.bankName && selectedEmployee.bankName !== 'N/A' ? selectedEmployee.bankName : '-'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('رقم الحساب IBAN:', 'IBAN Account Number:')} <span className={`${isDark ? 'text-blue-400' : 'text-blue-700'} font-mono font-bold`}>{selectedEmployee.iban && selectedEmployee.iban !== 'N/A' ? selectedEmployee.iban : '-'}</span></p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 6. IDENTITY TAB */}
+                      {profileViewTab === 'identity' && (
+                        <div className="space-y-2 animate-in fade-in duration-200">
+                          <h3 className={`font-bold text-xs ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-1.5 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-1`}>
+                            <span className="material-symbols-outlined text-sm">id_card</span>
+                            {t('الوثائق الثبوتية ورقم الباج', 'Identity Documents and Badge Number')}
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('رقم البطاقة الوطنية:', 'National ID Number:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold`}>{selectedEmployee.nationalId && selectedEmployee.nationalId !== 'N/A' ? selectedEmployee.nationalId : '-'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('رقم جواز السفر:', 'Passport Number:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono font-bold`}>{selectedEmployee.passportNo && selectedEmployee.passportNo !== 'N/A' ? selectedEmployee.passportNo : '-'}</span></p>
+                            </div>
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('تاريخ نفاد الجواز:', 'Passport Expiry Date:')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-700'} font-mono`}>{selectedEmployee.passportExpiry && selectedEmployee.passportExpiry !== 'N/A' ? selectedEmployee.passportExpiry : '-'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('رقم الباج الوظيفي:', 'Employee Badge Number:')} <span className={`${isDark ? 'text-blue-400' : 'text-blue-700'} font-mono font-bold`}>{selectedEmployee.employeeId || selectedEmployee.badgeNo || selectedEmployee.badge_no || (selectedEmployee.id ? `VTS-${selectedEmployee.id}` : '-')}</span></p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 7. FAMILY TAB */}
+                      {profileViewTab === 'family' && (
+                        <div className="space-y-2 animate-in fade-in duration-200">
+                          <h3 className={`font-bold text-xs ${isDark ? 'text-blue-400' : 'text-blue-700'} flex items-center gap-1.5 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-1`}>
+                            <span className="material-symbols-outlined text-sm">family_restroom</span>
+                            {t('سجل عائلة الموظف', 'Employee Family Record')}
+                          </h3>
+                          <div className="space-y-2">
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
+                              <p className={`${profileColors.textSecondary}`}>{t('اسم الزوج / الزوجة:', 'Spouse Name:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.spouseName && selectedEmployee.spouseName !== 'N/A' ? selectedEmployee.spouseName : '-'}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('هل الزوج يعمل بالمؤسسة؟', 'Does spouse work at the institution?')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.spouseEmployedHere ? t('نعم', 'Yes') : t('لا', 'No')}</span></p>
+                              {selectedEmployee.spouseEmployedHere && (
+                                <p className={`${profileColors.textSecondary}`}>{t('ملاحظة: تم تغيير الحالة الاجتماعية إلى أعزب للغرض من البدلات', 'Note: Marital status changed to Single for allowance purposes')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-600'} font-bold`}>{t('أعزب', 'Single')}</span></p>
+                              )}
+                            </div>
+
+                            {/* Children table */}
+                            {selectedEmployee.childrenList && selectedEmployee.childrenList.length > 0 ? (
+                              <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1.5 shadow-xs`}>
+                                <h4 className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold text-xs flex items-center gap-1.5`}>
+                                  <span className="material-symbols-outlined text-sm">child_care</span>
+                                  {t('قائمة الأبناء', 'Children List')} ({selectedEmployee.childrenList.length})
+                                </h4>
+                                <div className={`rounded-xl border ${isDark ? 'border-white/10' : 'border-slate-200'} overflow-hidden ${isDark ? 'bg-[#1a1f2e]' : 'bg-white'}`}>
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className={`${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-700'} font-bold`}>
+                                        <th className="px-2.5 py-1 text-right">{t('الاسم', 'Name')}</th>
+                                        <th className="px-2.5 py-1 text-right">{t('الصلة', 'Relation')}</th>
+                                        <th className="px-2.5 py-1 text-right">{t('تاريخ الميلاد', 'Date of Birth')}</th>
+                                        <th className="px-2.5 py-1 text-right">{t('العمر الحسباني', 'Calculated Age')}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {selectedEmployee.childrenList.map((child, idx) => {
+                                        const age = child.dob ? Math.floor((Date.now() - new Date(child.dob).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : (child.age || 0);
+                                        return (
+                                          <tr key={idx} className={`border-t ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                                            <td className={`px-2.5 py-1 ${isDark ? 'text-white' : 'text-slate-900'} font-medium`}>{child.name && child.name !== 'N/A' ? child.name : '-'}</td>
+                                            <td className="px-2.5 py-1">
+                                              <span className={`px-2 py-0.5 rounded-full font-bold ${
+                                                child.relation === 'ولد' || child.relation === 'Son'
+                                                  ? isDark ? 'bg-teal-600/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+                                                  : isDark ? 'bg-pink-600/20 text-pink-400' : 'bg-pink-100 text-pink-700'
+                                              }`}>{child.relation && child.relation !== 'N/A' ? child.relation : '-'}</span>
+                                            </td>
+                                            <td className={`px-2.5 py-1 ${profileColors.textSecondary} font-mono`}>{child.dob && child.dob !== 'N/A' ? child.dob : '-'}</td>
+                                            <td className="px-2.5 py-1">
+                                              <span className={`${isDark ? 'bg-amber-600/20 text-amber-400' : 'bg-amber-100 text-amber-800'} px-2 py-0.5 rounded-full font-mono font-bold`}>{age || 0} سنة</span>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-xs">
+                                {t('لا يوجد أبناء مسجلون للموظف', 'No children registered for the employee')}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 8. STATUS CHANGE TAB */}
+                      {profileViewTab === 'status-change' && (
+                        <div className="space-y-2 animate-in fade-in duration-200">
+                          <StatusChangeTable
+                            employee={selectedEmployee}
+                            employees={employees}
+                            language={language}
+                            theme={theme}
+                            isCompact={true}
+                          />
+                        </div>
+                      )}
+
+                      {/* 9. TRAININGS TAB */}
+                      {profileViewTab === 'trainings' && (
+                        <div className="space-y-2.5 animate-in fade-in duration-200">
+                          <TrainingTable
+                            employee={selectedEmployee}
+                            employees={employees}
+                            language={language}
+                            theme={theme}
+                            isCompact={true}
+                          />
+                        </div>
+                      )}
+
+                      {/* 10. WARNINGS & PENALTIES TAB */}
+                      {profileViewTab === 'warnings' && (
+                        <div className="space-y-2.5 animate-in fade-in duration-200">
+                          <WarningTable
+                            employee={selectedEmployee}
+                            employees={employees}
+                            language={language}
+                            theme={theme}
+                            isCompact={true}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+
+              {/* TABBED NAVIGATION BAR DIRECTLY UNDER THE WINDOW AND OUTSIDE OF THE CONTAINER */}
+              <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl border ${
+                isDark ? 'bg-[#06080d] border-white/10 shadow-lg' : 'bg-white border-slate-300 shadow-sm'
+              } overflow-x-auto no-scrollbar [direction:ltr]`}>
+                {[
+                  { id: 'overview', label: t('نظرة عامة', 'Overview'), icon: 'grid_view' },
+                  { id: 'personal', label: t('المعلومات الشخصية', 'Personal'), icon: 'person' },
+                  { id: 'job', label: t('الوظيفة والخدمة', 'Job & Service'), icon: 'badge' },
+                  { id: 'contracts', label: t('تفاصيل العقود', 'Contracts'), icon: 'description' },
+                  { id: 'financial', label: t('البيانات المالية', 'Financial'), icon: 'payments' },
+                  { id: 'identity', label: t('الوثائق والهوية', 'Identity'), icon: 'id_card' },
+                  { id: 'family', label: t('الأسرة والسجلات', 'Family & Records'), icon: 'family_restroom' },
+                  { id: 'status-change', label: 'Status Change', icon: 'published_with_changes' },
+                  { id: 'trainings', label: 'Trainings', icon: 'school' },
+                  { id: 'warnings', label: 'Warnings', icon: 'warning' }
+                ].map(tab => {
+                  const isActive = profileViewTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setProfileViewTab(tab.id as any)}
+                      className={`px-2.5 py-1 rounded-xl text-[11px] xl:text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap hover:scale-[1.02] active:scale-98 ${
+                        isActive
+                          ? tab.id === 'status-change'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                            : tab.id === 'trainings'
+                            ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
+                            : tab.id === 'warnings'
+                            ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                            : 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
+                          : isDark
+                          ? 'text-slate-400 hover:text-white hover:bg-white/10'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-sm">{tab.icon}</span>
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -3732,30 +4202,340 @@ export const Category3EmployeeView: React.FC = () => {
       {/* Branches & Company Profiles */}
       {activeModuleId === 'emp-branches' && (
         <div className={`p-6 rounded-3xl border shadow-xl space-y-4 ${
-          isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-[#f8fafc] border-slate-300 text-slate-900'
         }`}>
-          <div className={`flex items-center justify-between border-b pb-3 ${
-            isDark ? 'border-white/10' : 'border-slate-200'
-          }`}>
-            <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: isDark ? '#ffffff' : '#000000' }}>
-              <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">location_city</span>
-              <span style={{ color: isDark ? '#ffffff' : '#000000' }}>فروع ومراكز مؤسسة فيتاس العراق</span>
-            </h2>
+          {/* Search & Actions Bar on ONE row */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className={`relative flex-1 min-w-0 flex items-center rounded-2xl border transition-all ${
+              theme === 'dark' ? 'bg-[#06080d] border-white/10 focus-within:border-teal-500/50' : 'bg-white border-slate-300 focus-within:border-teal-500'
+            }`}>
+              <span className={`material-symbols-outlined text-xl pl-3 pr-2 select-none ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                search
+              </span>
+              <input
+                type="text"
+                value={branchSearchQuery}
+                onChange={(e) => setBranchSearchQuery(e.target.value)}
+                placeholder={t('البحث في الفروع والمكاتب... (الاسم، المدينة، العنوان، الهاتف)', 'Search branches... (Name, City, Address, Phone)')}
+                className={`w-full bg-transparent py-2.5 px-1 text-xs focus:outline-none ${
+                  theme === 'dark' ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-600'
+                }`}
+              />
+              {branchSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setBranchSearchQuery('')}
+                  className="px-2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                  title={t('مسح البحث', 'Clear')}
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
+              )}
+            </div>
+
             {canWrite() && (
               <button
                 type="button"
                 onClick={handleAddBranch}
-                className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/25 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="h-10 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
               >
-                <span className="material-symbols-outlined text-sm">add</span>
-                {t('إضافة فرع', 'Add Branch')}
+                <span className="material-symbols-outlined text-base">add</span>
+                <span>{t('إضافة فرع', 'Add Branch')}</span>
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-            {branchLocations.length > 0 ? (
-              branchLocations.map((branch) => {
+          {/* Branches Toolbar: Count & View Switcher */}
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className={`flex items-center gap-2 font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+              <span className={`material-symbols-outlined text-base ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
+                location_city
+              </span>
+              <span>{t('فروع ومراكز مؤسسة فيتاس العراق', 'VITAS Iraq Branches & Locations')}</span>
+              <span className={`px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold ${
+                theme === 'dark' ? 'bg-[#06080d] text-teal-400 border border-teal-500/30' : 'bg-teal-50 text-teal-800 border border-teal-200'
+              }`}>
+                {filteredBranches.length} / {branchLocations.length}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* View Switcher: Table Rows (Raw) / Record Strips / Cards */}
+              <div className={`flex items-center p-0.5 rounded-xl border ${
+                theme === 'dark' ? 'bg-[#06080d] border-white/10' : 'bg-[#e2e8f0] border-slate-300'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setBranchesViewMode('table')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    branchesViewMode === 'table'
+                      ? (theme === 'dark' ? 'bg-teal-600 text-white shadow-xs' : 'bg-white text-teal-800 shadow-xs')
+                      : (theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
+                  }`}
+                  title={t('عرض جدول السجلات (Row)', 'Table Rows View')}
+                >
+                  <span className="material-symbols-outlined text-base">table_rows</span>
+                  <span className="hidden sm:inline">{t('جدول السجلات Raw', 'Rows Table')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBranchesViewMode('rows')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    branchesViewMode === 'rows'
+                      ? (theme === 'dark' ? 'bg-teal-600 text-white shadow-xs' : 'bg-white text-teal-800 shadow-xs')
+                      : (theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
+                  }`}
+                  title={t('عرض شرائط السجلات الأفقية', 'Horizontal Record Strips')}
+                >
+                  <span className="material-symbols-outlined text-base">view_agenda</span>
+                  <span className="hidden sm:inline">{t('سجلات أفقية', 'Record Strips')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBranchesViewMode('cards')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    branchesViewMode === 'cards'
+                      ? (theme === 'dark' ? 'bg-teal-600 text-white shadow-xs' : 'bg-white text-teal-800 shadow-xs')
+                      : (theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
+                  }`}
+                  title={t('عرض البطاقات', 'Cards Grid View')}
+                >
+                  <span className="material-symbols-outlined text-base">grid_view</span>
+                  <span className="hidden sm:inline">{t('بطاقات', 'Cards')}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {filteredBranches.length === 0 ? (
+            <EmptyState
+              icon="location_off"
+              title={branchSearchQuery ? t("لا توجد نتائج للبحث", "No search results found") : t("لا توجد فروع مسجلة", "No branches registered")}
+              description={branchSearchQuery ? t("لم يتم العثور على فرع يطابق معايير البحث. جرب كلمات مختلفة.", "No branch found matching search criteria. Try different keywords.") : t("لا توجد فروع أو مراكز مسجلة في النظام حالياً.", "No branch records currently registered.")}
+              actionText={branchSearchQuery ? undefined : (canWrite() ? t("إضافة فرع جديد الآن", "Add Branch Now") : undefined)}
+              onAction={branchSearchQuery ? undefined : (canWrite() ? handleAddBranch : undefined)}
+            />
+          ) : branchesViewMode === 'table' ? (
+            /* VIEW 1: TABLE ROWS (RAW) - PRIMARY VIEW */
+            <div className={`overflow-x-auto rounded-2xl border transition-all ${
+              theme === 'dark'
+                ? 'bg-[#0a0c10] border-white/10 shadow-xl'
+                : 'bg-[#eef2f6] border-slate-300 shadow-xs'
+            }`}>
+              <table className={`w-full text-xs ${language === 'en' ? 'text-left' : 'text-right'} border-collapse`}>
+                <thead className={`border-b select-none app-table-header ${
+                  theme === 'dark'
+                    ? 'bg-[#06080d] text-slate-300 border-white/10'
+                    : 'bg-[#94a3b8] text-slate-950 border-slate-500 font-bold'
+                }`}>
+                  <tr>
+                    <th className="py-3 px-3 text-center w-12 font-bold">#</th>
+                    <th className="py-3 px-4 font-bold">{t('الفرع / المركز', 'Branch / Location')}</th>
+                    <th className="py-3 px-4 font-bold">{t('المدينة', 'City')}</th>
+                    <th className="py-3 px-4 font-bold">{t('العنوان التفصيلي', 'Address')}</th>
+                    <th className="py-3 px-4 font-bold">{t('رقم الهاتف', 'Phone')}</th>
+                    <th className="py-3 px-3 font-bold text-center">{t('الموظفين المعينين', 'Assigned Employees')}</th>
+                    <th className="py-3 px-3 font-bold text-center">{t('الحالة', 'Status')}</th>
+                    {canWrite() && (
+                      <th className="py-3 px-3 font-bold text-center w-24">{t('الإجراءات', 'Actions')}</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-300/80'}`}>
+                  {filteredBranches.map((branch, idx) => {
+                    const bName = language === 'ar' ? (branch.name || branch.name_ar || branch.name_en) : (branch.name_en || branch.name || branch.name_ar);
+                    const subName = language === 'ar' ? (branch.name_en || '') : (branch.name_ar || branch.name || '');
+                    const assignedCount = employees.filter(e => e.branch && (e.branch.includes(branch.name || '') || e.branch.includes(branch.name_en || '') || e.branch.includes(branch.name_ar || ''))).length;
+                    return (
+                      <tr
+                        key={branch.id}
+                        className={`transition-colors duration-150 ${
+                          theme === 'dark'
+                            ? 'hover:bg-white/[0.04] text-slate-200'
+                            : 'hover:bg-slate-200/50 text-slate-900 bg-white/70'
+                        }`}
+                      >
+                        <td className="py-3 px-3 text-center font-mono font-bold text-slate-500 text-[11px]">
+                          {idx + 1}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                              theme === 'dark' ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : 'bg-teal-100 text-teal-700 border border-teal-200'
+                            }`}>
+                              <span className="material-symbols-outlined text-base">pin_drop</span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-xs truncate" style={{ color: isDark ? '#ffffff' : '#000000' }}>
+                                {bName}
+                              </div>
+                              {subName && (
+                                <div className="text-[11px] text-slate-500 truncate" dir="ltr">
+                                  {subName}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5 font-semibold text-xs" style={{ color: isDark ? '#e2e8f0' : '#000000' }}>
+                            <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">location_city</span>
+                            <span>{branch.city || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5 text-xs max-w-xs truncate" title={branch.address || ''} style={{ color: isDark ? '#e2e8f0' : '#000000' }}>
+                            <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400 shrink-0">home_pin</span>
+                            <span className="truncate">{branch.address || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-xs" dir="ltr">
+                          <div className="flex items-center gap-1.5" style={{ color: isDark ? '#e2e8f0' : '#000000' }}>
+                            <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">call</span>
+                            <span>{branch.phone || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-xs font-bold ${
+                            assignedCount > 0
+                              ? (theme === 'dark' ? 'bg-teal-500/15 text-teal-400 border border-teal-500/30' : 'bg-teal-50 text-teal-800 border border-teal-300')
+                              : (theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-600')
+                          }`}>
+                            <span className="material-symbols-outlined text-[13px]">group</span>
+                            <span>{assignedCount}</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                            branch.status === 'Inactive' || branch.status === 'غير نشط'
+                              ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                          }`}>
+                            {branch.status || 'Active'}
+                          </span>
+                        </td>
+                        {canWrite() && (
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleEditBranch(branch)}
+                                className="p-1.5 bg-transparent border-0 text-emerald-500 hover:text-emerald-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                                title={t('تعديل الفرع', 'Edit Branch')}
+                              >
+                                <span className="material-symbols-outlined text-xl">edit_note</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBranchClick(branch)}
+                                className="p-1.5 bg-transparent border-0 text-red-500 hover:text-red-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                                title={t('حذف الفرع', 'Delete Branch')}
+                              >
+                                <span className="material-symbols-outlined text-xl">delete</span>
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : branchesViewMode === 'rows' ? (
+            /* VIEW 2: HORIZONTAL RECORD STRIPS */
+            <div className="space-y-2.5">
+              {filteredBranches.map((branch) => {
+                const bName = language === 'ar' ? (branch.name || branch.name_ar || branch.name_en) : (branch.name_en || branch.name || branch.name_ar);
+                const subName = language === 'ar' ? (branch.name_en || '') : (branch.name_ar || branch.name || '');
+                const assignedCount = employees.filter(e => e.branch && (e.branch.includes(branch.name || '') || e.branch.includes(branch.name_en || '') || e.branch.includes(branch.name_ar || ''))).length;
+                return (
+                  <div
+                    key={branch.id}
+                    className={`p-3.5 rounded-2xl border transition-all duration-200 flex flex-wrap items-center justify-between gap-3 ${
+                      theme === 'dark'
+                        ? 'bg-[#0a0c10] border-white/10 hover:border-teal-500/30'
+                        : 'bg-white border-slate-300 shadow-xs hover:border-teal-500/40 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-[240px]">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        theme === 'dark' ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : 'bg-teal-100 text-teal-700 border border-teal-200'
+                      }`}>
+                        <span className="material-symbols-outlined text-xl">pin_drop</span>
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm" style={{ color: isDark ? '#ffffff' : '#000000' }}>
+                          {bName}
+                        </div>
+                        {subName && (
+                          <div className="text-xs text-slate-500" dir="ltr">
+                            {subName}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs">
+                      <div className="flex items-center gap-1.5" style={{ color: isDark ? '#cbd5e1' : '#334155' }}>
+                        <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">location_city</span>
+                        <span className="font-semibold">{t('المدينة', 'City')}:</span>
+                        <span className="font-bold" style={{ color: isDark ? '#ffffff' : '#000000' }}>{branch.city || '-'}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 max-w-xs truncate" style={{ color: isDark ? '#cbd5e1' : '#334155' }}>
+                        <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400 shrink-0">home_pin</span>
+                        <span className="font-semibold">{t('العنوان', 'Address')}:</span>
+                        <span className="font-bold truncate" title={branch.address || ''} style={{ color: isDark ? '#ffffff' : '#000000' }}>{branch.address || '-'}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 font-mono" dir="ltr" style={{ color: isDark ? '#cbd5e1' : '#334155' }}>
+                        <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">call</span>
+                        <span className="font-bold" style={{ color: isDark ? '#ffffff' : '#000000' }}>{branch.phone || '-'}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-mono text-xs font-bold ${
+                          assignedCount > 0
+                            ? (theme === 'dark' ? 'bg-teal-500/15 text-teal-400 border border-teal-500/30' : 'bg-teal-50 text-teal-800 border border-teal-300')
+                            : (theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-600')
+                        }`}>
+                          <span className="material-symbols-outlined text-sm">group</span>
+                          <span>{assignedCount} {t('موظف', 'Employees')}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {canWrite() && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleEditBranch(branch)}
+                          className="p-1.5 bg-transparent border-0 text-emerald-500 hover:text-emerald-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                          title={t('تعديل الفرع', 'Edit Branch')}
+                        >
+                          <span className="material-symbols-outlined text-xl">edit_note</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteBranchClick(branch)}
+                          className="p-1.5 bg-transparent border-0 text-red-500 hover:text-red-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                          title={t('حذف الفرع', 'Delete Branch')}
+                        >
+                          <span className="material-symbols-outlined text-xl">delete</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* VIEW 3: CARDS GRID */
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+              {filteredBranches.map((branch) => {
                 const bName = language === 'ar' ? (branch.name || branch.name_ar || branch.name_en) : (branch.name_en || branch.name || branch.name_ar);
                 const assignedCount = employees.filter(e => e.branch && (e.branch.includes(branch.name || '') || e.branch.includes(branch.name_en || '') || e.branch.includes(branch.name_ar || ''))).length;
                 return (
@@ -3823,14 +4603,9 @@ export const Category3EmployeeView: React.FC = () => {
                     </div>
                   </div>
                 );
-              })
-            ) : (
-              <div className="col-span-full text-center py-8 text-slate-400">
-                <span className="material-symbols-outlined text-4xl mb-2">location_off</span>
-                <p>{t('لا توجد فروع مسجلة', 'No branches registered')}</p>
-              </div>
-            )}
-          </div>
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -4712,6 +5487,20 @@ export const Category3EmployeeView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Employment Contracts Archive Modal */}
+      <ContractArchiveModal
+        isOpen={isContractArchiveOpen}
+        onClose={() => setIsContractArchiveOpen(false)}
+        employee={contractArchiveEmployee || selectedEmployee}
+        contractTypes={contractTypes}
+        language={language}
+        theme={theme}
+        companyProfile={companyProfile}
+        onPreviewContract={(contractEmpObj) => {
+          handleOpenContractPreview(contractEmpObj);
+        }}
+      />
 
       {/* Contract Preview & Print Modal */}
       <ContractPreviewModal

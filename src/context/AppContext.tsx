@@ -447,11 +447,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAssetRecords(assetData || localAssets);
         setRiskRecords(riskData || localRisks);
         setDocumentRecords(docData || localDocs);
-        const normalizedNotifData = normalizeNotifications((Array.isArray(notifData) ? notifData : null) || localNotifs || []);
-        setNotifications(normalizedNotifData);
-        try {
-          localStorage.setItem('vitas_notifications', JSON.stringify(normalizedNotifData));
-        } catch (e) {}
+        const normalizedNotifData = normalizeNotifications(
+          (Array.isArray(notifData) && notifData.length > 0 ? notifData : null) || localNotifs || []
+        );
+        if (normalizedNotifData.length > 0) {
+          setNotifications(normalizedNotifData);
+          try {
+            localStorage.setItem('vitas_notifications', JSON.stringify(normalizedNotifData));
+          } catch (e) {}
+        }
 
         // Process app settings (handles both array and object responses)
         let settingsObj: Record<string, string> = {};
@@ -602,7 +606,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Auto-generate live active system notifications if notifications list is empty
   useEffect(() => {
-    if (notifications.length === 0) {
+    setNotifications(prev => {
+      if (prev.length > 0) return prev;
       const activeNotifs: SystemNotification[] = [
         {
           id: 'notif-onhold-1',
@@ -615,7 +620,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         {
           id: 'notif-payroll-2',
           title: 'تحديث مسير رواتب الشهر الحالي',
-          message: `مسير الرواتب الحاضر نشط ومحدث لـ ${employees.length || 49} موظفاً في كافة فروع ومكاتب فيتاس العراق.`,
+          message: 'مسير الرواتب الحاضر نشط ومحدث لكافة موظفي فروع ومكاتب فيتاس العراق.',
           timestamp: 'قبل 10 دقائق',
           type: 'success',
           read: false
@@ -637,12 +642,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           read: true
         }
       ];
-      setNotifications(activeNotifs);
       try {
         localStorage.setItem('vitas_notifications', JSON.stringify(activeNotifs));
       } catch (e) {}
-    }
-  }, [employees.length, notifications.length]);
+      return activeNotifs;
+    });
+  }, []);
 
   // Theme Handling
   useEffect(() => {

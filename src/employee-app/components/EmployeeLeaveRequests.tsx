@@ -225,35 +225,12 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
         </div>
       )}
 
-      {/* 1. Top Banner */}
-      <div className={`p-5 sm:p-6 rounded-3xl border shadow-sm flex flex-wrap items-center justify-between gap-4 transition-all ${
-        isDark ? 'bg-[#0a0c10] border-white/10 shadow-xl' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex items-start gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-500/20 border border-teal-200 dark:border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-sm shrink-0">
-            <span className="material-symbols-outlined text-2xl">space_dashboard</span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-[10px] font-mono text-teal-700 dark:text-teal-400 uppercase tracking-widest font-bold bg-teal-50 dark:bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-500/20">
-                {isEn ? 'VITAS IRAQ HRIS • LEAVES & ATTENDANCE' : 'نظام فيتاس العراق للموارد البشرية • الإجازات والدوام'}
-              </span>
-              <span className="text-xs text-slate-400">•</span>
-              <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-semibold">
-                {todayDate}
-              </span>
-            </div>
-            <h1 className={`text-xl sm:text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {isEn ? `Welcome, ${empName}` : `مرحباً، ${empName}`}
-            </h1>
-            <p className={`text-xs font-medium mt-0.5 flex items-center gap-2 ${
-              isDark ? 'text-slate-300' : 'text-slate-600'
-            }`}>
-              <span>{empTitle}</span>
-              <span className="text-slate-400">•</span>
-              <span className="text-teal-600 dark:text-teal-400 font-bold">{empDept}</span>
-            </p>
-          </div>
+      {/* 1. Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            {isEn ? 'Leaves & Attendance' : 'الإجازات والدوام'}
+          </h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">

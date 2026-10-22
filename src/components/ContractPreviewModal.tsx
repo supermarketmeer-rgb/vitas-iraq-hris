@@ -1028,7 +1028,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
               <span>طباعة العقد (4 صفحات)</span>
             </button>
 
-            {/* Smart Document Routing & Delivery Button */}
+            {/* Document Routing & Delivery Button */}
             <button
               type="button"
               onClick={() => {
@@ -1061,7 +1061,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
               title="إرسال وتوجيه العقد عبر البريد المؤسسي وتطبيق الموظف"
             >
               <span className="material-symbols-outlined text-base">forward_to_inbox</span>
-              <span>توجيه العقد ذكياً</span>
+              <span>توجيه العقد إلكترونياً</span>
             </button>
 
             {/* Close Button */}

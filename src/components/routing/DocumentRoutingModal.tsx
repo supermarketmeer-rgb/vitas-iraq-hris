@@ -277,7 +277,7 @@ export const DocumentRoutingModal: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-base">
-                  {t('التوجيه والتسليم الذكي للمستندات', 'Smart Document Routing & Delivery')}
+                  {t('التوجيه والتسليم للمستندات', 'Document Routing & Delivery')}
                 </h3>
                 <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${docBadge.color}`}>
                   {isAr ? docBadge.ar : docBadge.en}

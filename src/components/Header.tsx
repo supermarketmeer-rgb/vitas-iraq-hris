@@ -45,6 +45,9 @@ export const Header: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurPwd, setShowCurPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [pwdChangeMsg, setPwdChangeMsg] = useState<string | null>(null);
   const [pwdChangeError, setPwdChangeError] = useState<string | null>(null);
   const [isChangingPwd, setIsChangingPwd] = useState(false);
@@ -114,18 +117,18 @@ export const Header: React.FC = () => {
 
   const isDark = theme === 'dark';
 
-  // Header is always dark — force dark bg + white text via JS (overrides any CSS)
+  // Header background: always #06080d with white text as originally designed
   const headerRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
 
-    const applyStyles = () => {
+    const applyDark = () => {
       // Disconnect first to prevent infinite loop when setting style attributes
       observer.disconnect();
 
-      // Force header bg dark
       header.style.setProperty('background-color', '#06080d', 'important');
+      header.style.setProperty('border-color', '#1e2a44', 'important');
 
       header.querySelectorAll('*').forEach(el => {
         const htmlEl = el as HTMLElement;
@@ -165,26 +168,21 @@ export const Header: React.FC = () => {
       observer.observe(header, { childList: true, subtree: true });
     };
 
-    const observer = new MutationObserver(applyStyles);
+    const observer = new MutationObserver(applyDark);
 
     // Initial apply
-    applyStyles();
+    applyDark();
 
     return () => observer.disconnect();
-  }, [isDark]);
-
-
-
-
-
+  }, []);
 
   // Handle null currentUser - show simplified header or redirect
   if (!currentUser) {
     return (
-      <header className={`sticky top-0 z-30 h-16 ${isDark ? 'bg-[#06080d]/95 border-[#1e2a44] text-white' : 'bg-[#0f2044]/95 border-[#1a3570] text-white shadow-md'} backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden`}>
+      <header className="sticky top-0 z-30 h-16 bg-[#06080d]/95 border-[#1e2a44] text-white backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden">
         <div className="flex items-center gap-3">
           <img src={vitasLogo} alt="VITAS Iraq Logo" className="w-10 h-10 rounded-full object-cover border-2 border-teal-500/40 shadow-md bg-white" />
-          <span className={`text-lg font-bold ${isDark ? 'text-white' : 'text-white'}`}>VITAS Iraq HRMS</span>
+          <span className="text-lg font-bold text-white">VITAS Iraq HRMS</span>
         </div>
       </header>
     );
@@ -204,14 +202,12 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header ref={headerRef} className="sticky top-0 z-30 h-16 bg-[#06080d]/95 border-[#1e2a44] text-white backdrop-blur-md border-b px-4 flex items-center justify-between transition-colors duration-200 print:hidden">
+      <header ref={headerRef} className="sticky top-0 z-40 h-16 bg-[#06080d]/95 backdrop-blur-md border-b border-[#1e2a44] px-4 flex items-center justify-between transition-colors duration-200 print:hidden text-white">
       {/* Left / Start Section - Logo & Sidebar Toggle */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className={`p-2 rounded-lg transition-colors ${
-            isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-200 hover:text-white hover:bg-white/10'
-          }`}
+          className="p-2 rounded-lg transition-colors text-slate-400 hover:text-white hover:bg-white/5"
           title={t('تبديل القائمة الجانبية', 'Toggle Sidebar')}
         >
           <span className="material-symbols-outlined text-2xl">
@@ -231,14 +227,14 @@ export const Header: React.FC = () => {
           />
           <div className="hidden sm:block">
             <div className="flex items-center gap-1.5">
-              <span className={`font-extrabold text-lg tracking-tight font-['Inter',sans-serif] ${isDark ? 'text-white' : 'text-white'}`}>
+              <span className="font-extrabold text-lg tracking-tight font-['Inter',sans-serif] text-white">
                 <span data-keep-color="#14b8a6" style={{ color: '#14b8a6' }}>VITAS</span>IRAQ
               </span>
               <span className="text-[10px] bg-teal-600 text-white shadow-md border border-teal-500/20 px-1.5 py-0.5 rounded font-mono font-semibold">
                 HRMS
               </span>
             </div>
-            <p className={`text-[11px] -mt-1 font-medium ${isDark ? 'text-slate-400' : 'text-blue-200'}`}>
+            <p className="text-[11px] -mt-1 font-medium text-slate-400">
               {t('بوابة الموارد البشرية المؤسسية', 'Enterprise HR Portal')}
             </p>
           </div>
@@ -622,23 +618,54 @@ export const Header: React.FC = () => {
 
                 setIsChangingPwd(true);
                 try {
+                  const isAdminRole = Boolean(
+                    currentUser?.role === 'Super Admin' ||
+                    currentUser?.role === 'Admin' ||
+                    currentUser?.role === 'HR Manager' ||
+                    currentUser?.can_manage_users === 1 ||
+                    currentUser?.can_manage_users === true ||
+                    (currentUser?.username && currentUser.username.toLowerCase() === 'admin') ||
+                    (currentUser?.username && currentUser.username.toLowerCase() === 'hrmanager')
+                  );
+
+                  const resolvedUsername = 
+                    currentUser?.username ||
+                    (currentUser?.employeeId === 'VTS-HRMANAGER' || currentUser?.role === 'HR Manager' || currentUser?.name === 'مدير الموارد البشرية' ? 'hrmanager' :
+                     currentUser?.employeeId === 'VTS-ADMIN' || currentUser?.role === 'Super Admin' ? 'admin' :
+                     currentUser?.name);
+
+                  const resolvedEmpId = currentUser?.employeeId || (currentUser?.role === 'HR Manager' ? 'VTS-HRMANAGER' : (currentUser?.role === 'Super Admin' ? 'VTS-ADMIN' : undefined));
+                  const resolvedId = (currentUser?.role === 'HR Manager' && (!currentUser?.id || currentUser?.id === '1')) ? '1096' : currentUser?.id;
+
                   await api.changePassword({
-                    username: currentUser.username || currentUser.name,
-                    employeeId: currentUser.employeeId,
-                    currentPassword: currentPassword.trim(),
-                    newPassword: newPassword.trim()
-                  });
+                    id: resolvedId,
+                    username: resolvedUsername,
+                    employeeId: resolvedEmpId,
+                    currentPassword: currentPassword ? currentPassword.trim() : undefined,
+                    newPassword: newPassword.trim(),
+                    adminReset: isAdminRole || !currentPassword.trim()
+                  } as any);
 
                   // Update in custom users list if exists
                   try {
                     const customUsersRaw = localStorage.getItem('vitas_custom_users') || '{}';
                     const customUsers = JSON.parse(customUsersRaw);
-                    const userKey = (currentUser.employeeId || currentUser.name || '').toLowerCase();
+                    const userKey = (resolvedUsername || resolvedEmpId || currentUser.name || '').toLowerCase();
                     if (customUsers[userKey]) {
                       customUsers[userKey].password = newPassword.trim();
                     }
+                    if (resolvedUsername === 'hrmanager' && customUsers['hrmanager']) {
+                      customUsers['hrmanager'].password = newPassword.trim();
+                    }
+                    if (resolvedUsername === 'admin' && customUsers['admin']) {
+                      customUsers['admin'].password = newPassword.trim();
+                    }
                     Object.keys(customUsers).forEach(k => {
-                      if (customUsers[k].name === currentUser.name || customUsers[k].employeeId === currentUser.employeeId) {
+                      if (
+                        customUsers[k].name === currentUser.name ||
+                        customUsers[k].employeeId === resolvedEmpId ||
+                        customUsers[k].username === resolvedUsername
+                      ) {
                         customUsers[k].password = newPassword.trim();
                       }
                     });
@@ -647,7 +674,18 @@ export const Header: React.FC = () => {
                     console.error(err);
                   }
 
-                  setPwdChangeMsg(t('تم تحديث كلمة المرور الخاصة بك بنجاح في قاعدة البيانات!', 'Your password has been updated successfully in the database!'));
+                  // Also update currentUser in localStorage so current session stays updated
+                  try {
+                    const rawCur = localStorage.getItem('vitas_current_user');
+                    if (rawCur) {
+                      const curObj = JSON.parse(rawCur);
+                      curObj.password = newPassword.trim();
+                      localStorage.setItem('vitas_current_user', JSON.stringify(curObj));
+                      setCurrentUser(curObj);
+                    }
+                  } catch (e) {}
+
+                  setPwdChangeMsg(t('تم تحديث كلمة المرور الخاصة بك بنجاح في قاعدة البيانات وتفعيلها فوراً!', 'Your password has been updated successfully in the database!'));
                   setTimeout(() => {
                     setShowChangePwdModal(false);
                     setCurrentPassword('');
@@ -681,47 +719,80 @@ export const Header: React.FC = () => {
                 <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">
                   {t('كلمة المرور الحالية (اختياري للآدمن):', 'Current Password (Optional for Admin):')}
                 </label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={e => setCurrentPassword(e.target.value)}
-                  placeholder={t('أدخل كلمة المرور الحالية', 'Enter current password')}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none font-mono ${
-                    isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    type={showCurPwd ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    placeholder={t('أدخل كلمة المرور الحالية (أو اتركها فارغة)', 'Enter current password (or leave blank)')}
+                    className={`w-full px-3.5 py-2.5 pe-10 rounded-xl border text-xs outline-none font-mono ${
+                      isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurPwd(!showCurPwd)}
+                    className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      {showCurPwd ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">
                   {t('كلمة المرور الجديدة:', 'New Password:')}
                 </label>
-                <input
-                  type="password"
-                  required
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  placeholder={t('أدخل كلمة المرور الجديدة', 'Enter new password')}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none font-mono ${
-                    isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPwd ? 'text' : 'password'}
+                    required
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder={t('أدخل كلمة المرور الجديدة', 'Enter new password')}
+                    className={`w-full px-3.5 py-2.5 pe-10 rounded-xl border text-xs outline-none font-mono ${
+                      isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPwd(!showNewPwd)}
+                    className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      {showNewPwd ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">
                   {t('تأكيد كلمة المرور الجديدة:', 'Confirm New Password:')}
                 </label>
-                <input
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder={t('أعد إدخال كلمة المرور', 'Re-enter new password')}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none font-mono ${
-                    isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPwd ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder={t('أعد إدخال كلمة المرور', 'Re-enter new password')}
+                    className={`w-full px-3.5 py-2.5 pe-10 rounded-xl border text-xs outline-none font-mono ${
+                      isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPwd(!showConfirmPwd)}
+                    className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      {showConfirmPwd ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">

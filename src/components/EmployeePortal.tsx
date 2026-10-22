@@ -1487,34 +1487,11 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
             return (
               <div className="space-y-6 animate-in fade-in duration-300">
                 {/* 1. Top Banner with live clock and identity */}
-                <div className={`p-6 sm:p-7 rounded-3xl border shadow-sm flex flex-wrap items-center justify-between gap-6 transition-all ${
-                  isDark ? 'bg-[#0a0c10] border-white/10 shadow-xl' : 'bg-white border-slate-200'
-                }`}>
-                  <div className="flex items-start gap-4">
-                    <div className="w-13 h-13 rounded-2xl bg-teal-50 dark:bg-teal-500/20 border border-teal-200 dark:border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-sm shrink-0">
-                      <span className="material-symbols-outlined text-2xl">space_dashboard</span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-xs font-mono text-teal-700 dark:text-teal-400 uppercase tracking-widest font-bold bg-teal-50 dark:bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-500/20">
-                          VITAS IRAQ HRIS • LEAVES & ATTENDANCE
-                        </span>
-                        <span className="text-xs text-slate-400 hidden sm:inline">•</span>
-                        <span className="text-xs font-mono text-slate-500 dark:text-slate-400 hidden sm:inline font-semibold">
-                          {todayDateStr}
-                        </span>
-                      </div>
-                      <h1 className={`text-2xl sm:text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        {language === 'ar' ? `مرحباً، ${empDisplayName}` : `Welcome back, ${empDisplayName}`}
-                      </h1>
-                      <p className={`text-xs sm:text-sm font-medium mt-1 flex items-center gap-2 ${
-                        isDark ? 'text-slate-300' : 'text-slate-600'
-                      }`}>
-                        <span>{getPositionBilingual()}</span>
-                        <span className="text-slate-400">•</span>
-                        <span className="text-teal-600 dark:text-teal-400 font-bold">{getDeptBilingual()}</span>
-                      </p>
-                    </div>
+                <div className="flex flex-wrap items-center justify-between gap-6">
+                  <div>
+                    <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      {language === 'ar' ? 'الإجازات والدوام' : 'Leaves & Attendance'}
+                    </h1>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">

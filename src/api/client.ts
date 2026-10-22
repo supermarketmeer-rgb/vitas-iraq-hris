@@ -73,6 +73,13 @@ export const apiClient = {
       method: 'DELETE',
     }, timeoutMs);
   },
+
+  async upload<T>(endpoint: string, formData: FormData, timeoutMs: number = 30000): Promise<T> {
+    return this.handleFetch(`${getApiBaseUrl()}${endpoint}`, {
+      method: 'POST',
+      body: formData,
+    }, timeoutMs);
+  },
 };
 
 // API Endpoints
@@ -296,6 +303,13 @@ export const api = {
   updateNews: (id: string, news: any) => apiClient.put(`/news/${id}`, news),
   updateNewsStatus: (id: string, status: string) => apiClient.put(`/news/${id}/status`, { status }),
   deleteNews: (id: string) => apiClient.delete(`/news/${id}`),
+  uploadNewsImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return apiClient.upload<{ success: boolean; url: string; filename: string }>('/news/upload-image', formData);
+  },
+  translate: (text: string, from: string = 'ar', to: string = 'en') =>
+    apiClient.post<{ success: boolean; translatedText: string; originalText: string }>('/translate', { text, from, to }),
 
   // Reset / Clear Data
   resetData: () => apiClient.post('/reset-data', {}, 60000),

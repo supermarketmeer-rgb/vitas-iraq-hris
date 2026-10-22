@@ -141,27 +141,15 @@ export const Category7PerformanceView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Top Banner */}
-      <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-white">atr</span>
-            <span className="text-xs font-mono text-white uppercase tracking-widest font-normal">
-              PERFORMANCE & LEARNING ENTERPRISE PORTAL
-            </span>
-          </div>
-          <h1 className="text-2xl font-normal text-white drop-shadow-md">
-            {activeModuleId === 'perf-mgmt' && t('إدارة وتقييم أداء الموظفين السنوي (KPIs)', 'Annual Performance Management & KPIs')}
-            {activeModuleId === 'perf-self-appraisal' && t('نموذج التقييم الذاتي للموظف (Self Appraisal)', 'Employee Self Appraisal Form')}
-            {activeModuleId === 'perf-review' && t('مراجعة وتقييم الأداء من قبل المدير المباشر', 'Line Manager Performance Review')}
-            {activeModuleId === 'train-my-learning' && t('لوحة التعلم والدورات التدريبية المتاحة', 'My Learning & Training Portal')}
-            {activeModuleId === 'train-courses-analytics' && t('إدارة الدورات وتحليلات التطوير الوظيفي', 'Courses Management & Development Analytics')}
-          </h1>
-          <p className="text-xs text-white font-bold mt-1.5 drop-shadow-sm flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-            <span>{t('قياس المؤشرات وتحديث الكفاءات لـ 49 موظفاً حياً وفق لوائح مؤسسة فيتاس العراق', 'Live KPI tracking & competencies alignment for 49 VITAS Iraq staff')}</span>
-          </p>
-        </div>
+      {/* Page Title */}
+      <div>
+        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          {activeModuleId === 'perf-mgmt' && t('إدارة وتقييم أداء الموظفين السنوي (KPIs)', 'Annual Performance Management & KPIs')}
+          {activeModuleId === 'perf-self-appraisal' && t('نموذج التقييم الذاتي للموظف (Self Appraisal)', 'Employee Self Appraisal Form')}
+          {activeModuleId === 'perf-review' && t('مراجعة وتقييم الأداء من قبل المدير المباشر', 'Line Manager Performance Review')}
+          {activeModuleId === 'train-my-learning' && t('لوحة التعلم والدورات التدريبية المتاحة', 'My Learning & Training Portal')}
+          {activeModuleId === 'train-courses-analytics' && t('إدارة الدورات وتحليلات التطوير الوظيفي', 'Courses Management & Development Analytics')}
+        </h1>
       </div>
 
       {/* MODULE 1: PERFORMANCE MANAGEMENT */}

@@ -24,7 +24,6 @@ export const Category2DashboardView: React.FC = () => {
     assetRecords,
     riskRecords,
     documentRecords,
-    currentUser,
     notifications,
     isDark,
     t,
@@ -107,167 +106,50 @@ export const Category2DashboardView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Top Banner */}
-      <div className={`p-6 rounded-3xl border transition-all flex flex-wrap items-center justify-between gap-4 ${isDark
-          ? 'bg-[#0a0c10] border-white/10 shadow-xl text-white'
-          : 'bg-white border-slate-200/90 shadow-sm text-slate-900'
-        }`}>
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`material-symbols-outlined text-base ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>dashboard</span>
-            <span className={`text-xs font-mono uppercase tracking-widest font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
-              VITAS IRAQ HRMS ENTERPRISE PORTAL
-            </span>
-          </div>
-          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-teal-700'}`}>
-            {activeModuleId === 'dash-overview' && t('نظرة عامة على النظام المؤتمت', 'Automated System Overview')}
-            {activeModuleId === 'dash-exec-1' && t('لوحة المعلومات التنفيذية 1 (التحليلات الاستراتيجية)', 'Executive Dashboard 1 (Strategic Analytics)')}
-            {activeModuleId === 'dash-exec-2' && t('لوحة المعلومات التنفيذية 2 (القوى العاملة والتكاليف)', 'Executive Dashboard 2 (Workforce & Costs)')}
-            {activeModuleId === 'dash-ess' && t('لوحة الخدمة الذاتية للموظف (ESS Portal)', 'Employee Self-Service (ESS) Portal')}
-            {activeModuleId === 'dash-search' && t('مركز البحث الشامل والتصفية', 'Global Search & Filtering Center')}
-          </h1>
-          <p className={`text-xs font-medium mt-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-            <span>
-              {language === 'en'
-                ? `Welcome back, ${getEmployeeLocalizedName(currentUser?.name || 'HR System Admin', 'en')} (${currentUser?.role || 'Super Admin'}) • System live with production data`
-                : `مرحباً بعودتك، ${currentUser?.name || 'المستخدم'} (${currentUser?.role === 'Super Admin' ? 'المشرف العام' : currentUser?.role}) • النظام نشط ومحدث ببيانات مؤسسة فيتاس العراق الحقيقية`}
-            </span>
-          </p>
-        </div>
-
-        {/* Quick action buttons in top banner (Hidden per user request, code preserved without deletion) */}
-        <div className="hidden items-center gap-2.5 flex-wrap">
-          {/* Dynamic Report Builder - Super Admin, HR Manager, or users with reports permission */}
-          {(currentUser.role === 'Super Admin' || currentUser.role === 'HR Manager' ||
-            currentUser.modulePermissions?.['reports']) && (
-            <button
-              onClick={() => setActiveModuleId('sys-dynamic-reports')}
-              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
-              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
-                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
-                }`}
-            >
-              <span className="material-symbols-outlined text-base">table_chart</span>
-              <span>{t('منشئ التقارير الديناميكية', 'Dynamic Report Builder')}</span>
-            </button>
-          )}
-
-          {/* Add New Employee - Super Admin, HR Manager, or users with employees permission */}
-          {(currentUser.role === 'Super Admin' || currentUser.role === 'HR Manager' ||
-            (currentUser.can_manage_employees === 1 && currentUser.role !== 'Recruiter')) && (
-            <button
-              onClick={() => setActiveModuleId('emp-add')}
-              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
-              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
-                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
-                }`}
-            >
-              <span className="material-symbols-outlined text-base">person_add</span>
-              <span>{t('إضافة موظف جديد', 'Add New Employee')}</span>
-            </button>
-          )}
-
-          {/* Post Job Vacancy - Recruiter only */}
-          {currentUser.role === 'Recruiter' && (
-            <button
-              onClick={() => setActiveModuleId('recruit-dash')}
-              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
-              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
-                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
-                }`}
-            >
-              <span className="material-symbols-outlined text-base">work</span>
-              <span>{t('نشر وظيفة شاغرة', 'Post Job Vacancy')}</span>
-            </button>
-          )}
-
-          {/* Apply for Leave - Everyone except IT Admin */}
-          {currentUser.role !== 'IT Admin' && (
-            <button
-              onClick={() => setActiveModuleId('leave-apply')}
-              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
-              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md'
-                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
-                }`}
-            >
-              <span className="material-symbols-outlined text-base">edit_calendar</span>
-              <span>{t('تقديم إجازة', 'Apply for Leave')}</span>
-            </button>
-          )}
-
-          {/* System Health - IT Admin only */}
-          {currentUser.role === 'IT Admin' && (
-            <button
-              onClick={() => setActiveModuleId('sys-health-monitor')}
-              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
-              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md'
-                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
-                }`}
-            >
-              <span className="material-symbols-outlined text-base">monitor_heart</span>
-              <span>{t('مراقبة صحة النظام', 'System Health Monitor')}</span>
-            </button>
-          )}
-
-          {/* Add New User - Super Admin, Admin and users with settings/can_manage_users permission */}
-          {(currentUser.role === 'Super Admin' || currentUser.role === 'Admin' || currentUser.can_manage_users === 1 ||
-            currentUser.modulePermissions?.['sec-roles-permissions'] ||
-            currentUser.modulePermissions?.['settings']) && (
-            <button
-              onClick={() => setActiveModuleId('sec-roles-permissions')}
-              style={{ color: isDark ? '#2dd4bf' : '#ffffff' }}
-              className={`dashboard-banner-teal-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${isDark
-                  ? 'bg-[#06080d] hover:bg-[#0a0c10] border-teal-500 shadow-md shadow-teal-500/10'
-                  : 'bg-teal-50 hover:bg-teal-100 border-teal-400 shadow-sm'
-                }`}
-            >
-              <span className="material-symbols-outlined text-base">manage_accounts</span>
-              <span>{t('إضافة مستخدم جديد', 'Add New User')}</span>
-            </button>
-          )}
-        </div>
-
+      {/* Page Title */}
+      <div>
+        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          {activeModuleId === 'dash-overview' && t('نظرة عامة على النظام', 'System Overview')}
+          {activeModuleId === 'dash-exec-1' && t('لوحة المعلومات التنفيذية 1 (التحليلات الاستراتيجية)', 'Executive Dashboard 1 (Strategic Analytics)')}
+          {activeModuleId === 'dash-exec-2' && t('لوحة المعلومات التنفيذية 2 (القوى العاملة والتكاليف)', 'Executive Dashboard 2 (Workforce & Costs)')}
+          {activeModuleId === 'dash-ess' && t('لوحة الخدمة الذاتية للموظف (ESS Portal)', 'Employee Self-Service (ESS) Portal')}
+          {activeModuleId === 'dash-search' && t('مركز البحث الشامل والتصفية', 'Global Search & Filtering Center')}
+        </h1>
       </div>
 
       {/* Real Live KPI Stat Cards - Hidden in ESS to match standalone Employee Portal */}
       {activeModuleId !== 'dash-ess' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Card 1: Total Employees */}
-          <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
+          <div className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border flex items-center justify-between transition-all ${isDark
               ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-              : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
+              : 'bg-[#eef2f6] border-slate-300/80 text-slate-900 shadow-xs hover:shadow-sm'
             }`}>
             <div>
               <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('إجمالي الموظفين', 'Total Employees')}</p>
-              <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalEmployeesCount}</p>
-              <p className={`text-xs font-semibold mt-1 flex items-center gap-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+              <p className={`text-2xl font-bold mt-0.5 font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalEmployeesCount}</p>
+              <p className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
                 <span className="material-symbols-outlined text-xs">check_circle</span>
                 <span>{totalEmployeesCount} {t('موظفاً حياً مسجلاً', 'active registered staff')}</span>
               </p>
             </div>
-            <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
+            <div className={`dash-overview-icon-box w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${isDark
                 ? 'bg-[#06080d] border-teal-500/30 text-teal-400'
-                : 'bg-teal-50/80 border-teal-200/80 text-teal-700 shadow-xs'
+                : 'bg-[#eef2f6] border-slate-300/80 text-slate-700 shadow-2xs'
               }`}>
-              <span className="material-symbols-outlined text-2xl">groups</span>
+              <span className="material-symbols-outlined text-xl">groups</span>
             </div>
           </div>
 
           {/* Card 2: Job Vacancies */}
-          <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
+          <div className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border flex items-center justify-between transition-all ${isDark
               ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-              : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
+              : 'bg-[#eef2f6] border-slate-300/80 text-slate-900 shadow-xs hover:shadow-sm'
             }`}>
             <div>
               <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الوظائف الشاغرة', 'Job Vacancies')}</p>
-              <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{openVacanciesCount}</p>
-              <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+              <p className={`text-2xl font-bold mt-0.5 font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{openVacanciesCount}</p>
+              <p className={`text-[11px] font-semibold mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
                 {openVacanciesCount > 0
                   ? `${openVacanciesCount} ${t('وظائف متاحة حالياً', 'active vacancies')}`
                   : jobVacancies.length > 0
@@ -275,53 +157,53 @@ export const Category2DashboardView: React.FC = () => {
                     : t('لا توجد وظائف مفتوحة حالياً', 'No open vacancies')}
               </p>
             </div>
-            <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
+            <div className={`dash-overview-icon-box w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${isDark
                 ? 'bg-[#06080d] border-teal-500/30 text-teal-400'
-                : 'bg-teal-50/80 border-teal-200/80 text-teal-700 shadow-xs'
+                : 'bg-[#eef2f6] border-slate-300/80 text-slate-700 shadow-2xs'
               }`}>
-              <span className="material-symbols-outlined text-2xl">business_center</span>
+              <span className="material-symbols-outlined text-xl">business_center</span>
             </div>
           </div>
 
           {/* Card 3: Pending Leave Requests */}
-          <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
+          <div className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border flex items-center justify-between transition-all ${isDark
               ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-              : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
+              : 'bg-[#eef2f6] border-slate-300/80 text-slate-900 shadow-xs hover:shadow-sm'
             }`}>
             <div>
               <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('طلبات الإجازات القائمة', 'Pending Leave Requests')}</p>
-              <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{pendingLeavesCount}</p>
-              <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>
+              <p className={`text-2xl font-bold mt-0.5 font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{pendingLeavesCount}</p>
+              <p className={`text-[11px] font-semibold mt-0.5 ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>
                 {pendingLeavesCount > 0
                   ? `${pendingLeavesCount} ${t('طلبات بانتظار الاعتماد', 'pending HR review')}`
                   : t('لا توجد طلبات معلقة الان', 'No pending requests')}
               </p>
             </div>
-            <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
+            <div className={`dash-overview-icon-box w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${isDark
                 ? 'bg-[#06080d] border-purple-500/30 text-purple-400'
-                : 'bg-purple-50/80 border-purple-200/80 text-purple-700 shadow-xs'
+                : 'bg-[#eef2f6] border-slate-300/80 text-slate-700 shadow-2xs'
               }`}>
-              <span className="material-symbols-outlined text-2xl">pending_actions</span>
+              <span className="material-symbols-outlined text-xl">pending_actions</span>
             </div>
           </div>
 
           {/* Card 4: Assets & Documents */}
-          <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${isDark
+          <div className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border flex items-center justify-between transition-all ${isDark
               ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-              : 'bg-white border-slate-200/90 text-slate-900 shadow-sm hover:shadow-md'
+              : 'bg-[#eef2f6] border-slate-300/80 text-slate-900 shadow-xs hover:shadow-sm'
             }`}>
             <div>
               <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الأصول والمستندات المسجلة', 'Assets & Documents')}</p>
-              <p className={`text-3xl font-bold mt-1 font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalAssetsAndDocs}</p>
-              <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+              <p className={`text-2xl font-bold mt-0.5 font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalAssetsAndDocs}</p>
+              <p className={`text-[11px] font-semibold mt-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
                 {assetRecords?.length || 0} {t('عهدة', 'assets')} • {documentRecords?.length || 0} {t('وثائق', 'docs')}
               </p>
             </div>
-            <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isDark
+            <div className={`dash-overview-icon-box w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${isDark
                 ? 'bg-[#06080d] border-emerald-500/30 text-emerald-400'
-                : 'bg-emerald-50/80 border-emerald-200/80 text-emerald-700 shadow-xs'
+                : 'bg-[#eef2f6] border-slate-300/80 text-slate-700 shadow-2xs'
               }`}>
-              <span className="material-symbols-outlined text-2xl">folder_managed</span>
+              <span className="material-symbols-outlined text-xl">folder_managed</span>
             </div>
           </div>
         </div>
@@ -331,9 +213,9 @@ export const Category2DashboardView: React.FC = () => {
       {activeModuleId === 'dash-overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left / Wide Section */}
-          <div className={`lg:col-span-2 p-6 rounded-3xl border space-y-4 transition-all ${isDark
+          <div className={`dash-overview-canvas-window lg:col-span-2 p-6 rounded-3xl border space-y-4 transition-all ${isDark
               ? 'bg-[#0a0c10] border-white/10 shadow-xl text-white'
-              : 'bg-white border-slate-200/90 shadow-sm text-slate-900'
+              : 'bg-[#eef2f6] border-slate-300/80 shadow-sm text-slate-900'
             }`}>
             <div className={`flex items-center justify-between border-b pb-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
               <h2 className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -359,16 +241,16 @@ export const Category2DashboardView: React.FC = () => {
                     <div
                       key={emp.id}
                       dir={language === 'en' ? 'ltr' : 'rtl'}
-                      className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs transition-all ${isDark
+                      className={`dash-inner-card p-3.5 rounded-2xl border flex items-center justify-between text-xs transition-all ${isDark
                           ? 'bg-[#06080d] border-white/5 hover:border-teal-500/40 text-slate-200'
-                          : 'bg-[#f8fafc] border-slate-200/80 hover:bg-teal-50/40 hover:border-teal-400/50 text-slate-900 shadow-2xs'
+                          : 'bg-[#eef2f6] border-slate-300 hover:bg-[#e2e8f0] text-slate-900 shadow-2xs'
                         }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-9 h-9 rounded-xl font-bold flex items-center justify-center border overflow-hidden shadow-xs shrink-0 ${
                           emp.photoUrl
-                            ? (isDark ? 'bg-[#1a1f2e] border-teal-500/30' : 'bg-white border-teal-200')
-                            : (isDark ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200')
+                            ? (isDark ? 'bg-[#1a1f2e] border-teal-500/30' : 'bg-[#eef2f6] border-slate-300')
+                            : (isDark ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-teal-100/60 text-teal-700 border-teal-200')
                         }`}>
                           {emp.photoUrl ? (
                             <img src={emp.photoUrl} alt={getEmployeeLocalizedName(emp, language)} className="w-full h-full object-contain p-0.5" />
@@ -387,7 +269,7 @@ export const Category2DashboardView: React.FC = () => {
                       </div>
                       <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border shrink-0 ${isDark
                           ? 'bg-[#06080d] text-teal-400 border-teal-500/40'
-                          : 'bg-white text-teal-800 border-teal-300 shadow-2xs'
+                          : 'bg-[#eef2f6] text-teal-800 border-teal-300 shadow-2xs'
                         }`}>
                         VTS-{emp.employeeId || emp.employee_id}
                       </span>
@@ -399,9 +281,9 @@ export const Category2DashboardView: React.FC = () => {
           </div>
 
           {/* Right Section: Notifications */}
-          <div className={`p-6 rounded-3xl border space-y-4 transition-all ${isDark
+          <div className={`dash-overview-canvas-window p-6 rounded-3xl border space-y-4 transition-all ${isDark
               ? 'bg-[#0a0c10] border-white/10 shadow-xl text-white'
-              : 'bg-white border-slate-200/90 shadow-sm text-slate-900'
+              : 'bg-[#eef2f6] border-slate-300/80 shadow-sm text-slate-900'
             }`}>
             <div className={`flex items-center justify-between border-b pb-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
               <h2 className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -429,9 +311,9 @@ export const Category2DashboardView: React.FC = () => {
                   <div
                     key={n.id}
                     dir={language === 'en' ? 'ltr' : 'rtl'}
-                    className={`p-3 rounded-2xl border space-y-1 transition-all shadow-2xs ${isDark
+                    className={`dash-inner-card p-3 rounded-2xl border space-y-1 transition-all shadow-2xs ${isDark
                         ? 'bg-[#06080d] border-white/10 text-slate-200 hover:border-teal-500/40'
-                        : 'bg-[#f8fafc] border-slate-200/80 text-slate-900 hover:bg-teal-50/40 hover:border-teal-400/50'
+                        : 'bg-[#eef2f6] border-slate-300 text-slate-900 hover:bg-[#e2e8f0]'
                       }`}
                   >
                     <div className="flex items-center justify-between font-bold text-xs">

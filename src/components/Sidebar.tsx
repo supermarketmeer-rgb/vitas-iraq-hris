@@ -34,86 +34,152 @@ export const Sidebar: React.FC = () => {
   const [sidebarFilter, setSidebarFilter] = useState('');
 
 
-  // Ref to the aside element — used to force dark blue bg + white color in light mode via JS
-  // (CSS alone cannot reliably override Tailwind v4 utility cascade in this project)
+  // Ref to the aside element — dynamically aligns with theme (#eef2f6 in light mode, #06080d in dark mode)
   const sidebarRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const aside = sidebarRef.current;
     if (!aside) return;
 
-    const applyDark = () => {
+    const applyTheme = () => {
       // Disconnect first to prevent style changes from re-triggering the observer
       observer.disconnect();
 
-      const applyEl = (el: Element) => {
-        const tag = (el as HTMLElement).tagName?.toLowerCase();
-        if (!tag) return;
-        const isImg = tag === 'img';
-        const isInput = tag === 'input' || tag === 'select' || tag === 'textarea';
-        const isContainer = tag === 'div' || tag === 'nav' || tag === 'section' || tag === 'ul' || tag === 'li' || tag === 'aside';
+      if (isDark) {
+        aside.style.setProperty('background-color', '#06080d', 'important');
+        aside.style.setProperty('border-color', '#1e2a44', 'important');
+        aside.style.setProperty('color', '#cbd5e1', 'important');
 
-        const isTeal = (el as HTMLElement).classList.contains('text-teal-400') ||
-                       (el as HTMLElement).classList.contains('text-teal-300') ||
-                       !!(el as HTMLElement).closest('.border-teal-500');
-        const isRose = (el as HTMLElement).classList.contains('bg-rose-500') ||
-                       !!(el as HTMLElement).closest('.bg-rose-500');
-        const isEmerald = (el as HTMLElement).classList.contains('text-emerald-400');
+        const applyElDark = (el: Element) => {
+          const tag = (el as HTMLElement).tagName?.toLowerCase();
+          if (!tag) return;
+          const isImg = tag === 'img';
+          const isInput = tag === 'input' || tag === 'select' || tag === 'textarea';
+          const isContainer = tag === 'div' || tag === 'nav' || tag === 'section' || tag === 'ul' || tag === 'li' || tag === 'aside';
 
-        if (!isImg) {
-          if (isTeal) {
-            (el as HTMLElement).style.setProperty('color', '#2dd4bf', 'important');
-          } else if (isRose) {
-            (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
-          } else if (isEmerald) {
-            (el as HTMLElement).style.setProperty('color', '#34d399', 'important');
-          } else {
-            (el as HTMLElement).style.setProperty('color', '#e2e8f0', 'important');
-          }
-        }
-        if (isContainer) {
-          const insideButton = !!(el as HTMLElement).closest('button');
-          (el as HTMLElement).style.setProperty('background-color', insideButton ? 'transparent' : '#06080d', 'important');
-          const hasOwnBorder = el.classList.contains('border-b') || el.classList.contains('border-t') || el.classList.contains('border-teal-500') || el.classList.contains('border-x');
-          if (!hasOwnBorder) {
-            (el as HTMLElement).style.setProperty('border', 'none', 'important');
-            (el as HTMLElement).style.setProperty('outline', 'none', 'important');
-            (el as HTMLElement).style.setProperty('box-shadow', 'none', 'important');
-          }
-        }
-        if (isInput) {
-          (el as HTMLElement).style.setProperty('background-color', '#0a0d14', 'important');
-          (el as HTMLElement).style.setProperty('border-color', '#1e293b', 'important');
-          (el as HTMLElement).style.setProperty('outline', 'none', 'important');
-        }
-        if (tag === 'button') {
-          const btn = el as HTMLElement;
-          const isBtnActive = btn.classList.contains('border-teal-500') || btn.className.includes('border-teal-500');
-          if (isBtnActive) {
-            btn.style.setProperty('background-color', '#06080d', 'important');
-            btn.style.setProperty('border-color', '#14b8a6', 'important');
-          } else {
-            // Clean up lingering active teal styles when button becomes inactive
-            if (btn.classList.contains('border-transparent') || btn.className.includes('border-transparent')) {
-              btn.style.setProperty('border-color', 'transparent', 'important');
-              btn.style.setProperty('background-color', 'transparent', 'important');
+          const isTeal = (el as HTMLElement).classList.contains('text-teal-400') ||
+                         (el as HTMLElement).classList.contains('text-teal-300') ||
+                         !!(el as HTMLElement).closest('.border-teal-500');
+          const isRose = (el as HTMLElement).classList.contains('bg-rose-500') ||
+                         !!(el as HTMLElement).closest('.bg-rose-500');
+          const isEmerald = (el as HTMLElement).classList.contains('text-emerald-400');
+
+          if (!isImg) {
+            if (isTeal) {
+              (el as HTMLElement).style.setProperty('color', '#2dd4bf', 'important');
+            } else if (isRose) {
+              (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+            } else if (isEmerald) {
+              (el as HTMLElement).style.setProperty('color', '#34d399', 'important');
             } else {
-              btn.style.setProperty('border-color', '#1e293b', 'important');
-              btn.style.setProperty('background-color', '#0f172a', 'important');
+              (el as HTMLElement).style.setProperty('color', '#e2e8f0', 'important');
             }
           }
-        }
-      };
+          if (isContainer) {
+            const insideButton = !!(el as HTMLElement).closest('button');
+            (el as HTMLElement).style.setProperty('background-color', insideButton ? 'transparent' : '#06080d', 'important');
+            const hasOwnBorder = el.classList.contains('border-b') || el.classList.contains('border-t') || el.classList.contains('border-teal-500') || el.classList.contains('border-x');
+            if (!hasOwnBorder) {
+              (el as HTMLElement).style.setProperty('border', 'none', 'important');
+              (el as HTMLElement).style.setProperty('outline', 'none', 'important');
+              (el as HTMLElement).style.setProperty('box-shadow', 'none', 'important');
+            }
+          }
+          if (isInput) {
+            (el as HTMLElement).style.setProperty('background-color', '#0a0d14', 'important');
+            (el as HTMLElement).style.setProperty('border-color', '#1e2a44', 'important');
+            (el as HTMLElement).style.setProperty('outline', 'none', 'important');
+          }
+          if (tag === 'button') {
+            const btn = el as HTMLElement;
+            const isBtnActive = btn.classList.contains('border-teal-500') || btn.className.includes('border-teal-500');
+            if (isBtnActive) {
+              btn.style.setProperty('background-color', '#06080d', 'important');
+              btn.style.setProperty('border-color', '#14b8a6', 'important');
+            } else {
+              if (btn.classList.contains('border-transparent') || btn.className.includes('border-transparent')) {
+                btn.style.setProperty('border-color', 'transparent', 'important');
+                btn.style.setProperty('background-color', 'transparent', 'important');
+              } else {
+                btn.style.setProperty('border-color', '#1e2a44', 'important');
+                btn.style.setProperty('background-color', '#0f172a', 'important');
+              }
+            }
+          }
+        };
 
-      applyEl(aside);
-      aside.querySelectorAll('*').forEach(applyEl);
+        aside.querySelectorAll('*').forEach(applyElDark);
+      } else {
+        // Light mode: match page title canvas #eef2f6
+        aside.style.setProperty('background-color', '#eef2f6', 'important');
+        aside.style.setProperty('border-color', '#cbd5e1', 'important');
+        aside.style.setProperty('color', '#0f172a', 'important');
+
+        const applyElLight = (el: Element) => {
+          const tag = (el as HTMLElement).tagName?.toLowerCase();
+          if (!tag) return;
+          const isImg = tag === 'img';
+          const isInput = tag === 'input' || tag === 'select' || tag === 'textarea';
+          const isContainer = tag === 'div' || tag === 'nav' || tag === 'section' || tag === 'ul' || tag === 'li' || tag === 'aside';
+
+          const isTeal = (el as HTMLElement).classList.contains('text-teal-400') ||
+                         (el as HTMLElement).classList.contains('text-teal-300') ||
+                         (el as HTMLElement).classList.contains('text-teal-700') ||
+                         !!(el as HTMLElement).closest('.border-teal-500');
+          const isRose = (el as HTMLElement).classList.contains('bg-rose-500') ||
+                         (el as HTMLElement).classList.contains('bg-rose-600') ||
+                         !!(el as HTMLElement).closest('.bg-rose-500');
+
+          if (!isImg) {
+            if (isTeal) {
+              (el as HTMLElement).style.setProperty('color', '#0d9488', 'important');
+            } else if (isRose) {
+              (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+            } else {
+              (el as HTMLElement).style.setProperty('color', '#0f172a', 'important');
+            }
+          }
+          if (isContainer) {
+            const insideButton = !!(el as HTMLElement).closest('button');
+            (el as HTMLElement).style.setProperty('background-color', insideButton ? 'transparent' : '#eef2f6', 'important');
+            (el as HTMLElement).style.setProperty('border-color', '#cbd5e1', 'important');
+          }
+          if (isInput) {
+            (el as HTMLElement).style.setProperty('background-color', '#eef2f6', 'important');
+            (el as HTMLElement).style.setProperty('border-color', '#cbd5e1', 'important');
+            (el as HTMLElement).style.setProperty('color', '#0f172a', 'important');
+            (el as HTMLElement).style.setProperty('outline', 'none', 'important');
+          }
+          if (tag === 'button') {
+            const btn = el as HTMLElement;
+            const isBtnActive = btn.classList.contains('border-teal-500') || btn.className.includes('border-teal-500');
+            if (isBtnActive) {
+              btn.style.setProperty('background-color', '#e2e8f0', 'important');
+              btn.style.setProperty('border-color', '#14b8a6', 'important');
+              btn.style.setProperty('color', '#0d9488', 'important');
+            } else {
+              if (btn.classList.contains('border-transparent') || btn.className.includes('border-transparent')) {
+                btn.style.setProperty('border-color', 'transparent', 'important');
+                btn.style.setProperty('background-color', 'transparent', 'important');
+                btn.style.setProperty('color', '#334155', 'important');
+              } else {
+                btn.style.setProperty('border-color', '#cbd5e1', 'important');
+                btn.style.setProperty('background-color', '#eef2f6', 'important');
+                btn.style.setProperty('color', '#0f172a', 'important');
+              }
+            }
+          }
+        };
+
+        aside.querySelectorAll('*').forEach(applyElLight);
+      }
 
       // Reconnect after applying styles
       observer.observe(aside, { childList: true, subtree: true });
     };
 
-    const observer = new MutationObserver(applyDark);
-    applyDark();
+    const observer = new MutationObserver(applyTheme);
+    applyTheme();
     return () => observer.disconnect();
   }, [isDark, openCategories, sidebarFilter, activeModuleId]);
 
@@ -209,7 +275,7 @@ export const Sidebar: React.FC = () => {
 
       <aside
         ref={sidebarRef}
-        className="max-lg:fixed inset-y-0 start-0 z-50 w-80 max-w-[85vw] lg:static lg:w-80 h-full lg:h-screen lg:sticky lg:top-0 border-x flex flex-col shrink-0 select-none transition-all duration-300 shadow-2xl lg:shadow-none print:hidden bg-[#06080d] border-[#1e2a44] text-slate-300"
+        className={`max-lg:fixed inset-y-0 start-0 z-50 w-80 max-w-[85vw] lg:w-80 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:z-20 border-x flex flex-col shrink-0 select-none transition-all duration-300 shadow-2xl lg:shadow-none print:hidden ${isDark ? "bg-[#06080d] border-[#1e2a44] text-slate-300" : "bg-[#eef2f6] border-[#cbd5e1] text-slate-900"}`}
       >
 
 
@@ -249,7 +315,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Sidebar Top Filter & Collapse Controls */}
         <div
-          className="p-3 border-b border-[#1e2a44] bg-[#06080d] space-y-2"
+          className={`p-3 border-b space-y-2 ${isDark ? "border-[#1e2a44] bg-[#06080d]" : "border-[#cbd5e1] bg-[#eef2f6]"}`}
         >
           <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
             <div className="flex items-center gap-1.5">
@@ -257,14 +323,18 @@ export const Sidebar: React.FC = () => {
               <span className="text-[11px] font-bold text-slate-200">
                 {t('أقسام النظام المرخصة', 'Authorized Categories')}
               </span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-teal-500/10 text-teal-400 font-mono font-bold">
+              <span className={`cat-counter-badge text-[10px] px-2 py-0.5 rounded-md border font-mono font-bold ${
+                isDark
+                  ? 'bg-teal-500/10 text-teal-400 border-teal-500/30'
+                  : 'bg-teal-50 text-teal-800 border-teal-200 shadow-2xs'
+              }`}>
                 {permittedCategories.length}
               </span>
             </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={collapseAll}
-                className="px-2 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800/80 text-slate-300 hover:text-teal-400 text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                className={`px-2 py-1 rounded-lg text-[11px] flex items-center gap-1 transition-all cursor-pointer ${isDark ? "bg-slate-900/80 hover:bg-slate-800 border border-slate-800/80 text-slate-300 hover:text-teal-400" : "bg-[#eef2f6] hover:bg-[#e2e8f0] border border-[#cbd5e1] text-slate-700 hover:text-teal-700"}`}
                 title={t('طوي كافة القوائم', 'Collapse all categories')}
               >
                 <span className="material-symbols-outlined text-sm">unfold_less</span>
@@ -272,7 +342,7 @@ export const Sidebar: React.FC = () => {
               </button>
               <button
                 onClick={expandAll}
-                className="p-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800/80 text-slate-400 hover:text-teal-400 transition-all cursor-pointer"
+                className={`p-1 rounded-lg transition-all cursor-pointer ${isDark ? "bg-slate-900/80 hover:bg-slate-800 border border-slate-800/80 text-slate-400 hover:text-teal-400" : "bg-[#eef2f6] hover:bg-[#e2e8f0] border border-[#cbd5e1] text-slate-700 hover:text-teal-700"}`}
                 title={t('توسيع كافة القوائم', 'Expand all categories')}
               >
                 <span className="material-symbols-outlined text-sm">unfold_more</span>
@@ -289,7 +359,7 @@ export const Sidebar: React.FC = () => {
               placeholder={t('ابحث في الموديولات المتاحة لك...', 'Filter your permitted modules...')}
               value={sidebarFilter}
               onChange={e => setSidebarFilter(e.target.value)}
-              className={`w-full bg-[#0a0d14] border border-slate-800/80 rounded-xl ${language === 'ar' ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500/60 transition-colors placeholder:text-slate-500`}
+              className={`w-full border rounded-xl ${language === 'ar' ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 text-xs focus:outline-none focus:border-teal-500/60 transition-colors ${isDark ? "bg-[#0a0d14] border-slate-800/80 text-slate-200 placeholder:text-slate-500" : "bg-[#eef2f6] border-[#cbd5e1] text-slate-900 placeholder:text-slate-500"}`}
             />
 
             {sidebarFilter && (
@@ -313,16 +383,20 @@ export const Sidebar: React.FC = () => {
             return (
               <div
                 key={cat.id}
-                className="rounded-2xl overflow-hidden shadow-md bg-white/[0.03]"
+                className={`rounded-2xl overflow-hidden shadow-xs border ${isDark ? "bg-white/[0.03] border-white/5" : "bg-[#eef2f6] border-[#cbd5e1]"}`}
               >
                 {/* Category Header Bar */}
                 <button
                   onClick={() => toggleCategory(cat.id)}
-                  className="w-full px-3.5 py-2.5 flex items-center justify-between text-start hover:bg-white/5 transition-colors group cursor-pointer text-white"
+                  className={`w-full px-3.5 py-2.5 flex items-center justify-between text-start transition-colors group cursor-pointer ${isDark ? "hover:bg-white/5 text-white" : "hover:bg-[#e2e8f0] text-slate-900"}`}
                 >
                   <div className="flex items-center gap-2.5">
                     <span
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold bg-teal-600/20 border border-teal-500/40 text-teal-300"
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold border transition-colors ${
+                        isDark
+                          ? 'bg-teal-600/20 border-teal-500/40 text-teal-300'
+                          : 'bg-teal-50 border-teal-300/80 text-teal-800 shadow-2xs'
+                      }`}
                     >
                       {groupIndex + 1}
                     </span>
@@ -337,13 +411,17 @@ export const Sidebar: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold bg-white/10 text-white px-1.5 py-0.5 rounded">
+                    <span className={`cat-counter-badge text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                      isDark
+                        ? 'bg-teal-500/10 text-teal-300 border-teal-500/30'
+                        : 'bg-teal-50 text-teal-800 border-teal-200/90 shadow-2xs'
+                    }`}>
                       {cat.filteredModules.length}
                     </span>
                     <span
-                      className={`material-symbols-outlined text-white text-lg transition-transform duration-200 ${
-                        isOpen ? 'rotate-180' : ''
-                      }`}
+                      className={`material-symbols-outlined text-lg transition-transform duration-200 ${
+                        isDark ? 'text-white' : 'text-slate-700'
+                      } ${isOpen ? 'rotate-180' : ''}`}
                     >
                       expand_more
                     </span>
@@ -353,7 +431,7 @@ export const Sidebar: React.FC = () => {
                 {/* Module Items List */}
                 {isOpen && (
                   <div
-                    className="p-1.5 pt-0 space-y-1 border-t border-white/5 bg-[#0a0c10]/40"
+                    className={`p-1.5 pt-0 space-y-1 border-t ${isDark ? "border-white/5 bg-[#0a0c10]/40" : "border-[#cbd5e1] bg-[#eef2f6]"}`}
                   >
                     {cat.filteredModules.map(mod => {
                       const isActive = activeModuleId === mod.id;
@@ -366,12 +444,12 @@ export const Sidebar: React.FC = () => {
                           onClick={() => handleSelectModule(mod.id)}
                           style={{
                             borderColor: isActive ? '#14b8a6' : 'transparent',
-                            backgroundColor: isActive ? '#06080d' : 'transparent'
+                            backgroundColor: isActive ? (isDark ? '#06080d' : '#e2e8f0') : 'transparent'
                           }}
                           className={`w-full text-start px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all group cursor-pointer focus:outline-none focus:ring-0 ${
                             isActive
-                              ? `bg-[#06080d] text-teal-400 font-bold border border-teal-500 shadow-md shadow-teal-500/10`
-                              : 'text-white hover:bg-white/10 hover:text-teal-400 border border-transparent'
+                              ? (isDark ? 'bg-[#06080d] text-teal-400 font-bold border border-teal-500 shadow-md shadow-teal-500/10' : 'bg-[#e2e8f0] text-teal-800 font-bold border border-teal-500 shadow-xs')
+                              : (isDark ? 'text-white hover:bg-white/10 hover:text-teal-400 border border-transparent' : 'text-slate-700 hover:bg-[#e2e8f0] hover:text-teal-700 border border-transparent')
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -402,10 +480,10 @@ export const Sidebar: React.FC = () => {
 
                           {mod.id !== 'leave-apply' && mod.id !== 'leave-approvals' && badgeCount !== null && (
                             <span
-                              className={`text-[10px] px-1.5 py-0.2 rounded-full font-normal ml-1 ${
+                              className={`cat-counter-badge text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 border ${
                                 isActive
-                                  ? 'bg-[#06080d] text-teal-400 border border-teal-500'
-                                  : 'bg-teal-600/10 text-teal-400 border border-teal-500/20'
+                                  ? (isDark ? 'bg-[#06080d] text-teal-400 border-teal-500' : 'bg-teal-100 text-teal-800 border-teal-300')
+                                  : (isDark ? 'bg-teal-600/10 text-teal-400 border-teal-500/20' : 'bg-teal-50 text-teal-800 border-teal-200')
                               }`}
                             >
                               {badgeCount}
@@ -431,7 +509,7 @@ export const Sidebar: React.FC = () => {
         {/* Settings & Bottom Controls (Settings & Security + Language Icon + Theme Icon on the SAME row) */}
         <div
           id="sidebar-footer-controls"
-          className="p-1.5 border-t border-[#1e2a44] bg-[#06080d] flex items-center gap-1.5"
+          className={`p-1.5 border-t flex items-center gap-1.5 ${isDark ? "border-[#1e2a44] bg-[#06080d]" : "border-[#cbd5e1] bg-[#eef2f6]"}`}
         >
           {/* Employee Profile Button (Settings & Security is hidden from all users) */}
           <button
@@ -470,11 +548,15 @@ export const Sidebar: React.FC = () => {
 
         {/* Sidebar Footer info */}
         <div
-          className="p-3 border-t border-[#1e2a44] bg-[#06080d] text-center"
+          className={`p-3 border-t text-center ${isDark ? "border-[#1e2a44] bg-[#06080d]" : "border-[#cbd5e1] bg-[#eef2f6]"}`}
         >
           <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
             <span>{t('الصلاحيات:', 'Access:')} <span className="text-emerald-400 font-normal">{userPerms.isSuperAdmin ? t('كاملة', 'Full') : t('مخصصة', 'Role Based')}</span></span>
-            <span className={`text-[10px] font-mono ${isDark ? 'bg-[#06080d]' : 'bg-[#06080d]'} text-teal-400 shadow-md px-1.5 py-0.5 rounded border border-teal-500`}>
+            <span className={`cat-counter-badge text-[10px] font-mono px-2 py-0.5 rounded-md border ${
+              isDark
+                ? 'bg-[#06080d] text-teal-400 border-teal-500 shadow-md'
+                : 'bg-teal-50 text-teal-800 border-teal-200/90 shadow-2xs'
+            }`}>
               v2.5 Enterprise
             </span>
           </div>

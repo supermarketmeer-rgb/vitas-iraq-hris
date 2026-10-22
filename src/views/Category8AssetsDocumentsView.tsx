@@ -11,6 +11,7 @@ export const Category8AssetsDocumentsView: React.FC = () => {
     documentRecords,
     addDocumentRecord,
     currentUser,
+    isDark,
     t
   } = useApp();
 
@@ -98,16 +99,10 @@ export const Category8AssetsDocumentsView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Banner */}
-      <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
+      {/* Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-teal-400">folder_copy</span>
-            <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-normal">
-              ASSETS & ENTERPRISE DOCUMENTS
-            </span>
-          </div>
-          <h1 className="text-2xl font-normal text-white drop-shadow-sm">
+          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {(activeModuleId === 'cat-8-assets' || activeModuleId === 'asset-inventory') && t('إدارة مخزون العهد والأصول الرقمية والمكتبية', 'Asset & Office Inventory Management')}
             {activeModuleId === 'asset-my-requests' && t('طلبات العهد والأجهزة الخاصة بي', 'My Asset & Device Requests')}
             {activeModuleId === 'asset-details' && t('تفاصيل العهدة وحالة الصيانة والتخصيص', 'Asset Details, Maintenance & Allocation')}
@@ -115,9 +110,6 @@ export const Category8AssetsDocumentsView: React.FC = () => {
             {activeModuleId === 'doc-edms' && t('بوابة الأرشفة الإلكترونية المتقدمة (EDMS Portal)', 'Electronic Document Management Portal (EDMS)')}
             {activeModuleId === 'doc-my-docs' && t('مستنداتي الشخصية الرسمية والعقود', 'My Official Documents & Contracts')}
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            {t('تتبع دقيق وموثق لعهد ومستندات شركة فيتاس العراق', 'Accurate tracking & archiving for VITAS Iraq assets and documents')}
-          </p>
         </div>
 
         {/* Quick Navigation Tabs */}
@@ -220,7 +212,7 @@ export const Category8AssetsDocumentsView: React.FC = () => {
                     className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none"
                   >
                     <option value="أجهزة حاسوب">{t('أجهزة حاسوب', 'Computers & Laptops')}</option>
-                    <option value="هواتف">{t('هواتف وذكية', 'Mobile & Smart Devices')}</option>
+                    <option value="هواتف">{t('هواتف وأجهزة محمولة', 'Mobile & Handheld Devices')}</option>
                     <option value="أثاث">{t('أثاث مكتبي', 'Office Furniture')}</option>
                     <option value="مركبات">{t('مركبات وسيارات ميدانية', 'Vehicles & Field Cars')}</option>
                     <option value="معدات شبكة">{t('معدات شبكة وسيرفرات', 'Network Equipment & Servers')}</option>

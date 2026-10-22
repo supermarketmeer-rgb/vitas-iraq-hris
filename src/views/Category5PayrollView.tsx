@@ -979,24 +979,15 @@ export const Category5PayrollView: React.FC = () => {
         </div>
       )}
 
-      {/* Top Banner & Control Bar */}
-      <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4 print:hidden">
+      {/* Top Header & Control Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-teal-400">database</span>
-            <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-normal">
-              XAMPP MYSQL LIVE SYNC • VITASIRAQ_HRIS_DB PAYROLL ENGINE
-            </span>
-          </div>
-          <h1 className="text-2xl font-normal text-white drop-shadow-sm flex items-center gap-3">
+          <h1 className={`text-2xl font-bold flex items-center gap-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {activeModuleId === 'payroll-mgmt' && t('إدارة مسيرات الرواتب الشهرية والبدلات', 'Monthly Payroll & Allowances Management')}
             {activeModuleId === 'payroll-payslip' && t('مستخرج واستعراض كشف الراتب الشهري (Payslip)', 'Monthly Payslip Viewer & Exporter')}
             {activeModuleId === 'payroll-approvals' && t('مركز الاعتمادات والموافقات المالية', 'Financial Approvals Hub')}
             {activeModuleId === 'payroll-claims' && t('تفاصيل طلبات الاعتماد والتعويضات', 'Approval Requests & Claims Details')}
           </h1>
-          <p className="text-xs text-slate-300 mt-1">
-            {t('جدول تفصيلي مطابق 100% لجدول payroll_finalized_rows في قاعدة البيانات XAMPP/vitasiraq_hris_db', '100% matched table schema with payroll_finalized_rows in XAMPP/vitasiraq_hris_db')}
-          </p>
         </div>
 
         {/* Period Selector & Action Controls Header */}

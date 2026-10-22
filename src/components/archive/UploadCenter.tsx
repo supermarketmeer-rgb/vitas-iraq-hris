@@ -23,10 +23,10 @@ export const UploadCenter: React.FC<UploadCenterProps> = ({ theme = 'light' }) =
         <span className="material-symbols-outlined text-4xl">cloud_upload</span>
       </div>
       <h2 className="text-xl font-bold mb-2">
-        {t('مركز الرفع والمسح الضوئي الذكي (OCR)', 'Smart Upload & OCR Center')}
+        {t('مركز الرفع والمسح الضوئي (OCR)', 'Upload & OCR Center')}
       </h2>
       <p className={`text-sm max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-        {t('رفع وأرشفة المستندات والوثائق مع الاستخراج الآلي للنصوص وتصنيفها ذكياً.', 'Upload and archive digital documents with automatic OCR text extraction and smart classification.')}
+        {t('رفع وأرشفة المستندات والوثائق مع الاستخراج الآلي للنصوص وتصنيفها المنظم.', 'Upload and archive digital documents with automatic OCR text extraction and structured classification.')}
       </p>
     </div>
   );

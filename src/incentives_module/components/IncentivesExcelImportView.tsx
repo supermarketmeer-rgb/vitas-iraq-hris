@@ -380,7 +380,7 @@ export const IncentivesExcelImportView: React.FC<ExcelImportViewProps> = ({
           } space-y-4`}>
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h3 className="font-bold text-sm">مطابقة أعمدة Excel مع متغيرات النظام (10 Variables)</h3>
-              <span className="text-xs text-slate-400">تم التعيين التلقائي الذكي للأعمدة المطابقة</span>
+              <span className="text-xs text-slate-400">تم التعيين التلقائي للأعمدة المطابقة</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">

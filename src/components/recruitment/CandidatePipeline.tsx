@@ -3763,7 +3763,7 @@ export const CandidatePipeline: React.FC = () => {
                 </div>
               </div>
 
-              {/* ── Committee Member Smart Search & Instant 5-Fields Auto-Fill ── */}
+              {/* ── Committee Member Instant Search & 5-Fields Auto-Fill ── */}
               <div className={`p-5 rounded-xl border space-y-4 ${
                 isDark ? 'bg-slate-900/40 border-purple-500/20' : 'bg-purple-50/40 border-purple-200'
               }`}>

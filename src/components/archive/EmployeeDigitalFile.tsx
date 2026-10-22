@@ -112,7 +112,7 @@ export const EmployeeDigitalFile: React.FC<EmployeeDigitalFileProps> = ({
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl transition font-semibold text-xs shadow-md shadow-blue-600/20 cursor-pointer"
             >
               <span className="material-symbols-outlined text-base">forward_to_inbox</span>
-              <span>{t('توجيه المستند ذكياً', 'Smart Document Routing')}</span>
+              <span>{t('توجيه المستند إلكترونياً', 'Document Routing')}</span>
             </button>
           </div>
         </div>

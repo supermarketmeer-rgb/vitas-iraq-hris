@@ -13,6 +13,7 @@ export type UserRole =
 export interface UserProfile {
   id: string;
   name: string;
+  username?: string;
   email: string;
   role: UserRole;
   avatar?: string;
@@ -360,6 +361,7 @@ export interface CompanyNewsItem {
   expiry_date: string;
   status: 'draft' | 'published' | 'archived';
   attachment_url: string;
+  image_url?: string;
   views_count: number;
   created_at: string;
   updated_at: string;

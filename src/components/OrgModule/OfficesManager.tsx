@@ -159,8 +159,8 @@ export const OfficesManager: React.FC<OfficesManagerProps> = ({
       }`}>
         <div className="overflow-x-auto">
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            <thead className={`font-semibold uppercase text-[11px] border-b ${
-              isDark ? 'bg-[#0a0c10] text-slate-400 border-white/10' : 'bg-slate-50 text-slate-700 border-slate-200'
+            <thead className={`font-semibold uppercase text-[11px] border-b app-table-header ${
+              isDark ? 'bg-[#0a0c10] text-slate-300 border-white/10' : 'bg-[#94a3b8] text-slate-950 border-slate-500 font-bold'
             }`}>
               <tr>
                 <th className="px-4 py-3">{t.officeCode}</th>

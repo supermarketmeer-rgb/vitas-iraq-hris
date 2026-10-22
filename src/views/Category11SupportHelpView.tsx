@@ -143,17 +143,9 @@ export const Category11SupportHelpView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Banner */}
-      <div className={`p-6 rounded-3xl border shadow-xl flex flex-wrap items-center justify-between gap-4 ${
-        isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-[#e8ebef] border-slate-300'
-      }`}>
+      {/* Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">support_agent</span>
-            <span className="text-xs font-mono text-teal-700 dark:text-teal-400 uppercase tracking-widest font-normal">
-              SUPPORT, COMMUNICATION & HANDBOOK PORTAL
-            </span>
-          </div>
           <h1 className="text-2xl font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
             {(activeModuleId === 'supp-knowledge-base' || activeModuleId === 'supp-emp-handbook' || activeModuleId === 'supp-guide-center' || activeModuleId === 'sup-guides' || activeModuleId === 'sup-faq') && t('كتيب الموظف وقاعدة المعرفة والأدلة الرسمية', 'Employee Handbook & Knowledge Base Portal')}
             {activeModuleId === 'supp-emp-portal' && t('بوابة دعم الموظفين وتذاكر الاستفسارات', 'Employee Support Portal & Tickets')}
@@ -164,9 +156,6 @@ export const Category11SupportHelpView: React.FC = () => {
             {activeModuleId === 'supp-internal-chat' && t('المحادثات المباشرة بين الموظفين (Live Chat)', 'Internal Staff Messaging')}
             {activeModuleId === 'supp-mobile-app' && t('تحميل ومزامنة تطبيق الهاتف المحمول', 'Mobile Application Download')}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {t('المستودع الرقمي للأدلة والكتيبات الرسمية والتواصل الداخلي لمؤسسة فيتاس العراق', 'Digital repository of official handbooks, guides, and communication channels')}
-          </p>
         </div>
 
         {/* Quick Nav Tabs */}
@@ -719,7 +708,7 @@ export const Category11SupportHelpView: React.FC = () => {
 
           <div>
             <h2 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>VITAS IRAQ HRMS Mobile App</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('تطبيق الموبايل المباشر لمتابعة الإجازات، الراتب والدوام من هاتفك الذكي', 'Mobile app for tracking leaves, payslips & attendance on your smartphone')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('تطبيق الموبايل المباشر لمتابعة الإجازات، الراتب والدوام من هاتفك المحمول', 'Mobile app for tracking leaves, payslips & attendance on your mobile device')}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -769,7 +758,7 @@ export const Category11SupportHelpView: React.FC = () => {
                 {t('تطبيق الموظف الذاتي (ESS)', 'Employee Self-Service App')}
               </h3>
               <p className="text-[11px] text-slate-400">
-                {t('بوابة الموظف للهواتف الذكية لمتابعة الحضور، الإجازات، الراتب الشهري، والإشعارات.',
+                {t('بوابة الموظف للهواتف المحمولة لمتابعة الحضور، الإجازات، الراتب الشهري، والإشعارات.',
                    'Employee companion for leaves, payslips, live attendance and notifications.')}
               </p>
               <a

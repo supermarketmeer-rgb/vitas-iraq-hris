@@ -164,7 +164,7 @@ export const DocumentRoutingAdminView: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-black">
-                  {t('نظام التوجيه والتسليم الذكي للمستندات', 'Smart Document Routing & Delivery Center')}
+                  {t('نظام التوجيه والتسليم للمستندات', 'Document Routing & Delivery Center')}
                 </h1>
                 <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold border ${
                   isDark ? 'bg-teal-900/60 text-white border-teal-400/30' : 'bg-teal-50 text-teal-700 border-teal-200'

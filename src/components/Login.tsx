@@ -69,111 +69,91 @@ export const Login: React.FC = () => {
         return;
       }
 
-      // 0. FIRST: Query real database users from MySQL (`/api/users`)
+      // 0. FIRST: Authenticate against the backend server (/api/login)
       try {
-        const dbUsers: any = await api.getUsers().catch(() => []);
-        if (Array.isArray(dbUsers) && dbUsers.length > 0) {
-          localStorage.setItem('vitas_db_users', JSON.stringify(dbUsers));
+        const loginRes: any = await api.login({ username: cleanUser, password: cleanPass });
+        if (loginRes && loginRes.success && loginRes.user) {
+          const matchedDbUser = loginRes.user;
 
-          const cleanInput = cleanUser.replace(/[^a-z0-9]/g, '');
-          const matchedDbUser = dbUsers.find((u: any) => {
-            const uUsername = String(u.username || '').toLowerCase();
-            const uEmail = String(u.email || '').toLowerCase();
-            const uEmpId = String(u.employee_id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-            return (
-              uUsername === cleanUser ||
-              uEmail === cleanUser ||
-              uEmail.split('@')[0] === cleanUser ||
-              (cleanInput && uEmpId === cleanInput) ||
-              (cleanUser === 'hr' && (uUsername === 'hrmanager' || uEmail.includes('hr@') || uEmail.includes('hrmanager'))) ||
-              (cleanUser === 'hrmanager' && (uUsername === 'hrmanager' || uEmail.includes('hrmanager')))
-            );
-          });
-
-          if (matchedDbUser) {
-            // STRICT PASSWORD VERIFICATION FOR DB USERS
-            const expectedDbPass = matchedDbUser.password || '123456';
-            const isAdminMatch = cleanUser === 'admin' || matchedDbUser.username === 'admin';
-            const isPasswordCorrect = 
-              cleanPass === expectedDbPass ||
-              (isAdminMatch && (cleanPass === 'admin123' || cleanPass === 'admin'));
-
-            if (!isPasswordCorrect) {
-              setError(language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.');
-              setIsLoading(false);
-              return;
-            }
-
-            let parsedScreens: Record<string, any> = {};
-            if (matchedDbUser.allowed_screens) {
-              try {
-                parsedScreens = typeof matchedDbUser.allowed_screens === 'string'
-                  ? JSON.parse(matchedDbUser.allowed_screens)
-                  : matchedDbUser.allowed_screens;
-              } catch (e) {}
-            }
-
-            // Also check vitas_custom_employee_permissions in localStorage if available
+          let parsedScreens: Record<string, any> = {};
+          if (matchedDbUser.allowed_screens) {
             try {
-              const rawPerms = localStorage.getItem('vitas_custom_employee_permissions');
-              if (rawPerms) {
-                const pMap = JSON.parse(rawPerms);
-                const pEntry = pMap[matchedDbUser.employee_id] || 
-                               pMap[matchedDbUser.username?.toUpperCase()] || 
-                               pMap[`VTS-${matchedDbUser.username?.toUpperCase()}`];
-                if (pEntry && pEntry.modules) {
-                  parsedScreens = { ...parsedScreens, ...pEntry.modules };
-                }
-              }
+              parsedScreens = typeof matchedDbUser.allowed_screens === 'string'
+                ? JSON.parse(matchedDbUser.allowed_screens)
+                : matchedDbUser.allowed_screens;
             } catch (e) {}
-
-            const isSuperAdmin = matchedDbUser.username === 'admin' || matchedDbUser.role === 'Super Admin';
-            const isAdmin = matchedDbUser.role === 'Admin' || matchedDbUser.can_manage_users === 1 || Boolean(parsedScreens?.['sec-roles-permissions']);
-            const isHR = (matchedDbUser.job_title && (matchedDbUser.job_title.includes('مدير الموارد البشرية') || matchedDbUser.job_title.toLowerCase().includes('hr manager'))) ||
-                         (matchedDbUser.role && (matchedDbUser.role.includes('مدير الموارد البشرية') || matchedDbUser.role === 'HR Manager')) ||
-                         matchedDbUser.username === 'hrmanager';
-
-            const assignedRole: UserRole = isSuperAdmin 
-              ? 'Super Admin' 
-              : isAdmin
-              ? 'Admin'
-              : isHR 
-              ? 'HR Manager' 
-              : (matchedDbUser.role as UserRole) || 'Employee';
-
-            const userProfile: UserProfile = {
-              id: String(matchedDbUser.id),
-              name: matchedDbUser.full_name || matchedDbUser.name || matchedDbUser.username,
-              email: matchedDbUser.email || `${cleanUser}@vitasiraq.iq`,
-              role: assignedRole,
-              avatar: '',
-              department: matchedDbUser.department || 'الموارد البشرية والشؤون الإدارية',
-              employeeId: matchedDbUser.employee_id || `VTS-${cleanUser.toUpperCase()}`,
-              branch: matchedDbUser.branch || 'الإدارة العامة - بغداد',
-              can_manage_employees: matchedDbUser.can_manage_employees ? 1 : (isAdmin ? 1 : 0),
-              can_manage_finance: matchedDbUser.can_manage_finance ? 1 : 0,
-              can_manage_recruitment: matchedDbUser.can_manage_recruitment ? 1 : 0,
-              can_manage_settings: matchedDbUser.can_manage_settings ? 1 : (isAdmin ? 1 : 0),
-              can_manage_users: (matchedDbUser.can_manage_users || isAdmin) ? 1 : 0,
-              modulePermissions: parsedScreens,
-              allowed_screens: parsedScreens
-            };
-
-            let initialModule = 'dash-overview';
-
-            localStorage.setItem('vitas_current_user', JSON.stringify(userProfile));
-            localStorage.setItem('vitas_user_role', assignedRole);
-            setCurrentUserRole(assignedRole);
-            setCurrentUser(userProfile);
-            setActiveModuleId(initialModule);
-            console.log('Login successful via Database User:', userProfile);
-            setTimeout(() => navigate('/'), 100);
-            return;
           }
+
+          // Also check vitas_custom_employee_permissions in localStorage if available
+          try {
+            const rawPerms = localStorage.getItem('vitas_custom_employee_permissions');
+            if (rawPerms) {
+              const pMap = JSON.parse(rawPerms);
+              const pEntry = pMap[matchedDbUser.employee_id] || 
+                             pMap[matchedDbUser.username?.toUpperCase()] || 
+                             pMap[`VTS-${matchedDbUser.username?.toUpperCase()}`];
+              if (pEntry && pEntry.modules) {
+                parsedScreens = { ...parsedScreens, ...pEntry.modules };
+              }
+            }
+          } catch (e) {}
+
+          const isSuperAdmin = matchedDbUser.username === 'admin' || matchedDbUser.role === 'Super Admin';
+          const isAdmin = matchedDbUser.role === 'Admin' || matchedDbUser.can_manage_users === 1 || Boolean(parsedScreens?.['sec-roles-permissions']);
+          const isHR = (matchedDbUser.job_title && (matchedDbUser.job_title.includes('مدير الموارد البشرية') || matchedDbUser.job_title.toLowerCase().includes('hr manager'))) ||
+                       (matchedDbUser.role && (matchedDbUser.role.includes('مدير الموارد البشرية') || matchedDbUser.role === 'HR Manager')) ||
+                       matchedDbUser.username === 'hrmanager' ||
+                       matchedDbUser.employee_id === 'VTS-HRMANAGER';
+
+          const assignedRole: UserRole = isSuperAdmin 
+            ? 'Super Admin' 
+            : isAdmin
+            ? 'Admin'
+            : isHR 
+            ? 'HR Manager' 
+            : (matchedDbUser.role as UserRole) || 'Employee';
+
+          const userProfile: UserProfile = {
+            id: String(matchedDbUser.id),
+            name: matchedDbUser.full_name || matchedDbUser.name || matchedDbUser.username,
+            username: matchedDbUser.username || cleanUser,
+            email: matchedDbUser.email || `${cleanUser}@vitasiraq.iq`,
+            role: assignedRole,
+            avatar: '',
+            department: matchedDbUser.department || 'الموارد البشرية والشؤون الإدارية',
+            employeeId: matchedDbUser.employee_id || `VTS-${cleanUser.toUpperCase()}`,
+            branch: matchedDbUser.branch || 'الإدارة العامة - بغداد',
+            can_manage_employees: matchedDbUser.can_manage_employees ? 1 : (isAdmin ? 1 : 0),
+            can_manage_finance: matchedDbUser.can_manage_finance ? 1 : 0,
+            can_manage_recruitment: matchedDbUser.can_manage_recruitment ? 1 : 0,
+            can_manage_settings: matchedDbUser.can_manage_settings ? 1 : (isAdmin ? 1 : 0),
+            can_manage_users: (matchedDbUser.can_manage_users || isAdmin) ? 1 : 0,
+            modulePermissions: parsedScreens,
+            allowed_screens: parsedScreens
+          };
+
+          let initialModule = 'dash-overview';
+
+          localStorage.setItem('vitas_current_user', JSON.stringify(userProfile));
+          localStorage.setItem('vitas_user_role', assignedRole);
+          setCurrentUserRole(assignedRole);
+          setCurrentUser(userProfile);
+          setActiveModuleId(initialModule);
+          console.log('Login successful via Database Auth:', userProfile);
+          setTimeout(() => navigate('/'), 100);
+          return;
         }
-      } catch (err) {
-        console.warn('Notice checking database users on login:', err);
+      } catch (authErr: any) {
+        // If the backend returned a credentials error (e.g. wrong password), display error immediately and DO NOT bypass via hardcoded fallbacks
+        const errMsg = String(authErr?.message || '');
+        const isNetworkError = errMsg.includes('offline') || errMsg.includes('Failed to fetch') || errMsg.includes('timeout') || errMsg.includes('NetworkError');
+
+        if (!isNetworkError) {
+          setError(errMsg || (language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.'));
+          setIsLoading(false);
+          return;
+        }
+        console.warn('Backend server offline, checking local offline credentials:', authErr);
       }
 
       // 1. Check for Super Admin fallback
@@ -219,7 +199,8 @@ export const Login: React.FC = () => {
         }
 
         const hrManager: UserProfile = {
-          id: '1',
+          id: '1096',
+          username: 'hrmanager',
           name: 'مدير الموارد البشرية',
           email: 'hr@vitasiraq.iq',
           role: 'HR Manager',

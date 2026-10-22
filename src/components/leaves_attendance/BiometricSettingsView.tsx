@@ -538,7 +538,7 @@ export const BiometricSettingsView: React.FC<BiometricSettingsViewProps> = ({
                   >
                     <option value="fingerprint">{lang === 'ar' ? 'بصمة إصبع (Fingerprint)' : 'Fingerprint'}</option>
                     <option value="face">{lang === 'ar' ? 'بصمة وجه (Face)' : 'Face Recognition'}</option>
-                    <option value="card">{lang === 'ar' ? 'بطاقة ذكية (Card/RFID)' : 'RFID Card'}</option>
+                    <option value="card">{lang === 'ar' ? 'بطاقة إلكترونية (Card/RFID)' : 'RFID Card'}</option>
                   </select>
                 </div>
               </div>

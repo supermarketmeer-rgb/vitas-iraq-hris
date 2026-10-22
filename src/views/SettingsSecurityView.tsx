@@ -7,6 +7,9 @@ import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { PoliciesSection } from '../components/PoliciesSection';
 import { IraqLegalTaxSettingsSection } from '../components/payroll/IraqLegalTaxSettingsSection';
 import { IncentivesDevConfigView } from '../incentives_module/components/IncentivesDevConfigView';
+import { StatusChangeTable } from '../components/StatusChangeTable';
+import { TrainingTable } from '../components/TrainingTable';
+import { WarningTable } from '../components/WarningTable';
 
 interface TabConfig {
   id: string;
@@ -107,6 +110,7 @@ export const SettingsSecurityView: React.FC = () => {
     { id: 'employees', icon: 'badge', labelAr: 'الموظفين', labelEn: 'Employees' },
     { id: 'status-changes', icon: 'published_with_changes', labelAr: 'تغيير الحالة', labelEn: 'Status Change' },
     { id: 'trainings', icon: 'school', labelAr: 'التدريبات', labelEn: 'Trainings' },
+    { id: 'warnings', icon: 'warning', labelAr: 'الإنذارات', labelEn: 'Warnings' },
     { id: 'allowances', icon: 'settings_suggest', labelAr: 'السياسات', labelEn: 'Policies' },
     { id: 'iraq-tax-security', icon: 'policy', labelAr: 'إعدادات الضمان الاجتماعي وضريبة الدخل — العراق', labelEn: 'Social Security & Tax Settings (Iraq)' },
     { id: 'templates', icon: 'edit_document', labelAr: 'القوالب', labelEn: 'Templates' },
@@ -1563,16 +1567,11 @@ export const SettingsSecurityView: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className={`text-2xl font-bold mb-1 ${
+          <h1 className={`text-2xl font-bold ${
             theme === 'dark' ? 'text-[#e2e8f0]' : 'text-gray-800'
           }`}>
             {t('الإعدادات والأمان', 'Settings & Security')}
           </h1>
-          <p className={`text-sm ${
-            theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
-          }`}>
-            {t('إدارة تفضيلات النظام والأمان', 'Manage system preferences and security')}
-          </p>
         </div>
       </div>
 
@@ -1663,36 +1662,31 @@ export const SettingsSecurityView: React.FC = () => {
           <DesktopSyncSettings />
         )}
         {activeTab === 'status-changes' && (
-          <DataTable
-            title={t('تغييرات الحالة', 'Status Changes')}
-            icon="published_with_changes"
-            data={statusChanges}
-            onAdd={() => { setShowAddModal(true); setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' }); }}
-            onEdit={openEditModal}
-            onDelete={handleDelete}
-            language={language}
-            showExcelButtons={true}
-            onGenerateTemplate={() => generateExcelTemplate('status-changes')}
-            onImportExcel={(e) => handleExcelImport(e, 'status-changes')}
-            fileInputRef={fileInputRef}
-            activeTab={activeTab}
-          />
+          <div className={`p-4 sm:p-6 rounded-2xl border ${theme === 'dark' ? 'bg-[#0f1420] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
+            <StatusChangeTable
+              employees={employees}
+              language={language}
+              theme={theme}
+            />
+          </div>
         )}
         {activeTab === 'trainings' && (
-          <DataTable
-            title={t('البرامج التدريبية', 'Training Programs')}
-            icon="school"
-            data={trainings}
-            onAdd={() => { setShowAddModal(true); setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' }); }}
-            onEdit={openEditModal}
-            onDelete={handleDelete}
-            language={language}
-            showExcelButtons={true}
-            onGenerateTemplate={() => generateExcelTemplate('trainings')}
-            onImportExcel={(e) => handleExcelImport(e, 'trainings')}
-            fileInputRef={fileInputRef}
-            activeTab={activeTab}
-          />
+          <div className={`p-4 sm:p-6 rounded-2xl border ${theme === 'dark' ? 'bg-[#0f1420] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
+            <TrainingTable
+              employees={employees}
+              language={language}
+              theme={theme}
+            />
+          </div>
+        )}
+        {activeTab === 'warnings' && (
+          <div className={`p-4 sm:p-6 rounded-2xl border ${theme === 'dark' ? 'bg-[#0f1420] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
+            <WarningTable
+              employees={employees}
+              language={language}
+              theme={theme}
+            />
+          </div>
         )}
         {activeTab === 'allowances' && (
           <PoliciesSection

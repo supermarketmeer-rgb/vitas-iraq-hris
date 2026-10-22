@@ -27,7 +27,7 @@ interface TelemetryPoint {
 }
 
 export const Category10SystemDevView: React.FC = () => {
-  const { activeModuleId, t } = useApp();
+  const { activeModuleId, t, isDark } = useApp();
   const [healthStatus, setHealthStatus] = useState<'Optimal' | 'Checking'>('Optimal');
   const [isLiveStreaming, setIsLiveStreaming] = useState<boolean>(true);
 
@@ -83,16 +83,10 @@ export const Category10SystemDevView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Banner */}
-      <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
+      {/* Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-teal-400">developer_board</span>
-            <span className="text-xs font-mono text-teal-400 uppercase tracking-widest font-normal">
-              SYSTEM & DEVELOPER INFRASTRUCTURE
-            </span>
-          </div>
-          <h1 className="text-2xl font-normal text-white drop-shadow-sm">
+          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {activeModuleId === 'sys-health-monitor' && t('مراقبة صحة وتوفر خوادم النظام (Health Monitor)', 'Server Health & Uptime Monitor')}
             {activeModuleId === 'sys-health-config' && t('تهيئة قواعد وفحوصات صحة السيرفرات', 'Server Health Rules & Check Config')}
             {activeModuleId === 'sys-endpoint-perf' && t('مراقب أداء نقاط النهاية وسرعة الاستجابة (APM)', 'Endpoint Performance & APM Monitor')}
@@ -104,9 +98,6 @@ export const Category10SystemDevView: React.FC = () => {
             {activeModuleId === 'sys-dynamic-reports' && t('منشئ التقارير الديناميكية والمحرك الاستعلامي', 'Dynamic Query Builder & Excel Sheet Engine')}
             {activeModuleId === 'sys-it-handbook' && t('دليل مسؤول تقنية المعلومات والصيانة', 'IT Administrator Handbook & Maintenance Guide')}
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            {t('مراقبة البنية السحابية وقواعد البيانات والمستندات لنظام VITAS IRAQ HRMS', 'Cloud infrastructure, database & telemetry monitor for VITAS IRAQ HRMS')}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">

@@ -12,7 +12,7 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         title: 'تسجيل الدخول الآمن وتوجيه الأدوار',
         titleEn: 'Secure Login & Role Routing',
         icon: 'login',
-        description: 'تسجيل دخول آمن وتوجيه ذكي حسب دور المستخدِم'
+        description: 'تسجيل دخول آمن وتوجيه حسب دور المستخدِم'
       },
       {
         id: 'auth-sso',
@@ -464,8 +464,8 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
   },
   {
     id: 'cat-12-archive',
-    title: 'موديول الأرشفة الذكي',
-    titleEn: 'Smart Archive Module',
+    title: 'موديول الأرشفة الإلكترونية',
+    titleEn: 'Digital Archive Module',
     icon: 'archive',
     modules: [
       {
@@ -477,10 +477,10 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
       },
       {
         id: 'archive-upload',
-        title: 'مركز الرفع والمسح الذكي',
+        title: 'مركز الرفع والمسح الضوئي',
         titleEn: 'Upload & OCR Center',
         icon: 'upload_file',
-        description: 'رفع الوثائق مع المسح الضوئي الذكي (OCR)'
+        description: 'رفع الوثائق مع المسح الضوئي (OCR)'
       },
       {
         id: 'archive-search',
@@ -786,14 +786,14 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         title: 'نظام Enterprise Nexus',
         titleEn: 'Enterprise Nexus Hub',
         icon: 'cloud_sync',
-        description: 'مركز الربط الذكي للخدمات والأنظمة المتكاملة'
+        description: 'مركز الربط للخدمات والأنظمة المتكاملة'
       },
       {
         id: 'supp-nexus-mobile',
         title: 'نظام Nexus Mobile',
         titleEn: 'Nexus Mobile Companion',
         icon: 'install_mobile',
-        description: 'مرافق الهاتف الذكي لإشعار الموظفين الفوري'
+        description: 'مرافق الهاتف المحمول لإشعار الموظفين الفوري'
       }
     ]
   }

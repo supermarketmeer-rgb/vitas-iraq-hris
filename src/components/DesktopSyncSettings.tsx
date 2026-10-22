@@ -90,7 +90,7 @@ export const DesktopSyncSettings: React.FC = () => {
             </h2>
             <p className="text-xs text-slate-400 mt-1">
               {language === 'ar' 
-                ? 'إدارة اتصال Local Server و Cloud Mode والمزامنة التزايدية الذكية'
+                ? 'إدارة اتصال Local Server و Cloud Mode والمزامنة التزايدية المباشرة'
                 : 'Manage Local Server LAN connectivity, Cloud Mode, and incremental dynamic sync'}
             </p>
           </div>

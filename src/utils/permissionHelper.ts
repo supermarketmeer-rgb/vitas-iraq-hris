@@ -370,7 +370,7 @@ export function isModuleAuthorized(
     return perms.assets;
   }
 
-  // Category 12: Smart Archive
+  // Category 12: Digital Archive
   if (catId === 'cat-12-archive' || catId === 'cat-9-archive') {
     return perms.archive;
   }

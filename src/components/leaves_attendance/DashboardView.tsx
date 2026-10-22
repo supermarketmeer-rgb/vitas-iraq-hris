@@ -115,31 +115,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Top Banner with live clock and identity */}
-      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#0a0c10] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-xl flex flex-wrap items-center justify-between gap-6 transition-all">
-        <div className="flex items-start gap-4">
-          <div className="w-13 h-13 rounded-2xl bg-teal-50 dark:bg-teal-500/20 border border-teal-200 dark:border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-sm">
-            <span className="material-symbols-outlined text-2xl">space_dashboard</span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono text-teal-700 dark:text-teal-400 uppercase tracking-widest font-bold bg-teal-50 dark:bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-200 dark:border-teal-500/20">
-                VITAS IRAQ HRIS • LEAVES & ATTENDANCE
-              </span>
-              <span className="text-xs text-slate-400 hidden sm:inline">•</span>
-              <span className="text-xs font-mono text-slate-500 dark:text-slate-400 hidden sm:inline font-semibold">
-                {stats.today_date}
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-              {lang === 'ar' ? `مرحباً، ${currentUser.name_ar}` : `Welcome back, ${currentUser.name_en}`}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium mt-1 flex items-center gap-2">
-              <span>{lang === 'ar' ? currentUser.position_ar : currentUser.position_en}</span>
-              <span className="text-slate-400">•</span>
-              <span className="text-teal-600 dark:text-teal-400 font-bold">{lang === 'ar' ? currentUser.department_name_ar : currentUser.department_name_en}</span>
-            </p>
-          </div>
+      {/* Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            {lang === 'ar' ? 'الإجازات والدوام' : 'Leaves & Attendance'}
+          </h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

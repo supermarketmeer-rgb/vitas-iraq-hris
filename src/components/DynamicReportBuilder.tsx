@@ -961,27 +961,13 @@ export const DynamicReportBuilder: React.FC = () => {
         </div>
       )}
 
-      {/* Top Banner & Control Bar */}
-      <div className={`p-6 rounded-3xl border transition-all space-y-4 ${
-        isDark 
-          ? 'bg-[#0a0c10] border-white/10 shadow-xl text-white' 
-          : 'bg-white border-slate-200 shadow-sm text-slate-900'
-      }`}>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`material-symbols-outlined ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>table_chart</span>
-              <span className={`text-xs font-mono uppercase tracking-widest font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
-                ENTERPRISE DYNAMIC REPORT ENGINE • QUERY BUILDER
-              </span>
-            </div>
-            <h1 className={`text-2xl font-black drop-shadow-sm flex items-center gap-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {t(reportTitle, reportTitle === 'تقرير الموظفين الشامل مع الرواتب والبدلات' ? 'Comprehensive Employee Directory & Payroll Report' : reportTitle)}
-            </h1>
-            <p className={`text-xs mt-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-              {t('منشئ استعلامات الجداول المتعددة، التصفية الذكية، التحديث التلقائي والعرض بصيغة إكسل تفاعلية', 'Multi-table Query Builder, Smart Filtering, Auto-Refresh & Formatted Excel Sheet Grid')}
-            </p>
-          </div>
+      {/* Top Header & Control Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className={`text-2xl font-bold flex items-center gap-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            {t(reportTitle, reportTitle === 'تقرير الموظفين الشامل مع الرواتب والبدلات' ? 'Comprehensive Employee Directory & Payroll Report' : reportTitle)}
+          </h1>
+        </div>
 
           {/* Quick Actions Header Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
@@ -1077,7 +1063,6 @@ export const DynamicReportBuilder: React.FC = () => {
             </select>
           </div>
         </div>
-      </div>
 
       {/* Query Builder Configuration Cards Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -310,7 +310,7 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
       date: docDate,
       time: docTimeAr,
       timeEn: docTimeEn,
-      message: `تم توجيه مستند رسمي (${del.document_title}) إليك برقم مرجعي (${del.document_id}) عبر نظام التوجيه الذكي. يرجى مراجعة وتدقيق المستند المرفق أصولياً.`,
+      message: `تم توجيه مستند رسمي (${del.document_title}) إليك برقم مرجعي (${del.document_id}) عبر نظام التوجيه الإلكتروني. يرجى مراجعة وتدقيق المستند المرفق أصولياً.`,
       messageEn: `Official document (${del.document_title}) routed to you with reference ID (${del.document_id}). Please review and acknowledge formally.`,
       read: del.app_status === 'read',
       priority: 'urgent',

@@ -27,7 +27,7 @@ export const translations = {
     nav_db_schema: 'قاعدة البيانات وPHP/SQL',
     nav_earned_leaves: 'الإجازات المستحقة (احتساب مالي)',
     
-    bento_grid_title: 'شبكة بينتو الذكية (Bento Grid)',
+    bento_grid_title: 'شبكة بينتو (Bento Grid)',
     customize_layout: 'تخصيص ترتيب البطاقات',
     done_customizing: 'حفظ وإنهاء التخصيص',
     reset_layout: 'استعادة الترتيب الافتراضي',
@@ -332,7 +332,7 @@ export const translations = {
     nav_db_schema: 'Database & PHP/SQL',
     nav_earned_leaves: 'Earned Leaves & Financials',
     
-    bento_grid_title: 'Bento Grid Smart Dashboard',
+    bento_grid_title: 'Bento Grid Dashboard',
     customize_layout: 'Customize Bento Grid',
     done_customizing: 'Save & Done',
     reset_layout: 'Reset Default Layout',

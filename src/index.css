@@ -185,8 +185,8 @@ html.dark textarea::placeholder {
 html.light .dark-banner,
 html:not(.dark) .dark-banner {
   background-image: none !important;
-  background-color: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
+  background-color: #eef2f6 !important;
+  border: 1px solid #cbd5e1 !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
   color: #0f172a !important;
 }
@@ -401,43 +401,81 @@ html.dark ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.12);
 }
 
-/* Sidebar vertical scrollbar: ALWAYS matches dark mode (even in daytime / light mode) */
+/* ================================================================
+   SIDEBAR VERTICAL SCROLLBAR: LIGHT (#eef2f6) / DARK (#06080d)
+   ================================================================ */
 aside ::-webkit-scrollbar,
-aside::-webkit-scrollbar,
-html:not(.dark) aside ::-webkit-scrollbar,
-html:not(.dark) aside::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+aside::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-aside ::-webkit-scrollbar-track,
-aside::-webkit-scrollbar-track,
+/* Light mode sidebar scrollbar */
+html.light aside ::-webkit-scrollbar-track,
+html.light aside::-webkit-scrollbar-track,
 html:not(.dark) aside ::-webkit-scrollbar-track,
 html:not(.dark) aside::-webkit-scrollbar-track {
-  background: #06080d !important;
+  background: #eef2f6 !important;
 }
 
-aside ::-webkit-scrollbar-thumb,
-aside::-webkit-scrollbar-thumb,
+html.light aside ::-webkit-scrollbar-thumb,
+html.light aside::-webkit-scrollbar-thumb,
 html:not(.dark) aside ::-webkit-scrollbar-thumb,
 html:not(.dark) aside::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12) !important;
+  background: #cbd5e1 !important;
   border-radius: 9999px;
 }
 
-aside ::-webkit-scrollbar-thumb:hover,
-aside::-webkit-scrollbar-thumb:hover,
+html.light aside ::-webkit-scrollbar-thumb:hover,
+html.light aside::-webkit-scrollbar-thumb:hover,
 html:not(.dark) aside ::-webkit-scrollbar-thumb:hover,
 html:not(.dark) aside::-webkit-scrollbar-thumb:hover {
-  background: rgba(20, 184, 166, 0.4) !important;
+  background: #94a3b8 !important;
 }
 
-aside,
-aside *,
+html.light aside,
+html.light aside *,
 html:not(.dark) aside,
 html:not(.dark) aside * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) #06080d;
+  scrollbar-color: #cbd5e1 #eef2f6 !important;
+}
+
+/* Dark mode sidebar scrollbar */
+html.dark aside ::-webkit-scrollbar-track,
+html.dark aside::-webkit-scrollbar-track {
+  background: #06080d !important;
+}
+
+html.dark aside ::-webkit-scrollbar-thumb,
+html.dark aside::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-radius: 9999px;
+}
+
+html.dark aside ::-webkit-scrollbar-thumb:hover,
+html.dark aside::-webkit-scrollbar-thumb:hover {
+  background: rgba(20, 184, 166, 0.4) !important;
+}
+
+html.dark aside,
+html.dark aside * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) #06080d !important;
+}
+
+/* Sidebar button counter badges */
+html.light aside span.cat-counter-badge,
+html:not(.dark) aside span.cat-counter-badge {
+  background-color: #f0fdfa !important;
+  color: #0f766e !important;
+  border: 1px solid #99f6e4 !important;
+}
+
+html.dark aside span.cat-counter-badge {
+  background-color: rgba(20, 184, 166, 0.15) !important;
+  color: #2dd4bf !important;
+  border: 1px solid rgba(20, 184, 166, 0.3) !important;
 }
 
 /* ================================================================
@@ -502,8 +540,8 @@ html.light .bg-gray-900:not(aside *):not(header *),
 html.light [class*="bg-gray-900"]:not(aside *):not(header *),
 html.light .bg-gray-950:not(aside *):not(header *),
 html.light [class*="bg-gray-950"]:not(aside *):not(header *) {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
+  background-color: #eef2f6 !important;
+  border-color: #cbd5e1 !important;
 }
 
 /* Sub-panels, dark chips, and inner container boxes in Light Mode (excludes aside & header) */
@@ -511,8 +549,8 @@ html.light .bg-\[\#06080d\]:not(aside *):not(header *),
 html.light [class*="bg-[#06080d]"]:not(aside *):not(header *),
 html.light [class*="bg-[#030508]"]:not(aside *):not(header *),
 html.light [class*="bg-[#04060a]"]:not(aside *):not(header *) {
-  background-color: #f8fafc !important;
-  border-color: #e2e8f0 !important;
+  background-color: #eef2f6 !important;
+  border-color: #cbd5e1 !important;
 }
 
 
@@ -615,23 +653,23 @@ html:not(.dark) .dynamic-report-excel-thead th:hover {
    ================================================================ */
 html.light .bg-white:not(aside *):not(header *),
 html:not(.dark) .bg-white:not(aside *):not(header *) {
-  background-color: #ffffff !important;
+  background-color: #eef2f6 !important;
 }
 html.light .bg-slate-800:not(aside *):not(header *),
 html:not(.dark) .bg-slate-800:not(aside *):not(header *) {
-  background-color: #f8fafc !important;
+  background-color: #eef2f6 !important;
 }
 html.light .bg-slate-800\/80:not(aside *):not(header *),
 html:not(.dark) .bg-slate-800\/80:not(aside *):not(header *) {
-  background-color: rgba(255, 255, 255, 0.95) !important;
+  background-color: #eef2f6 !important;
 }
 
-/* Keep slate-50 and slate-100 as light grays (not white) */
+/* Keep slate-50 and slate-100 matching unified light gray (#eef2f6) */
 html.light .bg-slate-50:not(aside *):not(header *) {
-  background-color: #f8fafc !important;
+  background-color: #eef2f6 !important;
 }
 html.light .bg-slate-100:not(aside *):not(header *) {
-  background-color: #f1f5f9 !important;
+  background-color: #eef2f6 !important;
 }
 
 /* ================================================================
@@ -1375,8 +1413,8 @@ html.dark [class*="modal"] {
 }
 
 /* ================================================================
-   STRICTLY SCOPED LIGHT MODE DIRECTIVE: PURE WHITE CARDS (#ffffff)
-   Soft neutral background (#eef2f6), Pure White cards (#ffffff)
+   LIGHT MODE DIRECTIVE: UNIFIED TITLE-MATCHED CANVASES & WINDOWS (#eef2f6)
+   Windows, Records, Search Fields, Data Fields match page canvas (#eef2f6)
    ================================================================ */
 html.light,
 html.light body,
@@ -1386,38 +1424,52 @@ html.light main {
   color: #0f172a !important;
 }
 
-/* Light Mode Outer & Main Cards - Pure Solid White (#ffffff) with 1.5px defined border */
+/* Light Mode Windows, Outer & Main Cards - Unified Soft Neutral (#eef2f6) with 1.5px defined border */
 html.light main div[class*="rounded-3xl"],
-html.light main div[class*="rounded-2xl"]:not(div[class*="rounded-3xl"] div[class*="rounded-2xl"]),
+html.light main div[class*="rounded-2xl"],
 html.light .bg-white:not(aside *):not(header *),
 html.light [class*="bg-white"]:not(aside *):not(header *),
 html:not(.dark) main div[class*="rounded-3xl"],
-html:not(.dark) main div[class*="rounded-2xl"]:not(div[class*="rounded-3xl"] div[class*="rounded-2xl"]),
+html:not(.dark) main div[class*="rounded-2xl"],
 html:not(.dark) .bg-white:not(aside *):not(header *),
 html:not(.dark) [class*="bg-white"]:not(aside *):not(header *) {
-  background-color: #ffffff !important;
+  background-color: #eef2f6 !important;
   color: #0f172a !important;
   border: 1.5px solid #cbd5e1 !important;
 }
 
-/* Light Mode Inner Sub-cards & List Items - Soft Light (#f8fafc) */
+/* Light Mode Records, Sub-cards & List Items - Soft Neutral (#eef2f6) */
 html.light main div[class*="rounded-3xl"] div[class*="rounded-2xl"],
 html.light main div[class*="rounded-2xl"] div[class*="rounded-2xl"],
+html.light main div[class*="rounded-2xl"] div[class*="rounded-xl"],
+html.light .dash-inner-card,
 html:not(.dark) main div[class*="rounded-3xl"] div[class*="rounded-2xl"],
-html:not(.dark) main div[class*="rounded-2xl"] div[class*="rounded-2xl"] {
-  background-color: #f8fafc !important;
+html:not(.dark) main div[class*="rounded-2xl"] div[class*="rounded-2xl"],
+html:not(.dark) main div[class*="rounded-2xl"] div[class*="rounded-xl"],
+html:not(.dark) .dash-inner-card {
+  background-color: #eef2f6 !important;
   color: #0f172a !important;
   border: 1.5px solid #cbd5e1 !important;
 }
 
-/* Light Mode Inputs, Selects & Textareas (Light Phosphorescent / Teal Border across all screens & windows) */
+/* Interactive hover for records & items */
+html.light main div[class*="rounded-2xl"] div[class*="rounded-2xl"]:hover,
+html.light main div[class*="rounded-2xl"] div[class*="rounded-xl"]:hover,
+html.light .dash-inner-card:hover,
+html:not(.dark) main div[class*="rounded-2xl"] div[class*="rounded-2xl"]:hover,
+html:not(.dark) main div[class*="rounded-2xl"] div[class*="rounded-xl"]:hover,
+html:not(.dark) .dash-inner-card:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Light Mode Search Fields, Data Fields, Inputs, Selects & Textareas (#eef2f6) */
 html.light input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
 html.light select:not(aside select):not(header select),
 html.light textarea:not(aside textarea):not(header textarea),
 html:not(.dark) body input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
 html:not(.dark) body select:not(aside select):not(header select),
 html:not(.dark) body textarea:not(aside textarea):not(header textarea) {
-  background-color: #ffffff !important;
+  background-color: #eef2f6 !important;
   color: #0f172a !important;
   border: 1.5px solid rgba(20, 184, 166, 0.45) !important;
   box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.12), 0 1px 2px 0 rgba(20, 184, 166, 0.05) !important;
@@ -1429,6 +1481,7 @@ html.light textarea:not(aside textarea):not(header textarea):hover,
 html:not(.dark) body input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):hover,
 html:not(.dark) body select:not(aside select):not(header select):hover,
 html:not(.dark) body textarea:not(aside textarea):not(header textarea):hover {
+  background-color: #eef2f6 !important;
   border-color: rgba(20, 184, 166, 0.75) !important;
   box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2) !important;
 }
@@ -1439,27 +1492,37 @@ html.light textarea:not(aside textarea):not(header textarea):focus,
 html:not(.dark) body input:not(aside input):not(header input):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):focus,
 html:not(.dark) body select:not(aside select):not(header select):focus,
 html:not(.dark) body textarea:not(aside textarea):not(header textarea):focus {
+  background-color: #eef2f6 !important;
   border-color: #0d9488 !important;
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.28) !important;
   outline: none !important;
 }
 
-/* Light Mode Tables */
+/* Light Mode Tables (Table Headers, Table Rows & Records) */
 html.light table thead th,
-html.light table thead tr th {
-  background-color: #f8fafc !important;
+html.light table thead tr th,
+html:not(.dark) table thead th,
+html:not(.dark) table thead tr th {
+  background-color: #eef2f6 !important;
   color: #0f172a !important;
-  border-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
 }
 
 html.light table tbody tr,
-html.light table tbody tr.bg-white {
-  background-color: #ffffff !important;
+html.light table tbody tr.bg-white,
+html:not(.dark) table tbody tr,
+html:not(.dark) table tbody tr.bg-white {
+  background-color: #eef2f6 !important;
   color: #0f172a !important;
-  border-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
 }
 
-/* Light Mode Modals & Dialogs (Windows) - 1 degree larger / 2px defined border */
+html.light table tbody tr:hover,
+html:not(.dark) table tbody tr:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Light Mode Modals & Dialogs (Windows) - Defined border */
 html.light .fixed:not(aside) > div:not(.bg-transparent):not(.fixed):not(aside *),
 html.light .fixed:not(aside) > div > div:not(.bg-transparent):not(aside *),
 html.light div[role="dialog"],
@@ -1472,24 +1535,29 @@ html:not(.dark) div[role="dialog"],
 html:not(.dark) div[role="dialog"] > div,
 html:not(.dark) [class*="modal"],
 html:not(.dark) [class*="modal"] > div {
-  background-color: #ffffff !important;
+  background-color: #eef2f6 !important;
   color: #0f172a !important;
   border: 2px solid #cbd5e1 !important;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 }
 
 /* ================================================================
-   SIDEBAR BUTTONS & ACTIVE STATE (ALWAYS DARK #06080d)
-   Sidebar buttons must stay dark and not turn grey in light mode.
+   HEADER & SIDEBAR LIGHT MODE STYLING: MATCH PAGE TITLE CANVAS (#eef2f6)
    ================================================================ */
+html.light header,
+html:not(.dark) header,
+html.light aside,
+html:not(.dark) aside {
+  background-color: #eef2f6 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
 aside button {
   outline: none !important;
 }
 
-/* Force active sidebar module buttons to remain dark with teal borders and text */
-aside button.border-teal-500,
-aside button[class*="border-teal-500"],
-aside button[class*="bg-[#06080d]"],
+/* Active sidebar module buttons in Light Mode: Soft gray highlight with teal border & dark teal text */
 html.light aside button.border-teal-500,
 html.light aside button[class*="border-teal-500"],
 html.light aside button[class*="bg-[#06080d]"],
@@ -1499,6 +1567,17 @@ html:not(.dark) aside button[class*="bg-[#06080d]"],
 html:not(.dark) body aside button.border-teal-500,
 html:not(.dark) body aside button[class*="border-teal-500"],
 html:not(.dark) body aside button[class*="bg-[#06080d]"] {
+  background-color: #e2e8f0 !important;
+  background-image: none !important;
+  border-color: #14b8a6 !important;
+  color: #0f766e !important;
+  box-shadow: 0 1px 3px rgba(20, 184, 166, 0.15) !important;
+}
+
+/* Active sidebar module buttons in Dark Mode */
+html.dark aside button.border-teal-500,
+html.dark aside button[class*="border-teal-500"],
+html.dark aside button[class*="bg-[#06080d]"] {
   background-color: #06080d !important;
   background-image: none !important;
   border-color: #14b8a6 !important;
@@ -1506,21 +1585,29 @@ html:not(.dark) body aside button[class*="bg-[#06080d]"] {
   box-shadow: 0 4px 12px rgba(20, 184, 166, 0.15) !important;
 }
 
-aside button.border-teal-500:hover,
-aside button[class*="border-teal-500"]:hover,
-aside button[class*="bg-[#06080d]"]:hover,
 html.light aside button.border-teal-500:hover,
 html.light aside button[class*="border-teal-500"]:hover,
 html:not(.dark) aside button[class*="border-teal-500"]:hover,
 html:not(.dark) body aside button[class*="border-teal-500"]:hover {
+  background-color: #cbd5e1 !important;
+  border-color: #0d9488 !important;
+}
+
+html.dark aside button.border-teal-500:hover,
+html.dark aside button[class*="border-teal-500"]:hover,
+html.dark aside button[class*="bg-[#06080d]"]:hover {
   background-color: #06080d !important;
   border-color: #14b8a6 !important;
 }
 
-aside button.border-teal-500 span:not(.bg-rose-500),
-aside button[class*="border-teal-500"] span:not(.bg-rose-500),
+html.light aside button.border-teal-500 span:not(.bg-rose-500),
 html.light aside button[class*="border-teal-500"] span:not(.bg-rose-500),
 html:not(.dark) aside button[class*="border-teal-500"] span:not(.bg-rose-500) {
+  color: #0f766e !important;
+}
+
+html.dark aside button.border-teal-500 span:not(.bg-rose-500),
+html.dark aside button[class*="border-teal-500"] span:not(.bg-rose-500) {
   color: #2dd4bf !important;
 }
 
@@ -2479,3 +2566,39 @@ button[class^="bg-red-100"] *,
 .employee-app-light [class*="bg-rose-600"] * {
   color: #ffffff;
 }
+
+/* ================================================================
+   APPLICATION TABLE HEADER STYLING
+   Requested: slightly darker header background in light mode
+   ================================================================ */
+html:not(.dark) .app-table-header,
+html:not(.dark) thead.app-table-header,
+html.light .app-table-header,
+html.light thead.app-table-header {
+  background-color: #94a3b8 !important;
+  border-color: #64748b !important;
+  color: #020617 !important;
+}
+
+html:not(.dark) .app-table-header th,
+html.light .app-table-header th {
+  background-color: #94a3b8 !important;
+  border-color: #64748b !important;
+  color: #020617 !important;
+  font-weight: 800 !important;
+}
+
+html.dark .app-table-header,
+html.dark thead.app-table-header {
+  background-color: #06080d !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .app-table-header th {
+  background-color: #06080d !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+  font-weight: 400 !important;
+}
+
