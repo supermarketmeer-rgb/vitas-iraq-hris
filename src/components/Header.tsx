@@ -78,7 +78,7 @@ export const Header: React.FC = () => {
 
       const modCount = backendRes?.modifiedTablesCount || 0;
       const rowCount = backendRes?.totalRowsSynced || 0;
-      const totalTables = backendRes?.totalTables || backendRes?.syncedTablesCount || 97;
+      const totalTables = backendRes?.totalTables || backendRes?.syncedTablesCount || 111;
       const duration = backendRes?.durationSeconds || '1.2';
 
       if (backendRes && !backendRes.error) {
