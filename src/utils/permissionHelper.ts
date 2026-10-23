@@ -265,6 +265,21 @@ export function isModuleAuthorized(
     return true;
   }
 
+  // Country Scoping Rules for Dual-Country / Regional Offices:
+  // 1. Lebanon Admin only sees Lebanon module and not Iraq specific branch management
+  if (currentRole === 'Lebanon_Admin') {
+    if (moduleId === 'emp-branches') return false;
+    if (moduleId === 'emp-regional-lebanon') return true;
+  }
+  // 2. Iraq Admin only sees Iraq branches and NOT Lebanon office
+  if (currentRole === 'Iraq_Admin' && moduleId === 'emp-regional-lebanon') {
+    return false;
+  }
+  // 3. HR Director & Super Admin see both countries
+  if ((currentRole === 'Admin' || currentRole === 'Super Admin' || currentRole === 'HR_Director' || perms.isSuperAdmin) && moduleId === 'emp-regional-lebanon') {
+    return true;
+  }
+
   // Category 1: Authentication & Security (login/demo screens) is NEVER shown to regular operational users
   if (catId === 'cat-1-auth' || moduleId.startsWith('auth-')) {
     return false;
@@ -424,6 +439,7 @@ export const MODULE_CATEGORY_MAP: Record<string, { catId: string; alias: string 
   'emp-sync-guide': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-profile': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-branches': { catId: 'cat-3-emp', alias: 'employees' },
+  'emp-regional-lebanon': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-organization': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-company-profile': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-calendar': { catId: 'cat-3-emp', alias: 'employees' },

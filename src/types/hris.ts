@@ -55,8 +55,10 @@ export interface JobPosition {
 
 export interface Employee {
   id: number | string;
-  employee_number?: string;
   employee_id?: string;
+  badge_no?: string;
+  waid?: string;
+  wa_id?: string;
   first_name?: string;
   last_name?: string;
   first_name_ar?: string;

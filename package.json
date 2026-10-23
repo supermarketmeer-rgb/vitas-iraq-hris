@@ -5,7 +5,7 @@
   "type": "module",
   "main": "electron/main.mjs",
   "scripts": {
-    "dev": "concurrently \"node server.js\" \"node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js --port=5173 --host=0.0.0.0\"",
+    "dev": "concurrently \"node --watch server.js\" \"node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js --port=5173 --host=0.0.0.0\"",
     "build": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
     "clean": "rm -rf dist dist-desktop",
@@ -22,6 +22,7 @@
     "concurrently": "^10.0.4",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.1",

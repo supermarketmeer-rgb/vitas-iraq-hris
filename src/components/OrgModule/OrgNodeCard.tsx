@@ -45,7 +45,19 @@ export const OrgNodeCard: React.FC<OrgNodeCardProps> = ({
   let headerColor = 'text-white';
   let typeTag = isArabic ? 'منصب وظيفي' : 'Position';
 
-  if (node.type === 'top_management') {
+  const isLebanonNode = 
+    Boolean((node as any).is_lebanon) ||
+    (node as any).country === 'Lebanon' ||
+    (node as any).country === 'لبنان' ||
+    node.manager_location_status === 'abroad' ||
+    (Boolean(node.branch) && (node.branch.includes('لبنان') || node.branch.includes('بيروت') || node.branch.includes('Lebanon')));
+
+  if (isLebanonNode) {
+    badgeIcon = <Globe2 className="w-4 h-4 text-amber-400" />;
+    cardBg = 'bg-[#111827] text-white border-2 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400/80 hover:border-amber-300';
+    headerColor = 'text-amber-100 font-bold';
+    typeTag = isArabic ? 'مكتب إقليمي (لبنان)' : 'Regional Office (Lebanon)';
+  } else if (node.type === 'top_management') {
     badgeIcon = <Crown className="w-4 h-4 text-amber-400" />;
     cardBg = 'bg-[#111827] border-teal-500/50 text-white hover:border-teal-400/70 shadow-lg ring-1 ring-teal-400/30';
     headerColor = 'text-white';
@@ -109,7 +121,13 @@ export const OrgNodeCard: React.FC<OrgNodeCardProps> = ({
           {badgeIcon}
           <span className="font-bold tracking-wide uppercase text-[10px] text-slate-300">{typeTag}</span>
         </div>
-        {node.type === 'department' && node.manager_location_status === 'abroad' && (
+        {isLebanonNode && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-xs">
+            <span>🇱🇧</span>
+            <span>{isArabic ? 'بيروت - لبنان' : 'Beirut - Lebanon'}</span>
+          </span>
+        )}
+        {!isLebanonNode && node.type === 'department' && node.manager_location_status === 'abroad' && (
           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
             <Globe2 className="w-3 h-3" />
             {isArabic ? 'بالخارج' : 'Abroad'}

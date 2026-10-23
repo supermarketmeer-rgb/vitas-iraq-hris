@@ -37,6 +37,7 @@ import { TaxSecurityModuleView } from './views/TaxSecurityModuleView';
 import { ArchiveModuleView } from './views/ArchiveModuleView';
 import { DriversModuleView } from './views/DriversModuleView';
 import { IncentivesModuleView } from './incentives_module/IncentivesModuleView';
+import { LebanonRegionalView } from './regional_module/LebanonRegionalView';
 import { DynamicReportBuilder } from './components/DynamicReportBuilder';
 import { CandidatePortal } from './components/recruitment/CandidatePortal';
 import { EmployeePortal } from './components/EmployeePortal';
@@ -123,6 +124,9 @@ function AppContent() {
       case 'emp-calendar':
       case 'emp-news':
         return <Category3EmployeeView />;
+
+      case 'emp-regional-lebanon':
+        return <LebanonRegionalView />;
 
       // Category 4: Leave Management
       case 'cat-4-leave':

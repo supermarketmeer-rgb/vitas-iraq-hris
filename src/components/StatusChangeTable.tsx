@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
+import { exportFormattedExcelFromJson } from '../utils/excelFormatHelper';
 import {
   StatusChangeRecord,
   getStatusChangesList,
@@ -125,8 +126,7 @@ export const StatusChangeTable: React.FC<StatusChangeTableProps> = ({
   };
 
   // Excel Template
-  const handleGenerateTemplate = () => {
-    const wb = XLSX.utils.book_new();
+  const handleGenerateTemplate = async () => {
     const wsData = [
       {
         'Employee ID': 'VIT-0037',
@@ -145,14 +145,16 @@ export const StatusChangeTable: React.FC<StatusChangeTableProps> = ({
         'End Date': 'Present'
       }
     ];
-    const ws = XLSX.utils.json_to_sheet(wsData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Status_Changes_Template');
-    XLSX.writeFile(wb, 'status_changes_template.xlsx');
+    await exportFormattedExcelFromJson(
+      wsData,
+      'status_changes_template.xlsx',
+      'Status_Changes_Template',
+      isAr
+    );
   };
 
   // Excel Export
-  const handleExportExcel = () => {
-    const wb = XLSX.utils.book_new();
+  const handleExportExcel = async () => {
     const exportData = records.map(r => ({
       'Employee ID': r.employee_id,
       'Employee Name': r.employee_name,
@@ -162,9 +164,12 @@ export const StatusChangeTable: React.FC<StatusChangeTableProps> = ({
       'End Date': r.end_date,
       'Notes': r.notes || ''
     }));
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Status_Changes');
-    XLSX.writeFile(wb, `status_changes_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    await exportFormattedExcelFromJson(
+      exportData,
+      `status_changes_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      'Status_Changes',
+      isAr
+    );
   };
 
   // Excel Import
@@ -301,11 +306,11 @@ export const StatusChangeTable: React.FC<StatusChangeTableProps> = ({
       </div>
 
       {/* TABLE */}
-      <div className={`overflow-x-auto rounded-2xl border ${
+      <div className={`overflow-x-auto ${isCompact ? 'max-h-[250px] overflow-y-auto profile-scrollbar' : ''} rounded-2xl border ${
         isDark ? 'border-white/10 bg-[#06080d]/60' : 'border-slate-200 bg-white shadow-xs'
       }`}>
         <table className="w-full text-xs text-start">
-          <thead className={isDark ? 'bg-white/5 text-slate-300' : 'bg-slate-50 text-slate-700'}>
+          <thead className={`${isCompact ? 'sticky top-0 z-10 shadow-xs' : ''} ${isDark ? 'bg-[#0f1422] text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
             <tr className="border-b border-slate-200 dark:border-white/10">
               <th className="py-2.5 px-3 text-start w-10">#</th>
               {!employee && <th className="py-2.5 px-3 text-start">{isAr ? 'الموظف' : 'Employee'}</th>}

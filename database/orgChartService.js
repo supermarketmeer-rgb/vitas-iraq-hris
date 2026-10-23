@@ -14,7 +14,9 @@ export async function buildOrgChart(queryFn, statusFilter = 'active') {
   } else if (statusFilter === 'exclude_terminated') {
     empQuery += " WHERE LOWER(status) != 'terminated' AND LOWER(status) != 'مفصول'";
   }
-  const employees = await queryFn(empQuery, params).catch(() => []);
+  const iraqEmployees = await queryFn(empQuery, params).catch(() => []);
+  const lebanonEmployees = await queryFn("SELECT *, 1 as is_lebanon, 'Lebanon' as country, 'abroad' as manager_location_status FROM lebanon_employees WHERE LOWER(status) = 'active'").catch(() => []);
+  const employees = [...iraqEmployees, ...lebanonEmployees];
 
   const issues = [];
 

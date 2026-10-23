@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../api/client';
 import * as XLSX from 'xlsx';
+import { exportFormattedExcelFromJson } from '../utils/excelFormatHelper';
 import { DesktopSyncSettings } from '../components/DesktopSyncSettings';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { PoliciesSection } from '../components/PoliciesSection';
@@ -30,6 +31,7 @@ interface DataItem {
   email?: string;
   status?: string;
   employee_id?: string;
+  waid?: string;
   department?: string;
   position?: string;
 }
@@ -241,6 +243,7 @@ export const SettingsSecurityView: React.FC = () => {
         name: nameAr,
         sort_order: 0,
         employee_id: code,
+        waid: emp.waid || emp.wa_id || '',
         department: emp.department || '',
         position: emp.jobTitle || emp.position || emp.position_ar || '',
         city: emp.branch || emp.location_ar || emp.location || '',
@@ -664,33 +667,12 @@ export const SettingsSecurityView: React.FC = () => {
     ));
   };
 
-  // Excel Template Generation
-  const generateExcelTemplate = (tabId: string) => {
+  // Formatted Excel Template Generation for Settings tabs
+  const generateExcelTemplate = async (tabId: string) => {
     try {
-      console.log('Generating Excel template for:', tabId);
+      console.log('Generating Formatted Excel template for:', tabId);
       
-      const templateData = [
-        {
-          'Name (English)': '',
-          'الاسم (العربية)': '',
-          'Sort Order': 1
-        },
-        {
-          'Name (English)': '',
-          'الاسم (العربية)': '',
-          'Sort Order': 2
-        },
-        {
-          'Name (English)': '',
-          'الاسم (العربية)': '',
-          'Sort Order': 3
-        }
-      ];
-
-      const worksheet = XLSX.utils.json_to_sheet(templateData);
-      const workbook = XLSX.utils.book_new();
-      
-      // Set sheet name based on tab
+      let templateData: any[] = [];
       const sheetNames: Record<string, string> = {
         'locations': 'Locations Template',
         'positions': 'Positions Template',
@@ -699,17 +681,7 @@ export const SettingsSecurityView: React.FC = () => {
         'status-changes': 'Status Changes Template',
         'trainings': 'Trainings Template'
       };
-      
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetNames[tabId] || 'Template');
-      
-      // Set column widths
-      worksheet['!cols'] = [
-        { wch: 30 }, // Name (English)
-        { wch: 30 }, // الاسم (العربية)
-        { wch: 10 }  // Sort Order
-      ];
 
-      // Set filename based on tab
       const filenames: Record<string, string> = {
         'locations': 'locations_template.xlsx',
         'positions': 'positions_template.xlsx',
@@ -718,14 +690,136 @@ export const SettingsSecurityView: React.FC = () => {
         'status-changes': 'status_changes_template.xlsx',
         'trainings': 'trainings_template.xlsx'
       };
-      
-      XLSX.writeFile(workbook, filenames[tabId] || 'template.xlsx');
-      console.log('Excel template generated successfully');
+
+      if (tabId === 'locations') {
+        templateData = [
+          {
+            'Name (English)': 'Baghdad - Karrada',
+            'الاسم (العربية)': 'بغداد - الكرادة',
+            'City': 'Baghdad',
+            'Address': 'Karrada, District 903',
+            'Phone': '07700000000',
+            'Email': 'karrada@vitas.iq',
+            'Sort Order': 1,
+            'Status': 'Active'
+          },
+          {
+            'Name (English)': 'Basrah Branch',
+            'الاسم (العربية)': 'فرع البصرة',
+            'City': 'Basrah',
+            'Address': 'Al-Ashar, St 14',
+            'Phone': '07800000000',
+            'Email': 'basrah@vitas.iq',
+            'Sort Order': 2,
+            'Status': 'Active'
+          }
+        ];
+      } else if (tabId === 'positions') {
+        templateData = [
+          {
+            'Name (English)': 'Senior Credit Officer',
+            'الاسم (العربية)': 'مسؤول ائتمان أول',
+            'Sort Order': 1
+          },
+          {
+            'Name (English)': 'Branch Manager',
+            'الاسم (العربية)': 'مدير فرع',
+            'Sort Order': 2
+          }
+        ];
+      } else if (tabId === 'departments') {
+        templateData = [
+          {
+            'Name (English)': 'Operations & Credit',
+            'الاسم (العربية)': 'العمليات والائتمان',
+            'Sort Order': 1
+          },
+          {
+            'Name (English)': 'Human Resources',
+            'الاسم (العربية)': 'الموارد البشرية',
+            'Sort Order': 2
+          }
+        ];
+      } else {
+        templateData = [
+          {
+            'Name (English)': '',
+            'الاسم (العربية)': '',
+            'Sort Order': 1
+          },
+          {
+            'Name (English)': '',
+            'الاسم (العربية)': '',
+            'Sort Order': 2
+          }
+        ];
+      }
+
+      await exportFormattedExcelFromJson(
+        templateData,
+        filenames[tabId] || 'template.xlsx',
+        sheetNames[tabId] || 'Template',
+        language === 'ar'
+      );
+      console.log('Formatted Excel template generated successfully');
     } catch (error) {
       console.error('Error generating Excel template:', error);
       alert(language === 'ar' 
         ? 'حدث خطأ في إنشاء قالب Excel' 
         : 'Error generating Excel template');
+    }
+  };
+
+  // Formatted Data Export for Settings tabs (Locations, Positions, Departments)
+  const handleTabExport = async (tabId: string) => {
+    try {
+      let dataToExport: any[] = [];
+      let filename = `${tabId}_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      let sheetName = tabId;
+
+      if (tabId === 'locations') {
+        dataToExport = deduplicatedLocations.map((l, idx) => ({
+          '#': idx + 1,
+          'Name (English)': l.name_en || '',
+          'الاسم (العربية)': l.name_ar || l.name || '',
+          'City': l.city || '',
+          'Address': l.address || '',
+          'Phone': l.phone || '',
+          'Email': l.email || '',
+          'Sort Order': l.sort_order || 0,
+          'Status': l.status || 'Active'
+        }));
+        sheetName = 'Locations';
+        filename = `vitas_iraq_locations_${new Date().toISOString().split('T')[0]}.xlsx`;
+      } else if (tabId === 'positions') {
+        dataToExport = deduplicatedPositions.map((p, idx) => ({
+          '#': idx + 1,
+          'Name (English)': p.name_en || '',
+          'الاسم (العربية)': p.name_ar || p.name || '',
+          'Sort Order': p.sort_order || 0
+        }));
+        sheetName = 'Positions';
+        filename = `vitas_iraq_positions_${new Date().toISOString().split('T')[0]}.xlsx`;
+      } else if (tabId === 'departments') {
+        dataToExport = deduplicatedDepartments.map((d, idx) => ({
+          '#': idx + 1,
+          'Name (English)': d.name_en || '',
+          'الاسم (العربية)': d.name_ar || d.name || '',
+          'Sort Order': d.sort_order || 0
+        }));
+        sheetName = 'Departments';
+        filename = `vitas_iraq_departments_${new Date().toISOString().split('T')[0]}.xlsx`;
+      }
+
+      if (dataToExport.length === 0) {
+        alert(language === 'ar' ? 'لا توجد بيانات متاحة للتصدير' : 'No data available to export');
+        return;
+      }
+
+      await exportFormattedExcelFromJson(dataToExport, filename, sheetName, language === 'ar');
+    } catch (e: any) {
+      console.error('Error exporting tab data:', e);
+      alert(language === 'ar' ? 'حدث خطأ أثناء تصدير البيانات' : 'Error exporting data');
     }
   };
 
@@ -961,19 +1055,13 @@ export const SettingsSecurityView: React.FC = () => {
         };
       });
 
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      const workbook = XLSX.utils.book_new();
-
-      if (exportData.length > 0) {
-        const keys = Object.keys(exportData[0]);
-        worksheet['!cols'] = keys.map(k => ({ wch: Math.max(k.length + 4, 16) }));
-        worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { c: 0, r: 0 }, e: { c: keys.length - 1, r: exportData.length } }) };
-        worksheet['!views'] = [{ RTL: true, showGridLines: true }];
-      }
-
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'بيانات الموظفين');
-      XLSX.writeFile(workbook, `vitas_iraq_employees_${new Date().toISOString().split('T')[0]}.xlsx`);
-      console.log('Employees exported successfully');
+      await exportFormattedExcelFromJson(
+        exportData,
+        `vitas_iraq_employees_${new Date().toISOString().split('T')[0]}.xlsx`,
+        'بيانات الموظفين',
+        true
+      );
+      console.log('Employees exported successfully with formatted Excel table design');
     } catch (error) {
       console.error('Error exporting employees:', error);
       alert(language === 'ar' 
@@ -982,168 +1070,147 @@ export const SettingsSecurityView: React.FC = () => {
     }
   };
 
-  // Employee Excel Template Generation
-  const generateEmployeeExcelTemplate = () => {
+  // Employee Excel Template Generation (Formatted with English Headers)
+  const generateEmployeeExcelTemplate = async () => {
     try {
-      console.log('Generating Formatted Employee Excel template...');
+      console.log('Generating Formatted Employee Excel template with English Headers...');
       
       const templateData = [
         {
-          'الاسم الكامل (عربي)': 'مثال: مصطفى الحسيني',
-          'الاسم الكامل (إنجليزي)': 'Mustafa Al-Husseini',
-          'رمز الموظف': 'VTS-1001',
-          'رقم البادج': 'V131',
-          'البريد الإلكتروني المؤسسي': 'mustafa@vitasiraq.com',
-          'البريد الإلكتروني الشخصي': 'mustafa.personal@gmail.com',
-          'رقم الهاتف': '07700000000',
-          'هاتف الطوارئ': '07800000000',
-          'تاريخ الميلاد': '1990-01-01',
-          'الجنس': 'ذكر',
-          'الحالة الاجتماعية': 'متأهل',
-          'الجنسية': 'عراقي',
-          'رابط الصورة': 'https://example.com/photo1.jpg',
-          'تاريخ المباشرة': '2020-01-01',
-          'تاريخ بداية العقد': '2024-01-01',
-          'تاريخ نهاية العقد': '2025-01-01',
-          'نهاية فترة التجربة': '2024-04-01',
-          'تاريخ المغادرة': '',
-          'نوع العقد': 'عقد محدد المدة (سنة واحدة)',
-          'الدرجة الوظيفية': 'G-4 الدرجة الرابعة',
-          'المسمى الوظيفي (عربي)': 'مسؤول ائتمان أول',
-          'المسمى الوظيفي (إنجليزي)': 'Senior Credit Officer',
-          'القسم / الإدارة (عربي)': 'قسم العمليات والائتمان',
-          'القسم / الإدارة (إنجليزي)': 'Operations & Credit Department',
-          'الفرع (عربي)': 'فرع بغداد - الكرادة',
-          'الفرع (إنجليزي)': 'Baghdad Branch - Karrada',
-          'اسم المشرف المباشر': 'أحمد جاسم المحمداوي',
-          'نطاق العمل': 'ميداني ومكتبي',
-          'الراتب الاسمي': 1200000,
-          'الراتب الاسمي كتابة': 'مليون ومائتا ألف دينار عراقي',
-          'بدل النقل الثابت': 150000,
-          'المكافأة الثابتة': 100000,
-          'بدل الهاتف': 50000,
-          'بدل الشهادة': 100000,
-          'بدل الزوجة': 50000,
-          'بدل الطفل الواحد': 25000,
-          'إجمالي الراتب الكلي': 1800000,
-          'اسم المصرف': 'مصرف بغداد',
-          'رقم IBAN': 'IQ98 BAKI 0000 1234 5678 9012',
-          'البطاقة الوطنية': '199012345678',
-          'رقم جواز السفر': 'A12345678',
-          'تاريخ نفاذ الجواز': '2030-01-01',
-          'اسم الزوج/الزوجة': 'فاطمة علي',
-          'الزوج يعمل بالشركة': 'لا',
-          'اسم الطفل 1': 'علي مصطفى',
-          'صلة الطفل 1 (ولد/بنت)': 'ولد',
-          'تاريخ ميلاد الطفل 1': '2015-05-12',
-          'اسم الطفل 2': 'زهراء مصطفى',
-          'صلة الطفل 2 (ولد/بنت)': 'بنت',
-          'تاريخ ميلاد الطفل 2': '2017-08-20',
-          'اسم الطفل 3': 'حسين مصطفى',
-          'صلة الطفل 3 (ولد/بنت)': 'ولد',
-          'تاريخ ميلاد الطفل 3': '2019-11-03',
-          'اسم الطفل 4': 'مريم مصطفى',
-          'صلة الطفل 4 (ولد/بنت)': 'بنت',
-          'تاريخ ميلاد الطفل 4': '2021-02-15',
-          'اسم الطفل 5': 'محمد مصطفى',
-          'صلة الطفل 5 (ولد/بنت)': 'ولد',
-          'تاريخ ميلاد الطفل 5': '2022-09-10',
-          'اسم الطفل 6': 'زينب مصطفى',
-          'صلة الطفل 6 (ولد/بنت)': 'بنت',
-          'تاريخ ميلاد الطفل 6': '2024-01-01',
-          'الحالة': 'Active'
+          'Employee Code': 'VTS-1001',
+          'Badge No': 'V131',
+          'WAID': 'WA-1001',
+          'Full Name (Arabic)': 'مصطفى الحسيني',
+          'Full Name (English)': 'Mustafa Al-Husseini',
+          'Department (Arabic)': 'قسم العمليات والائتمان',
+          'Department (English)': 'Operations & Credit Department',
+          'Job Title (Arabic)': 'مسؤول ائتمان أول',
+          'Job Title (English)': 'Senior Credit Officer',
+          'Branch (Arabic)': 'فرع بغداد - الكرادة',
+          'Branch (English)': 'Baghdad Branch - Karrada',
+          'Work Scope': 'ميداني ومكتبي',
+          'Grade': 'G-4 الدرجة الرابعة',
+          'Supervisor Name': 'أحمد جاسم المحمداوي',
+          'Date of Birth': '1990-01-01',
+          'Gender': 'ذكر',
+          'Marital Status': 'متأهل',
+          'Nationality': 'عراقي',
+          'Phone': '07700000000',
+          'Emergency Phone': '07800000000',
+          'Email': 'mustafa@vitasiraq.com',
+          'Personal Email': 'mustafa.personal@gmail.com',
+          'National ID': '199012345678',
+          'Passport Number': 'A12345678',
+          'Passport Expiry': '2030-01-01',
+          'Original Start Date': '2020-01-01',
+          'Contract Start Date': '2024-01-01',
+          'Contract End Date': '2025-01-01',
+          'Probation End Date': '2024-04-01',
+          'Exit Date': '',
+          'Term of Contract': 'عقد محدد المدة (سنة واحدة)',
+          'Basic Salary': 1200000,
+          'Written Basic Salary (Arabic)': 'مليون ومائتا ألف دينار عراقي',
+          'Transportation Fixed': 150000,
+          'Fixed Bonus': 100000,
+          'Phone Allowance': 50000,
+          'Certificate Allowance': 100000,
+          'Bank Name': 'مصرف بغداد',
+          'IBAN': 'IQ98 BAKI 0000 1234 5678 9012',
+          'Photo URL': 'https://example.com/photo1.jpg',
+          'Spouse Name': 'فاطمة علي',
+          'Spouse Employed Here': 'لا',
+          'Child 1 Name': 'علي مصطفى',
+          'Child 1 Relation (Son/Daughter)': 'ولد',
+          'Child 1 Date of Birth': '2015-05-12',
+          'Child 2 Name': 'زهراء مصطفى',
+          'Child 2 Relation (Son/Daughter)': 'بنت',
+          'Child 2 Date of Birth': '2017-08-20',
+          'Child 3 Name': 'حسين مصطفى',
+          'Child 3 Relation (Son/Daughter)': 'ولد',
+          'Child 3 Date of Birth': '2019-11-03',
+          'Child 4 Name': 'مريم مصطفى',
+          'Child 4 Relation (Son/Daughter)': 'بنت',
+          'Child 4 Date of Birth': '2021-02-15',
+          'Child 5 Name': 'محمد مصطفى',
+          'Child 5 Relation (Son/Daughter)': 'ولد',
+          'Child 5 Date of Birth': '2022-09-10',
+          'Child 6 Name': 'زينب مصطفى',
+          'Child 6 Relation (Son/Daughter)': 'بنت',
+          'Child 6 Date of Birth': '2024-01-01',
+          'Status': 'Active'
         },
         {
-          'الاسم الكامل (عربي)': 'مثال: زينب فاضل عباس',
-          'الاسم الكامل (إنجليزي)': 'Zainab Fadhil Abbas',
-          'رمز الموظف': 'VTS-1002',
-          'رقم البادج': 'V132',
-          'البريد الإلكتروني المؤسسي': 'zainab@vitasiraq.com',
-          'البريد الإلكتروني الشخصي': 'zainab.personal@gmail.com',
-          'رقم الهاتف': '07711111111',
-          'هاتف الطوارئ': '07811111111',
-          'تاريخ الميلاد': '1993-04-15',
-          'الجنس': 'أنثى',
-          'الحالة الاجتماعية': 'متأهل',
-          'الجنسية': 'عراقي',
-          'رابط الصورة': '',
-          'تاريخ المباشرة': '2021-03-15',
-          'تاريخ بداية العقد': '2024-03-15',
-          'تاريخ نهاية العقد': '2025-03-15',
-          'نهاية فترة التجربة': '2024-06-15',
-          'تاريخ المغادرة': '',
-          'نوع العقد': 'عقد غير محدد المدة (دائم)',
-          'الدرجة الوظيفية': 'G-3 الدرجة الثالثة',
-          'المسمى الوظيفي (عربي)': 'محاسب رئيسي',
-          'المسمى الوظيفي (إنجليزي)': 'Senior Accountant',
-          'القسم / الإدارة (عربي)': 'القسم المالي والحسابات',
-          'القسم / الإدارة (إنجليزي)': 'Finance & Accounting Department',
-          'الفرع (عربي)': 'الفرع الرئيسي - بغداد',
-          'الفرع (إنجليزي)': 'Head Office - Baghdad',
-          'اسم المشرف المباشر': 'حسن كمال الدين',
-          'نطاق العمل': 'مكتبي',
-          'الراتب الاسمي': 1500000,
-          'الراتب الاسمي كتابة': 'مليون وخمسمائة ألف دينار عراقي',
-          'بدل النقل الثابت': 150000,
-          'المكافأة الثابتة': 120000,
-          'بدل الهاتف': 50000,
-          'بدل الشهادة': 150000,
-          'بدل الزوجة': 0,
-          'بدل الطفل الواحد': 25000,
-          'إجمالي الراتب الكلي': 2020000,
-          'اسم المصرف': 'المصرف العراقي للتجارة TBI',
-          'رقم IBAN': 'IQ98 TRIQ 0000 9876 5432 1098',
-          'البطاقة الوطنية': '199398765432',
-          'رقم جواز السفر': 'A87654321',
-          'تاريخ نفاذ الجواز': '2031-05-20',
-          'اسم الزوج/الزوجة': 'عمر خالد',
-          'الزوج يعمل بالشركة': 'نعم',
-          'اسم الطفل 1': 'أحمد عمر',
-          'صلة الطفل 1 (ولد/بنت)': 'ولد',
-          'تاريخ ميلاد الطفل 1': '2018-03-10',
-          'اسم الطفل 2': 'سارة عمر',
-          'صلة الطفل 2 (ولد/بنت)': 'بنت',
-          'تاريخ ميلاد الطفل 2': '2020-07-14',
-          'اسم الطفل 3': '',
-          'صلة الطفل 3 (ولد/بنت)': '',
-          'تاريخ ميلاد الطفل 3': '',
-          'اسم الطفل 4': '',
-          'صلة الطفل 4 (ولد/بنت)': '',
-          'تاريخ ميلاد الطفل 4': '',
-          'اسم الطفل 5': '',
-          'صلة الطفل 5 (ولد/بنت)': '',
-          'تاريخ ميلاد الطفل 5': '',
-          'اسم الطفل 6': '',
-          'صلة الطفل 6 (ولد/بنت)': '',
-          'تاريخ ميلاد الطفل 6': '',
-          'الحالة': 'Active'
+          'Employee Code': 'VTS-1002',
+          'Badge No': 'V132',
+          'WAID': 'WA-1002',
+          'Full Name (Arabic)': 'زينب فاضل عباس',
+          'Full Name (English)': 'Zainab Fadhil Abbas',
+          'Department (Arabic)': 'القسم المالي والحسابات',
+          'Department (English)': 'Finance & Accounting Department',
+          'Job Title (Arabic)': 'محاسب رئيسي',
+          'Job Title (English)': 'Senior Accountant',
+          'Branch (Arabic)': 'الفرع الرئيسي - بغداد',
+          'Branch (English)': 'Head Office - Baghdad',
+          'Work Scope': 'مكتبي',
+          'Grade': 'G-3 الدرجة الثالثة',
+          'Supervisor Name': 'حسن كمال الدين',
+          'Date of Birth': '1993-04-15',
+          'Gender': 'أنثى',
+          'Marital Status': 'متأهل',
+          'Nationality': 'عراقي',
+          'Phone': '07711111111',
+          'Emergency Phone': '07811111111',
+          'Email': 'zainab@vitasiraq.com',
+          'Personal Email': 'zainab.personal@gmail.com',
+          'National ID': '199398765432',
+          'Passport Number': 'A87654321',
+          'Passport Expiry': '2031-05-20',
+          'Original Start Date': '2021-03-15',
+          'Contract Start Date': '2024-03-15',
+          'Contract End Date': '2025-03-15',
+          'Probation End Date': '2024-06-15',
+          'Exit Date': '',
+          'Term of Contract': 'عقد غير محدد المدة (دائم)',
+          'Basic Salary': 1500000,
+          'Written Basic Salary (Arabic)': 'مليون وخمسمائة ألف دينار عراقي',
+          'Transportation Fixed': 150000,
+          'Fixed Bonus': 120000,
+          'Phone Allowance': 50000,
+          'Certificate Allowance': 150000,
+          'Bank Name': 'المصرف العراقي للتجارة TBI',
+          'IBAN': 'IQ98 TRIQ 0000 9876 5432 1098',
+          'Photo URL': '',
+          'Spouse Name': 'عمر خالد',
+          'Spouse Employed Here': 'نعم',
+          'Child 1 Name': 'أحمد عمر',
+          'Child 1 Relation (Son/Daughter)': 'ولد',
+          'Child 1 Date of Birth': '2018-03-10',
+          'Child 2 Name': 'سارة عمر',
+          'Child 2 Relation (Son/Daughter)': 'بنت',
+          'Child 2 Date of Birth': '2020-07-14',
+          'Child 3 Name': '',
+          'Child 3 Relation (Son/Daughter)': '',
+          'Child 3 Date of Birth': '',
+          'Child 4 Name': '',
+          'Child 4 Relation (Son/Daughter)': '',
+          'Child 4 Date of Birth': '',
+          'Child 5 Name': '',
+          'Child 5 Relation (Son/Daughter)': '',
+          'Child 5 Date of Birth': '',
+          'Child 6 Name': '',
+          'Child 6 Relation (Son/Daughter)': '',
+          'Child 6 Date of Birth': '',
+          'Status': 'Active'
         }
       ];
 
-      const worksheet = XLSX.utils.json_to_sheet(templateData);
-      const workbook = XLSX.utils.book_new();
-
-      // Configure Column Widths for formatted table view
-      const keys = Object.keys(templateData[0]);
-      worksheet['!cols'] = keys.map(k => ({
-        wch: Math.max(k.length + 4, 16)
-      }));
-
-      // Add Auto-Filter range for Excel Table formatting
-      worksheet['!autofilter'] = {
-        ref: XLSX.utils.encode_range({
-          s: { c: 0, r: 0 },
-          e: { c: keys.length - 1, r: templateData.length }
-        })
-      };
-
-      // Set sheet display view: RTL & show grid lines
-      worksheet['!views'] = [{ RTL: true, showGridLines: true }];
-
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'قالب الموظفين الشامل');
-
-      XLSX.writeFile(workbook, 'employees_template.xlsx');
-      console.log('Employee Excel template generated successfully with formatted table settings.');
+      await exportFormattedExcelFromJson(
+        templateData,
+        'employees_template.xlsx',
+        'Employees_Template',
+        false // Left-to-Right layout for English headers
+      );
+      console.log('Employee Excel template generated successfully with English headers.');
     } catch (error) {
       console.error('Error generating Employee Excel template:', error);
       alert(language === 'ar' 
@@ -1362,22 +1429,28 @@ export const SettingsSecurityView: React.FC = () => {
               }
             }
 
+            let fullNameEn = getVal(row, ['Full Name (English)', 'Employee Name (EN)', 'Employee Name (English)', 'fullNameEn', 'full_name_en', 'الاسم الكامل (إنجليزي)', 'الاسم الكامل (انجليزي)', 'الاسم الانكليزي', 'الاسم الإنجليزي', 'English Name', 'Full Name English']);
+            if (!fullName) fullName = fullNameEn;
             if (!fullName) continue;
-
-            const fullNameEn = getVal(row, ['Full Name (English)', 'fullNameEn', 'full_name_en', 'الاسم الكامل (إنجليزي)', 'الاسم الكامل (انجليزي)', 'الاسم الانكليزي', 'الاسم الإنجليزي', 'English Name', 'Full Name English']) || fullName;
-            let empCode = getVal(row, ['Employee Code', 'empCode', 'employeeId', 'employee_id', 'رمز الموظف', 'كود الموظف', 'رقم الموظف', 'الرمز الوظيفي', 'Code', 'ID', 'ت', 'م', 'الرقم', 'رقم']);
+            if (!fullNameEn) fullNameEn = fullName;
+            let empCode = getVal(row, ['Employee Code', 'Employee ID', 'empCode', 'employeeId', 'employee_id', 'رمز الموظف', 'كود الموظف', 'رقم الموظف', 'الرمز الوظيفي', 'Code', 'ID', 'ت', 'م', 'الرقم', 'رقم']);
             if (!empCode) {
               empCode = `VTS-${1000 + importedEmployees.length + 1}`;
             }
-            const badgeNo = getVal(row, ['Badge Number', 'badgeNo', 'badge_no', 'رقم البادج', 'البادج', 'رقم الهوية', 'Badge']);
+            const badgeNo = getVal(row, ['Badge No', 'Badge Number', 'badgeNo', 'badge_no', 'رقم البادج', 'البادج', 'رقم الهوية', 'Badge']);
             const waid = getVal(row, ['WAID', 'waid', 'wa_id', 'معرف الحوافز', 'كود الحوافز', 'معرف الحوافز (WAID)', 'Incentives ID', 'Incentives WAID']);
             const dob = parseExcelDate(getVal(row, ['Date of Birth', 'dob', 'تاريخ الميلاد', 'تاريخ ولادة', 'DOB', 'Birth Date']));
             const email = getVal(row, ['Email', 'email', 'البريد الإلكتروني المؤسسي', 'البريد الإلكتروني', 'البريد الالكتروني', 'الإيميل', 'الايميل', 'البريد المؤسسي']);
             const personalEmail = getVal(row, ['Personal Email', 'personalEmail', 'personal_email', 'البريد الإلكتروني الشخصي', 'البريد الشخصي', 'الايميل الشخصي']);
             const phone = formatIraqiPhoneNumber(getVal(row, ['Phone', 'phone', 'mobile', 'Mobile', 'الهاتف', 'رقم الهاتف', 'الموبايل', 'رقم الجوال', 'الجوال']));
             const emergencyPhone = formatIraqiPhoneNumber(getVal(row, ['Emergency Phone', 'emergencyPhone', 'emergency_phone', 'هاتف الطوارئ', 'رقم الطوارئ']));
-            const gender = getVal(row, ['Gender', 'gender', 'الجنس', 'النوع']) || 'ذكر';
-            const maritalStatus = getVal(row, ['Marital Status', 'maritalStatus', 'marital_status', 'الحالة الاجتماعية', 'الحالة الزوجية']) || 'أعزب';
+            
+            const rawGender = getVal(row, ['Gender', 'gender', 'الجنس', 'النوع']) || 'ذكر';
+            const gender = (rawGender.toLowerCase() === 'female' || rawGender.includes('أنثى') || rawGender.includes('انثى')) ? 'أنثى' : 'ذكر';
+
+            const rawMarital = getVal(row, ['Marital Status', 'maritalStatus', 'marital_status', 'الحالة الاجتماعية', 'الحالة الزوجية']) || 'أعزب';
+            const maritalStatus = (rawMarital.toLowerCase() === 'married' || rawMarital.includes('متزوج') || rawMarital.includes('متأهل')) ? 'متأهل' : 'أعزب';
+
             const nationality = getVal(row, ['Nationality', 'nationality', 'الجنسية']) || 'عراقي';
 
             const contractStartDate = parseExcelDate(getVal(row, ['Contract Start Date', 'contractStartDate', 'contract_start_date', 'تاريخ بداية العقد', 'تاريخ بدء العقد', 'تاريخ بداية العقد الحالي', 'بداية العقد']));
@@ -1388,12 +1461,12 @@ export const SettingsSecurityView: React.FC = () => {
             const termOfContract = getVal(row, ['Term of Contract', 'termOfContract', 'term_of_contract', 'نوع العقد', 'نوع مدة العقد', 'مدة العقد']) || 'عقد محدد المدة (سنة واحدة)';
             const grade = getVal(row, ['Grade', 'grade', 'الدرجة الوظيفية', 'الدرجة', 'الدرجة السلمية', 'المستوى']) || 'G-4 الدرجة الرابعة';
 
-            const jobTitle = getVal(row, ['Job Title (Arabic)', 'jobTitle', 'job_title', 'position', 'position_ar', 'المسمى الوظيفي (عربي)', 'العنوان الوظيفي (عربي)', 'المسمى الوظيفي عربي', 'المسمى الوظيفي', 'العنوان الوظيفي', 'الوظيفة']);
-            const jobTitleEn = getVal(row, ['Job Title (English)', 'jobTitleEn', 'job_title_en', 'position_en', 'المسمى الوظيفي (إنجليزي)', 'المسمى الوظيفي (انجليزي)', 'العنوان الوظيفي (إنجليزي)', 'العنوان الوظيفي (انجليزي)', 'المسمى الوظيفي إنجليزي', 'Job Title English']) || jobTitle;
-            const department = getVal(row, ['Department (Arabic)', 'department', 'department_ar', 'القسم / الإدارة (عربي)', 'القسم/الإدارة (عربي)', 'القسم (عربي)', 'القسم / الإدارة', 'القسم', 'الإدارة']);
-            const departmentEn = getVal(row, ['Department (English)', 'departmentEn', 'department_en', 'القسم / الإدارة (إنجليزي)', 'القسم / الإدارة (انجليزي)', 'القسم/الإدارة (إنجليزي)', 'القسم (إنجليزي)', 'Department English']) || department;
-            const branch = getVal(row, ['Branch (Arabic)', 'branch', 'branch_ar', 'location', 'location_ar', 'الفرع (عربي)', 'الموقع (عربي)', 'الفرع العربي', 'الفرع', 'الموقع', 'مكان العمل']);
-            const branchEn = getVal(row, ['Branch (English)', 'branchEn', 'branch_en', 'location_en', 'الفرع (إنجليزي)', 'الفرع (انجليزي)', 'الموقع (إنجليزي)', 'الفرع الإنجليزي', 'Branch English']) || branch;
+            const jobTitle = getVal(row, ['Job Title (Arabic)', 'Job Title (AR)', 'jobTitle', 'job_title', 'position', 'position_ar', 'المسمى الوظيفي (عربي)', 'العنوان الوظيفي (عربي)', 'المسمى الوظيفي عربي', 'المسمى الوظيفي', 'العنوان الوظيفي', 'الوظيفة']);
+            const jobTitleEn = getVal(row, ['Job Title (English)', 'Job Title (EN)', 'jobTitleEn', 'job_title_en', 'position_en', 'المسمى الوظيفي (إنجليزي)', 'المسمى الوظيفي (انجليزي)', 'العنوان الوظيفي (إنجليزي)', 'العنوان الوظيفي (انجليزي)', 'المسمى الوظيفي إنجليزي', 'Job Title English']) || jobTitle;
+            const department = getVal(row, ['Department (Arabic)', 'Department (AR)', 'department', 'department_ar', 'القسم / الإدارة (عربي)', 'القسم/الإدارة (عربي)', 'القسم (عربي)', 'القسم / الإدارة', 'القسم', 'الإدارة']);
+            const departmentEn = getVal(row, ['Department (English)', 'Department (EN)', 'departmentEn', 'department_en', 'القسم / الإدارة (إنجليزي)', 'القسم / الإدارة (انجليزي)', 'القسم/الإدارة (إنجليزي)', 'القسم (إنجليزي)', 'Department English']) || department;
+            const branch = getVal(row, ['Branch (Arabic)', 'Branch (AR)', 'Location (AR)', 'Location (Arabic)', 'branch', 'branch_ar', 'location', 'location_ar', 'الفرع (عربي)', 'الموقع (عربي)', 'الفرع العربي', 'الفرع', 'الموقع', 'مكان العمل']);
+            const branchEn = getVal(row, ['Branch (English)', 'Branch (EN)', 'Location (EN)', 'Location (English)', 'branchEn', 'branch_en', 'location_en', 'الفرع (إنجليزي)', 'الفرع (انجليزي)', 'الموقع (إنجليزي)', 'الفرع الإنجليزي', 'Branch English']) || branch;
             const supervisorName = getVal(row, ['Supervisor Name', 'supervisorName', 'supervisor_name', 'اسم المشرف المباشر', 'اسم المشرف', 'المشرف', 'المدير المباشر']);
             const workScope = getVal(row, ['Work Scope', 'workScope', 'نطاق العمل']) || 'ميداني ومكتبي';
 
@@ -1407,14 +1480,16 @@ export const SettingsSecurityView: React.FC = () => {
             const iban = getVal(row, ['IBAN', 'iban', 'رقم IBAN', 'رقم الحساب', 'الآيبان', 'حساب المصرف']) || 'IQ98 BAKI 0000 1234 5678 9012';
 
             const nationalId = getVal(row, ['National ID', 'nationalId', 'national_id', 'البطاقة الوطنية', 'الرقم الوطني', 'رقم الهوية الوطنية']);
-            const passportNo = getVal(row, ['Passport Number', 'passportNo', 'passport_no', 'رقم جواز السفر', 'رقم الجواز', 'جواز السفر']);
+            const passportNo = getVal(row, ['Passport Number', 'Passport No', 'passportNo', 'passport_no', 'رقم جواز السفر', 'رقم الجواز', 'جواز السفر']);
             const passportExpiry = parseExcelDate(getVal(row, ['Passport Expiry', 'passportExpiry', 'تاريخ نفاذ الجواز']));
             const photoUrl = getVal(row, ['Photo URL', 'photoUrl', 'رابط الصورة']);
 
             const spouseName = getVal(row, ['Spouse Name', 'spouseName', 'اسم الزوج/الزوجة']);
-            const spouseEmployedHere = getVal(row, ['Spouse Employed Here', 'spouseEmployedHere', 'الزوج يعمل بالشركة']) === 'true' || getVal(row, ['Spouse Employed Here', 'spouseEmployedHere', 'الزوج يعمل بالشركة']) === 'نعم';
+            const rawSpouseEmployed = getVal(row, ['Spouse Employed Here', 'spouseEmployedHere', 'الزوج يعمل بالشركة']);
+            const spouseEmployedHere = rawSpouseEmployed === 'true' || rawSpouseEmployed === 'yes' || rawSpouseEmployed === 'Yes' || rawSpouseEmployed === 'نعم';
 
-            const status = getVal(row, ['Status', 'status', 'الحالة', 'حالة الموظف']) || 'Active';
+            const rawStatus = getVal(row, ['Status', 'status', 'الحالة', 'حالة الموظف']) || 'Active';
+            const status = (rawStatus.toLowerCase().includes('inact') || rawStatus.includes('غير نشط')) ? 'Inactive' : 'Active';
 
             // Auto-add Branch / Location to Settings if missing
             if (branch && !currentLocations.some(l => l.name_ar === branch || l.name === branch || (branchEn && l.name_en === branchEn))) {
@@ -1620,7 +1695,10 @@ export const SettingsSecurityView: React.FC = () => {
             onEdit={openEditModal}
             onDelete={handleDelete}
             language={language}
-            showExcelButtons={false}
+            showExcelButtons={true}
+            onGenerateTemplate={() => generateExcelTemplate('locations')}
+            onExportExcel={() => handleTabExport('locations')}
+            onImportExcel={(e) => handleExcelImport(e, 'locations')}
             fileInputRef={fileInputRef}
             activeTab={activeTab}
           />
@@ -1634,7 +1712,10 @@ export const SettingsSecurityView: React.FC = () => {
             onEdit={openEditModal}
             onDelete={handleDelete}
             language={language}
-            showExcelButtons={false}
+            showExcelButtons={true}
+            onGenerateTemplate={() => generateExcelTemplate('positions')}
+            onExportExcel={() => handleTabExport('positions')}
+            onImportExcel={(e) => handleExcelImport(e, 'positions')}
             fileInputRef={fileInputRef}
             activeTab={activeTab}
           />
@@ -1648,7 +1729,10 @@ export const SettingsSecurityView: React.FC = () => {
             onEdit={openEditModal}
             onDelete={handleDelete}
             language={language}
-            showExcelButtons={false}
+            showExcelButtons={true}
+            onGenerateTemplate={() => generateExcelTemplate('departments')}
+            onExportExcel={() => handleTabExport('departments')}
+            onImportExcel={(e) => handleExcelImport(e, 'departments')}
             fileInputRef={fileInputRef}
             activeTab={activeTab}
           />
@@ -2039,6 +2123,11 @@ const DataTable: React.FC<DataTableProps> = ({
                   {item.employee_id && (
                     <span className="text-xs px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-400 font-mono font-bold whitespace-nowrap">
                       {item.employee_id}
+                    </span>
+                  )}
+                  {item.waid && (
+                    <span className="text-xs px-2 py-0.5 rounded-md bg-teal-600/20 text-teal-300 font-mono font-bold whitespace-nowrap border border-teal-500/20" title="WAID - Incentives ID">
+                      WAID: {item.waid}
                     </span>
                   )}
                   {item.department && (

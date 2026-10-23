@@ -1,10 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { getBranchName } from '../utils/branchHelper';
+import { getDepartmentName, getJobTitleName, DICT_EN, isArabicText } from '../utils/orgDictionary';
 
 interface Option {
   id?: number | string;
   name_ar?: string;
   name_en?: string;
   name?: string;
+  title_ar?: string;
+  title_en?: string;
+  title?: string;
   [key: string]: any;
 }
 
@@ -35,11 +40,54 @@ export const SearchableComboBox: React.FC<SearchableComboBoxProps> = ({
 
   const isRTL = language === 'ar';
 
-  const getArabicName = (option: Option) => option?.name_ar || option?.name || '';
-  const getEnglishName = (option: Option) => option?.name_en || option?.name || '';
-  const getDisplayName = (option: Option) => isRTL 
-    ? (getArabicName(option) || getEnglishName(option)) 
-    : (getEnglishName(option) || getArabicName(option));
+  const getArabicName = (option: Option): string => {
+    if (!option) return '';
+    if (isArabicText(option.name_ar)) return option.name_ar!;
+    if (isArabicText(option.title_ar)) return option.title_ar!;
+    if (isArabicText(option.name)) return option.name!;
+    if (isArabicText(option.title)) return option.title!;
+
+    const raw = option.name_ar || option.name_en || option.name || option.title || '';
+    if (raw) {
+      const branchAr = getBranchName(raw, null, 'ar');
+      if (branchAr && isArabicText(branchAr)) return branchAr;
+
+      const deptAr = getDepartmentName(raw, 'ar');
+      if (deptAr && isArabicText(deptAr)) return deptAr;
+
+      const posAr = getJobTitleName(raw, 'ar');
+      if (posAr && isArabicText(posAr)) return posAr;
+    }
+    return option.name_ar || option.title_ar || option.name || option.title || '';
+  };
+
+  const getEnglishName = (option: Option): string => {
+    if (!option) return '';
+    const enProp = option.name_en || option.title_en || option.title;
+    if (enProp && !isArabicText(enProp) && enProp !== 'N/A') return enProp;
+    if (option.name && !isArabicText(option.name) && option.name !== 'N/A') return option.name;
+
+    const raw = option.name_ar || option.title_ar || option.name || '';
+    if (raw) {
+      const branchEn = getBranchName(raw, null, 'en');
+      if (branchEn && !isArabicText(branchEn) && branchEn !== 'N/A') return branchEn;
+
+      const deptEn = getDepartmentName(raw, 'en');
+      if (deptEn && !isArabicText(deptEn) && deptEn !== 'N/A') return deptEn;
+
+      const posEn = getJobTitleName(raw, 'en');
+      if (posEn && !isArabicText(posEn) && posEn !== 'N/A') return posEn;
+
+      if (DICT_EN[raw]) return DICT_EN[raw];
+    }
+    return option.name_en || option.title_en || option.title || option.name || '';
+  };
+
+  const getDisplayName = (option: Option): string => {
+    return isRTL 
+      ? (getArabicName(option) || getEnglishName(option)) 
+      : (getEnglishName(option) || getArabicName(option));
+  };
 
   // Safe filter options based on search term
   const filteredOptions = (options || []).filter(option => {
@@ -73,19 +121,56 @@ export const SearchableComboBox: React.FC<SearchableComboBoxProps> = ({
   // Find selected option display name
   const selectedOption = (options || []).find(opt => {
     if (!opt) return false;
-    const ar = getArabicName(opt);
-    const en = getEnglishName(opt);
-    return ar === value || en === value || opt.name === value;
+    const ar = getArabicName(opt).toLowerCase().trim();
+    const en = getEnglishName(opt).toLowerCase().trim();
+    const val = (value || '').toLowerCase().trim();
+    if (!val) return false;
+    return (
+      ar === val ||
+      en === val ||
+      (opt.name && String(opt.name).toLowerCase().trim() === val) ||
+      (opt.name_ar && String(opt.name_ar).toLowerCase().trim() === val) ||
+      (opt.name_en && String(opt.name_en).toLowerCase().trim() === val) ||
+      (opt.title && String(opt.title).toLowerCase().trim() === val) ||
+      (opt.title_ar && String(opt.title_ar).toLowerCase().trim() === val)
+    );
   });
 
-  const displayValue = selectedOption 
-    ? getDisplayName(selectedOption)
-    : value;
+  let displayValue = '';
+  if (selectedOption) {
+    displayValue = getDisplayName(selectedOption);
+  } else if (value && value.trim() !== '') {
+    if (isRTL) {
+      if (isArabicText(value)) {
+        displayValue = value;
+      } else {
+        const branchAr = getBranchName(value, null, 'ar');
+        const deptAr = getDepartmentName(value, 'ar');
+        const posAr = getJobTitleName(value, 'ar', options);
+        displayValue = (isArabicText(branchAr) ? branchAr : null) ||
+                       (isArabicText(deptAr) ? deptAr : null) ||
+                       (isArabicText(posAr) ? posAr : null) ||
+                       value;
+      }
+    } else {
+      if (!isArabicText(value)) {
+        displayValue = value;
+      } else {
+        const branchEn = getBranchName(value, null, 'en');
+        const deptEn = getDepartmentName(value, 'en');
+        const posEn = getJobTitleName(value, 'en', options);
+        displayValue = (!isArabicText(branchEn) && branchEn !== 'N/A' ? branchEn : null) ||
+                       (!isArabicText(deptEn) && deptEn !== 'N/A' ? deptEn : null) ||
+                       (!isArabicText(posEn) && posEn !== 'N/A' ? posEn : null) ||
+                       value;
+      }
+    }
+  }
 
   const handleSelect = (option: Option) => {
-    const selectedValue = language === 'en'
-      ? (option?.name_en || option?.name || getDisplayName(option))
-      : (option?.name_ar || option?.name || getDisplayName(option));
+    const selectedValue = isRTL 
+      ? (getArabicName(option) || getEnglishName(option))
+      : (getEnglishName(option) || getArabicName(option));
     onChange(selectedValue, option);
     setIsOpen(false);
     setSearchTerm('');
@@ -96,7 +181,6 @@ export const SearchableComboBox: React.FC<SearchableComboBoxProps> = ({
     setSearchTerm(term);
     setHighlightedIndex(-1);
     
-    // Clear selection if user types
     if (!isOpen) {
       setIsOpen(true);
     }
@@ -171,6 +255,8 @@ export const SearchableComboBox: React.FC<SearchableComboBoxProps> = ({
             filteredOptions.map((option, index) => {
               const arName = getArabicName(option);
               const enName = getEnglishName(option);
+              const primaryName = isRTL ? (arName || enName) : (enName || arName);
+              const secondaryName = isRTL ? enName : arName;
               return (
                 <div
                   key={option.id || index}
@@ -181,9 +267,9 @@ export const SearchableComboBox: React.FC<SearchableComboBoxProps> = ({
                       : 'hover:bg-white/5 text-slate-200'
                   }`}
                 >
-                  <div className="font-medium text-sm">{arName || enName}</div>
-                  {enName && arName && enName !== arName && (
-                    <div className="text-xs text-slate-400">{enName}</div>
+                  <div className="font-medium text-sm">{primaryName}</div>
+                  {secondaryName && secondaryName !== primaryName && (
+                    <div className="text-xs text-slate-400">{secondaryName}</div>
                   )}
                 </div>
               );

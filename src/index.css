@@ -17,6 +17,35 @@
     --font-inter: 'Inter', sans-serif;
   }
 
+  /* Custom sleek scrollbar for profile tables and containers */
+  .profile-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+  }
+  .profile-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .profile-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .profile-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.4);
+    border-radius: 9999px;
+  }
+  .profile-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.7);
+  }
+  html.dark .profile-scrollbar {
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  }
+  html.dark .profile-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.25);
+  }
+  html.dark .profile-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.45);
+  }
+
   /* Light Mode is the default */
   body {
     font-family: 'Cairo', 'Inter', system-ui, -apple-system, sans-serif;
@@ -2601,4 +2630,38 @@ html.dark .app-table-header th {
   color: #cbd5e1 !important;
   font-weight: 400 !important;
 }
+
+/* ================================================================
+   FORCE SOLID WHITE TEXT ON ALL TEAL BADGES IN ANY THEME
+   ================================================================ */
+.badge-teal-white,
+html.light .badge-teal-white,
+html:not(.dark) .badge-teal-white,
+html.dark .badge-teal-white {
+  background-color: #0d9488 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.badge-teal-white,
+.badge-teal-white *,
+.badge-teal-white span,
+html.light .badge-teal-white,
+html.light .badge-teal-white *,
+html.light .badge-teal-white span,
+html:not(.dark) .badge-teal-white,
+html:not(.dark) .badge-teal-white *,
+html:not(.dark) .badge-teal-white span,
+html.dark .badge-teal-white,
+html.dark .badge-teal-white *,
+html.dark .badge-teal-white span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.badge-teal-white .lb-tag {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+
 

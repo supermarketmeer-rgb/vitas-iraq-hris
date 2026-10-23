@@ -41,6 +41,7 @@ import {
 import { testGraphConnection, getGraphConfig } from './database/msGraphService.js';
 import { getPushNotificationStatus } from './database/mobilePushService.js';
 import { registerTaxModuleRoutes } from './src/tax_module/server/taxRoutes.js';
+import { registerLebanonRegionalRoutes } from './database/lebanonRegionalRoutes.js';
 
 import http from 'http';
 import https from 'https';
@@ -2724,6 +2725,10 @@ app.get(['/api/branches', '/api/settings/branches', '/api/offices'], async (req,
     const seen = new Set();
     const cleanBranches = [];
     for (const b of (results || [])) {
+      if (!b.id || String(b.id).trim() === '') {
+        b.id = `BR${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        await query('UPDATE branches SET id = ? WHERE (id = "" OR id IS NULL) AND (name = ? OR name_ar = ?)', [b.id, b.name, b.name_ar]).catch(() => {});
+      }
       const key = String(b.name_ar || b.name || b.name_en || '').trim().toLowerCase();
       if (!key || seen.has(key)) continue;
       seen.add(key);
@@ -2800,12 +2805,28 @@ app.post(['/api/settings/branches', '/api/branches', '/api/offices'], async (req
 });
 
 // Settings - Branches PUT / UPDATE
-app.put(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id'], async (req, res) => {
+app.put(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id', '/api/settings/branches', '/api/branches', '/api/offices'], async (req, res) => {
   try {
-    const { id } = req.params;
+    let id = (req.params && req.params.id) || (req.body && req.body.id);
     const { name, name_ar, name_en, address, city, phone, email, status, sort_order, department_id } = req.body;
     const finalNameAr = (name_ar || name || name_en || '').trim();
     const finalNameEn = (name_en || name || name_ar || '').trim();
+
+    if (!id && finalNameAr) {
+      const match = await query('SELECT id FROM branches WHERE name = ? OR name_ar = ? OR name_en = ? LIMIT 1', [finalNameAr, finalNameAr, finalNameAr]).catch(() => []);
+      if (match && match[0] && match[0].id) {
+        id = match[0].id;
+      }
+    }
+
+    if (!id) {
+      return res.status(400).json({ error: 'Branch ID or valid name is required for update' });
+    }
+
+    // Check old branch to synchronize employee branch if name changed
+    const oldBranchRows = await query('SELECT name, name_ar, name_en FROM branches WHERE id = ? LIMIT 1', [id]).catch(() => []);
+    const oldBranch = oldBranchRows && oldBranchRows[0];
+    const oldNameAr = oldBranch ? (oldBranch.name_ar || oldBranch.name) : null;
 
     const sql = `
       UPDATE branches SET
@@ -2836,6 +2857,11 @@ app.put(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id'],
 
     await query(sql, params);
     executeCloudQuery(sql, params).catch(() => {});
+
+    // Sync employee branches if branch name changed
+    if (oldNameAr && finalNameAr && oldNameAr !== finalNameAr) {
+      await query('UPDATE employees SET branch = ? WHERE branch = ?', [finalNameAr, oldNameAr]).catch(() => {});
+    }
 
     if (department_id) {
       await query('UPDATE departments SET branch_id = ? WHERE id = ?', [id, department_id]).catch(() => {});
@@ -5482,6 +5508,9 @@ autoCloseExpiredJobsAtCutoff();
 
 // Register Social Security & Income Tax Module Routes
 registerTaxModuleRoutes(app, query);
+
+// Register Lebanon Regional Office (Mini-HRMS) Routes
+registerLebanonRegionalRoutes(app, query, executeCloudQuery);
 
 // ============================================================
 // BIOMETRIC ATTENDANCE & SQL SERVER SYNC API ROUTES

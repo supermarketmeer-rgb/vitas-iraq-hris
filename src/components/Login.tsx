@@ -5,6 +5,7 @@ import { UserProfile, UserRole } from '../types';
 import vitasLogo from '../../assets/VitasLogo.jpeg';
 import meersonLogo from '../../assets/meerson_logo_transparent.png';
 import { api } from '../api/client';
+import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -640,7 +641,7 @@ export const Login: React.FC = () => {
                 {t('اسم المستخدم', 'Username')}
               </label>
               <div className="relative flex items-center">
-                <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'right-3' : 'left-3'} text-lg pointer-events-none ${isDark ? 'text-teal-400' : 'text-slate-600'}`}>person</span>
+                <User className={`absolute ${language === 'ar' ? 'right-3.5' : 'left-3.5'} w-4.5 h-4.5 pointer-events-none ${isDark ? 'text-teal-400' : 'text-slate-500'}`} />
                 <input
                   type="text"
                   value={username}
@@ -665,7 +666,7 @@ export const Login: React.FC = () => {
                 {t('كلمة المرور', 'Password')}
               </label>
               <div className="relative flex items-center">
-                <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'right-3' : 'left-3'} text-lg pointer-events-none ${isDark ? 'text-teal-400' : 'text-slate-600'}`}>lock</span>
+                <Lock className={`absolute ${language === 'ar' ? 'right-3.5' : 'left-3.5'} w-4.5 h-4.5 pointer-events-none ${isDark ? 'text-teal-400' : 'text-slate-500'}`} />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -688,9 +689,11 @@ export const Login: React.FC = () => {
                   className={`absolute ${language === 'ar' ? 'left-3' : 'right-3'} p-1 rounded-lg text-slate-400 hover:text-teal-500 transition-colors focus:outline-none flex items-center justify-center`}
                   title={showPassword ? (language === 'ar' ? 'إخفاء كلمة المرور' : 'Hide password') : (language === 'ar' ? 'إظهار كلمة المرور' : 'Show password')}
                 >
-                  <span className="material-symbols-outlined text-lg">
-                    {showPassword ? 'visibility_off' : 'visibility'}
-                  </span>
+                  {showPassword ? (
+                    <EyeOff className="w-4.5 h-4.5" />
+                  ) : (
+                    <Eye className="w-4.5 h-4.5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -704,7 +707,7 @@ export const Login: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white font-bold text-sm transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white font-bold text-sm transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
             >
               {isLoading ? (
                 <>
@@ -713,7 +716,7 @@ export const Login: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined">login</span>
+                  <LogIn className="w-4 h-4" />
                   {t('تسجيل الدخول', 'Login')}
                 </>
               )}

@@ -13,6 +13,7 @@ import { StatusChangeTable } from '../components/StatusChangeTable';
 import { TrainingTable } from '../components/TrainingTable';
 import { WarningTable } from '../components/WarningTable';
 import { getBranchName } from '../utils/branchHelper';
+import { getDepartmentName, getJobTitleName, DICT_EN, isArabicText } from '../utils/orgDictionary';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { DynamicHrisModule } from '../components/OrgModule/DynamicHrisModule';
 
@@ -41,6 +42,13 @@ export const Category3EmployeeView: React.FC = () => {
   const [profileSearchQuery, setProfileSearchQuery] = useState('');
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [avatarImgError, setAvatarImgError] = useState(false);
+
+  // References to guarantee stable profile search and prevent unintended input wipes during background polling
+  const profileSearchContainerRef = useRef<HTMLDivElement>(null);
+  const profileSearchInputRef = useRef<HTMLInputElement>(null);
+  const isProfileSearchFocusedRef = useRef<boolean>(false);
+  const lastSelectedEmpIdRef = useRef<string | null>(null);
+  const lastLanguageRef = useRef<string>(language);
 
   // Contract Preview & Print modal
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
@@ -125,20 +133,7 @@ export const Category3EmployeeView: React.FC = () => {
     return count;
   }, [employees]);
 
-  useEffect(() => {
-    setAvatarImgError(false);
-    if (selectedEmpId && employees.length > 0) {
-      const found = employees.find(e => {
-        const targetStr = String(selectedEmpId).toLowerCase().trim();
-        return String(e.id).toLowerCase().trim() === targetStr ||
-               (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
-               (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr);
-      });
-      if (found) {
-        setProfileSearchQuery(getEmpFullName(found));
-      }
-    }
-  }, [selectedEmpId, employees, language]);
+
 
   // Real-time synchronization for employee contract dates and previews without app reload
   useEffect(() => {
@@ -232,11 +227,13 @@ export const Category3EmployeeView: React.FC = () => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase().trim();
     return (
-      // البادج
+      // البادج و WAID
       (emp.employeeId && String(emp.employeeId).toLowerCase().includes(query)) ||
       (emp.employee_id && String(emp.employee_id).toLowerCase().includes(query)) ||
       (emp.badgeNo && String(emp.badgeNo).toLowerCase().includes(query)) ||
       (emp.badge_no && String(emp.badge_no).toLowerCase().includes(query)) ||
+      (emp.waid && String(emp.waid).toLowerCase().includes(query)) ||
+      (emp.wa_id && String(emp.wa_id).toLowerCase().includes(query)) ||
       // الاسم
       (emp.fullName && emp.fullName.toLowerCase().includes(query)) ||
       (emp.fullNameEn && emp.fullNameEn.toLowerCase().includes(query)) ||
@@ -272,20 +269,59 @@ export const Category3EmployeeView: React.FC = () => {
     );
   });
 
-  // Filter employees for profile search box
-  const matchingProfileEmployees = employees.filter(emp => {
-    if (!profileSearchQuery.trim()) return true;
-    const query = profileSearchQuery.toLowerCase();
-    return (
-      emp.fullName?.toLowerCase().includes(query) ||
-      emp.fullNameEn?.toLowerCase().includes(query) ||
-      emp.employeeId?.toLowerCase().includes(query) ||
-      emp.email?.toLowerCase().includes(query) ||
-      emp.jobTitle?.toLowerCase().includes(query) ||
-      emp.department?.toLowerCase().includes(query) ||
-      emp.branch?.toLowerCase().includes(query)
-    );
-  });
+  // Filter employees for profile search box with full Arabic/English search support
+  const matchingProfileEmployees = useMemo(() => {
+    const rawQuery = (profileSearchQuery || '').trim();
+    if (!rawQuery) return employees;
+
+    const normalize = (str: string) => {
+      return str
+        .toLowerCase()
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي')
+        .replace(/[\u064B-\u065F]/g, '')
+        .trim();
+    };
+
+    const query = normalize(rawQuery);
+
+    return employees.filter(emp => {
+      const candidates = [
+        emp.fullName,
+        emp.fullNameEn,
+        emp.full_name,
+        emp.full_name_ar,
+        emp.full_name_en,
+        emp.name_ar,
+        emp.name_en,
+        emp.employeeId,
+        emp.employee_id,
+        emp.badgeNo,
+        emp.badge_no,
+        emp.waid,
+        emp.wa_id,
+        emp.email,
+        emp.jobTitle,
+        emp.job_title,
+        emp.job_title_ar,
+        emp.jobTitleEn,
+        emp.job_title_en,
+        emp.department,
+        emp.department_ar,
+        emp.departmentEn,
+        emp.department_en,
+        emp.branch,
+        emp.branch_ar,
+        emp.branchEn,
+        emp.branch_en,
+        emp.location_ar,
+        emp.location_en,
+      ];
+
+      return candidates.some(c => c && normalize(String(c)).includes(query));
+    });
+  }, [employees, profileSearchQuery]);
 
   // Theme-based styling helpers for profile view
   const isDark = theme === 'dark';
@@ -457,6 +493,62 @@ export const Category3EmployeeView: React.FC = () => {
     return localized || '-';
   };
 
+  const selectedEmployee = useMemo(() => {
+    if (!employees || employees.length === 0) return null;
+    if (!selectedEmpId) return employees[0];
+    const targetStr = String(selectedEmpId).toLowerCase().trim();
+    return employees.find(e => {
+      return String(e.id).toLowerCase().trim() === targetStr ||
+             (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
+             (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr);
+    }) || employees[0];
+  }, [employees, selectedEmpId]);
+
+  useEffect(() => {
+    setAvatarImgError(false);
+
+    if (employees.length > 0) {
+      const activeId = selectedEmpId || employees[0]?.id || employees[0]?.employeeId;
+      const targetStr = activeId ? String(activeId).toLowerCase().trim() : '';
+      const hasIdChanged = targetStr !== lastSelectedEmpIdRef.current;
+      const hasLangChanged = language !== lastLanguageRef.current;
+
+      if (hasIdChanged || hasLangChanged || lastSelectedEmpIdRef.current === null) {
+        lastSelectedEmpIdRef.current = targetStr;
+        lastLanguageRef.current = language;
+
+        // Never overwrite if user is actively searching or typing
+        if (!isProfileSearchFocusedRef.current && !isSearchDropdownOpen) {
+          const found = employees.find(e => {
+            return String(e.id).toLowerCase().trim() === targetStr ||
+                   (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
+                   (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr);
+          }) || employees[0];
+
+          if (found) {
+            setProfileSearchQuery(getEmpFullName(found));
+          }
+        }
+      }
+    }
+  }, [selectedEmpId, employees.length, language, isSearchDropdownOpen]);
+
+  // Click outside listener for the profile search dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileSearchContainerRef.current && !profileSearchContainerRef.current.contains(event.target as Node)) {
+        setIsSearchDropdownOpen(false);
+        isProfileSearchFocusedRef.current = false;
+        if (selectedEmployee) {
+          setProfileSearchQuery(getEmpFullName(selectedEmployee));
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [selectedEmployee, language]);
+
   // 7 Tabs Form State
   const [activeTab, setActiveTab] = useState<number>(1);
 
@@ -473,7 +565,7 @@ export const Category3EmployeeView: React.FC = () => {
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [gender, setGender] = useState<'ذكر' | 'أنثى'>('ذكر');
   const [maritalStatus, setMaritalStatus] = useState<'أعزب' | 'متأهل' | 'مطلق' | 'أرمل'>('أعزب');
-  const [nationality, setNationality] = useState('عراقي');
+  const [nationality, setNationality] = useState(language === 'en' ? 'Iraqi' : 'عراقي');
 
   // Tab 2: Contracts & Service
   const [contractStartDate, setContractStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -481,19 +573,29 @@ export const Category3EmployeeView: React.FC = () => {
   const [originalStartDate, setOriginalStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [probationEndDate, setProbationEndDate] = useState('');
   const [exitDate, setExitDate] = useState('');
-  const [termOfContract, setTermOfContract] = useState('عقد محدد المدة (سنة واحدة)');
-  const [grade, setGrade] = useState('G-4 الدرجة الرابعة');
+  const [termOfContract, setTermOfContract] = useState('');
+  const [grade, setGrade] = useState('');
 
   // Tab 3: Position, Department & Branch
-  const [jobTitle, setJobTitle] = useState('مسؤول ائتمان أول');
-  const [jobTitleEn, setJobTitleEn] = useState('Senior Credit Officer');
-  const [department, setDepartment] = useState('إدارة التمويل الأصغر والعمليات');
-  const [departmentEn, setDepartmentEn] = useState('Microfinance & Operations');
-  const [branch, setBranch] = useState('فرع بغداد - الكرادة');
-  const [branchEn, setBranchEn] = useState('Baghdad Branch - Karrada');
+  const [jobTitle, setJobTitle] = useState('');
+  const [jobTitleEn, setJobTitleEn] = useState('');
+  const [department, setDepartment] = useState('');
+  const [departmentEn, setDepartmentEn] = useState('');
+  const [branch, setBranch] = useState('');
+  const [branchEn, setBranchEn] = useState('');
   const [positionStartDate, setPositionStartDate] = useState(originalStartDate);
-  const [supervisorName, setSupervisorName] = useState('أحمد جاسم المحمداوي');
-  const [workScope, setWorkScope] = useState('ميداني ومكتبي');
+  const [supervisorName, setSupervisorName] = useState('');
+  const [lebanonSupervisors, setLebanonSupervisors] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/regional/lebanon/supervisors')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) setLebanonSupervisors(data);
+      })
+      .catch(() => {});
+  }, []);
+  const [workScope, setWorkScope] = useState('Field & Admin');
 
   // Tab 4: Financial & Allowances
   const [basicSalary, setBasicSalary] = useState<number>(0);
@@ -702,16 +804,50 @@ export const Category3EmployeeView: React.FC = () => {
         ]);
 
         const rawBranches = Array.isArray(locationsData) ? locationsData : [];
-        const normalizedBranches = rawBranches.map((b: any) => ({
-          ...b,
-          name_ar: b.name_ar || b.name || '',
-          name: b.name || b.name_ar || '',
-          name_en: b.name_en || ''
-        }));
+        const normalizedBranches = rawBranches.map((b: any) => {
+          const raw = b.name_ar || b.name || b.name_en || '';
+          const ar = getBranchName(raw, null, 'ar');
+          const en = getBranchName(b.name_en || raw, null, 'en');
+          return {
+            ...b,
+            name_ar: ar,
+            name_en: en,
+            name: ar || en
+          };
+        });
+
+        const rawDepts = Array.isArray(departmentsData) ? departmentsData : [];
+        const normalizedDepts = rawDepts.map((d: any) => {
+          const raw = d.name_ar || d.name || d.name_en || '';
+          const ar = getDepartmentName(raw, 'ar');
+          const en = getDepartmentName(d.name_en || raw, 'en');
+          return {
+            ...d,
+            name_ar: ar,
+            name_en: en,
+            name: ar || en
+          };
+        });
+
+        const rawPositions = Array.isArray(positionsData) ? positionsData : [];
+        const normalizedPositions = rawPositions.map((p: any) => {
+          const raw = p.name_ar || p.title_ar || p.name || p.name_en || p.title || '';
+          const ar = getJobTitleName(raw, 'ar');
+          const en = getJobTitleName(p.name_en || p.title || raw, 'en');
+          return {
+            ...p,
+            name_ar: ar,
+            name_en: en,
+            title_ar: ar,
+            title_en: en,
+            title: en || ar,
+            name: ar || en
+          };
+        });
 
         setLocations(normalizedBranches);
-        setPositions(Array.isArray(positionsData) ? positionsData : []);
-        setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
+        setPositions(normalizedPositions);
+        setDepartments(normalizedDepts);
         setContractTypes(Array.isArray(contractTypesData) ? contractTypesData : []);
         setBranchLocations(normalizedBranches);
         
@@ -893,12 +1029,26 @@ export const Category3EmployeeView: React.FC = () => {
     );
     setNationality(clean(emp.nationality) || 'عراقي');
 
-    setDepartment(clean(emp.department || emp.department_name || emp.department_ar));
-    setDepartmentEn(clean(emp.departmentEn || emp.department_en));
-    setJobTitle(clean(emp.jobTitle || emp.position_ar || emp.position || emp.job_title));
-    setJobTitleEn(clean(emp.jobTitleEn || emp.position_en || emp.job_title_en));
-    setBranch(clean(emp.branch || emp.branch_name || emp.location_ar));
-    setBranchEn(clean(emp.branchEn || emp.branch_en || emp.location_en));
+    const rawDept = clean(emp.department || emp.department_name || emp.department_ar);
+    const rawDeptEn = clean(emp.departmentEn || emp.department_en);
+    const resolvedDeptAr = getDepartmentName(rawDept || rawDeptEn, 'ar') || rawDept;
+    const resolvedDeptEn = getDepartmentName(rawDeptEn || rawDept, 'en') || rawDeptEn;
+    setDepartment(resolvedDeptAr);
+    setDepartmentEn(resolvedDeptEn);
+
+    const rawJob = clean(emp.jobTitle || emp.position_ar || emp.position || emp.job_title);
+    const rawJobEn = clean(emp.jobTitleEn || emp.position_en || emp.job_title_en);
+    const resolvedJobAr = getJobTitleName(rawJob || rawJobEn, 'ar', positions) || rawJob;
+    const resolvedJobEn = getJobTitleName(rawJobEn || rawJob, 'en', positions) || rawJobEn;
+    setJobTitle(resolvedJobAr);
+    setJobTitleEn(resolvedJobEn);
+
+    const rawBranch = clean(emp.branch || emp.branch_name || emp.location_ar);
+    const rawBranchEn = clean(emp.branchEn || emp.branch_en || emp.location_en);
+    const resolvedBranchAr = getBranchName(rawBranch || rawBranchEn, null, 'ar') || rawBranch;
+    const resolvedBranchEn = getBranchName(rawBranchEn || rawBranch, null, 'en') || rawBranchEn;
+    setBranch(resolvedBranchAr);
+    setBranchEn(resolvedBranchEn);
     setSupervisorName(clean(emp.supervisorName || emp.supervisor_name));
     setWorkScope(clean(emp.workScope || emp.work_scope) || 'ميداني ومكتبي');
 
@@ -960,8 +1110,31 @@ export const Category3EmployeeView: React.FC = () => {
     setTrainingsRecord('');
     setWarningsRecord('');
     setExitDate('');
+    setNationality(language === 'en' ? 'Iraqi' : 'عراقي');
     setPositionStartDate(new Date().toISOString().split('T')[0]);
+    setJobTitle('');
+    setJobTitleEn('');
+    setDepartment('');
+    setDepartmentEn('');
+    setBranch('');
     setBranchEn('');
+    setSupervisorName('');
+    setGrade('');
+    setTermOfContract('');
+    setWorkScope('Field & Admin');
+    setWrittenBasicSalaryAr('');
+    setBankName('');
+    setIban('');
+    setBasicSalary(0);
+    setTransportationFixed(0);
+    setFixedBonus(0);
+    setPhoneAllowance(0);
+    setCertificateAllowance(0);
+    setSpouseAllowance(0);
+    setChildAllowance(0);
+    setFamilyAllowance(0);
+    setIsSsTaxExempt(false);
+    setSsTaxExemptionReason('');
     setPhotoUrl('');
     if (photoFileInputRef.current) photoFileInputRef.current.value = '';
     setActiveTab(1);
@@ -994,8 +1167,8 @@ export const Category3EmployeeView: React.FC = () => {
   const handleEditBranch = (branch: any) => {
     setEditingBranch(branch);
     setBranchFormData({
-      name: branch.name || '',
-      name_en: branch.name_en || '',
+      name: branch.name_ar || branch.name || branch.name_en || '',
+      name_en: branch.name_en || branch.name || branch.name_ar || '',
       address: branch.address || '',
       city: branch.city || '',
       phone: branch.phone || '',
@@ -1173,6 +1346,7 @@ export const Category3EmployeeView: React.FC = () => {
     try {
       const branchData = {
         name: branchFormData.name,
+        name_ar: branchFormData.name,
         name_en: branchFormData.name_en,
         address: branchFormData.address,
         city: branchFormData.city,
@@ -1185,17 +1359,27 @@ export const Category3EmployeeView: React.FC = () => {
 
       if (editingBranch) {
         // Update existing branch
-        console.log('Updating branch with ID:', editingBranch.id);
-        await api.updateBranch(editingBranch.id.toString(), branchData);
+        const targetId = editingBranch.id || editingBranch._id;
+        console.log('Updating branch with ID:', targetId);
+        
+        let updateResult: any = null;
+        if (targetId) {
+          updateResult = await api.updateBranch(targetId.toString(), { ...branchData, id: targetId });
+        } else {
+          updateResult = await api.addBranch(branchData);
+        }
+
+        const finalId = targetId || (updateResult && updateResult.id) || editingBranch.id;
         const updatedBranch = {
           ...editingBranch,
           ...branchData,
+          id: finalId,
           name_ar: branchData.name,
           name: branchData.name,
           name_en: branchData.name_en
         };
         const updatedBranches = branchLocations.map(b =>
-          String(b.id) === String(editingBranch.id) ? updatedBranch : b
+          (finalId && String(b.id) === String(finalId)) || (b.name === editingBranch.name) ? updatedBranch : b
         );
         setBranchLocations(updatedBranches);
         setLocations(updatedBranches);
@@ -1218,22 +1402,22 @@ export const Category3EmployeeView: React.FC = () => {
         setLocations(updatedBranches);
       }
       
-      api.getBranches().then((locs: any) => {
-        if (Array.isArray(locs)) {
-          const norm = locs.map((b: any) => ({
-            ...b,
-            name_ar: b.name_ar || b.name || '',
-            name: b.name || b.name_ar || '',
-            name_en: b.name_en || ''
-          }));
-          setBranchLocations(norm);
-          setLocations(norm);
-        }
-      }).catch(() => {});
+      const freshLocs: any = await api.getBranches().catch(() => null);
+      if (Array.isArray(freshLocs)) {
+        const norm = freshLocs.map((b: any) => ({
+          ...b,
+          name_ar: b.name_ar || b.name || '',
+          name: b.name || b.name_ar || '',
+          name_en: b.name_en || ''
+        }));
+        setBranchLocations(norm);
+        setLocations(norm);
+      }
 
       setShowBranchModal(false);
       setEditingBranch(null);
       setBranchFormData({ name: '', name_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
+      alert(language === 'ar' ? (editingBranch ? 'تم تحديث بيانات الفرع بنجاح' : 'تمت إضافة الفرع بنجاح') : (editingBranch ? 'Branch updated successfully' : 'Branch added successfully'));
     } catch (error) {
       console.error('Error saving branch:', error);
       alert((language === 'ar' ? 'فشل حفظ الفرع: ' : 'Failed to save branch: ') + ((error as any).message || error));
@@ -1472,13 +1656,7 @@ export const Category3EmployeeView: React.FC = () => {
     );
   };
 
-  const selectedEmployee = employees.find(e => {
-    if (!selectedEmpId) return false;
-    const targetStr = String(selectedEmpId).toLowerCase().trim();
-    return String(e.id).toLowerCase().trim() === targetStr ||
-           (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
-           (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr);
-  }) || employees[0];
+
 
   const TAB_ITEMS = [
     { id: 1, title: t('المعلومات الأساسية', 'Basic Info'), icon: 'badge', desc: t('الاسم، البريد الهواتف والحالة', 'Name, Email, Phone & Status') },
@@ -1506,11 +1684,11 @@ export const Category3EmployeeView: React.FC = () => {
   });
 
   return (
-    <div className={`${activeModuleId === 'emp-profile' ? 'space-y-2' : (activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'space-y-3' : 'space-y-6'} animate-in fade-in duration-300`}>
+    <div className={`${(activeModuleId === 'emp-profile' || activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'space-y-1.5' : 'space-y-6'} animate-in fade-in duration-300`}>
       {/* Page Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className={`${activeModuleId === 'emp-profile' ? 'text-base sm:text-lg' : (activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'text-lg sm:text-xl' : 'text-2xl'} font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5">
+          <h1 className={`${(activeModuleId === 'emp-profile' || activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'text-base sm:text-lg' : 'text-2xl'} font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {activeModuleId === 'emp-directory' && t('دليل الموظفين المؤسسي', 'Corporate Employee Directory')}
             {activeModuleId === 'emp-hr-directory' && t('دليل الموظفين الشامل - إدارة الموارد البشرية', 'Comprehensive Employee Directory - HR')}
             {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
@@ -1525,11 +1703,29 @@ export const Category3EmployeeView: React.FC = () => {
             {activeModuleId === 'emp-calendar' && t('تقويم الفعاليات والعطل الرسمية', 'Events & Official Holidays Calendar')}
             {activeModuleId === 'emp-news' && t('مركز الأخبار والتنويهات الداخلية', 'Internal News & Announcements Center')}
           </h1>
+
+          {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
+            <span className={`text-[11px] font-mono font-bold ${isDark ? 'bg-teal-600/20 text-teal-300 border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200'} px-2.5 py-0.5 rounded-xl border shrink-0`}>
+              {t(`التبويب ${activeTab} من 7: ${TAB_ITEMS[activeTab - 1]?.title || ''}`, `Tab ${activeTab} of 7: ${TAB_ITEMS[activeTab - 1]?.title || ''}`)}
+            </span>
+          )}
         </div>
 
         {/* Action buttons for other modules if any */}
         {(activeModuleId !== 'emp-directory' && activeModuleId !== 'emp-hr-directory') && (
           <div className="flex items-center gap-2 flex-wrap">
+            {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
+              <button
+                type="button"
+                onClick={() => setActiveModuleId('emp-hr-directory')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                  isDark ? 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                }`}
+              >
+                <span className="material-symbols-outlined text-xs">arrow_back</span>
+                <span>{t('العودة للدليل', 'Back to Directory')}</span>
+              </button>
+            )}
             {isReadOnly() && (
               <span className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5 shadow-sm">
                 <span className="material-symbols-outlined text-sm">visibility</span>
@@ -1735,6 +1931,7 @@ export const Category3EmployeeView: React.FC = () => {
                     <th className="py-3 px-3 text-center w-12 font-bold">#</th>
                     <th className="py-3 px-4 font-bold">{t('الموظف', 'Employee')}</th>
                     <th className="py-3 px-3 font-bold text-center whitespace-nowrap">{t('كود الموظف', 'Badge / ID')}</th>
+                    <th className="py-3 px-3 font-bold text-center whitespace-nowrap">{t('معرف الحوافز (WAID)', 'WAID')}</th>
                     <th className="py-3 px-4 font-bold whitespace-nowrap">{t('المسمى الوظيفي', 'Job Title')}</th>
                     <th className="py-3 px-4 font-bold whitespace-nowrap">{t('القسم / الإدارة', 'Department')}</th>
                     <th className="py-3 px-4 font-bold whitespace-nowrap">{t('الفرع والموقع', 'Branch Location')}</th>
@@ -1797,6 +1994,21 @@ export const Category3EmployeeView: React.FC = () => {
                           }`}>
                             {emp.employeeId || '-'}
                           </span>
+                        </td>
+
+                        {/* WAID Badge */}
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          {(emp.waid || emp.wa_id) ? (
+                            <span className={`px-2 py-0.5 rounded-lg font-mono font-bold text-xs border ${
+                              theme === 'dark'
+                                ? 'bg-teal-600/20 text-teal-300 border-teal-500/30'
+                                : 'bg-teal-50 text-teal-800 border-teal-200'
+                            }`}>
+                              {emp.waid || emp.wa_id}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-mono text-xs">-</span>
+                          )}
                         </td>
 
                         {/* Job Title */}
@@ -1927,6 +2139,15 @@ export const Category3EmployeeView: React.FC = () => {
                           }`}>
                             {emp.employeeId || '-'}
                           </span>
+                          {(emp.waid || emp.wa_id) && (
+                            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                              theme === 'dark'
+                                ? 'bg-teal-600/20 text-teal-300 border-teal-500/20'
+                                : 'bg-teal-50 text-teal-700 border-teal-200 shadow-2xs'
+                            }`} title="WAID - Incentives ID">
+                              WAID: {emp.waid || emp.wa_id}
+                            </span>
+                          )}
                         </div>
                         <p className={`text-xs font-semibold mt-0.5 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-700'}`}>
                           {getEmpJobTitle(emp)}
@@ -2061,6 +2282,12 @@ export const Category3EmployeeView: React.FC = () => {
                         <span>{t('البريد الإلكتروني:', 'Email:')}</span>
                         <span className={`font-mono text-[11px] ${theme === 'dark' ? 'text-slate-200' : 'text-slate-900'}`}>{emp.email || '-'}</span>
                       </p>
+                      {(emp.waid || emp.wa_id) && (
+                        <p className="flex justify-between">
+                          <span>{t('معرف الحوافز:', 'WAID:')}</span>
+                          <span className={`font-mono font-bold text-[11px] ${theme === 'dark' ? 'text-teal-300' : 'text-teal-700'}`}>{emp.waid || emp.wa_id}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -2130,84 +2357,144 @@ export const Category3EmployeeView: React.FC = () => {
 
       {/* 7-TABS ADD/EDIT EMPLOYEE FORM */}
       {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
-        <div className="max-w-[1500px] w-full mx-auto p-4 sm:p-5 rounded-2xl bg-[#111827] border border-white/10 shadow-2xl space-y-3">
-          {isReadOnly() && (
-            <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs font-bold flex items-center gap-2 shadow-sm">
-              <span className="material-symbols-outlined text-sm">lock</span>
-              {t('تنبيه: أنت تتصفح هذا السجل بوضع القراءة فقط (Read-Only). تم تعطيل عمليات الحفظ والتعديل.', 'Notice: You are viewing this record in Read-Only mode. Saving and modifying are disabled.')}
-            </div>
-          )}
-          <div className="border-b border-white/10 pb-2.5 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-400 text-lg">
-                  {(activeModuleId === 'emp-edit' || selectedEmpId) ? 'edit' : 'person_add'}
-                </span>
-                {(activeModuleId === 'emp-edit' || selectedEmpId)
-                  ? t('نموذج تعديل بيانات الموظف الشامل (7 تبويبات رئيسية)', 'Comprehensive Employee Edit Form (7 Main Tabs)') 
-                  : t('نموذج إضافة موظف جديد الشامل (7 تبويبات رئيسية)', 'Comprehensive New Employee Add Form (7 Main Tabs)')}
-              </h2>
-              <p className="text-[11px] text-slate-400">
-                {t('مطابق تماماً لمواصفات جدول employees في قاعدة البيانات hrms_pro_db', 'Fully compliant with employees table specifications in hrms_pro_db database')}
-              </p>
-            </div>
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold font-mono">
-              {t(`التبويب ${activeTab} من 7`, `Tab ${activeTab} of 7`)}
-            </span>
-          </div>
+        <div className="max-w-7xl mx-auto space-y-1.5 animate-in fade-in duration-300">
+          {/* THE LARGE FORM WINDOW (Exact layout and aesthetics as The Large Profile Window) */}
+          <div className={`p-3.5 sm:p-4 rounded-2xl ${profileColors.cardBg} border ${profileColors.cardBorder} ${profileColors.shadow} relative overflow-hidden ${profileColors.text}`}>
+            {/* Background decorative soft ambient light */}
+            <div className={`absolute -top-24 left-1/4 w-96 h-96 ${isDark ? 'bg-teal-500/5' : 'bg-teal-500/10'} blur-3xl rounded-full pointer-events-none`} />
 
-          {/* Tab Navigation Header (7 Tabs Stepper) */}
-          <div className="space-y-2">
-            {/* Progress bar line */}
-            <div className="w-full bg-[#0a0c10] rounded-full h-1 overflow-hidden border border-white/5">
-              <div 
-                className="bg-gradient-to-r from-teal-500 to-teal-600 h-full transition-all duration-300 ease-out"
-                style={{ width: `${(activeTab / 7) * 100}%` }}
-              />
-            </div>
+            <div className="flex flex-col lg:flex-row items-stretch gap-4 lg:gap-6 relative z-10 [direction:ltr]">
+              {/* LEFT PANE: Photo Avatar at Top-Left, Name, Badges, and Action Buttons */}
+              <div className="w-full lg:w-60 xl:w-64 shrink-0 flex flex-col justify-between items-center text-center py-1 space-y-3">
+                <div className="flex flex-col items-center space-y-2.5 w-full">
+                  {/* Photo Frame at top-left */}
+                  <div className="relative group">
+                    <div className="absolute -inset-1.5 bg-gradient-to-r from-teal-400 via-teal-300 to-teal-500 rounded-2xl blur-sm opacity-50 group-hover:opacity-80 transition-all duration-300" />
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
-              {TAB_ITEMS.map(tab => {
-                const isActive = activeTab === tab.id;
-                const isCompleted = tab.id < activeTab;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-2 py-1.5 rounded-xl text-right transition-all flex items-center gap-2 border cursor-pointer min-h-[46px] ${
-                      isActive
-                        ? 'bg-teal-600 border-teal-500 text-white shadow-md shadow-teal-600/30 scale-[1.01] z-10'
-                        : isCompleted
-                        ? 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50 shadow-sm'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm'
-                    }`}
-                  >
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold font-mono text-[10px] shrink-0 transition-all ${
-                      isActive
-                        ? 'bg-white text-teal-700 shadow-xs'
-                        : isCompleted
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : 'bg-slate-100 text-slate-700 border border-slate-200'
-                    }`}>
-                      {isCompleted ? '✓' : tab.id}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <span className={`block text-[11px] font-bold leading-tight truncate ${
-                        isActive ? 'text-white' : 'text-slate-900'
-                      }`}>{tab.title}</span>
-                      <span className={`block text-[9px] truncate ${
-                        isActive ? 'text-white/80 font-normal' : 'text-slate-500'
-                      }`}>{tab.desc}</span>
+                    {/* Photo Avatar Frame (Matches 3:4 Portrait ID Photos) */}
+                    <div className={`relative w-32 h-42 rounded-2xl border-2 ${isDark ? 'border-[#1a1f2e]' : 'border-white'} ${isDark ? 'bg-[#1a1f2e]' : 'bg-white'} shadow-xl overflow-hidden flex items-center justify-center ${isDark ? 'text-blue-400' : 'text-blue-600'} text-3xl font-black shrink-0`}>
+                      {photoUrl ? (
+                        <img
+                          src={photoUrl}
+                          alt={fullName || 'Preview'}
+                          className="w-full h-full object-contain p-1 rounded-xl"
+                        />
+                      ) : (
+                        <div className={`w-full h-full ${isDark ? 'bg-gradient-to-br from-teal-900/30 via-teal-800/30 to-teal-900/30' : 'bg-gradient-to-br from-teal-50 via-teal-100 to-teal-50'} flex flex-col items-center justify-center ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
+                          <span className="material-symbols-outlined text-5xl">person_add</span>
+                          <span className="text-[10px] mt-1 font-bold">{t('صورة الموظف', 'Photo')}</span>
+                        </div>
+                      )}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* Form Content Body */}
-          <form onSubmit={handleAddEmployeeSubmit} className="space-y-3 text-xs">
+                    {/* Status Indicator Badge (Bottom Right Corner) */}
+                    <span className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 ${isDark ? 'border-[#1a1f2e]' : 'border-white'} z-10 ${
+                      status === 'Active' ? 'bg-emerald-500 shadow-md shadow-emerald-500/40' : 'bg-amber-500'
+                    }`} title={status} />
+
+                    {/* Upload / Change Photo button (Bottom Left Corner) */}
+                    <label className="absolute -bottom-1 -left-1 w-7 h-7 rounded-full bg-teal-600 hover:bg-teal-500 text-white flex items-center justify-center shadow-md shadow-teal-600/40 border-2 border-white dark:border-[#1a1f2e] transition-all hover:scale-110 cursor-pointer z-10"
+                      title={t('رفع أو تغيير صورة الموظف', 'Upload or change photo')}
+                    >
+                      <span className="material-symbols-outlined text-xs">add_a_photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              if (typeof reader.result === 'string') {
+                                setPhotoUrl(reader.result);
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Live Employee Name Preview */}
+                  <div className="space-y-0.5 w-full">
+                    <h2 className={`text-base font-black ${isDark ? 'text-white' : 'text-slate-900'} tracking-tight font-cairo leading-tight truncate`}>
+                      {(language === 'en' ? (fullNameEn || fullName) : (fullName || fullNameEn)) || t('اسم الموظف الجديد', 'New Employee Name')}
+                    </h2>
+                    <p className={`text-[11px] font-semibold ${isDark ? 'text-teal-400' : 'text-teal-700'} font-mono truncate`}>
+                      {(language === 'en' ? (fullName || 'Employee Registration') : (fullNameEn || 'New Employee Registration'))}
+                    </p>
+                  </div>
+
+                  {/* Live Badges List */}
+                  <div className="flex flex-wrap items-center justify-center gap-1 text-[11px]">
+                    <span className={`px-2 py-0.5 rounded-full ${isDark ? 'bg-teal-600/20 border-teal-500/30 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-700'} font-bold shadow-xs truncate max-w-[130px]`}>
+                      {(language === 'en' ? (jobTitleEn || dictEn[jobTitle] || jobTitle) : (jobTitle || jobTitleEn)) || t('المسمى الوظيفي', 'Job Title')}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'} font-mono font-bold shadow-xs flex items-center gap-1`}>
+                      <span className={`text-[9px] ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'} font-sans font-semibold`}>{t('الرقم:', 'ID:')}</span>
+                      {empCode || 'AUTO'}
+                    </span>
+                    {badgeNo && (
+                      <span className={`px-2 py-0.5 rounded-full ${isDark ? 'bg-indigo-600/20 border-indigo-500/30 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'} font-mono font-bold shadow-xs flex items-center gap-1`}>
+                        <span className={`text-[9px] ${isDark ? 'text-indigo-400/80' : 'text-indigo-600/80'} font-sans font-semibold`}>{t('الباج:', 'Badge:')}</span>
+                        {badgeNo}
+                      </span>
+                    )}
+                    {waid && (
+                      <span className={`px-2 py-0.5 rounded-full ${isDark ? 'bg-teal-600/20 border-teal-500/30 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-700'} font-mono font-bold shadow-xs flex items-center gap-1`}>
+                        <span className={`text-[9px] ${isDark ? 'text-teal-400/80' : 'text-teal-600/80'} font-sans font-semibold`}>WAID:</span>
+                        {waid}
+                      </span>
+                    )}
+                    <span className={`px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-600/20 border-purple-500/30 text-purple-400' : 'bg-purple-50 border-purple-200 text-purple-700'} font-bold shadow-xs truncate max-w-[130px]`}>
+                      {getBranchName(branch, branchEn, language) || t('الفرع', 'Branch')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Buttons in Left Pane */}
+                <div className="flex flex-col gap-2 w-full pt-1">
+                  {canWrite() ? (
+                    <button
+                      type="submit"
+                      form="add-employee-form"
+                      className="w-full h-9 px-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01] active:scale-98"
+                    >
+                      <span className="material-symbols-outlined text-base">save</span>
+                      <span>{t('حفظ وتخزين الموظف (التبويبات الـ 7)', 'Save & Store Employee (All 7 Tabs)')}</span>
+                    </button>
+                  ) : (
+                    <div className="w-full px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm">lock</span>
+                      <span>{t('الحفظ والتعديل معطل (وضع القراءة فقط)', 'Save & Edit Disabled (Read-Only Access)')}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveModuleId('emp-directory')}
+                    className="w-full h-8 px-3 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01] active:scale-98"
+                  >
+                    <span className="material-symbols-outlined text-sm">close</span>
+                    <span>{t('إلغاء', 'Cancel')}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* RIGHT PANE: Tab Form Fields with Profile-like Scrollable Card */}
+              <div className={`flex-1 min-w-0 w-full flex flex-col ${language === 'ar' ? '[direction:rtl]' : '[direction:ltr]'}`}>
+                {isReadOnly() && (
+                  <div className="p-2 mb-2 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs font-bold flex items-center gap-2 shadow-sm">
+                    <span className="material-symbols-outlined text-sm">lock</span>
+                    {t('تنبيه: أنت تتصفح هذا السجل بوضع القراءة فقط (Read-Only). تم تعطيل عمليات الحفظ والتعديل.', 'Notice: You are viewing this record in Read-Only mode. Saving and modifying are disabled.')}
+                  </div>
+                )}
+                <form id="add-employee-form" onSubmit={handleAddEmployeeSubmit} className="flex-1 flex flex-col min-h-0">
+                  <div className={`p-3.5 sm:p-4 rounded-xl border ${
+                    isDark ? 'bg-[#06080d]/80 border-white/10' : 'bg-white border-slate-200 shadow-xs'
+                  } space-y-3 text-xs ${profileColors.text} h-[455px] min-h-[455px] max-h-[455px] overflow-y-auto profile-scrollbar flex-1`}>
             {/* TAB 1: Basic & Personal Info */}
             {activeTab === 1 && (
               <div className="space-y-3 animate-in fade-in duration-200">
@@ -2363,8 +2650,9 @@ export const Category3EmployeeView: React.FC = () => {
                     <label className="block text-black font-semibold text-[11px] mb-1">{t('الجنسية', 'Nationality')}</label>
                     <input
                       type="text"
-                      value={nationality}
+                      value={language === 'en' && nationality === 'عراقي' ? 'Iraqi' : (language === 'ar' && nationality === 'Iraqi' ? 'عراقي' : nationality)}
                       onChange={e => setNationality(e.target.value)}
+                      placeholder={t('عراقي', 'Iraqi')}
                       className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
                     />
                   </div>
@@ -2582,7 +2870,7 @@ export const Category3EmployeeView: React.FC = () => {
                       options={contractTypes}
                       value={termOfContract}
                       onChange={(value) => setTermOfContract(value)}
-                      placeholder="اختر نوع العقد"
+                      placeholder={t('اختر نوع العقد', 'Select contract type')}
                       language={language}
                     />
                   </div>
@@ -2593,7 +2881,7 @@ export const Category3EmployeeView: React.FC = () => {
                       type="text"
                       value={grade}
                       onChange={e => setGrade(e.target.value)}
-                      placeholder={t('مثال: G-4 الدرجة الرابعة', 'Example: G-4 Fourth Grade')}
+                      placeholder={t('مثال: G-4 الدرجة الرابعة', 'e.g. G-4 Level')}
                       className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
                     />
                   </div>
@@ -2617,8 +2905,10 @@ export const Category3EmployeeView: React.FC = () => {
                       value={jobTitle}
                       onChange={(value, option) => {
                         setJobTitle(value);
-                        if (option) {
-                          setJobTitleEn(option.name_en || '');
+                        const opt = option || positions.find((p: any) => p.name_ar === value || p.title_ar === value || p.name === value);
+                        const en = opt?.name_en || opt?.title || getJobTitleName(value, 'en', positions);
+                        if (en) {
+                          setJobTitleEn(en);
                         }
                       }}
                       placeholder={t('اختر المسمى الوظيفي (بالعربية)', 'Select job title (Arabic)')}
@@ -2633,8 +2923,10 @@ export const Category3EmployeeView: React.FC = () => {
                       value={jobTitleEn}
                       onChange={(value, option) => {
                         setJobTitleEn(value);
-                        if (option) {
-                          setJobTitle(option.name_ar || option.name || '');
+                        const opt = option || positions.find((p: any) => p.name_en === value || p.title === value || p.name === value);
+                        const ar = opt?.name_ar || opt?.title_ar || getJobTitleName(value, 'ar', positions);
+                        if (ar) {
+                          setJobTitle(ar);
                         }
                       }}
                       placeholder={t('اختر المسمى الوظيفي (بالإنجليزية)', 'Select job title (English)')}
@@ -2677,12 +2969,14 @@ export const Category3EmployeeView: React.FC = () => {
                       value={department}
                       onChange={(value, option) => {
                         setDepartment(value);
-                        if (option) {
-                          setDepartmentEn(option.name_en);
+                        const opt = option || departments.find((d: any) => d.name_ar === value || d.name === value);
+                        const en = opt?.name_en || getDepartmentName(value, 'en');
+                        if (en) {
+                          setDepartmentEn(en);
                         }
                       }}
-                      placeholder={t('اختر القسم', 'Select department')}
-                      language={language}
+                      placeholder={t('اختر القسم (بالعربية)', 'Select department (Arabic)')}
+                      language="ar"
                     />
                   </div>
 
@@ -2693,12 +2987,14 @@ export const Category3EmployeeView: React.FC = () => {
                       value={departmentEn}
                       onChange={(value, option) => {
                         setDepartmentEn(value);
-                        if (option) {
-                          setDepartment(option.name_ar);
+                        const opt = option || departments.find((d: any) => d.name_en === value || d.name === value);
+                        const ar = opt?.name_ar || getDepartmentName(value, 'ar');
+                        if (ar) {
+                          setDepartment(ar);
                         }
                       }}
-                      placeholder={t('Select department', 'اختر القسم')}
-                      language={language}
+                      placeholder={t('اختر القسم (بالإنجليزية)', 'Select department (English)')}
+                      language="en"
                     />
                   </div>
 
@@ -2709,12 +3005,14 @@ export const Category3EmployeeView: React.FC = () => {
                       value={branch}
                       onChange={(value, option) => {
                         setBranch(value);
-                        if (option) {
-                          setBranchEn(option.name_en);
+                        const opt = option || locations.find((b: any) => b.name_ar === value || b.name === value);
+                        const en = opt?.name_en || getBranchName(value, null, 'en');
+                        if (en) {
+                          setBranchEn(en);
                         }
                       }}
-                      placeholder={t('اختر الفرع', 'Select branch')}
-                      language={language}
+                      placeholder={t('اختر الفرع (بالعربية)', 'Select branch (Arabic)')}
+                      language="ar"
                     />
                   </div>
 
@@ -2725,24 +3023,41 @@ export const Category3EmployeeView: React.FC = () => {
                       value={branchEn}
                       onChange={(value, option) => {
                         setBranchEn(value);
-                        if (option) {
-                          setBranch(option.name_ar);
+                        const opt = option || locations.find((b: any) => b.name_en === value || b.name === value);
+                        const ar = opt?.name_ar || getBranchName(value, null, 'ar');
+                        if (ar) {
+                          setBranch(ar);
                         }
                       }}
-                      placeholder={t('Select branch', 'اختر الفرع')}
-                      language={language}
+                      placeholder={t('اختر الفرع (بالإنجليزية)', 'Select branch (English)')}
+                      language="en"
                     />
                   </div>
 
                   <div className="sm:col-span-1 lg:col-span-2">
-                    <label className="block text-black font-semibold text-[11px] mb-1">{t('اسم المشرف المباشر', 'Direct Supervisor Name')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">
+                      {t('اسم المشرف المباشر (يمكن اختيار مشرف من العراق أو من مكتب لبنان)', 'Direct Supervisor (Iraq or Lebanon Office)')}
+                    </label>
                     <input
                       type="text"
-                      placeholder={t('اسم المدير المباشر', 'Direct Manager Name')}
+                      list="supervisors-suggestions-list"
+                      placeholder={t('اسم المدير المباشر (أو اختر من المشرفين المتاحين)', 'Direct Manager Name (or pick from suggestions)')}
                       value={supervisorName}
                       onChange={e => setSupervisorName(e.target.value)}
                       className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
                     />
+                    <datalist id="supervisors-suggestions-list">
+                      {lebanonSupervisors.map((s: any) => (
+                        <option key={s.id} value={`${s.name} [🇱🇧 مشرف إقليمي - بيروت]`}>
+                          {s.job_title} - {s.department} (لبنان)
+                        </option>
+                      ))}
+                      {employees.filter(e => e.jobTitle?.includes('مدير') || e.job_title?.includes('مدير') || e.jobTitle?.includes('Manager')).map((m: any) => (
+                        <option key={m.id} value={m.name || m.full_name}>
+                          {m.jobTitle || m.job_title} [🇮🇶 العراق]
+                        </option>
+                      ))}
+                    </datalist>
                   </div>
 
                   <div className="sm:col-span-1 lg:col-span-2">
@@ -2787,7 +3102,7 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الراتب الاسمي كتابة (بالعربية)', 'Basic Salary in Writing (Arabic)')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الراتب الاسمي كتابة', 'Basic Salary in Words')}</label>
                     <input
                       type="text"
                       value={writtenBasicSalaryAr}
@@ -2829,8 +3144,8 @@ export const Category3EmployeeView: React.FC = () => {
 
                   <div>
                     <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
-                      مخصصات الهاتف (Phone)
-                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">من الإعدادات</span>
+                      {t('مخصصات الهاتف', 'Phone Allowance')}
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('من الإعدادات', 'From Settings')}</span>
                     </label>
                     <input
                       type="text"
@@ -2843,7 +3158,7 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-semibold text-[11px] mb-1">مخصصات الشهادة (Certificate)</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('مخصصات الشهادة', 'Certificate Allowance')}</label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -2856,8 +3171,8 @@ export const Category3EmployeeView: React.FC = () => {
 
                   <div>
                     <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
-                      بدل الزوج/ة (Spouse)
-                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">تلقائي</span>
+                      {t('بدل الزوج/ة', 'Spouse Allowance')}
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">{t('تلقائي', 'Auto')}</span>
                     </label>
                     <input
                       type="text"
@@ -2871,8 +3186,8 @@ export const Category3EmployeeView: React.FC = () => {
 
                   <div>
                     <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
-                      بدل الطفل الواحد (Child)
-                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">تلقائي</span>
+                      {t('بدل الطفل الواحد', 'Child Allowance')}
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">{t('تلقائي', 'Auto')}</span>
                     </label>
                     <input
                       type="text"
@@ -2891,7 +3206,7 @@ export const Category3EmployeeView: React.FC = () => {
                     </label>
                     <div className="w-full bg-[#0a0c10] border border-teal-500/20 rounded-lg px-3 py-1.5 sm:py-2 flex items-center justify-between gap-2">
                       <span className="text-teal-400 font-mono font-bold text-sm">{familyAllowance > 0 ? formatWithCommas(familyAllowance) : '0'}</span>
-                      <span className="text-slate-500 text-[10px]">د.ع</span>
+                      <span className="text-slate-500 text-[10px]">{t('د.ع', 'IQD')}</span>
                     </div>
                   </div>
 
@@ -2906,7 +3221,7 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-black font-semibold text-[11px] mb-1">رقم الحساب المصرفي الدولي (IBAN)</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('رقم الحساب المصرفي الدولي (IBAN)', 'International Bank Account Number (IBAN)')}</label>
                     <input
                       type="text"
                       value={iban}
@@ -2916,129 +3231,66 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-300 uppercase flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-rose-400 text-sm">shield_person</span>
-                    {t('تقدير الاستقطاعات القانونية والصافي (الضمان الاجتماعي + الضريبة + التأمين)', 'Statutory Deductions & Net Estimation')}
-                  </h4>
-                  {/* SS/Tax Exemption Checkbox */}
-                  <div className={`flex flex-col gap-2 rounded-xl border p-3 ${
-                    isSsTaxExempt
-                      ? 'bg-amber-500/10 border-amber-500/30'
-                      : 'bg-emerald-500/10 border-emerald-500/20'
-                  }`}>
-                    <label className="flex items-center gap-3 cursor-pointer select-none" dir="rtl">
-                      <div className="relative">
-                        <input
-                          type="checkbox"
-                          checked={isSsTaxExempt}
-                          onChange={e => {
-                            setIsSsTaxExempt(e.target.checked);
-                            if (!e.target.checked) setSsTaxExemptionReason('');
-                          }}
-                          className="sr-only peer"
-                        />
-                        <div className={`w-10 h-5 rounded-full transition-colors ${
-                          isSsTaxExempt ? 'bg-amber-500' : 'bg-emerald-500'
-                        } relative`}>
-                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${
-                            isSsTaxExempt ? 'right-0.5' : 'left-0.5'
-                          }`} />
-                        </div>
+                <div className={`flex flex-col gap-2 rounded-2xl border p-3.5 ${
+                  isSsTaxExempt
+                    ? 'bg-amber-500/10 border-amber-500/30'
+                    : 'bg-slate-900/60 border-white/10'
+                }`}>
+                  <label className="flex items-center gap-3 cursor-pointer select-none" dir="rtl">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={isSsTaxExempt}
+                        onChange={e => {
+                          setIsSsTaxExempt(e.target.checked);
+                          if (!e.target.checked) setSsTaxExemptionReason('');
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className={`w-10 h-5 rounded-full transition-colors ${
+                        isSsTaxExempt ? 'bg-amber-500' : 'bg-emerald-500'
+                      } relative`}>
+                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                          isSsTaxExempt ? 'right-0.5' : 'left-0.5'
+                        }`} />
                       </div>
-                      <div className="flex flex-col">
-                        <span className={`text-sm font-bold ${
-                          isSsTaxExempt ? 'text-amber-400' : 'text-emerald-400'
-                        }`}>
-                          {isSsTaxExempt
-                            ? t('معفى من الضمان الاجتماعي وضريبة الدخل', 'Exempt from SS & Income Tax')
-                            : t('خاضع للضمان الاجتماعي وضريبة الدخل (الوضع الافتراضي)', 'Subject to SS & Income Tax (Default)')
-                          }
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          {isSsTaxExempt
-                            ? t('لن يظهر هذا الموظف في احتسابات الضمان والضريبة', 'Employee excluded from SS/Tax calculations')
-                            : t('يحتسب الضمان (5%) والضريبة وفق القانون 18 و113', 'SS (5%) and Tax calculated per Law 18 & 113')
-                          }
-                        </span>
-                      </div>
-                    </label>
-                    {isSsTaxExempt && (
-                      <div>
-                        <label className="block text-xs text-amber-400 font-medium mb-1">
-                          {t('سبب الإعفاء من الضمان والضريبة *', 'Exemption Reason *')}
-                        </label>
-                        <textarea
-                          value={ssTaxExemptionReason}
-                          onChange={e => setSsTaxExemptionReason(e.target.value)}
-                          rows={2}
-                          placeholder={t('مثال: موظف متعاقد / أجنبي / مشمول بعقد خاص...', 'e.g. Contracted employee / Foreigner / Special contract...')}
-                          className="w-full bg-[#0a0c10] border border-amber-500/30 rounded-xl px-3 py-2 text-amber-300 text-sm placeholder:text-slate-600 focus:outline-none resize-none"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1">
-                      <span className="text-slate-400 block text-[10px]">{t('الضمان الاجتماعي (5%)', 'Social Security (5%)')}</span>
-                      <span className={`font-bold ${isSsTaxExempt ? 'text-slate-500 line-through' : 'text-rose-400'}`}>
-                        {isSsTaxExempt ? '0' : '-' + Math.round((basicSalary || 0) * 0.05).toLocaleString()} د.ع
-                        {isSsTaxExempt && <span className="mr-1 text-amber-400 no-underline" style={{textDecoration:'none'}}> (معفى)</span>}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className={`text-sm font-bold ${
+                        isSsTaxExempt ? 'text-amber-400' : 'text-emerald-400'
+                      }`}>
+                        {isSsTaxExempt
+                          ? t('معفى من الضمان الاجتماعي وضريبة الدخل', 'Exempt from SS & Income Tax')
+                          : t('خاضع للضمان الاجتماعي وضريبة الدخل (الوضع الافتراضي)', 'Subject to SS & Income Tax (Default)')
+                        }
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {isSsTaxExempt
+                          ? t('لن يظهر هذا الموظف في احتسابات الضمان والضريبة', 'Employee excluded from SS/Tax calculations')
+                          : t('يحتسب الضمان (5%) والضريبة وفق القانون 18 و113', 'SS (5%) and Tax calculated per Law 18 & 113')
+                        }
                       </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1">
-                      <span className="text-slate-400 block text-[10px]">{t('ضريبة الدخل (الشرائح)', 'Income Tax (Brackets)')}</span>
-                      {isSsTaxExempt ? (
-                        <span className="font-bold text-slate-500">0 د.ع <span className="text-amber-400">(معفى)</span></span>
-                      ) : (
-                        <span className="text-rose-400 font-bold">
-                          -{(() => {
-                            const ss = Math.round((basicSalary || 0) * 0.05);
-                            const ex = maritalStatus === 'أعزب' ? 208333 : (375000 + (childrenList.length * 16667));
-                            const tb = Math.max(0, totalCalculatedSalary - ss - ex);
-                            if (tb <= 0) return 0;
-                            let b1 = Math.min(tb, 250000) * 0.03;
-                            let b2 = tb > 250000 ? Math.min(tb - 250000, 250000) * 0.05 : 0;
-                            let b3 = tb > 500000 ? Math.min(tb - 500000, 500000) * 0.10 : 0;
-                            let b4 = tb > 1000000 ? (tb - 1000000) * 0.15 : 0;
-                            return Math.round(b1 + b2 + b3 + b4);
-                          })().toLocaleString()} د.ع
-                        </span>
-                      )}
+                  </label>
+                  {isSsTaxExempt && (
+                    <div className="mt-1">
+                      <label className="block text-xs text-amber-400 font-medium mb-1">
+                        {t('سبب الإعفاء من الضمان والضريبة *', 'Exemption Reason *')}
+                      </label>
+                      <textarea
+                        value={ssTaxExemptionReason}
+                        onChange={e => setSsTaxExemptionReason(e.target.value)}
+                        rows={2}
+                        placeholder={t('مثال: موظف متعاقد / أجنبي / مشمول بعقد خاص...', 'e.g. Contracted employee / Foreigner / Special contract...')}
+                        className="w-full bg-[#0a0c10] border border-amber-500/30 rounded-xl px-3 py-2 text-amber-300 text-sm placeholder:text-slate-600 focus:outline-none resize-none"
+                      />
                     </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1">
-                      <span className="text-slate-400 block text-[10px]">{t('التأمين الصحي والحياة', 'Health Insurance')}</span>
-                      <span className="text-rose-400 font-bold">-25,000 د.ع</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
-                      <span className="text-emerald-400 block text-[10px] font-bold">{t('صافي الراتب المتوقع', 'Estimated Net Salary')}</span>
-                      <span className="text-emerald-400 font-black">
-                        {(() => {
-                          if (isSsTaxExempt) return totalCalculatedSalary.toLocaleString();
-                          const ss = Math.round((basicSalary || 0) * 0.05);
-                          const ins = 25000;
-                          const ex = maritalStatus === 'أعزب' ? 208333 : (375000 + (childrenList.length * 16667));
-                          const tb = Math.max(0, totalCalculatedSalary - ss - ex);
-                          let tax = 0;
-                          if (tb > 0) {
-                            let b1 = Math.min(tb, 250000) * 0.03;
-                            let b2 = tb > 250000 ? Math.min(tb - 250000, 250000) * 0.05 : 0;
-                            let b3 = tb > 500000 ? Math.min(tb - 500000, 500000) * 0.10 : 0;
-                            let b4 = tb > 1000000 ? (tb - 1000000) * 0.15 : 0;
-                            tax = Math.round(b1 + b2 + b3 + b4);
-                          }
-                          const net = Math.max(0, totalCalculatedSalary - (ss + tax + ins));
-                          return net.toLocaleString();
-                        })()} د.ع
-                      </span>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-teal-600/10 border border-blue-500/20 flex items-center justify-between font-mono">
                   <span className="text-slate-300 font-sans">{t('إجمالي الراتب الاستحقاقي الشهري (قبل الاستقطاعات):', 'Total Gross Monthly Salary:')}</span>
-                  <span className="text-lg font-black text-emerald-400">{totalCalculatedSalary.toLocaleString()} د.ع</span>
+                  <span className="text-lg font-black text-emerald-400">{totalCalculatedSalary.toLocaleString()} {t('د.ع', 'IQD')}</span>
                 </div>
               </div>
             )}
@@ -3223,8 +3475,8 @@ export const Category3EmployeeView: React.FC = () => {
                           onChange={e => setNewChildRelation(e.target.value as 'ولد' | 'بنت')}
                           className="flex-1 bg-[#111827] border border-white/10 rounded-xl px-2 py-2 text-white text-xs focus:outline-none"
                         >
-                          <option value="ولد">{t('ولد (Son)', 'Son')}</option>
-                          <option value="بنت">{t('بنت (Daughter)', 'Daughter')}</option>
+                          <option value="ولد">{t('ولد', 'Son')}</option>
+                          <option value="بنت">{t('بنت', 'Daughter')}</option>
                         </select>
                         {editingChildId ? (
                           <div className="flex gap-1">
@@ -3289,7 +3541,7 @@ export const Category3EmployeeView: React.FC = () => {
                                     child.relation === 'ولد' || child.relation === 'Son'
                                       ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20'
                                       : 'bg-pink-500/15 text-pink-400 border border-pink-500/20'
-                                  }`}>{child.relation}</span>
+                                  }`}>{((child.relation === 'ولد' || child.relation === 'Son') ? t('ولد', 'Son') : t('بنت', 'Daughter'))}</span>
                                 </td>
                                 <td className="px-3 py-2 text-start text-slate-300 font-mono">{child.dob || '-'}</td>
                                 <td className="px-3 py-2 text-start">
@@ -3340,38 +3592,12 @@ export const Category3EmployeeView: React.FC = () => {
                   <h3 className="text-sm font-bold text-white">{t('التبويب 7: التدريبات والسجل الإداري وحالة الموظف', 'Tab 7: Trainings & Administrative Record')}</h3>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-black font-medium mb-1">{t('حالة الموظف عند الإدخال', 'Employee Status at Entry')}</label>
-                    <select
-                      value={status}
-                      onChange={e => setStatus(e.target.value as any)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
-                    >
-                      <option value="Active">نشط ومباشر (Active)</option>
-                      <option value="Onboarding">قيد التهيئة والتعيين (Onboarding)</option>
-                      <option value="On Leave">في إجازة رسمية (On Leave)</option>
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-black font-medium mb-1">{t('ملاحظات HR والإنذارات السابقة (إن وجدت)', 'HR Notes & Previous Warnings (if any)')}</label>
-                    <textarea
-                      rows={3}
-                      placeholder={t('اكتب أية ملاحظات إدارية أو تنبيهات سابقة...', 'Write any administrative notes or previous warnings...')}
-                      value={warningsRecord}
-                      onChange={e => setWarningsRecord(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-xl p-3 text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-
                 {/* Status Changes Section */}
                 <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-bold text-white flex items-center gap-2">
                       <span className="material-symbols-outlined text-teal-400">published_with_changes</span>
-                      تغييرات الحالة الوظيفية
+                      {t('تغييرات الحالة الوظيفية', 'Job Status Changes')}
                     </h4>
                     <button
                       type="button"
@@ -3529,11 +3755,11 @@ export const Category3EmployeeView: React.FC = () => {
                               <p className="text-sm text-white">{training.course_name}</p>
                             </div>
                             <div>
-                              <span className="text-xs text-slate-400">البدء:</span>
+                              <span className="text-xs text-slate-400">{t('البدء:', 'Start:')}</span>
                               <p className="text-sm text-white">{training.start_date}</p>
                             </div>
                             <div>
-                              <span className="text-xs text-slate-400">الانتهاء:</span>
+                              <span className="text-xs text-slate-400">{t('الانتهاء:', 'End:')}</span>
                               <p className="text-sm text-white">{training.end_date}</p>
                             </div>
                           </div>
@@ -3551,60 +3777,39 @@ export const Category3EmployeeView: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* Footer Form Controls (Previous, Next, Submit) */}
-            <div className="pt-2.5 flex items-center justify-between border-t border-white/10">
-              <div className="flex items-center gap-2">
-                {activeTab > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab(activeTab - 1)}
-                    className="px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold border border-slate-600 flex items-center gap-1 shadow-md transition-all cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                    {t('التبويب السابق', 'Previous Tab')}
-                  </button>
-                )}
-
-                {activeTab < 7 && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab(activeTab + 1)}
-                    className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white border border-teal-500 font-bold flex items-center gap-1 shadow-md shadow-teal-600/25 transition-all cursor-pointer"
-                  >
-                    {t('التبويب التالي', 'Next Tab')}
-                    <span className="material-symbols-outlined text-sm">arrow_back</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setActiveModuleId('emp-directory')}
-                  className="px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold border border-slate-600 shadow-md transition-all cursor-pointer"
-                >
-                  إلغاء
-                </button>
-                {canWrite() ? (
-                  <button
-                    type="submit"
-                    className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-sm">save</span>
-                    {t('حفظ وتخزين الموظف (التبويبات الـ 7)', 'Save & Store Employee (All 7 Tabs)')}
-                  </button>
-                ) : (
-                  <div className="px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-sm">lock</span>
-                    {t('الحفظ والتعديل معطل (وضع القراءة فقط)', 'Save & Edit Disabled (Read-Only Access)')}
-                  </div>
-                )}
-              </div>
-            </div>
-          </form>
+          </div>
+        </form>
+      </div>
+          </div>
         </div>
-      )}
+
+        {/* TABBED NAVIGATION BAR DIRECTLY UNDER THE WINDOW AND OUTSIDE OF THE CONTAINER */}
+        <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl border ${
+          isDark ? 'bg-[#06080d] border-white/10 shadow-lg' : 'bg-white border-slate-300 shadow-sm'
+        } overflow-x-auto no-scrollbar [direction:ltr]`}>
+          {TAB_ITEMS.map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap hover:scale-[1.02] active:scale-98 ${
+                  isActive
+                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
+                    : isDark
+                    ? 'text-slate-400 hover:text-white hover:bg-white/10'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">{tab.icon}</span>
+                <span>{tab.title}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    )}
 
       {/* Employee Full 7-Tabs Profile View (HR Employees Profiles) */}
       {activeModuleId === 'emp-profile' && (
@@ -3613,36 +3818,75 @@ export const Category3EmployeeView: React.FC = () => {
           <div className={`${profileColors.background} px-3.5 py-2 rounded-2xl border ${profileColors.border} ${profileColors.shadow}`}>
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
               {/* Dynamic Auto-complete Search Box */}
-              <div className="relative flex-1 min-w-[200px]">
-                <input
-                  type="text"
-                  placeholder={t('ابحث باسم الموظف، الرقم الوظيفي، أو الفرع للتنقل...', 'Search by employee name, ID, or branch to navigate...')}
-                  value={profileSearchQuery}
-                  onChange={(e) => {
-                    setProfileSearchQuery(e.target.value);
-                    setIsSearchDropdownOpen(true);
-                  }}
-                  onFocus={() => setIsSearchDropdownOpen(true)}
-                  className={`w-full ${profileColors.inputBg} border ${profileColors.inputBorder} rounded-xl px-3 py-1.5 pr-8 text-xs ${profileColors.inputText} focus:outline-none focus:border-teal-500 ${isDark ? 'focus:bg-[#111827]' : 'focus:bg-white'} transition-all shadow-xs font-bold ${profileColors.inputPlaceholder}`}
-                />
-                <span className={`material-symbols-outlined absolute right-2.5 top-1.5 ${profileColors.textSecondary} text-sm select-none`}>
-                  search
-                </span>
+              <div ref={profileSearchContainerRef} className="relative flex-1 min-w-[200px]">
+                <div className="relative flex items-center">
+                  <input
+                    ref={profileSearchInputRef}
+                    type="text"
+                    placeholder={t('ابحث باسم الموظف، الرقم الوظيفي، أو الفرع للتنقل...', 'Search by employee name, ID, or branch to navigate...')}
+                    value={profileSearchQuery}
+                    onChange={(e) => {
+                      setProfileSearchQuery(e.target.value);
+                      setIsSearchDropdownOpen(true);
+                    }}
+                    onFocus={(e) => {
+                      isProfileSearchFocusedRef.current = true;
+                      setIsSearchDropdownOpen(true);
+                      e.target.select();
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        isProfileSearchFocusedRef.current = false;
+                      }, 200);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setIsSearchDropdownOpen(false);
+                        isProfileSearchFocusedRef.current = false;
+                        if (selectedEmployee) {
+                          setProfileSearchQuery(getEmpFullName(selectedEmployee));
+                        }
+                      }
+                    }}
+                    className={`w-full ${profileColors.inputBg} border ${profileColors.inputBorder} rounded-xl px-3 py-1.5 ${language === 'ar' ? 'pr-8 pl-8' : 'pl-8 pr-8'} text-xs ${profileColors.inputText} focus:outline-none focus:border-teal-500 ${isDark ? 'focus:bg-[#111827]' : 'focus:bg-white'} transition-all shadow-xs font-bold ${profileColors.inputPlaceholder}`}
+                  />
+                  <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'right-2.5' : 'left-2.5'} top-1.5 ${profileColors.textSecondary} text-sm select-none pointer-events-none`}>
+                    search
+                  </span>
+                  {profileSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProfileSearchQuery('');
+                        setIsSearchDropdownOpen(true);
+                        profileSearchInputRef.current?.focus();
+                      }}
+                      className={`material-symbols-outlined absolute ${language === 'ar' ? 'left-2.5' : 'right-2.5'} top-1.5 text-xs text-slate-400 hover:text-rose-500 cursor-pointer transition-colors p-0.5 rounded-full hover:bg-slate-200/50 dark:hover:bg-white/10`}
+                      title={t('مسح البحث', 'Clear search')}
+                    >
+                      close
+                    </button>
+                  )}
+                </div>
 
                 {/* Instant Results Dropdown */}
-                {isSearchDropdownOpen && profileSearchQuery.trim() !== '' && (
+                {isSearchDropdownOpen && (
                   <div className={`absolute right-0 left-0 top-full mt-1.5 ${profileColors.dropdownBg} border ${profileColors.dropdownBorder} rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto ${profileColors.divider}`}>
                     {matchingProfileEmployees.length > 0 ? (
-                      matchingProfileEmployees.map(emp => (
+                      matchingProfileEmployees.slice(0, 30).map(emp => (
                         <button
                           key={emp.id}
                           type="button"
                           onClick={() => {
-                            setSelectedEmpId(emp.id);
+                            const empId = emp.id || emp.employeeId || emp.employee_id;
+                            setSelectedEmpId(empId);
+                            lastSelectedEmpIdRef.current = String(empId).toLowerCase().trim();
                             setProfileSearchQuery(getEmpFullName(emp));
                             setIsSearchDropdownOpen(false);
+                            isProfileSearchFocusedRef.current = false;
                           }}
-                          className={`w-full text-right p-2.5 ${profileColors.dropdownHover} flex items-center justify-between transition-colors group`}
+                          className={`w-full text-right p-2.5 ${profileColors.dropdownHover} flex items-center justify-between transition-colors group cursor-pointer`}
                         >
                           <div className="flex items-center gap-2.5">
                             <div className={`w-8 h-8 rounded-full ${profileColors.badgeBg} ${profileColors.badgeText} font-black text-xs flex items-center justify-center overflow-hidden shrink-0`}>
@@ -3686,6 +3930,7 @@ export const Category3EmployeeView: React.FC = () => {
                     if (found) {
                       const targetId = found.id || found.employeeId || found.employee_id;
                       setSelectedEmpId(targetId);
+                      lastSelectedEmpIdRef.current = String(targetId).toLowerCase().trim();
                       setProfileSearchQuery(getEmpFullName(found));
                     }
                   }}
@@ -3844,7 +4089,7 @@ export const Category3EmployeeView: React.FC = () => {
                     {/* TAB CONTENT PANELS ("النوافذ التابعة لكل تاب") */}
                     <div className={`p-3 sm:p-3.5 rounded-xl border ${
                       isDark ? 'bg-[#06080d]/80 border-white/10' : 'bg-white border-slate-200 shadow-xs'
-                    } space-y-2.5 text-xs ${profileColors.text} min-h-[175px]`}>
+                    } space-y-2.5 text-xs ${profileColors.text} min-h-[335px] max-h-[335px] overflow-y-auto profile-scrollbar`}>
                       {/* 1. OVERVIEW TAB */}
                       {profileViewTab === 'overview' && (
                         <div className="space-y-2.5 animate-in fade-in duration-200">

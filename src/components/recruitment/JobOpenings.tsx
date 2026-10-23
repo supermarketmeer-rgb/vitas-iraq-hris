@@ -99,6 +99,7 @@ export const JobOpenings: React.FC = () => {
   const [showAddJobModal, setShowAddJobModal] = useState(false);
   const [showEditJobModal, setShowEditJobModal] = useState(false);
   const [editingJob, setEditingJob] = useState<JobVacancy | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table' | 'rows'>('cards');
   
   // Settings API Data
   const [positions, setPositions] = useState<any[]>([]);
@@ -489,17 +490,18 @@ export const JobOpenings: React.FC = () => {
   };
 
   const getStatusBadge = (status: JobVacancy['status']) => {
-    const isClosed = status === 'Closed' || status === 'مغلقة';
+    const isClosed = status === 'Closed' || status === 'مغلقة' || String(status).toLowerCase().includes('clos') || String(status).includes('مغلق');
     return (
-      <div className={`px-3 py-1 rounded-full text-xs font-bold transition-all shadow-sm ${
-        isClosed 
-          ? 'bg-rose-600 hover:bg-rose-700 text-white border border-rose-700' 
-          : isDark 
-            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-            : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-      }`}>
+      <span
+        style={isClosed ? { backgroundColor: '#e11d48', color: '#ffffff' } : { backgroundColor: '#0f766e', color: '#ffffff' }}
+        className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 transition-all shadow-sm ${
+          isClosed 
+            ? 'bg-rose-600 text-white border border-rose-600'
+            : 'bg-teal-700 text-white border border-teal-800'
+        }`}
+      >
         {getStatusName(status)}
-      </div>
+      </span>
     );
   };
 
@@ -584,104 +586,395 @@ export const JobOpenings: React.FC = () => {
         </div>
       </div>
 
-      {/* Job Cards Grid (4 Cards Per Row on Desktop Layout) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredJobs.map(job => {
-          const candidatesCount = getCandidatesCount(job.id);
-          const displayTitle = getTitleName(job.title);
-          const displayDept = getDeptName(job.department);
-          const displayLoc = getBranchName(job.location);
-          const displayType = getTypeName(job.type);
+      {/* View Mode Toggle & Count Bar (Matches Page 2 Registered Directory Bar) */}
+      <div className={`p-3 rounded-2xl border flex flex-wrap items-center justify-between gap-3 ${
+        isDark ? 'bg-[#0a0c10] border-white/10 shadow-sm' : 'bg-white border-slate-200 shadow-xs'
+      }`}>
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">work</span>
+          <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+            {t('دليل الوظائف الشاغرة', 'Job Openings Directory')}
+          </span>
+          <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+            isDark ? 'bg-teal-600/20 text-teal-300 border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200'
+          }`}>
+            {filteredJobs.length} / {syncedJobVacancies.length}
+          </span>
+        </div>
 
-          return (
-            <div key={job.id} className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
-              isDark 
-                ? 'bg-[#111827] border-white/10 text-white hover:border-teal-500/40 shadow-lg' 
-                : 'bg-white border-slate-200 text-slate-900 hover:border-teal-500/40 shadow-md'
+        {/* View Mode Switcher (Identical to Page 2) */}
+        <div className={`flex items-center p-0.5 rounded-xl border ${
+          isDark ? 'bg-[#06080d] border-white/10' : 'bg-[#e2e8f0] border-slate-300'
+        }`}>
+          <button
+            type="button"
+            onClick={() => setViewMode('table')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+              viewMode === 'table'
+                ? (isDark ? 'bg-teal-600 text-white shadow-xs' : 'bg-white text-teal-800 shadow-xs')
+                : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
+            }`}
+            title={t('عرض جدول السجلات (Row)', 'Table Rows View')}
+          >
+            <span className="material-symbols-outlined text-base">table_rows</span>
+            <span className="hidden sm:inline">{t('جدول السجلات Raw', 'Rows Table')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode('rows')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+              viewMode === 'rows'
+                ? (isDark ? 'bg-teal-600 text-white shadow-xs' : 'bg-white text-teal-800 shadow-xs')
+                : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
+            }`}
+            title={t('عرض شرائط السجلات الأفقية', 'Horizontal Record Strips')}
+          >
+            <span className="material-symbols-outlined text-base">view_agenda</span>
+            <span className="hidden sm:inline">{t('سجلات أفقية', 'Record Strips')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode('cards')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+              viewMode === 'cards'
+                ? (isDark ? 'bg-teal-600 text-white shadow-xs' : 'bg-white text-teal-800 shadow-xs')
+                : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
+            }`}
+            title={t('عرض البطاقات', 'Cards Grid View')}
+          >
+            <span className="material-symbols-outlined text-base">grid_view</span>
+            <span className="hidden sm:inline">{t('بطاقات', 'Cards')}</span>
+          </button>
+        </div>
+      </div>
+
+      {filteredJobs.length === 0 ? (
+        <div className={`py-12 text-center rounded-2xl border ${
+          isDark ? 'bg-[#0a0c10] border-white/10 text-slate-400' : 'bg-white border-slate-200 text-slate-500 shadow-xs'
+        }`}>
+          <span className="material-symbols-outlined text-6xl text-slate-400 mb-4">work_off</span>
+          <p className="text-sm font-bold">{t('لا توجد وظائف مطابقة لمعايير البحث', 'No job openings match the search criteria')}</p>
+        </div>
+      ) : viewMode === 'table' ? (
+        /* VIEW 1: ROWS TABLE (IDENTICAL TO PAGE 2 TABLE) */
+        <div className={`overflow-x-auto rounded-2xl border transition-all ${
+          isDark
+            ? 'bg-[#0a0c10] border-white/10 shadow-xl'
+            : 'bg-[#eef2f6] border-slate-300 shadow-xs'
+        }`}>
+          <table className={`w-full text-xs ${language === 'en' ? 'text-left' : 'text-right'} border-collapse`}>
+            <thead className={`border-b select-none app-table-header ${
+              isDark
+                ? 'bg-[#06080d] text-slate-300 border-white/10'
+                : 'bg-[#94a3b8] text-slate-950 border-slate-500 font-bold'
             }`}>
-              <div>
-                <div className="flex items-start justify-between mb-4 gap-2">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-normal mb-2" style={{ color: isDark ? '#ffffff' : '#0f172a', fontWeight: 400 }}>{displayTitle}</h3>
-                    <div className="space-y-1.5 text-xs font-bold" style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-base text-teal-600 dark:text-teal-400">business</span>
-                        <span style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>{displayDept}</span>
+              <tr>
+                <th className="py-3 px-3 text-center w-12 font-bold">#</th>
+                <th className="py-3 px-3 font-bold">{t('المسمى الوظيفي', 'Job Title')}</th>
+                <th className="py-3 px-3 font-bold">{t('الحالة', 'Status')}</th>
+                <th className="py-3 px-3 font-bold">{t('القسم', 'Department')}</th>
+                <th className="py-3 px-3 font-bold">{t('الموقع / الفرع', 'Branch Location')}</th>
+                <th className="py-3 px-3 font-bold">{t('نوع الدوام', 'Job Type')}</th>
+                <th className="py-3 px-3 font-bold">{t('المرشحون', 'Candidates')}</th>
+                <th className="py-3 px-3 text-center w-28 font-bold">{t('الإجراءات', 'Actions')}</th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y ${isDark ? 'divide-white/5' : 'divide-slate-200'}`}>
+              {filteredJobs.map((job, idx) => {
+                const candidatesCount = getCandidatesCount(job.id);
+                const displayTitle = getTitleName(job.title);
+                const displayDept = getDeptName(job.department);
+                const displayLoc = getBranchName(job.location);
+                const displayType = getTypeName(job.type);
+
+                return (
+                  <tr
+                    key={job.id}
+                    className={`transition-colors ${
+                      idx % 2 === 0
+                        ? (isDark ? 'bg-white/[0.01]' : 'bg-white')
+                        : (isDark ? 'bg-white/[0.03]' : 'bg-slate-50/70')
+                    } ${isDark ? 'hover:bg-white/5' : 'hover:bg-blue-50/60'}`}
+                  >
+                    <td className="py-3 px-3 text-center font-mono text-slate-400 text-[11px]">{idx + 1}</td>
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-8 h-8 rounded-xl font-bold flex items-center justify-center border shrink-0 ${
+                          isDark ? 'bg-teal-600/20 text-teal-400 border-teal-500/30' : 'bg-teal-100/70 text-teal-800 border-teal-200'
+                        }`}>
+                          <span className="material-symbols-outlined text-base">work</span>
+                        </div>
+                        <span className={`font-bold text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>{displayTitle}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-base text-blue-600 dark:text-blue-400">location_on</span>
-                        <span style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>{displayLoc}</span>
+                    </td>
+                    <td className="py-3 px-3">{getStatusBadge(job.status)}</td>
+                    <td className={`py-3 px-3 font-medium ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>{displayDept}</td>
+                    <td className={`py-3 px-3 font-medium ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs text-slate-400">location_on</span>
+                        {displayLoc}
+                      </span>
+                    </td>
+                    <td className={`py-3 px-3 font-medium ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>{displayType}</td>
+                    <td className="py-3 px-3 font-mono font-bold text-teal-600 dark:text-teal-400">{candidatesCount}</td>
+                    <td className="py-3 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(job)}
+                          className="p-1.5 text-emerald-500 hover:text-emerald-400 hover:scale-125 transition-all cursor-pointer"
+                          title={t('تعديل الوظيفة', 'Edit Job')}
+                        >
+                          <span className="material-symbols-outlined text-base">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteJob(job.id)}
+                          className="p-1.5 text-red-500 hover:text-red-400 hover:scale-125 transition-all cursor-pointer"
+                          title={t('حذف الوظيفة', 'Delete Job')}
+                        >
+                          <span className="material-symbols-outlined text-base">delete</span>
+                        </button>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-base text-purple-600 dark:text-purple-400">work</span>
-                        <span style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>{displayType}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : viewMode === 'rows' ? (
+        /* VIEW 2: HORIZONTAL RECORD STRIPS (IDENTICAL TO PAGE 2 STRIPS) */
+        <div className="space-y-2.5">
+          {filteredJobs.map((job) => {
+            const candidatesCount = getCandidatesCount(job.id);
+            const displayTitle = getTitleName(job.title);
+            const displayDept = getDeptName(job.department);
+            const displayLoc = getBranchName(job.location);
+            const displayType = getTypeName(job.type);
+
+            return (
+              <div
+                key={job.id}
+                className={`p-3.5 px-4 rounded-2xl border flex flex-wrap md:flex-nowrap items-center justify-between gap-3 transition-all ${
+                  isDark
+                    ? 'bg-[#0a0c10] border-white/10 hover:border-teal-500/40 hover:bg-white/5 text-slate-200'
+                    : 'bg-[#eef2f6] border-slate-300 hover:border-teal-400 hover:bg-[#e2e8f0] text-slate-900 shadow-2xs'
+                }`}
+              >
+                {/* Left: Icon + Title + Status */}
+                <div className="flex items-center gap-3 min-w-[240px]">
+                  <div className={`w-10 h-10 rounded-xl font-bold flex items-center justify-center border overflow-hidden shadow-xs shrink-0 ${
+                    isDark ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-teal-100/70 text-teal-800 border-teal-200'
+                  }`}>
+                    <span className="material-symbols-outlined text-xl">work</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        {displayTitle}
+                      </h3>
+                      {getStatusBadge(job.status)}
+                    </div>
+                    <p className={`text-xs font-semibold mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                      {displayDept}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Middle: Details */}
+                <div className="flex flex-wrap items-center gap-4 sm:gap-8 text-xs flex-1">
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">{t('الموقع / الفرع', 'Branch Location')}</span>
+                    <span className={`font-medium flex items-center gap-1 ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
+                      <span className="material-symbols-outlined text-xs text-slate-400">location_on</span>
+                      {displayLoc}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">{t('نوع الدوام', 'Job Type')}</span>
+                    <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
+                      {displayType}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">{t('المرشحون', 'Candidates')}</span>
+                    <span className={`font-mono text-[11px] font-bold ${isDark ? 'text-teal-300' : 'text-teal-700'}`}>
+                      {candidatesCount} {t('مرشح', 'candidates')}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">{t('سنوات الخبرة', 'Experience')}</span>
+                    <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
+                      {job.experienceYears} {t('سنوات', 'years')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <select
+                    value={(job.status === 'Open' || job.status === 'مفتوحة') ? 'مفتوحة' : 'مغلقة'}
+                    onChange={(e) => handleStatusChange(job.id, e.target.value as JobVacancy['status'])}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold focus:outline-none border transition-all cursor-pointer ${
+                      isDark
+                        ? 'bg-[#0a0c10] border-white/10 text-slate-200'
+                        : 'bg-white border-slate-300 text-slate-800 shadow-xs'
+                    }`}
+                  >
+                    <option value="مفتوحة">{t('مفتوحة', 'Open')}</option>
+                    <option value="مغلقة">{t('مغلقة', 'Closed')}</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(job)}
+                    className="p-1.5 text-emerald-500 hover:text-emerald-400 hover:scale-125 transition-all cursor-pointer"
+                    title={t('تعديل الوظيفة', 'Edit Job')}
+                  >
+                    <span className="material-symbols-outlined text-lg">edit</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteJob(job.id)}
+                    className="p-1.5 text-red-500 hover:text-red-400 hover:scale-125 transition-all cursor-pointer"
+                    title={t('حذف الوظيفة', 'Delete Job')}
+                  >
+                    <span className="material-symbols-outlined text-lg">delete</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* VIEW 3: CARDS GRID VIEW (IDENTICAL TO PAGE 2 CARDS) */
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filteredJobs.map(job => {
+            const candidatesCount = getCandidatesCount(job.id);
+            const displayTitle = getTitleName(job.title);
+            const displayDept = getDeptName(job.department);
+            const displayLoc = getBranchName(job.location);
+            const displayType = getTypeName(job.type);
+
+            return (
+              <div
+                key={job.id}
+                className={`p-5 rounded-2xl border transition-all shadow-lg flex flex-col justify-between ${
+                  isDark
+                    ? 'bg-[#111827] border-white/10 hover:border-teal-500/40'
+                    : 'bg-[#eef2f6] border-slate-300 hover:border-teal-500/40 shadow-xs'
+                }`}
+              >
+                <div className="space-y-3">
+                  {/* Top Header: Avatar Icon + Title + Subtitle + Status Badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-11 h-11 rounded-xl font-black text-lg flex items-center justify-center shadow overflow-hidden shrink-0 ${
+                        isDark
+                          ? 'bg-teal-600/20 text-teal-400 border border-teal-500/30'
+                          : 'bg-teal-100/70 text-teal-800 border border-teal-200'
+                      }`}>
+                        <span className="material-symbols-outlined text-2xl">work</span>
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className={`font-bold text-sm truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={displayTitle}>
+                          {displayTitle}
+                        </h3>
+                        <p className={`text-xs font-semibold truncate ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                          {displayDept}
+                        </p>
                       </div>
                     </div>
+                    {getStatusBadge(job.status)}
                   </div>
-                  {getStatusBadge(job.status)}
-                </div>
 
-                <div className={`flex items-center justify-between mb-4 pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-300'}`}>
-                  <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>
-                    <span className="material-symbols-outlined text-base text-amber-500">group</span>
-                    <span style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>{candidatesCount} {t('مرشح', 'candidates')}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>
-                    <span className="material-symbols-outlined text-base text-indigo-500">timeline</span>
-                    <span style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>{job.experienceYears} {t('سنوات خبرة', 'years exp')}</span>
-                  </div>
-                </div>
-
-                {job.deadline && (
-                  <div className={`flex items-center gap-2 text-xs font-bold mb-4 p-2.5 rounded-xl border ${
-                    isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-100 border-slate-300'
+                  {/* Inner Data Box (Identical to Page 2) */}
+                  <div className={`p-3 rounded-xl text-xs space-y-1.5 border ${
+                    isDark
+                      ? 'bg-[#0a0c10] text-slate-400 border-white/5'
+                      : 'bg-[#e2e8f0] text-slate-700 border-slate-300/80'
                   }`}>
-                    <span className="material-symbols-outlined text-sm text-rose-600 dark:text-rose-400">event</span>
-                    <span style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{t('آخر موعد للتقديم', 'Deadline')}: {formatDateOnly(job.deadline)}</span>
+                    <p className="flex justify-between items-center">
+                      <span>{t('القسم:', 'Department:')}</span>
+                      <span className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{displayDept}</span>
+                    </p>
+                    <p className="flex justify-between items-center">
+                      <span>{t('الموقع / الفرع:', 'Location:')}</span>
+                      <span className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{displayLoc}</span>
+                    </p>
+                    <p className="flex justify-between items-center">
+                      <span>{t('نوع الدوام:', 'Job Type:')}</span>
+                      <span className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{displayType}</span>
+                    </p>
+                    <p className="flex justify-between items-center">
+                      <span>{t('المرشحون:', 'Candidates:')}</span>
+                      <span className={`font-mono text-[11px] font-bold ${isDark ? 'text-teal-300' : 'text-teal-700'}`}>
+                        {candidatesCount} {t('مرشح', 'candidates')}
+                      </span>
+                    </p>
+                    <p className="flex justify-between items-center">
+                      <span>{t('سنوات الخبرة:', 'Experience:')}</span>
+                      <span className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+                        {job.experienceYears} {t('سنوات', 'years exp')}
+                      </span>
+                    </p>
+                    {job.deadline && (
+                      <p className="flex justify-between items-center pt-1 border-t border-slate-300/40 dark:border-white/5">
+                        <span>{t('آخر موعد للتقديم:', 'Deadline:')}</span>
+                        <span className={`font-mono text-[11px] font-bold ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
+                          {formatDateOnly(job.deadline)}
+                        </span>
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
+
+                {/* Card Footer: Status Selector & Actions */}
+                <div className={`pt-4 border-t mt-4 flex items-center justify-between gap-2 ${
+                  isDark ? 'border-white/10' : 'border-slate-300'
+                }`}>
+                  <select
+                    value={(job.status === 'Open' || job.status === 'مفتوحة') ? 'مفتوحة' : 'مغلقة'}
+                    onChange={(e) => handleStatusChange(job.id, e.target.value as JobVacancy['status'])}
+                    className={`flex-1 px-2.5 py-1.5 rounded-xl text-xs font-bold focus:outline-none border transition-all cursor-pointer ${
+                      isDark
+                        ? 'bg-[#0a0c10] border-white/10 text-slate-200 focus:border-teal-500'
+                        : 'bg-white border-slate-300 text-slate-800 focus:border-teal-500 shadow-xs'
+                    }`}
+                  >
+                    <option value="مفتوحة">{t('مفتوحة', 'Open')}</option>
+                    <option value="مغلقة">{t('مغلقة', 'Closed')}</option>
+                  </select>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(job)}
+                      className="p-1.5 bg-transparent border-0 text-emerald-500 hover:text-emerald-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                      title={t('تعديل الوظيفة', 'Edit Job')}
+                    >
+                      <span className="material-symbols-outlined text-xl">edit</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteJob(job.id)}
+                      className="p-1.5 bg-transparent border-0 text-red-500 hover:text-red-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                      title={t('حذف الوظيفة', 'Delete Job')}
+                    >
+                      <span className="material-symbols-outlined text-xl">delete</span>
+                    </button>
+                  </div>
+                </div>
               </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <select
-                  value={(job.status === 'Open' || job.status === 'مفتوحة') ? 'مفتوحة' : 'مغلقة'}
-                  onChange={(e) => handleStatusChange(job.id, e.target.value as JobVacancy['status'])}
-                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`flex-1 px-3 py-2 rounded-xl text-xs font-bold focus:outline-none border ${
-                    isDark 
-                      ? 'bg-[#1e293b] border-slate-700 text-slate-200' 
-                      : 'bg-slate-50 border-slate-300'
-                  }`}
-                >
-                  <option value="مفتوحة">{t('مفتوحة', 'Open')}</option>
-                  <option value="مغلقة">{t('مغلقة', 'Closed')}</option>
-                </select>
-
-                <button
-                  onClick={() => openEditModal(job)}
-                  className={`p-2 rounded-xl border transition-all ${
-                    isDark 
-                      ? 'bg-[#1e293b] border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700' 
-                      : 'bg-slate-100 border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-200'
-                  }`}
-                  title={t('تعديل الوظيفة', 'Edit Job')}
-                >
-                  <span className="material-symbols-outlined text-sm">edit</span>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-
-        {filteredJobs.length === 0 && (
-          <div className={`col-span-full py-12 text-center rounded-2xl border ${
-            isDark ? 'bg-[#111827] border-white/10 text-slate-400' : 'bg-white border-slate-200 text-slate-500 shadow-md'
-          }`}>
-            <span className="material-symbols-outlined text-6xl text-slate-500 mb-4">work_off</span>
-            <p className="text-slate-500">{t('لا توجد وظائف شاغرة حالياً', 'No job openings available')}</p>
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add Job Modal - Fully Theme Aware (Light vs Dark) */}
       {showAddJobModal && (

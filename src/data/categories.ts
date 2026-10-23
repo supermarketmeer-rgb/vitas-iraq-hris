@@ -124,6 +124,13 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         description: 'إدارة فروع المؤسسة ومواقع العمل الجغرافية في العراق'
       },
       {
+        id: 'emp-regional-lebanon',
+        title: 'المكتب الإقليمي (لبنان - بيروت)',
+        titleEn: 'Regional Office (Lebanon - Beirut)',
+        icon: 'public',
+        description: 'إدارة المكتب الإقليمي في بيروت: الموظفين، عقود العمل، الرواتب بالدولار، الدوام والإشراف المتبادل'
+      },
+      {
         id: 'emp-organization',
         title: 'الهيكل التنظيمي التفاعلي',
         titleEn: 'Dynamic Organization Chart',

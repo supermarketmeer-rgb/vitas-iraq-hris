@@ -514,8 +514,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (tableName === 'employees') {
           api.getEmployees().then(d => {
             if (Array.isArray(d)) {
-              setEmployees(d);
-              try { localStorage.setItem('vitas_employees', JSON.stringify(d)); } catch (e) {}
+              setEmployees(prev => {
+                if (prev.length === d.length && JSON.stringify(prev) === JSON.stringify(d)) return prev;
+                try { localStorage.setItem('vitas_employees', JSON.stringify(d)); } catch (e) {}
+                return d;
+              });
             }
           }).catch(() => {});
         }
@@ -561,24 +564,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ]);
 
         if (Array.isArray(candData)) {
-          setCandidates(candData);
-          try { localStorage.setItem('vitas_candidates', JSON.stringify(candData)); } catch (e) {}
+          setCandidates(prev => {
+            if (prev.length === candData.length && JSON.stringify(prev) === JSON.stringify(candData)) return prev;
+            try { localStorage.setItem('vitas_candidates', JSON.stringify(candData)); } catch (e) {}
+            return candData;
+          });
         }
         if (Array.isArray(jobData) && jobData.length > 0) {
-          setJobVacancies(jobData);
+          setJobVacancies(prev => {
+            if (prev.length === jobData.length && JSON.stringify(prev) === JSON.stringify(jobData)) return prev;
+            return jobData;
+          });
         }
         if (Array.isArray(empData) && empData.length > 0) {
-          setEmployees(empData);
-          try { localStorage.setItem('vitas_employees', JSON.stringify(empData)); } catch (e) {}
+          setEmployees(prev => {
+            if (prev.length === empData.length && JSON.stringify(prev) === JSON.stringify(empData)) return prev;
+            try { localStorage.setItem('vitas_employees', JSON.stringify(empData)); } catch (e) {}
+            return empData;
+          });
         }
         if (Array.isArray(leaveData) && leaveData.length > 0) {
-          setLeaveRequests(leaveData);
+          setLeaveRequests(prev => {
+            if (prev.length === leaveData.length && JSON.stringify(prev) === JSON.stringify(leaveData)) return prev;
+            return leaveData;
+          });
         }
         if (setsData && typeof setsData === 'object') {
-          setAppSettings(setsData);
-          if ((setsData as any).vitas_hris_sync_schedule) {
-            syncEngine.loadScheduleFromBackend().catch(() => {});
-          }
+          setAppSettings(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(setsData)) return prev;
+            if ((setsData as any).vitas_hris_sync_schedule) {
+              syncEngine.loadScheduleFromBackend().catch(() => {});
+            }
+            return setsData;
+          });
         }
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('vitas:users_changed'));
