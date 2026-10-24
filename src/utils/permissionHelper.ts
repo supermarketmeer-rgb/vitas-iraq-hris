@@ -72,51 +72,6 @@ export function getUserEffectivePermissions(
   // 2. Check local delegation stores if available in browser
   if (typeof window !== 'undefined' && currentUser) {
     try {
-      const raw = localStorage.getItem('vitas_custom_employee_permissions');
-      if (raw) {
-        const map = JSON.parse(raw);
-        const userKey = String(currentUser.id || currentUser.employeeId || '').toUpperCase();
-        const cleanEmpId = userKey.replace(/[^A-Z0-9]/g, '');
-        const cleanUser = String(currentUser.name || currentUser.email || '').toLowerCase();
-
-        const match = map[userKey] || Object.entries(map).find(([k, v]: any) => {
-          const pEmpId = String(v?.employeeId || k || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-          const pName = String(v?.employeeName || '').toLowerCase();
-          const pNameEn = String(v?.employeeNameEn || '').toLowerCase();
-          const pUsername = String(v?.username || '').toLowerCase();
-          return (
-            (cleanEmpId && (pEmpId === cleanEmpId || cleanEmpId.includes(pEmpId) || pEmpId.includes(cleanEmpId))) ||
-            (pUsername && cleanUser.includes(pUsername)) ||
-            (pName && cleanUser.includes(pName)) ||
-            (pNameEn && cleanUser.includes(pNameEn))
-          );
-        })?.[1];
-
-        if (match && match.modules) {
-          perms = { ...match.modules, ...perms };
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    try {
-      const rawUsers = localStorage.getItem('vitas_custom_users');
-      if (rawUsers && currentUser) {
-        const usersMap = JSON.parse(rawUsers);
-        const uMatch = Object.values(usersMap).find((u: any) => 
-          (u?.username && String(currentUser.email || currentUser.name || '').toLowerCase().includes(String(u.username).toLowerCase())) ||
-          (u?.employeeId && String(u.employeeId).toUpperCase() === String(currentUser.employeeId || '').toUpperCase())
-        );
-        if (uMatch && (uMatch as any).modules) {
-          perms = { ...(uMatch as any).modules, ...perms };
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    try {
       const rawDbUsers = localStorage.getItem('vitas_db_users');
       if (rawDbUsers && currentUser) {
         const dbUsersList = JSON.parse(rawDbUsers);
@@ -146,10 +101,55 @@ export function getUserEffectivePermissions(
                 ? JSON.parse(uMatch.allowed_screens)
                 : uMatch.allowed_screens;
               if (parsed && typeof parsed === 'object') {
-                perms = { ...parsed, ...perms };
+                perms = { ...perms, ...parsed };
               }
             } catch (e) {}
           }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    try {
+      const rawUsers = localStorage.getItem('vitas_custom_users');
+      if (rawUsers && currentUser) {
+        const usersMap = JSON.parse(rawUsers);
+        const uMatch = Object.values(usersMap).find((u: any) => 
+          (u?.username && String(currentUser.email || currentUser.name || '').toLowerCase().includes(String(u.username).toLowerCase())) ||
+          (u?.employeeId && String(u.employeeId).toUpperCase() === String(currentUser.employeeId || '').toUpperCase())
+        );
+        if (uMatch && (uMatch as any).modules) {
+          perms = { ...perms, ...(uMatch as any).modules };
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    try {
+      const raw = localStorage.getItem('vitas_custom_employee_permissions');
+      if (raw) {
+        const map = JSON.parse(raw);
+        const userKey = String(currentUser.id || currentUser.employeeId || '').toUpperCase();
+        const cleanEmpId = userKey.replace(/[^A-Z0-9]/g, '');
+        const cleanUser = String(currentUser.name || currentUser.email || '').toLowerCase();
+
+        const match = map[userKey] || Object.entries(map).find(([k, v]: any) => {
+          const pEmpId = String(v?.employeeId || k || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const pName = String(v?.employeeName || '').toLowerCase();
+          const pNameEn = String(v?.employeeNameEn || '').toLowerCase();
+          const pUsername = String(v?.username || '').toLowerCase();
+          return (
+            (cleanEmpId && (pEmpId === cleanEmpId || cleanEmpId.includes(pEmpId) || pEmpId.includes(cleanEmpId))) ||
+            (pUsername && cleanUser.includes(pUsername)) ||
+            (pName && cleanUser.includes(pName)) ||
+            (pNameEn && cleanUser.includes(pNameEn))
+          );
+        })?.[1];
+
+        if (match && match.modules) {
+          perms = { ...perms, ...match.modules };
         }
       }
     } catch (e) {
