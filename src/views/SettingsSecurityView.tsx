@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import * as XLSX from 'xlsx';
 import { exportFormattedExcelFromJson } from '../utils/excelFormatHelper';
 import { DesktopSyncSettings } from '../components/DesktopSyncSettings';
+import { LocalServerSetup } from '../components/LocalServerSetup';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { PoliciesSection } from '../components/PoliciesSection';
 import { IraqLegalTaxSettingsSection } from '../components/payroll/IraqLegalTaxSettingsSection';
@@ -11,6 +12,7 @@ import { IncentivesDevConfigView } from '../incentives_module/components/Incenti
 import { StatusChangeTable } from '../components/StatusChangeTable';
 import { TrainingTable } from '../components/TrainingTable';
 import { WarningTable } from '../components/WarningTable';
+import { Microsoft365Settings } from '../components/m365/Microsoft365Settings';
 
 interface TabConfig {
   id: string;
@@ -118,6 +120,8 @@ export const SettingsSecurityView: React.FC = () => {
     { id: 'templates', icon: 'edit_document', labelAr: 'القوالب', labelEn: 'Templates' },
     { id: 'incentives-engine-dev', icon: 'functions', labelAr: 'محرك الحوافز (إعدادات المطور والمعادلات)', labelEn: 'Incentives Engine (Developer & Formulas)' },
     { id: 'desktop-sync', icon: 'desktop_windows', labelAr: 'إعدادات Desktop والمزامنة', labelEn: 'Desktop & Sync' },
+    { id: 'local-server-setup', icon: 'dns', labelAr: 'إعداد وتثبيت الخادم المحلي', labelEn: 'Local Server Setup' },
+    { id: 'm365-integration', icon: 'mark_email_read', labelAr: 'إعدادات Microsoft 365 وOutlook', labelEn: 'Microsoft 365 & Outlook Settings' },
     { id: 'maintenance', icon: 'warning', labelAr: 'الصيانة', labelEn: 'Maintenance' },
   ];
 
@@ -1745,6 +1749,10 @@ export const SettingsSecurityView: React.FC = () => {
         {activeTab === 'desktop-sync' && (
           <DesktopSyncSettings />
         )}
+
+        {activeTab === 'local-server-setup' && (
+          <LocalServerSetup />
+        )}
         {activeTab === 'status-changes' && (
           <div className={`p-4 sm:p-6 rounded-2xl border ${theme === 'dark' ? 'bg-[#0f1420] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
             <StatusChangeTable
@@ -1867,6 +1875,9 @@ export const SettingsSecurityView: React.FC = () => {
             fileInputRef={fileInputRef}
             activeTab={activeTab}
           />
+        )}
+        {activeTab === 'm365-integration' && (
+          <Microsoft365Settings />
         )}
         {activeTab === 'maintenance' && (
           <div className="text-center py-12 bg-rose-500/5 rounded-2xl border border-rose-500/20 max-w-2xl mx-auto p-8 my-4">

@@ -7,6 +7,8 @@ import https from 'https';
  * Least-privileged permission recommended: Mail.Send (Application permission restricted via ApplicationAccessPolicy)
  */
 
+import { getM365Service } from './Microsoft365EmailService.js';
+
 let cachedAccessToken = null;
 let tokenExpiresAt = 0;
 
@@ -15,44 +17,16 @@ let tokenExpiresAt = 0;
  * @param {Function} [queryFn] - Optional DB query function to check app_settings
  */
 export async function getGraphConfig(queryFn = null) {
-  let tenantId = process.env.MS_GRAPH_TENANT_ID || process.env.AZURE_TENANT_ID || '';
-  let clientId = process.env.MS_GRAPH_CLIENT_ID || process.env.AZURE_CLIENT_ID || '';
-  let clientSecret = process.env.MS_GRAPH_CLIENT_SECRET || process.env.AZURE_CLIENT_SECRET || '';
-  let senderEmail = process.env.MS_GRAPH_SENDER_EMAIL || process.env.AZURE_SENDER_EMAIL || '';
-
-  // Check app_settings table as fallback or override if queryFn provided
-  if (queryFn) {
-    try {
-      const rows = await queryFn(
-        "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('ms_graph_tenant_id', 'ms_graph_client_id', 'ms_graph_client_secret', 'ms_graph_sender_email')"
-      ).catch(() => []);
-
-      for (const row of rows || []) {
-        if (row.setting_key === 'ms_graph_tenant_id' && row.setting_value) tenantId = row.setting_value.trim();
-        if (row.setting_key === 'ms_graph_client_id' && row.setting_value) clientId = row.setting_value.trim();
-        if (row.setting_key === 'ms_graph_client_secret' && row.setting_value) clientSecret = row.setting_value.trim();
-        if (row.setting_key === 'ms_graph_sender_email' && row.setting_value) senderEmail = row.setting_value.trim();
-      }
-    } catch (e) {
-      // Ignore DB query errors for config check
-    }
-  }
-
-  const isConfigured = Boolean(
-    tenantId &&
-    clientId &&
-    clientSecret &&
-    senderEmail &&
-    !tenantId.includes('YOUR_') &&
-    !clientId.includes('YOUR_')
-  );
+  const m365 = getM365Service(queryFn);
+  const settings = await m365.getSettings();
 
   return {
-    tenantId,
-    clientId,
-    clientSecret,
-    senderEmail,
-    isConfigured,
+    tenantId: settings.tenantId,
+    clientId: settings.clientId,
+    clientSecret: settings.clientSecret,
+    senderEmail: settings.senderMailbox,
+    isConfigured: settings.isConfigured,
+    enabled: settings.enabled,
     authType: 'client_credentials',
     requiredPermissions: ['Mail.Send']
   };

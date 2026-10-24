@@ -42,6 +42,8 @@ import { testGraphConnection, getGraphConfig } from './database/msGraphService.j
 import { getPushNotificationStatus } from './database/mobilePushService.js';
 import { registerTaxModuleRoutes } from './src/tax_module/server/taxRoutes.js';
 import { registerLebanonRegionalRoutes } from './database/lebanonRegionalRoutes.js';
+import { registerM365Routes } from './database/m365Routes.js';
+import { registerLocalServerSetupRoutes } from './database/localServerSetupRoutes.js';
 
 import http from 'http';
 import https from 'https';
@@ -4196,7 +4198,13 @@ app.delete('/api/calendar/events/:eventId/attendees/:attendeeId', async (req, re
 app.get('/api/settings/app', async (req, res) => {
   try {
     const results = await query('SELECT * FROM app_settings');
-    res.json(results);
+    const sanitized = results.map(row => {
+      if (row.setting_key === 'm365_client_secret_enc' || row.setting_key.includes('secret')) {
+        return { ...row, setting_value: row.setting_value ? '••••••••••••••••' : '' };
+      }
+      return row;
+    });
+    res.json(sanitized);
   } catch (err) {
     console.error('Error fetching app settings:', err);
     res.status(500).json({ error: err.message });
@@ -4227,7 +4235,11 @@ app.get('/api/settings/app/:key', async (req, res) => {
     const key = req.params.key;
     const results = await query('SELECT * FROM app_settings WHERE setting_key = ?', [key]);
     if (results.length > 0) {
-      res.json(results[0]);
+      const row = results[0];
+      if (row.setting_key === 'm365_client_secret_enc' || row.setting_key.includes('secret')) {
+        row.setting_value = row.setting_value ? '••••••••••••••••' : '';
+      }
+      res.json(row);
     } else {
       res.status(404).json({ error: 'Setting not found' });
     }
@@ -5512,6 +5524,9 @@ registerTaxModuleRoutes(app, query);
 // Register Lebanon Regional Office (Mini-HRMS) Routes
 registerLebanonRegionalRoutes(app, query, executeCloudQuery);
 
+// Register Microsoft 365 & Outlook Email Integration Routes
+registerM365Routes(app, query, db);
+
 // ============================================================
 // BIOMETRIC ATTENDANCE & SQL SERVER SYNC API ROUTES
 // ============================================================
@@ -6011,6 +6026,9 @@ app.post('/api/routing/run-acceptance-tests', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// 16. Local Server Setup & Installation Wizard Routes
+registerLocalServerSetupRoutes(app, db, query);
 
 // SPA React Router fallback route
 app.get('*', (req, res) => {

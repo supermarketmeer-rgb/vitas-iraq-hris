@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { runM365Migration } from './m365_migration.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -115,6 +117,9 @@ export async function initDatabase(pool, force = false) {
             `);
             console.log('[DATABASE INIT] Seeded default Company Profile for VITAS Iraq.');
           }
+
+          // Ensure Microsoft 365 tables & settings exist
+          await runM365Migration(query);
 
           return { success: true, message: 'Core tables already exist', tablesCount: tableNames.length, tables: tableNames };
         }

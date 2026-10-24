@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { CHF_IRAQ_LOGO_BASE64 } from '../data/contractHeaderLogo';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { useDocumentRouting } from '../context/DocumentRoutingContext';
+import { SendDocumentDialog } from './m365/SendDocumentDialog';
 
 interface ContractClause {
   id?: number | string;
@@ -31,6 +32,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
 }) => {
   const { openDocumentRouting } = useDocumentRouting();
   const [selectedTypeId, setSelectedTypeId] = useState<number | string | null>(null);
+  const [isM365DialogOpen, setIsM365DialogOpen] = useState(false);
   const [clauses, setClauses] = useState<ContractClause[]>([]);
   const [showMetaTable, setShowMetaTable] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -1064,6 +1066,17 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
               <span>توجيه العقد إلكترونياً</span>
             </button>
 
+            {/* Direct Microsoft 365 Outlook Send Button */}
+            <button
+              type="button"
+              onClick={() => setIsM365DialogOpen(true)}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-600 hover:from-blue-600 hover:to-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
+              title="إرسال العقد مباشرة إلى البريد المؤسسي للموظف عبر Microsoft 365"
+            >
+              <span className="material-symbols-outlined text-base">mark_email_read</span>
+              <span>إرسال عبر Microsoft 365</span>
+            </button>
+
             {/* Close Button */}
             <button
               type="button"
@@ -1237,6 +1250,15 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
         </div>
 
       </div>
+
+      {/* Microsoft 365 Send Dialog */}
+      <SendDocumentDialog
+        isOpen={isM365DialogOpen}
+        onClose={() => setIsM365DialogOpen(false)}
+        initialEmployeeId={String(employee?.id || employee?.employeeId || employee?.employee_id || '')}
+        initialDocumentName={`عقد_عمل_${empFullName}_${contractNumber}.pdf`}
+        sourceModule="contracts"
+      />
     </div>
   );
 };

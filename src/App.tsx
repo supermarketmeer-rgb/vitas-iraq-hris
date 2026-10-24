@@ -33,6 +33,7 @@ import { Category10SystemDevView } from './views/Category10SystemDevView';
 import { Category11SupportHelpView } from './views/Category11SupportHelpView';
 import { DatabaseSchemaViewer } from './components/DatabaseSchemaViewer';
 import { SettingsSecurityView } from './views/SettingsSecurityView';
+import { Microsoft365SettingsView } from './views/Microsoft365SettingsView';
 import { TaxSecurityModuleView } from './views/TaxSecurityModuleView';
 import { ArchiveModuleView } from './views/ArchiveModuleView';
 import { DriversModuleView } from './views/DriversModuleView';
@@ -304,6 +305,11 @@ function AppContent() {
         return <DriversModuleView />;
 
       // Settings & Security
+      case 'm365-settings':
+      case 'm365-integration':
+      case 'sys-m365-integration':
+        return <Microsoft365SettingsView />;
+
       case 'sys-settings-security':
         console.log('Matched sys-settings-security case, rendering SettingsSecurityView');
         return <SettingsSecurityView />;

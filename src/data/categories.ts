@@ -702,6 +702,13 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         icon: 'settings',
         description: 'إدارة تفضيلات النظام، اللغة، السمة، وإعدادات الأمان',
         hidden: true
+      },
+      {
+        id: 'm365-settings',
+        title: 'ربط Microsoft 365 وOutlook',
+        titleEn: 'Microsoft 365 & Outlook Settings',
+        icon: 'mark_email_read',
+        description: 'إدارة وتفعيل الربط مع Microsoft Graph API وإرسال المستندات والعقود بالبريد المؤسسي'
       }
     ]
   },

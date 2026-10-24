@@ -365,5 +365,26 @@ export const api = {
     const q = params ? new URLSearchParams(params as any).toString() : '';
     return apiClient.get(`/recruitment/committee/evaluations${q ? `?${q}` : ''}`);
   },
+
+  // Microsoft 365 & Outlook Email Integration
+  getM365Settings: () => apiClient.get('/m365/settings'),
+  saveM365Settings: (settings: any) => apiClient.post('/m365/settings', settings),
+  testM365Connection: (testCredentials?: any) => apiClient.post('/m365/test-connection', { testCredentials }),
+  validateM365Mailbox: (mailbox?: string) => apiClient.post('/m365/validate-mailbox', { mailbox }),
+  disableM365Integration: () => apiClient.post('/m365/disable', {}),
+  searchM365Employees: (q?: string, limit?: number) => apiClient.get(`/m365/employees/search?q=${encodeURIComponent(q || '')}&limit=${limit || 20}`),
+  getM365EmployeeEmail: (employeeId: string) => apiClient.get(`/m365/employees/${encodeURIComponent(employeeId)}/email`),
+  sendM365Email: (data: any) => apiClient.post('/m365/send-email', data, 40000),
+  createM365Draft: (data: any) => apiClient.post('/m365/create-draft', data),
+  getM365Templates: () => apiClient.get('/m365/templates'),
+  createM365Template: (template: any) => apiClient.post('/m365/templates', template),
+  updateM365Template: (id: number | string, template: any) => apiClient.put(`/m365/templates/${id}`, template),
+  deleteM365Template: (id: number | string) => apiClient.delete(`/m365/templates/${id}`),
+  getM365AuditLogs: (params?: any) => {
+    const q = params ? new URLSearchParams(params as any).toString() : '';
+    return apiClient.get(`/m365/logs${q ? `?${q}` : ''}`);
+  },
+  getM365AuditLogById: (id: string) => apiClient.get(`/m365/logs/${encodeURIComponent(id)}`),
+  runM365AcceptanceTests: () => apiClient.post('/m365/run-acceptance-tests', {}, 60000),
 };
 
