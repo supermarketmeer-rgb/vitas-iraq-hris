@@ -27,6 +27,7 @@ export interface UserProfile {
   can_manage_settings?: number;
   can_manage_users?: number;
   // Fine-grained module permissions (for custom users) - supports boolean or 'write' | 'read' | 'none'
+  job_title?: string;
   modulePermissions?: Record<string, boolean | string>;
   allowed_screens?: any;
 }

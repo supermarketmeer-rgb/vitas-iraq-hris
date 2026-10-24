@@ -172,7 +172,8 @@ export function getUserEffectivePermissions(
   const isHRManagerRole = currentRole === 'HR Manager' || 
     currentUser?.role === 'HR Manager' || 
     currentRole === 'مدير الموارد البشرية' ||
-    (currentUser?.department && String(currentUser.department).includes('الموارد البشرية') && !['Employee', 'Recruiter'].includes(currentRole)) ||
+    (currentUser?.role && String(currentUser.role).includes('مدير')) ||
+    (currentUser?.job_title && (String(currentUser.job_title).includes('مدير') || String(currentUser.job_title).toLowerCase().includes('manager') || String(currentUser.job_title).toLowerCase().includes('director'))) ||
     (currentUser?.name && String(currentUser.name).includes('مدير الموارد البشرية'));
 
   const isRecruiterRole = currentRole === 'Recruiter';
@@ -285,6 +286,20 @@ export function isModuleAuthorized(
     return false;
   }
 
+  // Check parent category denial: if parent category is explicitly denied ('none' or false), deny immediately!
+  const { resolvedCatId, aliases } = resolveCategoryAndAlias(moduleId, catId);
+  if (perms.rawModules) {
+    const isCategoryExplicitlyDenied = aliases.some(alias => {
+      const v = perms.rawModules![alias];
+      return v === 'none' || v === false;
+    }) || perms.rawModules[resolvedCatId] === 'none' || perms.rawModules[resolvedCatId] === false ||
+       (catId && (perms.rawModules[catId] === 'none' || perms.rawModules[catId] === false));
+
+    if (isCategoryExplicitlyDenied) {
+      return false;
+    }
+  }
+
   // 1. Direct sub-module level check if explicitly defined in rawModules
   if (perms.rawModules && moduleId in perms.rawModules) {
     const val = perms.rawModules[moduleId];
@@ -295,8 +310,6 @@ export function isModuleAuthorized(
   // 2. When explicit granular permissions are configured for this user:
   // Must respect granular sub-modules selection! Never grant unselected screens.
   if (perms.hasExplicitPerms && perms.rawModules) {
-    const { resolvedCatId, aliases } = resolveCategoryAndAlias(moduleId, catId);
-
     // Find all known submodules belonging to this category:
     const siblingModuleIds = Object.entries(MODULE_CATEGORY_MAP)
       .filter(([_, info]) => info.catId === resolvedCatId)
@@ -316,12 +329,13 @@ export function isModuleAuthorized(
     const isCategoryExplicitlyGranted = aliases.some(alias => {
       const v = perms.rawModules![alias];
       return v === 'write' || v === 'read' || v === true;
-    });
+    }) || perms.rawModules[resolvedCatId] === 'write' || perms.rawModules[resolvedCatId] === 'read' || perms.rawModules[resolvedCatId] === true;
 
     if (isCategoryExplicitlyGranted) {
       return true;
     }
 
+    // When explicit perms are defined, NEVER fall through to default role-based fallbacks
     return false;
   }
 
@@ -610,6 +624,19 @@ export function getModuleAccessLevel(
   }
 
   const { resolvedCatId, aliases } = resolveCategoryAndAlias(moduleId, catId);
+
+  // If parent category is explicitly denied ('none' or false), return 'none' immediately
+  if (perms.rawModules) {
+    const isCategoryExplicitlyDenied = aliases.some(alias => {
+      const v = perms.rawModules![alias];
+      return v === 'none' || v === false;
+    }) || perms.rawModules[resolvedCatId] === 'none' || perms.rawModules[resolvedCatId] === false ||
+       (catId && (perms.rawModules[catId] === 'none' || perms.rawModules[catId] === false));
+
+    if (isCategoryExplicitlyDenied) {
+      return 'none';
+    }
+  }
 
   // 1. Direct sub-module level check if defined in rawModules
   if (perms.rawModules && moduleId && moduleId in perms.rawModules) {
