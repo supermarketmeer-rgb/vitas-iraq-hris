@@ -180,7 +180,7 @@ export function getUserEffectivePermissions(
   const isITAdminRole = currentRole === 'IT Admin';
   const isEmployeeRole = currentRole === 'Employee';
 
-  const hasExplicitPerms = Object.keys(perms).length > 0;
+  const hasExplicitPerms = Object.entries(perms).some(([, v]) => v === 'write' || v === 'read' || v === true);
 
   const isAnyActive = (keys: string[]) => {
     return keys.some(k => perms[k] === 'write' || perms[k] === 'read' || perms[k] === true);

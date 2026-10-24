@@ -631,9 +631,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     modules: {
       'emp-list': 'write',
       'emp-add': 'write',
-      'emp-directory': 'write',
-      'leave-attendance': 'write',
-      'sys-dynamic-reports': 'read'
+      'emp-directory': 'write'
     } as Record<string, 'write' | 'read' | 'none' | boolean>,
     level: 'full' as 'full' | 'read',
     canManageUsers: false,
@@ -1146,15 +1144,30 @@ export const Category9RiskComplianceView: React.FC = () => {
       Object.entries(categoryRollupKeys).forEach(([catKey, info]) => {
         const hasWrite = info.subIds.some(id => fullModules[id] === 'write' || fullModules[id] === true) || fullModules[info.catId] === 'write';
         const hasRead = info.subIds.some(id => fullModules[id] === 'read') || fullModules[info.catId] === 'read';
-        if (hasWrite) {
+        const catLevelGranted = fullModules[catKey] === 'write' || fullModules[catKey] === true;
+        const catLevelRead = fullModules[catKey] === 'read';
+        if (hasWrite || catLevelGranted) {
           fullModules[catKey] = 'write';
           fullModules[info.catId] = 'write';
-        } else if (hasRead) {
+          // Ensure all sub-modules are at least 'write' if explicitly granted at category level
+          if (catLevelGranted && !hasWrite) {
+            info.subIds.forEach(id => { if (!fullModules[id] || fullModules[id] === false || fullModules[id] === 'none') fullModules[id] = 'write'; });
+          }
+        } else if (hasRead || catLevelRead) {
           fullModules[catKey] = 'read';
           fullModules[info.catId] = 'read';
         } else {
-          fullModules[catKey] = false;
+          // NOT granted: explicitly mark as 'none' and remove any stale sub-module grants
+          fullModules[catKey] = 'none';
           fullModules[info.catId] = 'none';
+          info.subIds.forEach(id => {
+            // Only override if NOT already explicitly set by granular selection
+            if (fullModules[id] === true || fullModules[id] === 'write' || fullModules[id] === 'read') {
+              // Keep granular selections as-is (user explicitly chose them)
+            } else {
+              fullModules[id] = 'none';
+            }
+          });
         }
       });
 
@@ -1344,6 +1357,10 @@ export const Category9RiskComplianceView: React.FC = () => {
 
       // Reset form
       setNewUserForm({
+        id: undefined,
+        originalUsername: '',
+        originalEmployeeId: '',
+        originalEmail: '',
         username: '',
         password: 'Password123!',
         fullNameAr: '',
@@ -1354,15 +1371,13 @@ export const Category9RiskComplianceView: React.FC = () => {
         email: '',
         phone: '',
         modules: {
-          employees: true,
-          attendance: false,
-          payroll: false,
-          recruitment: false,
-          risk: false,
-          settings: false,
-          reports: true
+          'emp-list': 'write',
+          'emp-add': 'write',
+          'emp-directory': 'write'
         },
         level: 'full',
+        canManageUsers: false,
+        role: 'Employee',
         notes: 'مسؤول عن إدخال وتحديث بيانات الموظفين الأساسية، العقود، والمستندات في قسم الموارد البشرية'
       });
     } catch (err) {
