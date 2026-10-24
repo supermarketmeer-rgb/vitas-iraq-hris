@@ -240,7 +240,7 @@ export function getUserEffectivePermissions(
     
     support: hasExplicitPerms 
       ? Boolean(isAnyActive(['support', 'cat-11-support', 'cat-12-support']) || hasActivePrefix('supp-') || hasActivePrefix('support-')) 
-      : true
+      : (isHRManagerRole || isAdminRole || isITAdminRole)
   };
 }
 
@@ -333,9 +333,13 @@ export function isModuleAuthorized(
 
   // Category 2: Dashboard & Executive
   if (catId === 'cat-2-dash') {
+    // When user has explicit granular permissions, Dashboard must ALSO be explicitly granted
+    if (perms.hasExplicitPerms) {
+      return perms.reports;
+    }
     if (moduleId === 'sys-dynamic-reports') return perms.reports || perms.employees || perms.payroll;
     if (moduleId === 'dash-exec-1' || moduleId === 'dash-exec-2') return perms.employees || perms.payroll;
-    return true; // dash-overview, dash-ess, dash-search are general for default fallback
+    return perms.reports || perms.employees; // dash-overview, dash-ess, dash-search: role-based fallback
   }
 
   // Category 3: Employee Management
@@ -348,10 +352,11 @@ export function isModuleAuthorized(
     if (moduleId === 'leave-biometric-settings' || moduleId === 'leave-db-schema') {
       return perms.settings;
     }
-    if (currentRole === 'Employee') {
+    // When user has explicit granular permissions, do NOT auto-grant leave for Employee role
+    if (!perms.hasExplicitPerms && currentRole === 'Employee') {
       return ['dash-ess', 'leave-attendance', 'leave-apply', 'leave-timesheets', 'leave-earned', 'leave-schedule'].includes(moduleId);
     }
-    return perms.attendance || (currentRole === 'HR Manager');
+    return perms.attendance || (!perms.hasExplicitPerms && currentRole === 'HR Manager');
   }
 
   // Category 5: Payroll & Compensation
@@ -379,7 +384,8 @@ export function isModuleAuthorized(
 
   // Category 8: Assets & Documents
   if (catId === 'cat-8-assets') {
-    if (currentRole === 'Employee' && !perms.assets) {
+    // When user has explicit granular permissions, do NOT auto-grant asset sub-modules for Employee role
+    if (!perms.hasExplicitPerms && currentRole === 'Employee' && !perms.assets) {
       return moduleId === 'asset-my-requests' || moduleId === 'doc-my-docs';
     }
     return perms.assets;
