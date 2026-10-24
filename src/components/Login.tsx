@@ -100,7 +100,8 @@ export const Login: React.FC = () => {
           } catch (e) {}
 
           const isSuperAdmin = matchedDbUser.username === 'admin' || matchedDbUser.role === 'Super Admin';
-          const isAdmin = matchedDbUser.role === 'Admin' || matchedDbUser.can_manage_users === 1 || Boolean(parsedScreens?.['sec-roles-permissions']);
+          const hasSecPerms = parsedScreens?.['sec-roles-permissions'] === 'write' || parsedScreens?.['sec-roles-permissions'] === true;
+          const isAdmin = matchedDbUser.role === 'Admin' || (matchedDbUser.can_manage_users === 1 && hasSecPerms);
           const isHR = (matchedDbUser.job_title && (matchedDbUser.job_title.includes('مدير الموارد البشرية') || matchedDbUser.job_title.toLowerCase().includes('hr manager'))) ||
                        (matchedDbUser.role && (matchedDbUser.role.includes('مدير الموارد البشرية') || matchedDbUser.role === 'HR Manager')) ||
                        matchedDbUser.username === 'hrmanager' ||
@@ -384,7 +385,8 @@ export const Login: React.FC = () => {
             // Determine role: check explicit role or infer from job title / permissions
             let assignedRole: UserRole = (cUser.role as UserRole) || 'Employee';
             const titleLower = String(cUser.jobTitle || userJobTitleFromPerms || '').toLowerCase();
-            if (cUser.role === 'Admin' || cUser.can_manage_users === 1 || Boolean(modulePerms['sec-roles-permissions'])) {
+            const hasSecPermsCustom = modulePerms['sec-roles-permissions'] === 'write' || (modulePerms['sec-roles-permissions'] as any) === true;
+            if (cUser.role === 'Admin' || (cUser.can_manage_users === 1 && hasSecPermsCustom)) {
               assignedRole = 'Admin';
             } else if (titleLower.includes('مدير الموارد البشرية') || titleLower.includes('hr manager') || titleLower.includes('hr director')) {
               assignedRole = 'HR Manager';
@@ -496,7 +498,8 @@ export const Login: React.FC = () => {
               employeeUser.can_manage_finance = matchedPerm.modules['payroll'] ? 1 : 0;
               employeeUser.can_manage_recruitment = matchedPerm.modules['recruitment'] ? 1 : 0;
               employeeUser.can_manage_settings = matchedPerm.modules['settings'] ? 1 : 0;
-              const isDelegatedAdmin = Boolean(matchedPerm.can_manage_users === 1 || matchedPerm.role === 'Admin' || matchedPerm.modules['sec-roles-permissions']);
+              const hasSecPermsEmp = matchedPerm.modules['sec-roles-permissions'] === 'write' || matchedPerm.modules['sec-roles-permissions'] === true;
+              const isDelegatedAdmin = matchedPerm.can_manage_users === 1 || matchedPerm.role === 'Admin' || hasSecPermsEmp;
               employeeUser.can_manage_users = isDelegatedAdmin ? 1 : 0;
               if (isDelegatedAdmin) {
                 employeeUser.role = 'Admin';

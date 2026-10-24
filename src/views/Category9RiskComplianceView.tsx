@@ -766,19 +766,37 @@ export const Category9RiskComplianceView: React.FC = () => {
   };
 
   const setCategoryAll = (cat: CategoryGroup, level: 'write' | 'read' | 'none') => {
+    // Map catId -> alias so both keys are cleared/set together
+    const catAliasMap: Record<string, string> = {
+      'cat-3-emp': 'employees',
+      'cat-4-leave': 'attendance',
+      'cat-5-payroll': 'payroll',
+      'cat-6-recruit': 'recruitment',
+      'cat-7-perf': 'performance',
+      'cat-8-assets': 'assets',
+      'cat-9-risk': 'risk',
+      'cat-10-sys': 'settings',
+      'cat-11-support': 'support',
+      'cat-12-archive': 'archive',
+      'cat-2-dash': 'reports',
+      'cat-drivers': 'drivers',
+    };
+    const alias = catAliasMap[cat.id];
     setNewUserForm(prev => {
       const nextModules = { ...prev.modules };
       cat.modules.forEach(m => {
         if (level === 'none') {
-          delete nextModules[m.id];
+          nextModules[m.id] = 'none';
         } else {
           nextModules[m.id] = level;
         }
       });
       if (level === 'none') {
-        delete nextModules[cat.id];
+        nextModules[cat.id] = 'none';
+        if (alias) nextModules[alias] = 'none';
       } else {
         nextModules[cat.id] = level;
+        if (alias) nextModules[alias] = level;
       }
       return { ...prev, modules: nextModules };
     });
@@ -1132,7 +1150,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         payroll: { catId: 'cat-5-payroll', subIds: ['payroll-sheet', 'payroll-payslip', 'payroll-loans', 'payroll-tax', 'payroll-end-service', 'payroll-analytics', 'pay-dashboard', 'payroll-mgmt'] },
         recruitment: { catId: 'cat-6-recruit', subIds: ['recruit-openings', 'recruit-pipeline', 'recruit-interviews', 'recruit-offers', 'recruit-onboarding', 'recruit-dash', 'recruit-ats', 'recruit-candidate-profile'] },
         reports: { catId: 'cat-2-dash', subIds: ['sys-dynamic-reports', 'dash-overview', 'dash-exec-1', 'dash-exec-2', 'dash-ess', 'dash-search'] },
-        risk: { catId: 'cat-9-risk', subIds: ['risk-matrix', 'risk-audit-logs', 'risk-policies', 'risk-incidents', 'risk-compliance-checklist', 'sec-roles', 'risk-assessment'] },
+        risk: { catId: 'cat-9-risk', subIds: ['risk-matrix', 'risk-audit-logs', 'risk-policies', 'risk-incidents', 'risk-compliance-checklist', 'sec-roles', 'risk-assessment', 'sec-roles-permissions', 'sec-general-settings', 'sec-audit-logs', 'sec-api-keys'] },
         settings: { catId: 'cat-10-sys', subIds: ['sys-code-view', 'sys-schema', 'sys-api-logs', 'sys-deploy-status', 'sys-sql-console', 'sys-env', 'auth-secure', 'auth-sso', 'auth-biometric'] },
         support: { catId: 'cat-11-support', subIds: ['support-tickets', 'support-faq', 'support-contact', 'support-guides', 'supp-knowledge-base', 'supp-emp-portal', 'supp-internal-chat', 'supp-notif-center', 'supp-mobile-app'] },
         drivers: { catId: 'cat-drivers', subIds: ['drivers-list', 'drivers-assignments', 'drivers-trips', 'drivers-maintenance', 'drivers-fuel', 'drivers-kpi'] },
@@ -1157,13 +1175,15 @@ export const Category9RiskComplianceView: React.FC = () => {
           fullModules[catKey] = 'read';
           fullModules[info.catId] = 'read';
         } else {
-          // NOT granted: explicitly mark as 'none' and remove any stale sub-module grants
+          // NOT granted: explicitly mark as 'none'
           fullModules[catKey] = 'none';
           fullModules[info.catId] = 'none';
           info.subIds.forEach(id => {
-            // Only override if NOT already explicitly set by granular selection
-            if (fullModules[id] === true || fullModules[id] === 'write' || fullModules[id] === 'read') {
-              // Keep granular selections as-is (user explicitly chose them)
+            // Do NOT override if user explicitly granted a specific sub-module
+            if (fullModules[id] === 'write' || fullModules[id] === true || fullModules[id] === 'read') {
+              // Keep it — granular user selection; re-activate parent
+              fullModules[catKey] = fullModules[id] === 'read' ? 'read' : 'write';
+              fullModules[info.catId] = fullModules[id] === 'read' ? 'read' : 'write';
             } else {
               fullModules[id] = 'none';
             }
@@ -3718,6 +3738,18 @@ export const Category9RiskComplianceView: React.FC = () => {
                             nextModules['sec-roles'] = 'write';
                             nextModules['cat-9-risk'] = 'write';
                             nextModules['risk'] = 'write';
+                          } else {
+                            // Explicitly clear all User Management related modules
+                            nextModules['sec-roles-permissions'] = 'none';
+                            nextModules['sec-roles'] = 'none';
+                            // Only clear cat-9-risk / risk if no other risk sub-module is active
+                            const otherRiskActive = ['risk-matrix', 'risk-audit-logs', 'risk-policies', 'risk-incidents', 'risk-compliance-checklist', 'risk-assessment'].some(
+                              id => nextModules[id] === 'write' || nextModules[id] === 'read' || nextModules[id] === true
+                            );
+                            if (!otherRiskActive) {
+                              nextModules['cat-9-risk'] = 'none';
+                              nextModules['risk'] = 'none';
+                            }
                           }
                           return {
                             ...prev,

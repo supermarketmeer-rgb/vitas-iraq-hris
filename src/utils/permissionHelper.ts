@@ -286,8 +286,17 @@ export function isModuleAuthorized(
     return false;
   }
 
-  // Check parent category denial: if parent category is explicitly denied ('none' or false), deny immediately!
+  // Resolve category and aliases for this module
   const { resolvedCatId, aliases } = resolveCategoryAndAlias(moduleId, catId);
+
+  // 1. FIRST: Direct sub-module check (most specific — overrides category denial)
+  if (perms.rawModules && moduleId in perms.rawModules) {
+    const val = perms.rawModules[moduleId];
+    if (val === 'write' || val === 'read' || val === true) return true;
+    if (val === 'none' || val === false) return false;
+  }
+
+  // 2. Check parent category denial: if parent category is explicitly denied, deny immediately
   if (perms.rawModules) {
     const isCategoryExplicitlyDenied = aliases.some(alias => {
       const v = perms.rawModules![alias];
@@ -300,14 +309,7 @@ export function isModuleAuthorized(
     }
   }
 
-  // 1. Direct sub-module level check if explicitly defined in rawModules
-  if (perms.rawModules && moduleId in perms.rawModules) {
-    const val = perms.rawModules[moduleId];
-    if (val === 'write' || val === 'read' || val === true) return true;
-    if (val === 'none' || val === false) return false;
-  }
-
-  // 2. When explicit granular permissions are configured for this user:
+  // 3. When explicit granular permissions are configured for this user:
   // Must respect granular sub-modules selection! Never grant unselected screens.
   if (perms.hasExplicitPerms && perms.rawModules) {
     // Find all known submodules belonging to this category:
@@ -412,6 +414,11 @@ export function isModuleAuthorized(
 
   // Category 9: Risk & Compliance
   if (catId === 'cat-9-risk') {
+    // sec-roles-permissions is User Management — not a settings-only module.
+    // If we reach here (no explicit rawModules grant handled above), check risk/settings.
+    if (moduleId === 'sec-roles-permissions' || moduleId === 'sec-edit-role' || moduleId === 'sec-roles') {
+      return perms.settings || (currentRole === 'Admin') || (currentRole === 'Super Admin');
+    }
     if (moduleId.startsWith('sec-')) {
       return perms.settings;
     }
@@ -625,7 +632,15 @@ export function getModuleAccessLevel(
 
   const { resolvedCatId, aliases } = resolveCategoryAndAlias(moduleId, catId);
 
-  // If parent category is explicitly denied ('none' or false), return 'none' immediately
+  // 1. FIRST: Direct sub-module level check (most specific — must run before category denial)
+  if (perms.rawModules && moduleId && moduleId in perms.rawModules) {
+    const val = perms.rawModules[moduleId];
+    if (val === 'write' || val === true) return 'write';
+    if (val === 'read') return 'read';
+    if (val === 'none' || val === false) return 'none';
+  }
+
+  // 2. If parent category is explicitly denied ('none' or false), block access
   if (perms.rawModules) {
     const isCategoryExplicitlyDenied = aliases.some(alias => {
       const v = perms.rawModules![alias];
@@ -638,15 +653,7 @@ export function getModuleAccessLevel(
     }
   }
 
-  // 1. Direct sub-module level check if defined in rawModules
-  if (perms.rawModules && moduleId && moduleId in perms.rawModules) {
-    const val = perms.rawModules[moduleId];
-    if (val === 'write' || val === true) return 'write';
-    if (val === 'read') return 'read';
-    if (val === 'none' || val === false) return 'none';
-  }
-
-  // 2. Direct category check in rawModules using all aliases (e.g. 'cat-3-emp' or 'employees')
+  // 3. Direct category check in rawModules using all aliases (e.g. 'cat-3-emp' or 'employees')
   if (perms.rawModules) {
     for (const key of aliases) {
       if (key in perms.rawModules) {
@@ -658,11 +665,11 @@ export function getModuleAccessLevel(
     }
   }
 
-  // 3. Authorization check
+  // 4. Authorization check
   const authorized = isModuleAuthorized(resolvedCatId, moduleId, perms, currentRole);
   if (!authorized) return 'none';
 
-  // 4. If explicit permissions are configured for the user:
+  // 5. If explicit permissions are configured for the user:
   if (perms.hasExplicitPerms && perms.rawModules) {
     // Check if any alias has 'read'
     const hasRead = aliases.some(a => perms.rawModules![a] === 'read') ||
@@ -673,8 +680,9 @@ export function getModuleAccessLevel(
       (moduleId && (perms.rawModules[moduleId] === 'write' || perms.rawModules[moduleId] === true));
     if (hasWrite) return 'write';
 
-    // When custom permissions are explicitly granted and no write was marked, keep safe as read
-    return 'read';
+    // When custom permissions are explicitly granted and no write was marked, return none (not read)
+    // This prevents "stale" categories from appearing
+    return 'none';
   }
 
   // 5. Default Role-based fallbacks (for users without custom explicit permissions)
