@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { SplashScreen } from './components/splash';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 const Router: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -426,9 +427,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState<boolean>(true);
+
+  useEffect(() => {
+    (window as any).replaySplashScreen = () => setShowSplash(true);
+  }, []);
+
   return (
     <AppProvider>
       <DocumentRoutingProvider>
+        {showSplash && (
+          <SplashScreen
+            onFinish={() => setShowSplash(false)}
+            duration={3800}
+            holdTime={1800}
+          />
+        )}
         <Router>
           <DocumentRoutingModal />
           <Routes>
