@@ -1236,3 +1236,131 @@ export async function runDocumentRoutingAcceptanceTests(pool) {
     };
   }
 }
+
+/**
+ * Batch Route Contracts Grouped by Office/Branch
+ * Takes office packages, each containing:
+ * - branchName / officeName
+ * - branchId
+ * - manager (optional resolved recipient)
+ * - employees: Array<{ id, employee_id, full_name_ar, ... }>
+ * - sendTo: 'manager_and_employees' | 'manager_only' | 'employees_only'
+ * Dispatches isolated package for each office to respective recipients with audit logs.
+ */
+export async function batchRouteContractsByOffice(pool, {
+  officePackages = [],
+  channelRequested = 'both',
+  subjectTemplate = '',
+  messageTemplate = '',
+  currentUser = null
+}) {
+  const results = [];
+  const query = (sql, params = []) => new Promise((resolve, reject) => {
+    pool.query(sql, params, (err, res) => (err ? reject(err) : resolve(res)));
+  });
+
+  const allEmployees = await query('SELECT * FROM employees WHERE LOWER(status) != "terminated" AND LOWER(status) != "مفصول"').catch(() => []);
+
+  for (const pkg of officePackages) {
+    const officeName = pkg.officeName || pkg.branchName || 'المكتب الرئيسي';
+    const pkgEmployees = Array.isArray(pkg.employees) ? pkg.employees : [];
+    const count = pkgEmployees.length;
+
+    // Resolve recipients based on sendTo mode
+    let targetRecipients = [];
+
+    // Helper to format recipient
+    const formatRec = (emp, rType = 'specific_employee') => ({
+      id: String(emp.id),
+      employee_id: emp.employee_id || emp.employeeId || `EMP-${emp.id}`,
+      badge_no: emp.badge_no || '',
+      name_ar: emp.full_name_ar || emp.fullName || emp.full_name_en,
+      name_en: emp.full_name_en || emp.fullNameEn || emp.full_name_ar,
+      email: emp.org_email || emp.email || '',
+      org_email: emp.org_email || '',
+      position_ar: emp.position_ar || emp.position || '',
+      branch: emp.branch || officeName,
+      recipient_type: rType
+    });
+
+    // 1. Office Manager
+    let officeManager = pkg.manager;
+    if (!officeManager) {
+      // Auto-find manager of this office
+      const mgrCandidate = allEmployees.find(e => {
+        const pos = String(e.position_ar || e.position || '').toLowerCase();
+        const posEn = String(e.position_en || '').toLowerCase();
+        const isMgr = pos.includes('مدير المكتب') || pos.includes('مدير فرع') || posEn.includes('branch manager') || posEn.includes('office manager');
+        if (!isMgr) return false;
+        const br = String(e.branch || e.location_ar || '').toLowerCase();
+        return br.includes(officeName.toLowerCase()) || officeName.toLowerCase().includes(br);
+      });
+      if (mgrCandidate) {
+        officeManager = formatRec(mgrCandidate, 'office_manager');
+      }
+    }
+
+    const sendMode = pkg.sendTo || 'manager_and_employees';
+
+    if (sendMode === 'manager_only' || sendMode === 'manager_and_employees') {
+      if (officeManager) {
+        targetRecipients.push({ ...officeManager, recipient_type: 'office_manager' });
+      }
+    }
+
+    if (sendMode === 'employees_only' || sendMode === 'manager_and_employees') {
+      for (const emp of pkgEmployees) {
+        // avoid duplicating manager if manager is in employee list
+        if (!targetRecipients.some(r => String(r.id) === String(emp.id))) {
+          targetRecipients.push(formatRec(emp, 'specific_employee'));
+        }
+      }
+    }
+
+    // If still empty (e.g. manager wasn't found in manager_only), fallback to office employees
+    if (targetRecipients.length === 0 && pkgEmployees.length > 0) {
+      targetRecipients = pkgEmployees.map(e => formatRec(e, 'specific_employee'));
+    }
+
+    const docId = `BATCH-CON-${String(pkg.branchId || officeName).replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, '_')}-${new Date().getFullYear()}`;
+    const docTitle = `عقود العمل الرسمية المعتمدة - ${officeName} (${count} عقد)`;
+    const subject = subjectTemplate
+      ? subjectTemplate.replace('{office}', officeName).replace('{count}', String(count))
+      : `[فيتاس العراق] توجيه عقود العمل المعتمدة - ${officeName} (${count} عقد)`;
+    const message = messageTemplate
+      ? messageTemplate.replace('{office}', officeName).replace('{count}', String(count))
+      : `تحية طيبة،\nنود إعلامكم بأنه تم إرسال وتوجيه حزمة عقود العمل الرسمية الخاصة بـ (${officeName}) وعددها (${count} عقد) للمراجعة وتوثيق الاستلام والعمل بموجبها.`;
+
+    const deliveryPayload = {
+      documentType: 'employment_contract',
+      documentId: docId,
+      documentTitle: docTitle,
+      sourceModule: 'contracts',
+      recipients: targetRecipients,
+      channelRequested,
+      subject,
+      message,
+      attachments: pkg.attachments || [],
+      currentUser: currentUser || { id: 'admin', name: 'مسؤول النظام' }
+    };
+
+    const deliveryResult = await sendDocumentThroughRouting(pool, deliveryPayload);
+    results.push({
+      officeName,
+      branchId: pkg.branchId || null,
+      contractCount: count,
+      recipientsCount: targetRecipients.length,
+      hasManager: !!officeManager,
+      managerName: officeManager?.name_ar || null,
+      deliveryResult
+    });
+  }
+
+  return {
+    success: true,
+    processedOfficesCount: results.length,
+    totalContracts: officePackages.reduce((acc, p) => acc + (p.employees?.length || 0), 0),
+    packages: results
+  };
+}
+

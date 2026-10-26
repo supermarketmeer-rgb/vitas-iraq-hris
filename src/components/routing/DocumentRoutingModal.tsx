@@ -260,7 +260,7 @@ export const DocumentRoutingModal: React.FC = () => {
   return (
     <div
       dir={isAr ? 'rtl' : 'ltr'}
-      className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
     >
       <div className={`w-full max-w-3xl rounded-3xl shadow-2xl border flex flex-col max-h-[92vh] overflow-hidden transition-all ${
         isDark ? 'bg-[#0f172a] border-white/10 text-white shadow-teal-950/30' : 'bg-white border-slate-200 text-slate-900 shadow-xl'

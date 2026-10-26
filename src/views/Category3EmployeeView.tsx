@@ -9,6 +9,7 @@ import { api } from '../api/client';
 import { ContractPreviewModal } from '../components/ContractPreviewModal';
 import { ContractArchiveModal } from '../components/ContractArchiveModal';
 import { ContractRenewalAlertsModal } from '../components/ContractRenewalAlertsModal';
+import { BatchOfficeContractRoutingModal } from '../components/routing/BatchOfficeContractRoutingModal';
 import { StatusChangeTable } from '../components/StatusChangeTable';
 import { TrainingTable } from '../components/TrainingTable';
 import { WarningTable } from '../components/WarningTable';
@@ -70,6 +71,7 @@ export const Category3EmployeeView: React.FC = () => {
 
   // Contract renewal & evaluation alerts modal state
   const [showRenewalAlertsModal, setShowRenewalAlertsModal] = useState(false);
+  const [showBatchOfficeRoutingModal, setShowBatchOfficeRoutingModal] = useState(false);
 
   // Save confirmation modal state for Employee Add/Edit Form
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
@@ -4219,15 +4221,27 @@ export const Category3EmployeeView: React.FC = () => {
                               <span className="material-symbols-outlined text-sm">description</span>
                               {t('تفاصيل العقد والدرجة الوظيفية', 'Contract & Job Grade Details')}
                             </h3>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenContractArchive(selectedEmployee)}
-                              className="px-3 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-sm shadow-blue-600/25 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-98 w-fit"
-                              title={t('أرشيف ومعاينة وطباعة جميع العقود السابقة والحالية', 'Preview & Print All Contracts Archive')}
-                            >
-                              <span className="material-symbols-outlined text-sm">print</span>
-                              <span>{t('معاينة وطباعة عقد العمل', 'Preview & Print Contract')}</span>
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenContractArchive(selectedEmployee)}
+                                className="px-3 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-sm shadow-blue-600/25 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-98 w-fit"
+                                title={t('أرشيف ومعاينة وطباعة جميع العقود السابقة والحالية', 'Preview & Print All Contracts Archive')}
+                              >
+                                <span className="material-symbols-outlined text-sm">print</span>
+                                <span>{t('معاينة وطباعة عقد العمل', 'Preview & Print Contract')}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setShowBatchOfficeRoutingModal(true)}
+                                className="px-3 py-1 rounded-lg bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs shadow-sm shadow-teal-600/25 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-98 w-fit"
+                                title={t('توجيه جماعي لكافة العقود مقسمة ومفصولة حسب المكاتب والفروع', 'Batch Route Contracts Grouped by Office')}
+                              >
+                                <span className="material-symbols-outlined text-sm">hub</span>
+                                <span>{t('توجيه العقود حسب المكاتب', 'Route Contracts by Office')}</span>
+                              </button>
+                            </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
@@ -5763,6 +5777,15 @@ export const Category3EmployeeView: React.FC = () => {
         onClose={() => setShowRenewalAlertsModal(false)}
         employees={employees}
         onOpenContract={(emp) => handleOpenContractPreview(emp)}
+        language={language}
+        theme={theme}
+      />
+
+      {/* Batch Office Contract Routing Modal */}
+      <BatchOfficeContractRoutingModal
+        isOpen={showBatchOfficeRoutingModal}
+        onClose={() => setShowBatchOfficeRoutingModal(false)}
+        employees={employees}
         language={language}
         theme={theme}
       />

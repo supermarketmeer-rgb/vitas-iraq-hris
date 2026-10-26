@@ -34,6 +34,7 @@ import {
   initDocumentRoutingTables,
   resolveRecipients,
   sendDocumentThroughRouting,
+  batchRouteContractsByOffice,
   retryEmailDelivery,
   recordDocumentAccess,
   runDocumentRoutingAcceptanceTests
@@ -5873,6 +5874,17 @@ app.post('/api/routing/send', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('Error in /api/routing/send:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 6.1 Batch Route Documents/Contracts Grouped by Office
+app.post('/api/routing/batch-by-office', async (req, res) => {
+  try {
+    const result = await batchRouteContractsByOffice(db, req.body);
+    res.json(result);
+  } catch (err) {
+    console.error('Error in /api/routing/batch-by-office:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

@@ -1039,8 +1039,10 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                   documentId: contractNumber,
                   documentTitle: `عقد عمل - ${empFullName}`,
                   sourceModule: 'contracts',
-                  employeeId: String(employee.id || employee.employeeId || employee.badgeNo || employee.badge_no || ''),
+                  employeeId: String(employee.id || employee.employeeId || employee.employee_id || employee.badgeNo || employee.badge_no || ''),
                   employeeName: empFullName,
+                  departmentId: String(employee.departmentId || employee.department_id || employee.department || ''),
+                  branchId: String(employee.branchId || employee.branch_id || employee.branch || employee.location_ar || ''),
                   specificEmployeeIds: [
                     String(employee.id || ''),
                     String(employee.employeeId || employee.employee_id || ''),
@@ -1056,6 +1058,9 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                     position: empJobTitle,
                     branch: empBranch,
                     badgeNo: employee.badgeNo || employee.badge_no
+                  },
+                  onSuccess: () => {
+                    onClose();
                   }
                 });
               }}

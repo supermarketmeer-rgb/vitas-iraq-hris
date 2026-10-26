@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Employee } from '../types';
 import { BatchContractDatesModal } from './BatchContractDatesModal';
+import { BatchOfficeContractRoutingModal } from './routing/BatchOfficeContractRoutingModal';
 
 export interface PoliciesSectionProps {
   appSettings?: Record<string, string>;
@@ -40,6 +41,7 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
 
   // Batch Contract Dates Modal state
   const [showBatchContractModal, setShowBatchContractModal] = useState(false);
+  const [showBatchOfficeRoutingModal, setShowBatchOfficeRoutingModal] = useState(false);
   const [batchSuccessToast, setBatchSuccessToast] = useState<string | null>(null);
 
   // Determine active settings
@@ -142,14 +144,26 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowBatchContractModal(true)}
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-black text-xs shadow-xl shadow-teal-600/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer shrink-0 border-2 border-white/20 active:scale-95"
-          >
-            <span className="material-symbols-outlined text-xl">event_repeat</span>
-            <span>{t('تعديل تواريخ العقود الدائمية (كبسة زر)', 'Batch Update Contract Dates')}</span>
-          </button>
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setShowBatchContractModal(true)}
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-black text-xs shadow-xl shadow-teal-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 border-2 border-white/20 active:scale-95"
+            >
+              <span className="material-symbols-outlined text-lg">event_repeat</span>
+              <span>{t('تعديل تواريخ العقود الدائمية', 'Batch Update Contract Dates')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowBatchOfficeRoutingModal(true)}
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-teal-600 hover:from-blue-500 hover:to-teal-500 text-white font-black text-xs shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 border-2 border-white/20 active:scale-95"
+              title={t('فصل عقود كل مكتب وتوجيهها للمدير والفرع المعني فقط', 'Separate contracts by office and route strictly to respective branch manager & staff')}
+            >
+              <span className="material-symbols-outlined text-lg">hub</span>
+              <span>{t('توجيه العقود مقسمة حسب المكاتب', 'Route Contracts by Office')}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -480,6 +494,24 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
         language={language}
         isDark={true}
         employees={employees}
+      />
+
+      {/* Batch Office Contract Routing Modal */}
+      <BatchOfficeContractRoutingModal
+        isOpen={showBatchOfficeRoutingModal}
+        onClose={() => setShowBatchOfficeRoutingModal(false)}
+        employees={employees}
+        language={language}
+        theme="dark"
+        onSuccess={() => {
+          setBatchSuccessToast(
+            t(
+              'تم إنجاز التوجيه الجماعي المنفصل للعقود لكافة المكاتب والفروع بنجاح.',
+              'Batch separated contract routing to all offices completed successfully.'
+            )
+          );
+          setTimeout(() => setBatchSuccessToast(null), 8000);
+        }}
       />
     </div>
   );
