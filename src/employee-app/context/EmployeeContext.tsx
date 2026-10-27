@@ -129,9 +129,15 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
     return language === 'en' ? en : ar;
   }, [language]);
 
+  const employeeRef = React.useRef(employee);
+  React.useEffect(() => {
+    employeeRef.current = employee;
+  }, [employee]);
+
   const refreshNotifications = React.useCallback(async () => {
-    if (!employee) return;
-    const empId = employee.id || employee.employeeId || employee.badgeNo;
+    const curEmp = employeeRef.current;
+    if (!curEmp) return;
+    const empId = curEmp.id || curEmp.employeeId || curEmp.badgeNo;
     if (!empId) return;
 
     try {
@@ -174,12 +180,12 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
     } catch (e) {
       console.warn('Failed to fetch employee notifications:', e);
     }
-  }, [employee, language]);
+  }, [language]);
 
   // Initial load and periodic refresh
   React.useEffect(() => {
     refreshNotifications();
-    const interval = setInterval(refreshNotifications, 8000);
+    const interval = setInterval(refreshNotifications, 12000);
     return () => clearInterval(interval);
   }, [refreshNotifications]);
 
@@ -245,10 +251,11 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
       let targetId = '';
       let targetEmpId = '';
 
-      if (employee) {
-        bNo = String(employee.badgeNo || employee.badge_no || '').trim().toUpperCase();
-        targetId = String(employee.id || '').trim();
-        targetEmpId = String(employee.employeeId || employee.employee_id || '').trim().toUpperCase();
+      const cur = employeeRef.current;
+      if (cur) {
+        bNo = String(cur.badgeNo || cur.badge_no || '').trim().toUpperCase();
+        targetId = String(cur.id || '').trim();
+        targetEmpId = String(cur.employeeId || cur.employee_id || '').trim().toUpperCase();
       }
 
       if (!bNo) {
@@ -308,6 +315,18 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
           }
 
           const current = prev || {};
+          // Only update state if meaningful properties changed
+          if (
+            current.name &&
+            current.id === String(found.id) &&
+            (!livePhoto || current.photoUrl === livePhoto) &&
+            current.salary === (found.basicSalary || found.basic_salary || found.salary || current.salary) &&
+            current.position === (found.jobTitle || found.position_ar || found.position || current.position) &&
+            current.department === (found.department || current.department)
+          ) {
+            return prev;
+          }
+
           const updated = {
             ...current,
             id: String(found.id),
@@ -359,7 +378,7 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
     } catch (err) {
       console.warn('refreshEmployee failed:', err);
     }
-  }, [employee]);
+  }, []);
 
   // Synchronize employee immediately and automatically on focus/visibility and periodically
   React.useEffect(() => {
@@ -374,7 +393,7 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
       if (document.visibilityState === 'visible') handleSync();
     });
 
-    const interval = setInterval(handleSync, 5000);
+    const interval = setInterval(handleSync, 15000);
     return () => {
       window.removeEventListener('focus', handleSync);
       clearInterval(interval);

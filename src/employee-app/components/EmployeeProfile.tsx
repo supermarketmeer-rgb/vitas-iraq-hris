@@ -28,7 +28,7 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
 
   React.useEffect(() => {
     if (refreshEmployee) refreshEmployee();
-  }, [refreshEmployee]);
+  }, []);
 
   React.useEffect(() => {
     if (currentEmp) {
