@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   ThemeMode,
   UserRole,
@@ -17,6 +17,12 @@ import { api } from '../api/client';
 import { connectionManager } from '../services/connectionManager';
 import { syncEngine } from '../services/syncEngine';
 import { canUserWrite, isUserReadOnly, getModuleAccessLevel, getUserEffectivePermissions } from '../utils/permissionHelper';
+import {
+  isBranchManager as isBranchManagerHelper,
+  getUserBranch as getUserBranchHelper,
+  filterEmployeesForUser,
+  filterNotificationsForUser
+} from '../utils/branchHelper';
 
 interface AppContextType {
   theme: ThemeMode;
@@ -91,6 +97,12 @@ interface AppContextType {
   canWrite: (moduleId?: string) => boolean;
   isReadOnly: (moduleId?: string) => boolean;
   getAccessLevel: (moduleId?: string) => 'write' | 'read' | 'none';
+
+  // Branch Manager Scope & Segregation
+  isBranchManager: boolean;
+  userBranch: string;
+  scopedEmployees: Employee[];
+  scopedNotifications: SystemNotification[];
 
   // General App Actions
   refreshAllData: () => Promise<void>;
@@ -835,6 +847,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Actions - Using API when available
   const addEmployee = async (emp: Omit<Employee, 'id'>) => {
+    if (isBranchManager) {
+      alert(language === 'ar' ? 'عذراً، يمتلك مدير المكتب صلاحية العرض والمتابعة فقط ولا يمكنه إضافة موظفين.' : 'Branch Managers have read-only access and cannot add employees.');
+      return;
+    }
     try {
       const resData: any = await api.addEmployee(emp);
       const createdEmp: Employee = {
@@ -854,12 +870,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setEmployees(uniqueList);
         }
       } catch (e) {}
-
-      addNotification({
-        title: 'إضافة موظف جديد',
-        message: `تمت إضافة الموظف ${emp.fullName} بنجاح إلى السجلات`,
-        type: 'success'
-      });
     } catch (error) {
       console.error('Error adding employee:', error);
       // Fallback to local state
@@ -876,6 +886,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateEmployee = async (emp: Employee) => {
+    if (isBranchManager) {
+      alert(language === 'ar' ? 'عذراً، يمتلك مدير المكتب صلاحية العرض والمتابعة فقط ولا يمكنه تعديل بيانات الموظفين.' : 'Branch Managers have read-only access and cannot edit employee records.');
+      return;
+    }
     try {
       const response = await api.updateEmployee(emp).catch(() => null);
       if (response) {
@@ -906,14 +920,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updated;
       });
     }
-    addNotification({
-      title: 'تعديل بيانات موظف',
-      message: `تم تحديث بيانات الموظف ${emp.fullName || emp.fullNameAr || ''} بنجاح`,
-      type: 'success'
-    });
   };
 
   const deleteEmployee = async (id: string) => {
+    if (isBranchManager) {
+      alert(language === 'ar' ? 'عذراً، يمتلك مدير المكتب صلاحية العرض والمتابعة فقط ولا يمكنه حذف الموظفين.' : 'Branch Managers have read-only access and cannot delete employees.');
+      return;
+    }
     try {
       await api.deleteEmployee(id);
       setEmployees(prev => prev.filter(e => String(e.id) !== String(id)));
@@ -1254,11 +1267,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Branch Manager Scope & Segregation
+  const isBranchManager = useMemo(() => {
+    return isBranchManagerHelper(currentUser, currentUser?.role);
+  }, [currentUser]);
+
+  const userBranch = useMemo(() => {
+    return getUserBranchHelper(currentUser);
+  }, [currentUser]);
+
+  const scopedEmployees = useMemo(() => {
+    return filterEmployeesForUser(employees, currentUser, currentUser?.role);
+  }, [employees, currentUser]);
+
+  const scopedNotifications = useMemo(() => {
+    return filterNotificationsForUser(notifications, currentUser, currentUser?.role, scopedEmployees);
+  }, [notifications, currentUser, scopedEmployees]);
+
   // Granular Permission Helpers
   const canWrite = useCallback((moduleId?: string): boolean => {
     const targetModule = moduleId || activeModuleId;
+    if (isBranchManager) {
+      const m = String(targetModule || '').toLowerCase();
+      if (!m || m === 'employees' || m.startsWith('emp-') || m === 'cat-3-emp' || m === 'settings' || m.startsWith('sys-') || m === 'cat-10-sys') {
+        return false;
+      }
+    }
     return canUserWrite(targetModule, currentUser, currentUser?.role || 'Employee');
-  }, [activeModuleId, currentUser]);
+  }, [activeModuleId, currentUser, isBranchManager]);
 
   const isReadOnly = useCallback((moduleId?: string): boolean => {
     const targetModule = moduleId || activeModuleId;
@@ -1328,6 +1364,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         canWrite,
         isReadOnly,
         getAccessLevel,
+        isBranchManager,
+        userBranch,
+        scopedEmployees,
+        scopedNotifications,
         refreshAllData: loadData,
         resetToZeroData
       }}

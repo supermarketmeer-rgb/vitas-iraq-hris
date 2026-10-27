@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import * as XLSX from 'xlsx';
+import { isEmployeeInBranch, normalizeBranchKey, getBranchName } from '../utils/branchHelper';
 
 // Database Schema Field Metadata definition
 interface FieldMeta {
@@ -179,8 +180,24 @@ const DB_TABLES_CATALOG: TableMeta[] = [
 ];
 
 export const DynamicReportBuilder: React.FC = () => {
-  const { employees, leaveRequests, candidates, assetRecords, t, currentUser, language, theme, addNotification } = useApp();
+  const { 
+    employees, 
+    leaveRequests, 
+    candidates, 
+    assetRecords, 
+    t, 
+    currentUser, 
+    language, 
+    theme, 
+    addNotification,
+    isBranchManager,
+    userBranch,
+    scopedEmployees
+  } = useApp();
   const isDark = theme === 'dark';
+
+  // For branch manager, active employees are strictly scoped
+  const effectiveEmployees = isBranchManager ? (scopedEmployees || []) : employees;
 
   // Primary and Joined Tables Selection
   const [primaryTable, setPrimaryTable] = useState<string>('employees');
@@ -245,8 +262,86 @@ export const DynamicReportBuilder: React.FC = () => {
     }
   ]);
 
+  // Scoped Saved Reports for Branch Managers or standard for others
+  const activeSavedReports: SavedReport[] = useMemo(() => {
+    if (!isBranchManager) return savedReports;
+    const bName = userBranch || 'مكتبك';
+    return [
+      {
+        id: 'bm-rep-1',
+        name: `تقرير كادر موظفي ${bName} الشامل مع الرواتب والبدلات`,
+        description: `كشف تفصيلي بالموظفين التابعين لـ ${bName} مع الرواتب وبدلات النقل والصفة الوظيفية`,
+        primaryTable: 'employees',
+        joinedTables: ['employee_contracts'],
+        selectedFields: ['employee_id', 'fullName', 'department', 'jobTitle', 'branch', 'basicSalary', 'transportationFixed', 'status'],
+        filters: [{ id: 'f1', fieldKey: 'status', operator: 'equals', value: 'Active' }],
+        sortBy: 'basicSalary',
+        sortOrder: 'desc',
+        createdAt: '2026-10-27',
+        createdBy: 'إدارة الموارد البشرية'
+      },
+      {
+        id: 'bm-rep-2',
+        name: `تقرير عهد وأجهزة وأصول ${bName}`,
+        description: `سجل الأجهزة والمعدات والحواسيب المسلمة لكوادر ${bName}`,
+        primaryTable: 'assets',
+        joinedTables: ['employees'],
+        selectedFields: ['assetTag', 'assetName', 'category', 'serialNumber', 'assignedToEmployee', 'assetBranch', 'assetStatus'],
+        filters: [{ id: 'f1', fieldKey: 'assetStatus', operator: 'equals', value: 'مخصص' }],
+        sortBy: 'assetTag',
+        sortOrder: 'asc',
+        createdAt: '2026-10-27',
+        createdBy: 'مسؤول IT'
+      },
+      {
+        id: 'bm-rep-3',
+        name: `تقرير حركة الدوام والبصمة لموظفي ${bName}`,
+        description: `سجل حركات الحضور، أوقات البصمة، التأخير وساعات العمل الإضافي لكادر ${bName}`,
+        primaryTable: 'attendance',
+        joinedTables: ['employees'],
+        selectedFields: ['id', 'employeeId', 'attendanceDate', 'checkIn', 'checkOut', 'lateMinutes', 'overtimeHours', 'attendanceStatus'],
+        filters: [],
+        sortBy: 'attendanceDate',
+        sortOrder: 'desc',
+        createdAt: '2026-10-27',
+        createdBy: 'إدارة الموارد البشرية'
+      },
+      {
+        id: 'bm-rep-4',
+        name: `تقرير طلبات وإجازات موظفي ${bName}`,
+        description: `كشف بالإجازات السنوية والمرضية والاضطرارية لكادر ${bName}`,
+        primaryTable: 'leave_requests',
+        joinedTables: ['employees'],
+        selectedFields: ['leaveId', 'employeeName', 'leaveType', 'startDate', 'endDate', 'daysCount', 'approvalStatus'],
+        filters: [],
+        sortBy: 'startDate',
+        sortOrder: 'desc',
+        createdAt: '2026-10-27',
+        createdBy: 'إدارة الموارد البشرية'
+      }
+    ];
+  }, [isBranchManager, userBranch, savedReports]);
+
   // Active Report Name State
-  const [reportTitle, setReportTitle] = useState<string>('تقرير الموظفين الشامل مع الرواتب والبدلات');
+  const [reportTitle, setReportTitle] = useState<string>(
+    isBranchManager && userBranch 
+      ? `تقرير كادر موظفي ${userBranch} الشامل مع الرواتب والبدلات` 
+      : 'تقرير الموظفين الشامل مع الرواتب والبدلات'
+  );
+
+  // Auto initialize default branch report on mount for Branch Manager
+  useEffect(() => {
+    if (isBranchManager && activeSavedReports.length > 0) {
+      const defaultRep = activeSavedReports[0];
+      setPrimaryTable(defaultRep.primaryTable);
+      setJoinedTables(defaultRep.joinedTables);
+      setSelectedFields(defaultRep.selectedFields);
+      setFilters(defaultRep.filters);
+      setSortBy(defaultRep.sortBy);
+      setSortOrder(defaultRep.sortOrder);
+      setReportTitle(defaultRep.name);
+    }
+  }, [isBranchManager]);
 
   // Modals visibility
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
@@ -469,9 +564,9 @@ export const DynamicReportBuilder: React.FC = () => {
   const rawData = useMemo(() => {
     switch (primaryTable) {
       case 'employees':
-        return employees.map(emp => ({
+        return effectiveEmployees.map(emp => ({
           employee_id: emp.employeeId,
-          fullName: emp.fullName,
+          fullName: emp.fullName || (emp as any).fullNameAr || (emp as any).name || 'موظف',
           email: emp.email,
           phone: emp.phone,
           department: emp.department,
@@ -481,7 +576,7 @@ export const DynamicReportBuilder: React.FC = () => {
           basicSalary: emp.basicSalary || emp.salary || 1250000,
           transportationFixed: emp.transportationFixed || 150000,
           fixedBonus: emp.fixedBonus || 100000,
-          bankName: emp.bankName || 'مصرف بغداد - فرع الكرادة',
+          bankName: emp.bankName || 'مصرف بغداد',
           iban: emp.iban || 'IQ88BGD00112233445566',
           nationalId: emp.nationalId || '199012345678',
           gender: emp.gender || 'ذكر',
@@ -501,23 +596,30 @@ export const DynamicReportBuilder: React.FC = () => {
         }));
 
       case 'attendance':
-        return [
-          { id: 'ATT-1001', employeeId: 'EMP-101', attendanceDate: '2026-07-31', checkIn: '08:01 AM', checkOut: '04:05 PM', lateMinutes: 0, overtimeHours: 1.0, attendanceStatus: 'حاضر' },
-          { id: 'ATT-1002', employeeId: 'EMP-102', attendanceDate: '2026-07-31', checkIn: '08:25 AM', checkOut: '04:30 PM', lateMinutes: 25, overtimeHours: 0.5, attendanceStatus: 'متأخر' },
-          { id: 'ATT-1003', employeeId: 'EMP-103', attendanceDate: '2026-07-31', checkIn: '07:55 AM', checkOut: '05:00 PM', lateMinutes: 0, overtimeHours: 2.0, attendanceStatus: 'حاضر' },
-          { id: 'ATT-1004', employeeId: 'EMP-104', attendanceDate: '2026-07-31', checkIn: '09:10 AM', checkOut: '04:00 PM', lateMinutes: 70, overtimeHours: 0.0, attendanceStatus: 'تأخير كبير' },
-          { id: 'ATT-1005', employeeId: 'EMP-105', attendanceDate: '2026-07-31', checkIn: '08:00 AM', checkOut: '04:00 PM', lateMinutes: 0, overtimeHours: 0.0, attendanceStatus: 'حاضر' },
-        ];
+        return effectiveEmployees.map((emp, i) => ({
+          id: `ATT-${1000 + i}`,
+          employeeId: emp.employeeId || `EMP-${100 + i}`,
+          attendanceDate: '2026-07-31',
+          checkIn: i % 3 === 0 ? '08:25 AM' : '07:55 AM',
+          checkOut: '04:15 PM',
+          lateMinutes: i % 3 === 0 ? 25 : 0,
+          overtimeHours: i % 2 === 0 ? 1.0 : 0.0,
+          attendanceStatus: i % 3 === 0 ? 'متأخر' : 'حاضر'
+        }));
 
       case 'payroll_periods':
         return [
-          { period_id: 'PAY-2026-07', periodName: 'مسير رواتب تموز (July 2026)', disbursedAmount: 485000000, employeesCount: 320, payrollStatus: 'معتمد ومصروف', approvalDate: '2026-07-28' },
-          { period_id: 'PAY-2026-06', periodName: 'مسير رواتب حزيران (June 2026)', disbursedAmount: 478000000, employeesCount: 318, payrollStatus: 'معتمد ومصروف', approvalDate: '2026-06-27' },
-          { period_id: 'PAY-2026-05', periodName: 'مسير رواتب أيار (May 2026)', disbursedAmount: 472000000, employeesCount: 315, payrollStatus: 'معتمد ومصروف', approvalDate: '2026-05-28' },
+          { period_id: 'PAY-2026-07', periodName: `مسير رواتب تموز (July 2026) - ${isBranchManager ? userBranch : 'المؤسسة'}`, disbursedAmount: isBranchManager ? (effectiveEmployees.length * 1350000) : 485000000, employeesCount: effectiveEmployees.length, payrollStatus: 'معتمد ومصروف', approvalDate: '2026-07-28' },
+          { period_id: 'PAY-2026-06', periodName: `مسير رواتب حزيران (June 2026) - ${isBranchManager ? userBranch : 'المؤسسة'}`, disbursedAmount: isBranchManager ? (effectiveEmployees.length * 1320000) : 478000000, employeesCount: effectiveEmployees.length, payrollStatus: 'معتمد ومصروف', approvalDate: '2026-06-27' },
         ];
 
-      case 'assets':
-        return assetRecords.map(ast => ({
+      case 'assets': {
+        const branchAssets = assetRecords.filter(ast => {
+          if (!isBranchManager) return true;
+          return isEmployeeInBranch({ branch: ast.branch }, userBranch) ||
+                 effectiveEmployees.some(e => e.fullName === ast.assignedEmployeeName);
+        });
+        return branchAssets.map(ast => ({
           assetTag: ast.assetTag,
           assetName: ast.name,
           category: ast.category,
@@ -527,9 +629,14 @@ export const DynamicReportBuilder: React.FC = () => {
           assetStatus: ast.status,
           purchaseDate: ast.purchaseDate
         }));
+      }
 
-      case 'candidates':
-        return candidates.map(c => ({
+      case 'candidates': {
+        const branchCandidates = candidates.filter(c => {
+          if (!isBranchManager) return true;
+          return isEmployeeInBranch({ branch: (c as any).branch || (c as any).location }, userBranch);
+        });
+        return branchCandidates.map(c => ({
           candidateId: c.id,
           candidateName: c.fullName,
           candidateEmail: c.email,
@@ -538,9 +645,18 @@ export const DynamicReportBuilder: React.FC = () => {
           ratingScore: c.rating,
           appliedDate: c.appliedDate
         }));
+      }
 
-      case 'leave_requests':
-        return leaveRequests.map(l => ({
+      case 'leave_requests': {
+        const branchLeaves = leaveRequests.filter(l => {
+          if (!isBranchManager) return true;
+          return effectiveEmployees.some(e => 
+            e.fullName === l.employeeName || 
+            (e as any).fullNameAr === l.employeeName || 
+            (e as any).name === l.employeeName
+          );
+        });
+        return branchLeaves.map(l => ({
           leaveId: l.id,
           employeeName: l.employeeName,
           leaveType: l.leaveType,
@@ -549,11 +665,12 @@ export const DynamicReportBuilder: React.FC = () => {
           daysCount: l.days,
           approvalStatus: l.status
         }));
+      }
 
       default:
-        return employees.map(e => ({ employee_id: e.employeeId, fullName: e.fullName, department: e.department, status: e.status }));
+        return effectiveEmployees.map(e => ({ employee_id: e.employeeId, fullName: e.fullName, department: e.department, status: e.status }));
     }
-  }, [primaryTable, employees, assetRecords, candidates, leaveRequests]);
+  }, [primaryTable, effectiveEmployees, assetRecords, candidates, leaveRequests, isBranchManager, userBranch]);
 
   // Execute Dynamic Filtering & Sorting
   const filteredData = useMemo(() => {
@@ -965,7 +1082,11 @@ export const DynamicReportBuilder: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className={`text-2xl font-bold flex items-center gap-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {t(reportTitle, reportTitle === 'تقرير الموظفين الشامل مع الرواتب والبدلات' ? 'Comprehensive Employee Directory & Payroll Report' : reportTitle)}
+            {language === 'en'
+              ? (isBranchManager
+                  ? `${getBranchName(userBranch, undefined, 'en')} Staff Directory & Payroll Report`
+                  : 'Employee Directory & Payroll Report')
+              : reportTitle}
           </h1>
         </div>
 
@@ -984,31 +1105,44 @@ export const DynamicReportBuilder: React.FC = () => {
             </button>
 
             <button
-              onClick={setShowShareModal ? () => setShowShareModal(true) : undefined}
-              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2"
-              title={t('إرسال التقرير عبر التطبيق', 'Share via App')}
+              onClick={handlePrintExternalWindow}
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 font-bold text-xs border border-teal-500/30 transition-all flex items-center gap-2 cursor-pointer"
+              title={t('طباعة أو حفظ التقرير PDF', 'Print / PDF')}
             >
-              <span className="material-symbols-outlined text-sm">share</span>
-              <span>{t('مشاركة بالنظام', 'Share In-App')}</span>
+              <span className="material-symbols-outlined text-sm">print</span>
+              <span>{t('طباعة / PDF', 'Print / PDF')}</span>
             </button>
 
-            <button
-              onClick={setShowEmailModal ? () => setShowEmailModal(true) : undefined}
-              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2"
-              title={t('إرسال عبر البريد الإلكتروني', 'Send via Email')}
-            >
-              <span className="material-symbols-outlined text-sm">mail</span>
-              <span>{t('إرسال إيميل', 'Send Email')}</span>
-            </button>
+            {!isBranchManager && (
+              <>
+                <button
+                  onClick={setShowShareModal ? () => setShowShareModal(true) : undefined}
+                  className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2"
+                  title={t('إرسال التقرير عبر التطبيق', 'Share via App')}
+                >
+                  <span className="material-symbols-outlined text-sm">share</span>
+                  <span>{t('مشاركة بالنظام', 'Share In-App')}</span>
+                </button>
 
-            <button
-              onClick={() => setShowSaveModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2"
-              title={t('حفظ النموذج للرجوع له مستقبلاً', 'Save Report Template')}
-            >
-              <span className="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>{t('حفظ النموذج', 'Save Template')}</span>
-            </button>
+                <button
+                  onClick={setShowEmailModal ? () => setShowEmailModal(true) : undefined}
+                  className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2"
+                  title={t('إرسال عبر البريد الإلكتروني', 'Send via Email')}
+                >
+                  <span className="material-symbols-outlined text-sm">mail</span>
+                  <span>{t('إرسال إيميل', 'Send Email')}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowSaveModal(true)}
+                  className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2"
+                  title={t('حفظ النموذج للرجوع له مستقبلاً', 'Save Report Template')}
+                >
+                  <span className="material-symbols-outlined text-sm">bookmark_add</span>
+                  <span>{t('حفظ النموذج', 'Save Template')}</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -1049,7 +1183,7 @@ export const DynamicReportBuilder: React.FC = () => {
             <span className="text-slate-500 font-medium">{t('نماذج التقارير الجاهزة:', 'Saved Presets:')}</span>
             <select
               onChange={(e) => {
-                const found = savedReports.find(r => r.id === e.target.value);
+                const found = activeSavedReports.find(r => r.id === e.target.value);
                 if (found) applySavedReport(found);
               }}
               className={`border rounded-xl px-3 py-1.5 font-bold focus:outline-none cursor-pointer ${
@@ -1057,15 +1191,79 @@ export const DynamicReportBuilder: React.FC = () => {
               }`}
             >
               <option value="">{t('-- اختر تقريراً محفوظاً --', '-- Select Saved Preset --')}</option>
-              {savedReports.map(rep => (
+              {activeSavedReports.map(rep => (
                 <option key={rep.id} value={rep.id}>{rep.name} ({rep.createdBy})</option>
               ))}
             </select>
           </div>
         </div>
 
-      {/* Query Builder Configuration Cards Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* If Branch Manager, display the Saved Reports Hub */}
+      {isBranchManager ? (
+        <div className="p-5 rounded-3xl bg-gradient-to-r from-teal-950/40 to-slate-900/90 border border-teal-500/30 shadow-xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-teal-500/20 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold">
+                <span className="material-symbols-outlined text-lg">bookmarks</span>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-white">
+                  {language === 'en'
+                    ? `Saved Reports for ${getBranchName(userBranch, undefined, 'en') || 'Office'}`
+                    : `التقارير المحفوظة لمكتب: ${userBranch || 'مكتبك'}`}
+                </h2>
+                <p className="text-[11px] text-teal-300/80">
+                  {t('تم حصر السجلات والبيانات بموظفي وموجودات مكتبك حصراً لمنع التداخل بين المكاتب.', 'Data is strictly scoped to your branch staff and assets.')}
+                </p>
+              </div>
+            </div>
+            <span className="text-[11px] px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+              {t('🔒 صلاحية قراءة وتصدير فقط', '🔒 Read & Export Only')}
+            </span>
+          </div>
+
+          {/* Quick Cards for Branch Saved Reports */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {activeSavedReports.map(rep => {
+              const isSelected = reportTitle === rep.name;
+              return (
+                <button
+                  key={rep.id}
+                  type="button"
+                  onClick={() => applySavedReport(rep)}
+                  className={`p-3.5 rounded-2xl border text-right transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between shadow-md ${
+                    isSelected
+                      ? 'bg-teal-600 border-teal-300 text-white shadow-lg shadow-teal-900/40 ring-2 ring-teal-300 scale-[1.01]'
+                      : 'bg-teal-800/90 hover:bg-teal-700/90 border-teal-600/60 hover:border-teal-400 text-teal-50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                        isSelected ? 'bg-teal-900/80 text-teal-200 border border-teal-400/40' : 'bg-teal-950/70 text-teal-200 border border-teal-500/30'
+                      }`}>
+                        {rep.primaryTable}
+                      </span>
+                      {isSelected && (
+                        <span className="material-symbols-outlined text-sm text-teal-200">check_circle</span>
+                      )}
+                    </div>
+                    <div className="font-bold text-xs leading-snug line-clamp-2 text-white">{rep.name}</div>
+                    <div className="text-[11px] text-teal-100/80 mt-1 line-clamp-2 leading-relaxed">{rep.description}</div>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-teal-600/40 flex items-center justify-between text-[10px] text-teal-200 font-medium">
+                    <span>{t('عرض وتصدير', 'View & Export')}</span>
+                    <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* Query Builder Configuration Cards Grid */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Step 1: Select Primary & Joined Tables */}
         <div className="p-5 rounded-3xl bg-[#111827] border border-white/10 shadow-xl space-y-4">
@@ -1321,6 +1519,7 @@ export const DynamicReportBuilder: React.FC = () => {
         </div>
 
       </div>
+      )}
 
       {/* Step 4: Formatted Excel Sheet Table View */}
       <div className="p-6 rounded-3xl bg-[#111827] border border-white/10 shadow-xl space-y-4">

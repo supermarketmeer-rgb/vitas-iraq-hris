@@ -284,8 +284,8 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee: 
 
             <h2 className={`text-base font-black truncate leading-snug ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {isEn 
-                ? (employee?.fullNameEn || 'Dina Haider Qasim') 
-                : (employee?.full_name_ar || employee?.fullNameAr || employee?.fullName || employee?.name || 'دينا حيدر قاسم')}
+                ? (employee?.fullNameEn || employee?.full_name_en || employee?.fullName || employee?.full_name_ar || 'Employee') 
+                : (employee?.full_name_ar || employee?.fullNameAr || employee?.fullName || employee?.name || 'الموظف')}
             </h2>
 
             <p className={`text-xs font-black truncate mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
@@ -293,7 +293,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee: 
             </p>
 
             <p className={`text-[11px] font-bold truncate mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
-              {branchTitle} • {isEn ? (employee?.departmentEn || 'Credit Department') : (employee?.department || 'قسم الائتمان')}
+              {branchTitle} • {isEn ? (employee?.departmentEn || employee?.department_en || employee?.department || 'Department') : (employee?.department || employee?.department_ar || 'القسم')}
             </p>
           </div>
         </div>

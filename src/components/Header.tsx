@@ -14,6 +14,7 @@ import {
   localizeNotificationMessage,
   localizeTimestamp
 } from '../utils/nameHelper';
+import { getBranchName } from '../utils/branchHelper';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +32,9 @@ export const Header: React.FC = () => {
     isSidebarOpen,
     setIsSearchOpen,
     notifications,
+    scopedNotifications,
+    isBranchManager,
+    userBranch,
     markAllNotificationsAsRead,
     markNotificationRead,
     refreshAllData,
@@ -112,8 +116,17 @@ export const Header: React.FC = () => {
     }
   };
 
+  const activeNotifications = isBranchManager ? scopedNotifications : notifications;
   const isNotifUnread = (n: any) => !(n.read === true || n.read === 1 || n.is_read === 1 || n.is_read === true);
-  const unreadCount = notifications.filter(isNotifUnread).length;
+  const unreadCount = activeNotifications.filter(isNotifUnread).length;
+  const [notifFilter, setNotifFilter] = useState<'all' | 'unread' | 'urgent'>('all');
+
+  const urgentNotifCount = activeNotifications.filter(n => n.type === 'warning' || n.type === 'error').length;
+  const filteredNotifications = activeNotifications.filter(n => {
+    if (notifFilter === 'unread') return isNotifUnread(n);
+    if (notifFilter === 'urgent') return n.type === 'warning' || n.type === 'error';
+    return true;
+  });
 
   const isDark = theme === 'dark';
 
@@ -198,7 +211,11 @@ export const Header: React.FC = () => {
     'Compliance Officer'
   ];
 
-  const currentUserName = getEmployeeLocalizedName(currentUser, language) || 'User';
+  const currentUserName = isBranchManager
+    ? (language === 'en'
+        ? `${getBranchName(userBranch, undefined, 'en')} Branch Manager`
+        : `مدير ${userBranch || 'المكتب'}`)
+    : (getEmployeeLocalizedName(currentUser, language) || 'User');
 
   return (
     <>
@@ -270,62 +287,64 @@ export const Header: React.FC = () => {
       {/* Right / End Section - Actions, Theme, Language, Role, User Menu */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Connection Mode & Diagnostics Indicator */}
-        <ConnectionStatusWidget />
+        {!isBranchManager && <ConnectionStatusWidget />}
 
         {/* Manual Cloud ⇄ Local Sync Button */}
-        <div className="relative">
-          <button
-            onClick={handleManualSync}
-            disabled={isManualSyncing}
-            className={`p-2 px-2.5 sm:px-3 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
-              isManualSyncing
-                ? 'bg-teal-500/20 text-teal-400 border-teal-500 animate-pulse'
-                : isDark
-                  ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400 hover:bg-teal-950/30'
-                  : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-teal-400'
-            }`}
-            title={t(
-              'مزامنة فورية بين السيرفر المحلي والسحابي (تلقائياً كل 15 دقيقة)',
-              'Manual Sync Local ⇄ Cloud Server (Auto every 15 mins)'
-            )}
-          >
-            <span className={`material-symbols-outlined text-lg text-teal-500 ${isManualSyncing ? 'animate-spin' : ''}`}>
-              sync
-            </span>
-            <span className={`hidden sm:inline text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-300'}`}>
-              {isManualSyncing ? t('جاري المزامنة...', 'Syncing...') : t('مزامنة', 'Sync')}
-            </span>
-            <span className={`hidden md:inline-block text-[10px] font-mono px-1 py-0.2 rounded border font-semibold ${
-              isDark ? 'bg-teal-500/10 text-teal-300 border-teal-500/30' : 'bg-white/10 text-teal-200 border-white/20'
-            }`}>
-              {syncSchedule === '1min' ? '1m' :
-               syncSchedule === '5min' ? '5m' :
-               syncSchedule === '10min' ? '10m' :
-               syncSchedule === '15min' ? '15m' :
-               syncSchedule === '30min' ? '30m' :
-               syncSchedule === '1hr' ? '1h' :
-               syncSchedule === 'daily' ? '24h' : 'Off'}
-            </span>
-          </button>
+        {!isBranchManager && (
+          <div className="relative">
+            <button
+              onClick={handleManualSync}
+              disabled={isManualSyncing}
+              className={`p-2 px-2.5 sm:px-3 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
+                isManualSyncing
+                  ? 'bg-teal-500/20 text-teal-400 border-teal-500 animate-pulse'
+                  : isDark
+                    ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400 hover:bg-teal-950/30'
+                    : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-teal-400'
+              }`}
+              title={t(
+                'مزامنة فورية بين السيرفر المحلي والسحابي (تلقائياً كل 15 دقيقة)',
+                'Manual Sync Local ⇄ Cloud Server (Auto every 15 mins)'
+              )}
+            >
+              <span className={`material-symbols-outlined text-lg text-teal-500 ${isManualSyncing ? 'animate-spin' : ''}`}>
+                sync
+              </span>
+              <span className={`hidden sm:inline text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-300'}`}>
+                {isManualSyncing ? t('جاري المزامنة...', 'Syncing...') : t('مزامنة', 'Sync')}
+              </span>
+              <span className={`hidden md:inline-block text-[10px] font-mono px-1 py-0.2 rounded border font-semibold ${
+                isDark ? 'bg-teal-500/10 text-teal-300 border-teal-500/30' : 'bg-white/10 text-teal-200 border-white/20'
+              }`}>
+                {syncSchedule === '1min' ? '1m' :
+                 syncSchedule === '5min' ? '5m' :
+                 syncSchedule === '10min' ? '10m' :
+                 syncSchedule === '15min' ? '15m' :
+                 syncSchedule === '30min' ? '30m' :
+                 syncSchedule === '1hr' ? '1h' :
+                 syncSchedule === 'daily' ? '24h' : 'Off'}
+              </span>
+            </button>
 
-          {/* Sync Toast Feedback Tooltip */}
-          {syncFeedbackMsg && (
-            <div className={`sync-toast-popup absolute top-full mt-2 ${language === 'ar' ? 'left-0' : 'right-0'} z-50 p-3 px-4 rounded-xl shadow-2xl border text-xs font-extrabold whitespace-nowrap animate-in fade-in slide-in-from-top-1 ${
-              syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error')
-                ? (isDark ? 'bg-[#0a0c10] text-rose-300 border-rose-600' : 'bg-white text-rose-800 border-2 border-rose-600 shadow-xl')
-                : (isDark ? 'bg-[#0a0c10] text-teal-300 border-teal-500' : 'bg-white text-slate-900 border-2 border-emerald-500 shadow-xl')
-            }`}>
-              <div className="flex items-center gap-2">
-                <span className={`material-symbols-outlined text-base font-bold ${
-                  syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error') ? 'text-rose-600' : 'text-emerald-600'
-                }`}>
-                  {syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error') ? 'error' : 'check_circle'}
-                </span>
-                <span className={isDark ? 'text-white font-bold' : 'text-slate-900 font-extrabold'}>{syncFeedbackMsg}</span>
+            {/* Sync Toast Feedback Tooltip */}
+            {syncFeedbackMsg && (
+              <div className={`sync-toast-popup absolute top-full mt-2 ${language === 'ar' ? 'left-0' : 'right-0'} z-50 p-3 px-4 rounded-xl shadow-2xl border text-xs font-extrabold whitespace-nowrap animate-in fade-in slide-in-from-top-1 ${
+                syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error')
+                  ? (isDark ? 'bg-[#0a0c10] text-rose-300 border-rose-600' : 'bg-white text-rose-800 border-2 border-rose-600 shadow-xl')
+                  : (isDark ? 'bg-[#0a0c10] text-teal-300 border-teal-500' : 'bg-white text-slate-900 border-2 border-emerald-500 shadow-xl')
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className={`material-symbols-outlined text-base font-bold ${
+                    syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error') ? 'text-rose-600' : 'text-emerald-600'
+                  }`}>
+                    {syncFeedbackMsg.includes('خطأ') || syncFeedbackMsg.includes('Error') ? 'error' : 'check_circle'}
+                  </span>
+                  <span className={isDark ? 'text-white font-bold' : 'text-slate-900 font-extrabold'}>{syncFeedbackMsg}</span>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Mobile Search Icon */}
         <button
@@ -364,30 +383,65 @@ export const Header: React.FC = () => {
         )}
 
         {/* Company News Button */}
-        <button
-          onClick={() => setActiveModuleId('emp-news')}
-          className={`p-2 px-3 rounded-xl border text-xs font-normal transition-all flex items-center gap-1.5 ${
-            activeModuleId === 'emp-news'
-              ? (isDark ? 'bg-[#06080d] text-teal-400 border-teal-400 shadow-lg shadow-teal-500/20' : 'bg-white/20 text-teal-300 border-teal-400 shadow-lg shadow-teal-500/20')
-              : (isDark ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400' : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-teal-400')
-          }`}
-          title={t('أخبار وإعلانات المؤسسة', 'Company News & Announcements')}
-        >
-          <span className="material-symbols-outlined text-xl text-teal-500">newspaper</span>
-          <span className={`hidden md:inline text-xs ${isDark ? 'text-white' : 'text-white'}`}>{t('أخبار المؤسسة', 'Company News')}</span>
-        </button>
+        {!isBranchManager && (
+          <button
+            onClick={() => setActiveModuleId('emp-news')}
+            className={`p-2 px-3 rounded-xl border text-xs font-normal transition-all flex items-center gap-1.5 ${
+              activeModuleId === 'emp-news'
+                ? (isDark ? 'bg-[#06080d] text-teal-400 border-teal-400 shadow-lg shadow-teal-500/20' : 'bg-white/20 text-teal-300 border-teal-400 shadow-lg shadow-teal-500/20')
+                : (isDark ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400' : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-teal-400')
+            }`}
+            title={t('أخبار وإعلانات المؤسسة', 'Company News & Announcements')}
+          >
+            <span className="material-symbols-outlined text-xl text-teal-500">newspaper</span>
+            <span className={`hidden md:inline text-xs ${isDark ? 'text-white' : 'text-white'}`}>{t('أخبار المؤسسة', 'Company News')}</span>
+          </button>
+        )}
 
         {/* System Help & Functional Guide Modal Trigger */}
+        {!isBranchManager && (
+          <button
+            onClick={() => setShowHelpGuideModal(true)}
+            className={`p-2 rounded-xl transition-all relative border flex items-center justify-center ${
+              isDark 
+                ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400' 
+                : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-teal-400'
+            }`}
+            title={t('دليل وفهرس وظائف موديولات المنظومة (مفهرس)', 'System Modules Index & Functional Guide')}
+          >
+            <span className="material-symbols-outlined text-xl text-teal-500">help</span>
+          </button>
+        )}
+
+        {/* Theme Toggle Button */}
         <button
-          onClick={() => setShowHelpGuideModal(true)}
-          className={`p-2 rounded-xl transition-all relative border flex items-center justify-center ${
+          type="button"
+          onClick={toggleTheme}
+          className={`p-2 rounded-xl transition-all relative border flex items-center justify-center cursor-pointer shadow-xs active:scale-95 ${
             isDark 
-              ? 'bg-[#06080d] text-white border-teal-500/40 hover:text-teal-400 hover:border-teal-400' 
-              : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-teal-400'
+              ? 'bg-[#06080d] text-amber-300 border-teal-500/40 hover:text-amber-200 hover:border-amber-400' 
+              : 'bg-white/10 text-amber-200 border-white/20 hover:bg-white/20 hover:border-amber-300'
           }`}
-          title={t('دليل وفهرس وظائف موديولات المنظومة (مفهرس)', 'System Modules Index & Functional Guide')}
+          title={theme === 'dark' ? t('الوضع الفاتح', 'Light Mode') : t('الوضع الداكن', 'Dark Mode')}
         >
-          <span className="material-symbols-outlined text-xl text-teal-500">help</span>
+          <span className="material-symbols-outlined text-xl">
+            {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+          </span>
+        </button>
+
+        {/* Language Toggle Button */}
+        <button
+          type="button"
+          onClick={toggleLanguage}
+          className={`p-2 px-2.5 rounded-xl transition-all relative border flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95 text-xs font-bold ${
+            isDark 
+              ? 'bg-[#06080d] text-teal-400 border-teal-500/40 hover:text-teal-300 hover:border-teal-400' 
+              : 'bg-white/10 text-teal-200 border-white/20 hover:bg-white/20 hover:border-teal-300'
+          }`}
+          title={language === 'ar' ? 'Switch to English' : 'التحويل إلى العربية'}
+        >
+          <span className="material-symbols-outlined text-lg">language</span>
+          <span className="font-mono text-xs uppercase">{language === 'ar' ? 'EN' : 'عربي'}</span>
         </button>
 
         {/* Notifications Button */}
@@ -419,45 +473,120 @@ export const Header: React.FC = () => {
                 ? 'bg-[#0a0c10] border-white/10 text-white' 
                 : 'bg-white border-slate-300 text-slate-900 shadow-slate-900/20'
             }`}>
-              <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+              <div className={`flex items-center justify-between pb-2 border-b ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-teal-600">notifications_active</span>
                   <h3 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    {t('مركز التنبيهات', 'Notification Center')}
+                    {isBranchManager 
+                      ? (language === 'en' ? `${getBranchName(userBranch, undefined, 'en')} Office Alerts` : `تنبيهات ${userBranch || 'المكتب'}`) 
+                      : t('مركز التنبيهات', 'Notification Center')}
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  {notifications.some(isNotifUnread) && (
+                  {activeNotifications.some(isNotifUnread) && (
                     <button
                       onClick={markAllNotificationsAsRead}
                       style={{ color: '#ffffff', backgroundColor: '#0d7a6e' }}
-                      className="mark-all-read-btn text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shadow-sm bg-teal-700 hover:bg-teal-800 text-white border border-teal-800 cursor-pointer"
+                      className="mark-all-read-btn text-xs font-bold px-2.5 py-1 rounded-xl transition-all flex items-center gap-1 shadow-sm bg-teal-700 hover:bg-teal-800 text-white border border-teal-800 cursor-pointer"
                       title={t('تحديد كل التنبيهات كمقروءة', 'Mark all as read')}
                     >
-                      <span className="material-symbols-outlined text-sm" style={{ color: '#ffffff' }}>done_all</span>
-                      <span style={{ color: '#ffffff' }}>{t('الكل مقروء', 'Mark All Read')}</span>
+                      <span className="material-symbols-outlined text-xs" style={{ color: '#ffffff' }}>done_all</span>
+                      <span style={{ color: '#ffffff' }}>{t('مقروء', 'Read All')}</span>
                     </button>
                   )}
-                  <span className={`text-xs shadow-xs border px-2 py-0.5 rounded-full font-bold ${
+                  <span className={`text-[11px] shadow-xs border px-2 py-0.5 rounded-full font-bold ${
                     isDark 
                       ? 'bg-[#06080d] text-teal-400 border-teal-500' 
                       : 'bg-teal-50 text-teal-800 border-teal-300'
                   }`}>
-                    {notifications.length} {t('تنبيهات', 'notifications')}
+                    {activeNotifications.length}
                   </span>
                 </div>
               </div>
 
+              {/* Notification Filter Pills */}
+              <div className="flex items-center gap-2 py-2.5 border-b border-slate-100 dark:border-white/5">
+                {/* All Button */}
+                <button
+                  type="button"
+                  onClick={() => setNotifFilter('all')}
+                  className={`px-3 py-1 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer border ${
+                    isDark ? 'bg-[#06080d]' : 'bg-white'
+                  } ${
+                    notifFilter === 'all'
+                      ? (isDark ? 'border-teal-400 text-teal-300 ring-2 ring-teal-500/30 font-black shadow-xs' : 'border-teal-600 text-teal-700 ring-2 ring-teal-500/20 font-black shadow-xs')
+                      : (isDark ? 'border-white/10 text-slate-400 hover:border-white/20' : 'border-slate-300 text-slate-600 hover:border-slate-400 font-bold')
+                  }`}
+                >
+                  <span>{t('الكل', 'All')}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                    notifFilter === 'all'
+                      ? (isDark ? 'bg-teal-500/20 text-teal-300' : 'bg-teal-50 text-teal-700 font-black border border-teal-200')
+                      : (isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600')
+                  }`}>
+                    {activeNotifications.length}
+                  </span>
+                </button>
+
+                {/* Unread Button */}
+                <button
+                  type="button"
+                  onClick={() => setNotifFilter('unread')}
+                  className={`px-3 py-1 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer border ${
+                    isDark ? 'bg-[#06080d]' : 'bg-white'
+                  } ${
+                    notifFilter === 'unread'
+                      ? (isDark ? 'border-teal-400 text-teal-300 ring-2 ring-teal-500/30 font-black shadow-xs' : 'border-teal-600 text-teal-700 ring-2 ring-teal-500/20 font-black shadow-xs')
+                      : (isDark ? 'border-teal-500/40 text-teal-400 hover:border-teal-400' : 'border-teal-400 text-teal-600 hover:border-teal-600 font-bold')
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${unreadCount > 0 ? 'bg-teal-500 animate-pulse' : 'bg-teal-400'}`}></span>
+                  <span>{t('غير مقروء', 'Unread')}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                    isDark ? 'bg-teal-500/20 text-teal-300' : 'bg-teal-50 text-teal-700 font-black border border-teal-200'
+                  }`}>
+                    {unreadCount}
+                  </span>
+                </button>
+
+                {/* Important Button */}
+                {urgentNotifCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setNotifFilter('urgent')}
+                    className={`px-3 py-1 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer border ${
+                      isDark ? 'bg-[#06080d]' : 'bg-white'
+                    } ${
+                      notifFilter === 'urgent'
+                        ? (isDark ? 'border-rose-400 text-rose-300 ring-2 ring-rose-500/30 font-black shadow-xs' : 'border-rose-600 text-rose-700 ring-2 ring-rose-500/20 font-black shadow-xs')
+                        : (isDark ? 'border-rose-500/40 text-rose-400 hover:border-rose-400' : 'border-rose-400 text-rose-600 hover:border-rose-600 font-bold')
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    <span>{t('هامة', 'Important')}</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                      isDark ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-50 text-rose-700 font-black border border-rose-200'
+                    }`}>
+                      {urgentNotifCount}
+                    </span>
+                  </button>
+                )}
+              </div>
+
               <div className="py-2 max-h-64 overflow-y-auto space-y-2">
-                {notifications.length === 0 ? (
+                {filteredNotifications.length === 0 ? (
                   <div className="text-center py-6 text-slate-500">
                     <span className="material-symbols-outlined text-3xl mb-1 text-slate-400">
                       notifications_off
                     </span>
-                    <p className="text-xs text-slate-600 font-medium">{t('لا توجد إشعارات جديدة حتى الآن', 'No new notifications yet')}</p>
+                    <p className="text-xs text-slate-600 font-medium">
+                      {notifFilter === 'unread' 
+                        ? t('لا توجد إشعارات غير مقروءة حالياً', 'No unread notifications') 
+                        : t('لا توجد إشعارات جديدة حتى الآن', 'No new notifications yet')}
+                    </p>
                   </div>
                 ) : (
-                  notifications.map(n => {
+                  filteredNotifications.map(n => {
                     const isRead = !isNotifUnread(n);
                     return (
                       <div
@@ -525,7 +654,11 @@ export const Header: React.FC = () => {
             <p className={`text-xs font-bold leading-tight ${isDark ? 'text-white' : 'text-white'}`}>
               {currentUserName}
             </p>
-            <p className={`text-[10px] font-semibold leading-tight mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-300'}`}>{currentUser.role}</p>
+            <p className={`text-[10px] font-semibold leading-tight mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-300'}`}>
+              {currentUser.role === 'Branch Manager'
+                ? (language === 'en' ? 'Branch Manager' : 'مدير فرع')
+                : currentUser.role}
+            </p>
           </div>
         </div>
 
@@ -637,14 +770,31 @@ export const Header: React.FC = () => {
                   const resolvedEmpId = currentUser?.employeeId || (currentUser?.role === 'HR Manager' ? 'VTS-HRMANAGER' : (currentUser?.role === 'Super Admin' ? 'VTS-ADMIN' : undefined));
                   const resolvedId = (currentUser?.role === 'HR Manager' && (!currentUser?.id || currentUser?.id === '1')) ? '1096' : currentUser?.id;
 
-                  await api.changePassword({
-                    id: resolvedId,
-                    username: resolvedUsername,
-                    employeeId: resolvedEmpId,
-                    currentPassword: currentPassword ? currentPassword.trim() : undefined,
-                    newPassword: newPassword.trim(),
-                    adminReset: isAdminRole || !currentPassword.trim()
-                  } as any);
+                  try {
+                    await api.changePassword({
+                      id: resolvedId,
+                      username: resolvedUsername,
+                      employeeId: resolvedEmpId,
+                      currentPassword: currentPassword ? currentPassword.trim() : undefined,
+                      newPassword: newPassword.trim(),
+                      adminReset: isAdminRole || !currentPassword.trim()
+                    } as any);
+                  } catch (apiErr) {
+                    console.warn('Backend changePassword (falling back to local store if preset user):', apiErr);
+                    if (!isBranchManager && !currentUser?.username?.includes('manager')) {
+                      throw apiErr;
+                    }
+                  }
+
+                  // Store in branch manager passwords map for seamless local authentication
+                  try {
+                    const bPasses = JSON.parse(localStorage.getItem('vitas_branch_manager_passwords') || '{}');
+                    const uKey = (currentUser?.username || resolvedUsername || '').toLowerCase();
+                    if (uKey) {
+                      bPasses[uKey] = newPassword.trim();
+                      localStorage.setItem('vitas_branch_manager_passwords', JSON.stringify(bPasses));
+                    }
+                  } catch (e) {}
 
                   // Update in custom users list if exists
                   try {

@@ -27,31 +27,57 @@ export const Category2DashboardView: React.FC = () => {
     notifications,
     isDark,
     t,
-    language
+    language,
+    isBranchManager,
+    userBranch,
+    scopedEmployees,
+    scopedNotifications
   } = useApp();
 
   const [dashSearchQuery, setDashSearchQuery] = useState('');
 
-  // Live analytics computations derived directly from 49 employees & real DB state
-  const totalEmployeesCount = employees.length;
+  // Active employees list: strictly scoped to the manager's office if logged in as Branch Manager
+  const activeEmployees = useMemo(() => {
+    return isBranchManager ? scopedEmployees : employees;
+  }, [isBranchManager, scopedEmployees, employees]);
+
+  // Active notifications list: strictly scoped to the manager's branch
+  const activeNotifications = useMemo(() => {
+    return isBranchManager ? scopedNotifications : notifications;
+  }, [isBranchManager, scopedNotifications, notifications]);
+
+  // Active leave requests: scoped to the branch employees
+  const activeLeaveRequests = useMemo(() => {
+    if (!isBranchManager) return leaveRequests;
+    const branchKey = userBranch ? userBranch.replace(/^(مكتب|فرع)\s+/, '').trim() : '';
+    const scopedEmpIds = new Set(scopedEmployees.map(e => String(e.id || e.employeeId)));
+    return leaveRequests.filter(r => {
+      if (scopedEmpIds.has(String(r.employeeId))) return true;
+      if (r.branch && branchKey && r.branch.includes(branchKey)) return true;
+      return false;
+    });
+  }, [isBranchManager, leaveRequests, userBranch, scopedEmployees]);
+
+  // Live analytics computations derived directly from scoped employees & real DB state
+  const totalEmployeesCount = activeEmployees.length;
 
   const totalBasicSalaries = useMemo(() => {
-    return employees.reduce((sum, e) => sum + (Number(e.basicSalary ?? e.basic_salary ?? e.salary) || 1250000), 0);
-  }, [employees]);
+    return activeEmployees.reduce((sum, e) => sum + (Number(e.basicSalary ?? e.basic_salary ?? e.salary) || 1250000), 0);
+  }, [activeEmployees]);
 
   const avgBasicSalary = totalEmployeesCount > 0 ? Math.round(totalBasicSalaries / totalEmployeesCount) : 0;
 
   // Resigned / On Hold staff count
   const resignedStaffCount = useMemo(() => {
-    return employees.filter(e => e.exitDate || e.exit_date || e.resignationDate || e.onHold || e.on_hold === 1 || String(e.status || '').toLowerCase().includes('resigned')).length;
-  }, [employees]);
+    return activeEmployees.filter(e => e.exitDate || e.exit_date || e.resignationDate || e.onHold || e.on_hold === 1 || String(e.status || '').toLowerCase().includes('resigned')).length;
+  }, [activeEmployees]);
 
   const turnoverRateStr = totalEmployeesCount > 0 ? ((resignedStaffCount / totalEmployeesCount) * 100).toFixed(1) : '0.0';
 
   // Branch breakdown live calculation with bilingual office names
   const branchCounts = useMemo(() => {
     const map: Record<string, { count: number; totalSalary: number; rawKey: string; branchAr: string; branchEn: string }> = {};
-    employees.forEach(e => {
+    activeEmployees.forEach(e => {
       const bKey = e.branch || e.location_ar || 'السليمانية';
       const bEn = e.branchEn || e.location_en;
       const sal = Number(e.basicSalary ?? e.basic_salary ?? e.salary) || 1250000;
@@ -77,12 +103,12 @@ export const Category2DashboardView: React.FC = () => {
       totalSalary: data.totalSalary,
       percent: Math.round((data.count / (totalEmployeesCount || 1)) * 100)
     }));
-  }, [employees, totalEmployeesCount, language]);
+  }, [activeEmployees, totalEmployeesCount, language]);
 
   // Dept breakdown live calculation with bilingual support
   const deptCounts = useMemo(() => {
     const map: Record<string, number> = {};
-    employees.forEach(e => {
+    activeEmployees.forEach(e => {
       const d = getLocalizedDepartment(e.department || 'قسم الائتمان', language);
       map[d] = (map[d] || 0) + 1;
     });
@@ -91,14 +117,14 @@ export const Category2DashboardView: React.FC = () => {
       count,
       percent: Math.round((count / (totalEmployeesCount || 1)) * 100)
     }));
-  }, [employees, totalEmployeesCount, language]);
+  }, [activeEmployees, totalEmployeesCount, language]);
 
   // Search filtered employees for Global Search sub-screen with bilingual Arabic & English support
   const searchFilteredEmployees = useMemo(() => {
-    return filterEmployeesBilingual(employees, dashSearchQuery);
-  }, [employees, dashSearchQuery]);
+    return filterEmployeesBilingual(activeEmployees, dashSearchQuery);
+  }, [activeEmployees, dashSearchQuery]);
 
-  const pendingLeavesCount = leaveRequests.filter(r => r.status === 'قيد الانتظار' || r.status === 'Pending').length;
+  const pendingLeavesCount = activeLeaveRequests.filter(r => r.status === 'قيد الانتظار' || r.status === 'Pending').length;
   const openVacanciesCount = useMemo(() => {
     return jobVacancies.filter(j => j.status === 'مفتوحة' || j.status === 'Open').length;
   }, [jobVacancies]);
@@ -106,10 +132,11 @@ export const Category2DashboardView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+
       {/* Page Title */}
       <div>
         <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          {activeModuleId === 'dash-overview' && t('نظرة عامة على النظام', 'System Overview')}
+          {activeModuleId === 'dash-overview' && (isBranchManager ? (language === 'en' ? `${getBranchName(userBranch, undefined, 'en')} Office Dashboard` : `لوحة تحكم وتقارير ${userBranch}`) : t('نظرة عامة على النظام', 'System Overview'))}
           {activeModuleId === 'dash-exec-1' && t('لوحة المعلومات التنفيذية 1 (التحليلات الاستراتيجية)', 'Executive Dashboard 1 (Strategic Analytics)')}
           {activeModuleId === 'dash-exec-2' && t('لوحة المعلومات التنفيذية 2 (القوى العاملة والتكاليف)', 'Executive Dashboard 2 (Workforce & Costs)')}
           {activeModuleId === 'dash-ess' && t('لوحة الخدمة الذاتية للموظف (ESS Portal)', 'Employee Self-Service (ESS) Portal')}
@@ -225,7 +252,7 @@ export const Category2DashboardView: React.FC = () => {
               <span className={`text-xs font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Live Dashboard Stream</span>
             </div>
 
-            {employees.length === 0 ? (
+            {activeEmployees.length === 0 ? (
               <EmptyState
                 icon="badge"
                 title={t('لا توجد بيانات موظفين حتى الآن', 'No Employee Data Yet')}
@@ -237,7 +264,7 @@ export const Category2DashboardView: React.FC = () => {
               <div className="space-y-3">
                 <p className={`text-xs font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-600'}`}>{t('قائمة الموظفين المدخلين حديثاً:', 'Recently Added Employees:')}</p>
                 <div className="space-y-2">
-                  {employees?.slice(0, 5).map(emp => (
+                  {activeEmployees?.slice(0, 5).map(emp => (
                     <div
                       key={emp.id}
                       dir={language === 'en' ? 'ltr' : 'rtl'}
@@ -294,11 +321,11 @@ export const Category2DashboardView: React.FC = () => {
                   ? 'bg-[#06080d] text-teal-400 border-teal-500'
                   : 'bg-teal-50 text-teal-700 border-teal-300 shadow-2xs'
                 }`}>
-                {notifications.length} {t('تنبيهات', 'alerts')}
+                {activeNotifications.length} {t('تنبيهات', 'alerts')}
               </span>
             </div>
 
-            {notifications.length === 0 ? (
+            {activeNotifications.length === 0 ? (
               <div className="text-center py-8 text-slate-500 text-xs space-y-2">
                 <span className="material-symbols-outlined text-4xl text-emerald-500/60 block">
                   task_alt
@@ -307,7 +334,7 @@ export const Category2DashboardView: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[360px] overflow-y-auto custom-scrollbar">
-                {notifications.map(n => (
+                {activeNotifications.map(n => (
                   <div
                     key={n.id}
                     dir={language === 'en' ? 'ltr' : 'rtl'}

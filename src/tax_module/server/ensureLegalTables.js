@@ -132,6 +132,75 @@ export async function ensureLegalTables(query) {
       console.log('✅ Seeded default progressive tax brackets');
     }
 
+    // 6. Ensure tax_branch_jurisdictions table exists
+    await query(`
+      CREATE TABLE IF NOT EXISTS tax_branch_jurisdictions (
+        id VARCHAR(100) PRIMARY KEY,
+        name_ar VARCHAR(255) NOT NULL,
+        name_en VARCHAR(255) NOT NULL,
+        city VARCHAR(100) NULL,
+        tax_region ENUM('IRAQ', 'KURDISTAN') NOT NULL DEFAULT 'IRAQ',
+        notes TEXT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // Ensure tax_region column on branches table
+    const branchCols = await query('DESCRIBE branches').catch(() => []);
+    const bColNames = (Array.isArray(branchCols) ? branchCols : []).map(c => c.Field);
+    if (!bColNames.includes('tax_region')) {
+      await query(`ALTER TABLE branches ADD COLUMN tax_region ENUM('IRAQ', 'KURDISTAN') NOT NULL DEFAULT 'IRAQ' AFTER country`).catch(() => {});
+    }
+
+    // Seed / Sync branches into tax_branch_jurisdictions
+    const [existingJurisCount] = await query('SELECT COUNT(*) as cnt FROM tax_branch_jurisdictions').catch(() => [{ cnt: 0 }]);
+    if (!existingJurisCount || existingJurisCount.cnt === 0) {
+      const allBranches = await query('SELECT id, name_ar, name_en, city FROM branches').catch(() => []);
+      if (Array.isArray(allBranches) && allBranches.length > 0) {
+        for (const b of allBranches) {
+          const str = `${b.name_ar || ''} ${b.name_en || ''} ${b.city || ''}`.toLowerCase();
+          const isKurd =
+            str.includes('sulay') ||
+            str.includes('suley') ||
+            str.includes('erbil') ||
+            str.includes('arbil') ||
+            str.includes('duhok') ||
+            str.includes('سليمانية') ||
+            str.includes('السليمانية') ||
+            str.includes('اربيل') ||
+            str.includes('أربيل') ||
+            str.includes('دهوك') ||
+            str.includes('كردستان');
+          // Default: IRAQ unless Kurdistan
+          const region = isKurd ? 'KURDISTAN' : 'IRAQ';
+          await query(
+            `INSERT INTO tax_branch_jurisdictions (id, name_ar, name_en, city, tax_region, notes)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE name_ar = VALUES(name_ar), name_en = VALUES(name_en)`,
+            [
+              b.id,
+              b.name_ar || b.id,
+              b.name_en || b.id,
+              b.city || null,
+              region,
+              region === 'KURDISTAN' ? 'مكتب تابع لإقليم كردستان العراق' : 'مكتب تابع للعراق الاتحادي (الافتراضي)'
+            ]
+          ).catch(() => {});
+        }
+      }
+      console.log('✅ Synchronized tax_branch_jurisdictions with branches');
+    }
+
+    // Update payroll_legal_settings default values if needed
+    await query(`
+      UPDATE payroll_legal_settings SET
+        ss_maximum_insured_salary = 1750000.00,
+        tax_personal_allowance = 5000000.00,
+        tax_spouse_allowance = 4000000.00,
+        tax_child_allowance = 400000.00
+      WHERE version_code = 'v2026.1' AND ss_maximum_insured_salary > 1750000
+    `).catch(() => {});
+
   } catch (err) {
     console.error('Error in ensureLegalTables:', err);
   }

@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Employee, Department, Office, JobPosition } from '../../types/hris';
 import { Language, translations } from './translations';
+import { useApp } from '../../context/AppContext';
+import { normalizeBranchKey } from '../../utils/branchHelper';
 
 interface EmployeesManagerProps {
   employees: Employee[];
@@ -21,6 +23,7 @@ export const EmployeesManager: React.FC<EmployeesManagerProps> = ({
   theme = 'dark',
   onRefresh
 }) => {
+  const { isBranchManager, userBranch } = useApp();
   const t = translations[lang];
   const isArabic = lang === 'ar';
   const isDark = theme !== 'light';
@@ -51,6 +54,17 @@ export const EmployeesManager: React.FC<EmployeesManagerProps> = ({
   // Filtered employees list
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
+      // Branch Manager office restriction: only show employees of their office
+      if (isBranchManager && userBranch) {
+        const targetBranchKey = normalizeBranchKey(userBranch);
+        const officeObj = offices.find(o => o.id === emp.office_id);
+        const officeName = officeObj?.name_ar || officeObj?.name || (emp as any).office_name || (emp as any).branch || '';
+        const empBranchKey = normalizeBranchKey(officeName);
+        if (empBranchKey && targetBranchKey && !empBranchKey.includes(targetBranchKey) && !targetBranchKey.includes(empBranchKey)) {
+          return false;
+        }
+      }
+
       if (filterDept !== 'all' && emp.department_id !== Number(filterDept)) return false;
       if (filterOffice !== 'all' && emp.office_id !== Number(filterOffice)) return false;
       if (filterStatus !== 'all' && emp.status !== filterStatus) return false;
@@ -66,7 +80,7 @@ export const EmployeesManager: React.FC<EmployeesManagerProps> = ({
       }
       return true;
     });
-  }, [employees, filterDept, filterOffice, filterStatus, searchTerm]);
+  }, [employees, filterDept, filterOffice, filterStatus, searchTerm, isBranchManager, userBranch, offices]);
 
   const openAddModal = () => {
     setEditingEmp(null);
@@ -166,14 +180,22 @@ export const EmployeesManager: React.FC<EmployeesManagerProps> = ({
               {isArabic ? `عرض ${filteredEmployees.length} من أصل ${employees.length} موظف فعلي في قاعدة البيانات.` : `Showing ${filteredEmployees.length} of ${employees.length} records in database.`}
             </p>
           </div>
-          <button
-            onClick={openAddModal}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-teal-600/25 transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-sm">person_add</span>
-            <span>{t.addEmployee}</span>
-          </button>
+          {isBranchManager ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold">
+              <span className="material-symbols-outlined text-sm">visibility</span>
+              <span>{isArabic ? 'صلاحية قراءة فقط للمكتب' : 'Office Read-Only'}</span>
+            </span>
+          ) : (
+            <button
+              onClick={openAddModal}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-teal-600/25 transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-sm">person_add</span>
+              <span>{t.addEmployee}</span>
+            </button>
+          )}
         </div>
+
 
         {/* Filter inputs */}
         <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-2 border-t text-xs ${
@@ -313,24 +335,32 @@ export const EmployeesManager: React.FC<EmployeesManagerProps> = ({
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => openEditModal(emp)}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                          isDark ? 'text-slate-400 hover:text-teal-400 hover:bg-white/10' : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
-                        }`}
-                        title={t.edit}
-                      >
-                        <span className="material-symbols-outlined text-sm">edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(emp.id)}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                          isDark ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
-                        }`}
-                        title={t.delete}
-                      >
-                        <span className="material-symbols-outlined text-sm">delete</span>
-                      </button>
+                      {!isBranchManager ? (
+                        <>
+                          <button
+                            onClick={() => openEditModal(emp)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              isDark ? 'text-slate-400 hover:text-teal-400 hover:bg-white/10' : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                            }`}
+                            title={t.edit}
+                          >
+                            <span className="material-symbols-outlined text-sm">edit</span>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(emp.id)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              isDark ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
+                            }`}
+                            title={t.delete}
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-teal-400/90 font-bold px-2 py-0.5 rounded bg-teal-500/10 border border-teal-500/20">
+                          {isArabic ? 'قراءة فقط' : 'Read-Only'}
+                        </span>
+                      )}
                     </div>
                   </td>
                 </tr>

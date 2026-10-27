@@ -25,6 +25,7 @@ export const RuleSimulatorView: React.FC = () => {
   const { lang, t, employees, showNotification, refreshData } = useApp();
 
   const [selectedEmpId, setSelectedEmpId] = useState<string>('');
+  const [region, setRegion] = useState<'IRAQ' | 'KURDISTAN'>('IRAQ');
   const [basicSalary, setBasicSalary] = useState<number>(1800000);
   const [housingAllowance, setHousingAllowance] = useState<number>(350000);
   const [transportAllowance, setTransportAllowance] = useState<number>(150000);
@@ -53,6 +54,25 @@ export const RuleSimulatorView: React.FC = () => {
       setIsResident(emp.is_resident);
       setMaritalStatus(emp.marital_status);
       setContractType(emp.contract_type);
+
+      const locStr = `${emp.branch || ''} ${emp.location || ''} ${(emp as any).location_ar || ''}`.toLowerCase();
+      if (
+        locStr.includes('sulay') ||
+        locStr.includes('erbil') ||
+        locStr.includes('duhok') ||
+        locStr.includes('kurdistan') ||
+        locStr.includes('سليمانية') ||
+        locStr.includes('السليمانية') ||
+        locStr.includes('اربيل') ||
+        locStr.includes('أربيل') ||
+        locStr.includes('دهوك') ||
+        locStr.includes('كردستان') ||
+        locStr.includes('كوردستان')
+      ) {
+        setRegion('KURDISTAN');
+      } else {
+        setRegion('IRAQ');
+      }
     }
   };
 
@@ -61,6 +81,7 @@ export const RuleSimulatorView: React.FC = () => {
       setIsSimulating(true);
       const reqPayload: SimulationRequest = {
         employee_id: selectedEmpId || undefined,
+        region,
         basic_salary: Number(basicSalary),
         allowances: {
           housing: Number(housingAllowance),
@@ -182,6 +203,25 @@ export const RuleSimulatorView: React.FC = () => {
           </div>
 
           <div className="space-y-3 text-xs">
+            {/* Region / Jurisdiction */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                {lang === 'ar' ? 'الإقليم والولاية الضريبية (نظام الاحتساب)' : 'Tax Jurisdiction / Region'}
+              </label>
+              <select
+                value={region}
+                onChange={(e: any) => setRegion(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-200 font-bold focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="IRAQ">
+                  {lang === 'ar' ? 'العراق الاتحادي (سقف ضمان 1.75م + شرائح تصاعدية 3%-15%)' : 'Federal Iraq (Cap 1.75M SS + Progressive Tax)'}
+                </option>
+                <option value="KURDISTAN">
+                  {lang === 'ar' ? 'إقليم كردستان (ضمان 5%+12% بدون سقف + سماح 1م وضريبة 5%)' : 'Kurdistan Region (No SS Cap + 1M Exemption & 5% Flat Tax)'}
+                </option>
+              </select>
+            </div>
+
             {/* Basic Salary */}
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
@@ -313,6 +353,24 @@ export const RuleSimulatorView: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
           {simulationResult ? (
             <>
+              {/* Regional Jurisdiction Indicator Banner */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                    (simulationResult.summary.region || region) === 'KURDISTAN'
+                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                      : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                  }`}>
+                    {(simulationResult.summary.region || region) === 'KURDISTAN' ? '📍 إقليم كردستان العراق' : '📍 جمهورية العراق (الاتحادي)'}
+                  </span>
+                  <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                    {(simulationResult.summary.region || region) === 'KURDISTAN'
+                      ? 'قاعدة الحساب: الضمان 5% + 12% بدون سقف | الضريبة: استنزال سماح 1,000,000 د.ع + الضمان والمخصصات مع ضريبة 5%'
+                      : 'قاعدة الحساب: الضمان سقف 1,750,000 د.ع مع التقريب | الضريبة: 70% من الراتب - الضمان - السماحات (شرائح 3%، 5%، 10%، 15%)'}
+                  </span>
+                </div>
+              </div>
+
               {/* Summary KPIs Banner */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <div>

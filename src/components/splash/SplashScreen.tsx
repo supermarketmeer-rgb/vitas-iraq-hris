@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -173,11 +173,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   return (
     <div
+      data-splash-screen="true"
       className={`fixed inset-0 z-[99999] flex items-center justify-center transition-opacity duration-700 select-none overflow-hidden ${
         phase === 'exiting' ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
       style={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
+        background: 'linear-gradient(135deg, #0a0d14 0%, #0f172a 50%, #0a0d14 100%)',
       }}
     >
       {/* Animated MeerSon Watermark — Top Left (matches login screen) */}
@@ -214,18 +215,20 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse at 50% 50%, rgba(249,115,22,0.04) 0%, transparent 65%)',
+            'radial-gradient(ellipse at 50% 50%, rgba(249,115,22,0.06) 0%, transparent 65%)',
         }}
       />
 
-      {/* Clock + Logo Disc — centered directly on the gradient background */}
-      <div className="relative flex items-center justify-center">
+      {/* Clock + Logo — borderless and seamless directly on the ambient background */}
+      <div className="relative flex items-center justify-center bg-transparent" style={{ border: 'none', background: 'transparent' }}>
         <div
-            className="relative w-[300px] sm:w-[320px] aspect-square rounded-full flex items-center justify-center overflow-hidden"
+            className="relative w-[300px] sm:w-[320px] aspect-square flex items-center justify-center bg-transparent"
             style={{
-              background: 'radial-gradient(circle at 50% 50%, #16181F 0%, #0F1116 65%, #08090C 100%)',
+              background: 'transparent',
               transform: 'translateZ(0)',
-              clipPath: 'circle(50% at 50% 50%)',
+              border: 'none',
+              boxShadow: 'none',
+              outline: 'none',
             }}
           >
             {/* Floating warm amber dust particles matching reference attachment */}

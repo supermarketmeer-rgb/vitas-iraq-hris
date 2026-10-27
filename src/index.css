@@ -1430,8 +1430,8 @@ html.dark table tbody tr[class*="bg-white"] {
 }
 
 /* Dark Mode Modal Windows & Dialog Popups (2px defined border) */
-html.dark .fixed:not(aside) > div:not(.bg-transparent):not(.fixed):not(aside *),
-html.dark .fixed:not(aside) > div > div:not(.bg-transparent):not(aside *),
+html.dark .fixed:not(aside):not([data-splash-screen]):not([data-splash-screen] *) > div:not(.bg-transparent):not(.fixed):not(aside *):not([data-splash-screen] *),
+html.dark .fixed:not(aside):not([data-splash-screen]):not([data-splash-screen] *) > div > div:not(.bg-transparent):not(aside *):not([data-splash-screen] *),
 html.dark div[role="dialog"],
 html.dark div[role="dialog"] > div,
 html.dark [class*="modal"] > div,
@@ -1552,14 +1552,14 @@ html:not(.dark) table tbody tr:hover {
 }
 
 /* Light Mode Modals & Dialogs (Windows) - Defined border */
-html.light .fixed:not(aside) > div:not(.bg-transparent):not(.fixed):not(aside *),
-html.light .fixed:not(aside) > div > div:not(.bg-transparent):not(aside *),
+html.light .fixed:not(aside):not([data-splash-screen]):not([data-splash-screen] *) > div:not(.bg-transparent):not(.fixed):not(aside *):not([data-splash-screen] *),
+html.light .fixed:not(aside):not([data-splash-screen]):not([data-splash-screen] *) > div > div:not(.bg-transparent):not(aside *):not([data-splash-screen] *),
 html.light div[role="dialog"],
 html.light div[role="dialog"] > div,
 html.light [class*="modal"],
 html.light [class*="modal"] > div,
-html:not(.dark) .fixed:not(aside) > div:not(.bg-transparent):not(.fixed):not(aside *),
-html:not(.dark) .fixed:not(aside) > div > div:not(.bg-transparent):not(aside *),
+html:not(.dark) .fixed:not(aside):not([data-splash-screen]):not([data-splash-screen] *) > div:not(.bg-transparent):not(.fixed):not(aside *):not([data-splash-screen] *),
+html:not(.dark) .fixed:not(aside):not([data-splash-screen]):not([data-splash-screen] *) > div > div:not(.bg-transparent):not(aside *):not([data-splash-screen] *),
 html:not(.dark) div[role="dialog"],
 html:not(.dark) div[role="dialog"] > div,
 html:not(.dark) [class*="modal"],
@@ -1568,6 +1568,18 @@ html:not(.dark) [class*="modal"] > div {
   color: #0f172a !important;
   border: 2px solid #cbd5e1 !important;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Splash Screen: Completely borderless, no square box, no circular frame */
+[data-splash-screen],
+[data-splash-screen] div,
+[data-splash-screen] * {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+[data-splash-screen] {
+  background: linear-gradient(135deg, #0a0d14 0%, #0f172a 50%, #0a0d14 100%) !important;
 }
 
 /* ================================================================

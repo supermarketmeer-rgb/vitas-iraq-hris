@@ -4,6 +4,7 @@ import { CHF_IRAQ_LOGO_BASE64 } from '../data/contractHeaderLogo';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { useDocumentRouting } from '../context/DocumentRoutingContext';
 import { SendDocumentDialog } from './m365/SendDocumentDialog';
+import { useApp } from '../context/AppContext';
 
 interface ContractClause {
   id?: number | string;
@@ -31,6 +32,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
   companyProfile
 }) => {
   const { openDocumentRouting } = useDocumentRouting();
+  const { isBranchManager } = useApp();
   const [selectedTypeId, setSelectedTypeId] = useState<number | string | null>(null);
   const [isM365DialogOpen, setIsM365DialogOpen] = useState(false);
   const [clauses, setClauses] = useState<ContractClause[]>([]);
@@ -1030,57 +1032,61 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
               <span>طباعة العقد (4 صفحات)</span>
             </button>
 
-            {/* Document Routing & Delivery Button */}
-            <button
-              type="button"
-              onClick={() => {
-                openDocumentRouting({
-                  documentType: 'employment_contract',
-                  documentId: contractNumber,
-                  documentTitle: `عقد عمل - ${empFullName}`,
-                  sourceModule: 'contracts',
-                  employeeId: String(employee.id || employee.employeeId || employee.employee_id || employee.badgeNo || employee.badge_no || ''),
-                  employeeName: empFullName,
-                  departmentId: String(employee.departmentId || employee.department_id || employee.department || ''),
-                  branchId: String(employee.branchId || employee.branch_id || employee.branch || employee.location_ar || ''),
-                  specificEmployeeIds: [
-                    String(employee.id || ''),
-                    String(employee.employeeId || employee.employee_id || ''),
-                    String(employee.badgeNo || employee.badge_no || ''),
-                    empFullName
-                  ].filter(Boolean),
-                  suggestedRecipient: 'specific_employee',
-                  fileName: `${contractNumber}.pdf`,
-                  fileType: 'application/pdf',
-                  metadata: {
-                    contractType: currentContractType?.name_ar,
-                    salary: employee.basicSalary || employee.salary,
-                    position: empJobTitle,
-                    branch: empBranch,
-                    badgeNo: employee.badgeNo || employee.badge_no
-                  },
-                  onSuccess: () => {
-                    onClose();
-                  }
-                });
-              }}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
-              title="إرسال وتوجيه العقد عبر البريد المؤسسي وتطبيق الموظف"
-            >
-              <span className="material-symbols-outlined text-base">forward_to_inbox</span>
-              <span>توجيه العقد إلكترونياً</span>
-            </button>
+            {/* Document Routing & Delivery Button - Restricted for Branch Manager */}
+            {!isBranchManager && (
+              <button
+                type="button"
+                onClick={() => {
+                  openDocumentRouting({
+                    documentType: 'employment_contract',
+                    documentId: contractNumber,
+                    documentTitle: `عقد عمل - ${empFullName}`,
+                    sourceModule: 'contracts',
+                    employeeId: String(employee.id || employee.employeeId || employee.employee_id || employee.badgeNo || employee.badge_no || ''),
+                    employeeName: empFullName,
+                    departmentId: String(employee.departmentId || employee.department_id || employee.department || ''),
+                    branchId: String(employee.branchId || employee.branch_id || employee.branch || employee.location_ar || ''),
+                    specificEmployeeIds: [
+                      String(employee.id || ''),
+                      String(employee.employeeId || employee.employee_id || ''),
+                      String(employee.badgeNo || employee.badge_no || ''),
+                      empFullName
+                    ].filter(Boolean),
+                    suggestedRecipient: 'specific_employee',
+                    fileName: `${contractNumber}.pdf`,
+                    fileType: 'application/pdf',
+                    metadata: {
+                      contractType: currentContractType?.name_ar,
+                      salary: employee.basicSalary || employee.salary,
+                      position: empJobTitle,
+                      branch: empBranch,
+                      badgeNo: employee.badgeNo || employee.badge_no
+                    },
+                    onSuccess: () => {
+                      onClose();
+                    }
+                  });
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                title="إرسال وتوجيه العقد عبر البريد المؤسسي وتطبيق الموظف"
+              >
+                <span className="material-symbols-outlined text-base">forward_to_inbox</span>
+                <span>توجيه العقد إلكترونياً</span>
+              </button>
+            )}
 
-            {/* Direct Microsoft 365 Outlook Send Button */}
-            <button
-              type="button"
-              onClick={() => setIsM365DialogOpen(true)}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-600 hover:from-blue-600 hover:to-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
-              title="إرسال العقد مباشرة إلى البريد المؤسسي للموظف عبر Microsoft 365"
-            >
-              <span className="material-symbols-outlined text-base">mark_email_read</span>
-              <span>إرسال عبر Microsoft 365</span>
-            </button>
+            {/* Direct Microsoft 365 Outlook Send Button - Restricted for Branch Manager */}
+            {!isBranchManager && (
+              <button
+                type="button"
+                onClick={() => setIsM365DialogOpen(true)}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-600 hover:from-blue-600 hover:to-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                title="إرسال العقد مباشرة إلى البريد المؤسسي للموظف عبر Microsoft 365"
+              >
+                <span className="material-symbols-outlined text-base">mark_email_read</span>
+                <span>إرسال عبر Microsoft 365</span>
+              </button>
+            )}
 
             {/* Close Button */}
             <button

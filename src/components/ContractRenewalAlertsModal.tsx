@@ -1,9 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Employee } from '../types';
+import { useApp } from '../context/AppContext';
+import { filterEmployeesForUser } from '../utils/branchHelper';
 
 export interface ContractAlertItem {
   employee: Employee;
   isNewEmployee: boolean;
+  isPermanent?: boolean;
   contractTypeLabel: string;
   startDate: string;
   targetDate: string;
@@ -29,26 +32,49 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
   language = 'ar',
   theme = 'light'
 }) => {
+  const { isBranchManager, userBranch, currentUser } = useApp();
   const isDark = theme === 'dark';
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'urgent' | 'new_emp' | 'permanent' | 'month'>('all');
+  const [activeFilter, setActiveFilter] = useState<'actionable' | 'urgent' | 'new_emp' | 'fixed_term' | 'permanent' | 'all'>('actionable');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Live reactive employees state
-  const [liveEmployees, setLiveEmployees] = useState<Employee[]>(employees);
+  // Live reactive employees state (scoped to manager's office)
+  const initialScoped = isBranchManager ? filterEmployeesForUser(employees, currentUser) : employees;
+  const [liveEmployees, setLiveEmployees] = useState<Employee[]>(initialScoped);
+
   React.useEffect(() => {
-    setLiveEmployees(employees);
-  }, [employees]);
+    const scoped = isBranchManager ? filterEmployeesForUser(employees, currentUser) : employees;
+    setLiveEmployees(scoped);
+  }, [employees, isBranchManager, currentUser]);
 
   React.useEffect(() => {
     const handleLiveSync = (e: any) => {
       if (Array.isArray(e?.detail) && e.detail.length > 0) {
-        setLiveEmployees(e.detail);
+        const scoped = isBranchManager ? filterEmployeesForUser(e.detail, currentUser) : e.detail;
+        setLiveEmployees(scoped);
       }
     };
     window.addEventListener('vitas_employees_updated', handleLiveSync);
     return () => window.removeEventListener('vitas_employees_updated', handleLiveSync);
-  }, []);
+  }, [isBranchManager, currentUser]);
+
+  // Helper to detect if contract is permanent (does not expire)
+  const isPermanentContract = (emp: any): boolean => {
+    const term = String(
+      emp.termOfContract || 
+      emp.term_of_contract || 
+      emp.contract_type || 
+      emp.contractType || 
+      ''
+    ).toLowerCase().trim();
+
+    return (
+      term.includes('دائم') || 
+      term.includes('غير محدد') || 
+      term.includes('permanent') || 
+      term.includes('indefinite')
+    );
+  };
 
   // Helper to detect if contract is for a new employee (عقد موظف جديد / فترة تجربة)
   const isNewEmployeeContract = (emp: any): boolean => {
@@ -70,7 +96,7 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
     );
   };
 
-  // Compute all contract alerts for employees
+  // Compute all contract alerts for employees logically
   const allAlertItems = useMemo<ContractAlertItem[]>(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -78,22 +104,45 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
     const items: ContractAlertItem[] = [];
 
     liveEmployees.forEach((emp: any) => {
-      const isNew = isNewEmployeeContract(emp);
+      // 1. Skip terminated or inactive employees
+      const empStatus = String(emp.status || '').toLowerCase().trim();
+      if (empStatus === 'terminated' || empStatus === 'resigned' || empStatus === 'inactive' || empStatus === 'مستقيل' || empStatus === 'مفصول' || empStatus === 'منتهي') {
+        return;
+      }
+
+      const isPerm = isPermanentContract(emp);
+      const isNew = !isPerm && isNewEmployeeContract(emp);
       
       const startRaw = emp.contractStartDate || emp.contract_start_date || emp.originalStartDate || emp.original_start_date || emp.joinDate;
       const endRaw = emp.contractEndDate || emp.contract_end_date;
       const probationRaw = emp.probationEndDate || emp.probation_end_date;
 
-      let targetDateObj: Date | null = null;
-      let targetDateStr = '';
       let startDateStr = '';
-
       if (startRaw) {
         const s = new Date(startRaw);
         if (!isNaN(s.getTime())) {
           startDateStr = s.toISOString().split('T')[0];
         }
       }
+
+      // Handle Permanent Contracts: They do not expire
+      if (isPerm) {
+        items.push({
+          employee: emp,
+          isNewEmployee: false,
+          isPermanent: true,
+          contractTypeLabel: language === 'ar' ? 'عقد غير محدد المدة (دائم)' : 'Permanent Contract',
+          startDate: startDateStr || '—',
+          targetDate: language === 'ar' ? 'سارٍ / غير محدد المدة' : 'Ongoing / Indefinite',
+          targetDateObj: new Date('2099-12-31'),
+          daysRemaining: 9999,
+          status: 'future'
+        });
+        return;
+      }
+
+      let targetDateObj: Date | null = null;
+      let targetDateStr = '';
 
       if (isNew) {
         // New Employee Contract: Check 3 months probation period
@@ -106,7 +155,6 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
         } else if (startRaw) {
           const s = new Date(startRaw);
           if (!isNaN(s.getTime())) {
-            // Add exactly 3 months for probation period
             const calcProbation = new Date(s);
             calcProbation.setMonth(calcProbation.getMonth() + 3);
             targetDateObj = calcProbation;
@@ -114,7 +162,7 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
           }
         }
       } else {
-        // Permanent / Fixed-term Contract: Check end date
+        // Fixed-term Contract: Check end date
         if (endRaw) {
           const e = new Date(endRaw);
           if (!isNaN(e.getTime())) {
@@ -148,14 +196,15 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
         status = 'soon_month';
       }
 
-      // Only include contracts that are expired, due within a week, or due within 60 days
-      if (daysRemaining <= 60) {
+      // Filter out contracts expired more than 30 days ago to prevent ancient alert clutter
+      if (daysRemaining >= -30 && daysRemaining <= 90) {
         items.push({
           employee: emp,
           isNewEmployee: isNew,
+          isPermanent: false,
           contractTypeLabel: isNew 
             ? (language === 'ar' ? 'عقد موظف جديد (فترة تجربة 3 أشهر)' : 'New Employee (3-Month Probation)')
-            : (emp.termOfContract || emp.term_of_contract || (language === 'ar' ? 'عقد دائمي' : 'Permanent Contract')),
+            : (emp.termOfContract || emp.term_of_contract || (language === 'ar' ? 'عقد محدد المدة' : 'Fixed-term Contract')),
           startDate: startDateStr || '—',
           targetDate: targetDateStr || '—',
           targetDateObj,
@@ -167,29 +216,34 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
 
     // Sort by days remaining (most urgent / expired first)
     return items.sort((a, b) => a.daysRemaining - b.daysRemaining);
-  }, [employees, language]);
+  }, [liveEmployees, language]);
 
-  // Urgent count (<= 7 days or already expired)
+  // Urgent count (non-permanent, <= 7 days or recently expired within 14 days)
   const urgentCount = useMemo(() => {
-    return allAlertItems.filter(item => item.daysRemaining <= 7).length;
+    return allAlertItems.filter(item => !item.isPermanent && item.daysRemaining >= -14 && item.daysRemaining <= 7).length;
   }, [allAlertItems]);
 
   const newEmpCount = useMemo(() => {
     return allAlertItems.filter(item => item.isNewEmployee).length;
   }, [allAlertItems]);
 
+  const fixedTermCount = useMemo(() => {
+    return allAlertItems.filter(item => !item.isNewEmployee && !item.isPermanent).length;
+  }, [allAlertItems]);
+
   const permanentCount = useMemo(() => {
-    return allAlertItems.filter(item => !item.isNewEmployee).length;
+    return allAlertItems.filter(item => item.isPermanent).length;
   }, [allAlertItems]);
 
   // Filtered items based on search and active tab
   const filteredItems = useMemo(() => {
     return allAlertItems.filter(item => {
       // 1. Tab filter
-      if (activeFilter === 'urgent' && item.daysRemaining > 7) return false;
+      if (activeFilter === 'actionable' && item.isPermanent) return false;
+      if (activeFilter === 'urgent' && (item.isPermanent || item.daysRemaining > 7 || item.daysRemaining < -14)) return false;
       if (activeFilter === 'new_emp' && !item.isNewEmployee) return false;
-      if (activeFilter === 'permanent' && item.isNewEmployee) return false;
-      if (activeFilter === 'month' && (item.daysRemaining < 0 || item.daysRemaining > 30)) return false;
+      if (activeFilter === 'fixed_term' && (item.isNewEmployee || item.isPermanent)) return false;
+      if (activeFilter === 'permanent' && !item.isPermanent) return false;
 
       // 2. Search query
       if (searchQuery.trim()) {
@@ -317,7 +371,7 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
               <span className="material-symbols-outlined text-xl">person_add</span>
             </div>
             <div>
-              <div className="text-[11px] font-bold text-slate-400">{language === 'ar' ? 'موظفين جدد (تقييم)' : 'New Probation'}</div>
+              <div className="text-[11px] font-bold text-slate-400">{language === 'ar' ? 'موظفين جدد (تقييم تجربة)' : 'New Probation'}</div>
               <div className="text-lg font-black text-teal-500">{newEmpCount}</div>
             </div>
           </div>
@@ -325,24 +379,24 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
           <div className={`p-3 rounded-2xl border flex items-center gap-3 ${
             isDark ? 'bg-slate-800/40 border-white/5' : 'bg-white border-slate-200 shadow-2xs'
           }`}>
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-xl">history_edu</span>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-xl">contract</span>
             </div>
             <div>
-              <div className="text-[11px] font-bold text-slate-400">{language === 'ar' ? 'عقود دائمية (تجديد)' : 'Permanent Contracts'}</div>
-              <div className="text-lg font-black text-indigo-500">{permanentCount}</div>
+              <div className="text-[11px] font-bold text-slate-400">{language === 'ar' ? 'عقود محددة المدة' : 'Fixed-term Contracts'}</div>
+              <div className="text-lg font-black text-amber-500">{fixedTermCount}</div>
             </div>
           </div>
 
           <div className={`p-3 rounded-2xl border flex items-center gap-3 ${
             isDark ? 'bg-slate-800/40 border-white/5' : 'bg-white border-slate-200 shadow-2xs'
           }`}>
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-xl">event_upcoming</span>
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-xl">verified</span>
             </div>
             <div>
-              <div className="text-[11px] font-bold text-slate-400">{language === 'ar' ? 'إجمالي التنبيهات' : 'Total Tracked'}</div>
-              <div className="text-lg font-black text-amber-500">{allAlertItems.length}</div>
+              <div className="text-[11px] font-bold text-slate-400">{language === 'ar' ? 'عقود دائمية مستمرة' : 'Permanent Ongoing'}</div>
+              <div className="text-lg font-black text-indigo-500">{permanentCount}</div>
             </div>
           </div>
         </div>
@@ -351,15 +405,16 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
         <div className="p-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
-              onClick={() => setActiveFilter('all')}
+              onClick={() => setActiveFilter('actionable')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeFilter === 'all'
+                activeFilter === 'actionable'
                   ? 'bg-teal-600 text-white shadow-sm'
                   : isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              <span>{language === 'ar' ? 'الكل' : 'All'}</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20">{allAlertItems.length}</span>
+              <span className="material-symbols-outlined text-xs">pending_actions</span>
+              <span>{language === 'ar' ? 'تتطلب إجراءً (تجربة وتجديد)' : 'Action Required'}</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20">{newEmpCount + fixedTermCount}</span>
             </button>
 
             <button
@@ -391,6 +446,19 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
             </button>
 
             <button
+              onClick={() => setActiveFilter('fixed_term')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeFilter === 'fixed_term'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <span className="material-symbols-outlined text-xs">contract</span>
+              <span>{language === 'ar' ? 'عقود محددة المدة' : 'Fixed Term'}</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20">{fixedTermCount}</span>
+            </button>
+
+            <button
               onClick={() => setActiveFilter('permanent')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                 activeFilter === 'permanent'
@@ -398,20 +466,21 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
                   : isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              <span className="material-symbols-outlined text-xs">history_edu</span>
-              <span>{language === 'ar' ? 'عقود دائمية (تجديد)' : 'Permanent'}</span>
+              <span className="material-symbols-outlined text-xs">verified</span>
+              <span>{language === 'ar' ? 'عقود دائمية (مستمرة)' : 'Permanent'}</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20">{permanentCount}</span>
             </button>
 
             <button
-              onClick={() => setActiveFilter('month')}
+              onClick={() => setActiveFilter('all')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeFilter === 'month'
-                  ? 'bg-amber-600 text-white shadow-sm'
+                activeFilter === 'all'
+                  ? 'bg-slate-700 text-white shadow-sm'
                   : isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              <span>{language === 'ar' ? 'خلال شهر' : 'Within 30 Days'}</span>
+              <span>{language === 'ar' ? 'الكل' : 'All'}</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20">{allAlertItems.length}</span>
             </button>
           </div>
 
@@ -594,8 +663,8 @@ export const ContractRenewalAlertsModal: React.FC<ContractRenewalAlertsModalProp
                               <span>{language === 'ar' ? 'طباعة العقد' : 'Print Contract'}</span>
                             </button>
 
-                            {/* Send Evaluation Button (ONLY for New Employee Probation) */}
-                            {item.isNewEmployee && (
+                            {/* Send Evaluation Button (ONLY for New Employee Probation - Restricted for Branch Manager) */}
+                            {item.isNewEmployee && !isBranchManager && (
                               <button
                                 onClick={() => handleSendEvaluation(item.employee)}
                                 className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0"

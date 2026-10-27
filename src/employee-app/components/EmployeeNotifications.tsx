@@ -77,6 +77,12 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
   const isDark = theme === 'dark';
   const isEn = language === 'en';
   const isAr = !isEn;
+  const isManagerRole = Boolean(
+    employee?.role === 'Branch Manager' || 
+    String(employee?.role || '').toLowerCase().includes('manager') || 
+    String(employee?.jobTitle || '').includes('مدير') || 
+    String(employee?.jobTitle || '').toLowerCase().includes('manager')
+  );
 
   const [filter, setFilter] = useState<'all' | 'unread' | 'attachments'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -359,7 +365,9 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
     const docTimeAr = del.created_at ? new Date(del.created_at).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }) : '11:00 ص';
     const docTimeEn = del.created_at ? new Date(del.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '11:00 AM';
 
-    const empName = del.recipient_name || (isEn ? (employee?.fullNameEn || 'Dina Haider Qasim') : (employee?.fullName || 'دينا حيدر قاسم'));
+    const empName = del.recipient_name || (isEn 
+      ? (employee?.fullNameEn || employee?.full_name_en || employee?.fullName || employee?.full_name_ar || 'Employee') 
+      : (employee?.full_name_ar || employee?.fullNameAr || employee?.fullName || employee?.name || 'الموظف'));
 
     let parsedFormData: any = {};
     if (del.form_data) {
@@ -930,8 +938,8 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
-                {/* Print button based on signatureMode */}
-                {previewData.attachment.signatureMode === 'wet_signature' ? (
+                {/* Print button based on signatureMode or Manager rights */}
+                {(previewData.attachment.signatureMode === 'wet_signature' || isManagerRole) ? (
                   <button
                     onClick={() => {
                       if (previewData.attachment.deliveryId) {
@@ -947,7 +955,7 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                       window.print();
                     }}
                     className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
-                    title={isEn ? 'Print for Live Wet Signature' : 'طباعة المستند الورقي للتوقيع الحي باليد'}
+                    title={isEn ? 'Print Official Document' : 'طباعة المستند والمرفق الرسمي'}
                   >
                     <Printer className="w-3 h-3" />
                     <span>{isEn ? 'Print' : 'طباعة'}</span>

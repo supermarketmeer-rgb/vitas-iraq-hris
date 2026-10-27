@@ -26,10 +26,12 @@ import {
   History,
   AlertCircle,
   Copy,
-  Trash2,
   Edit,
   Globe,
   Share2,
+  Building2,
+  MapPin,
+  Flag,
 } from 'lucide-react';
 import { CalculationVariable, AuditLogRecord } from '../types.js';
 
@@ -37,8 +39,73 @@ export const SettingsView: React.FC = () => {
   const { lang, t, variables, parameters, refreshData, showNotification } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    'variables' | 'parameters' | 'audit_logs' | 'presets' | 'hr_integration'
+    'variables' | 'parameters' | 'audit_logs' | 'presets' | 'hr_integration' | 'branch_jurisdictions'
   >('variables');
+
+  // Branch Jurisdictions State (ولاية المكاتب والفروع - العراق / كردستان)
+  interface BranchJurisdiction {
+    id: string;
+    name_ar: string;
+    name_en: string;
+    city: string;
+    tax_region: 'IRAQ' | 'KURDISTAN';
+    notes?: string;
+    updated_at?: string;
+  }
+  const [branches, setBranches] = useState<BranchJurisdiction[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
+  const [branchSearch, setBranchSearch] = useState('');
+  const [branchRegionFilter, setBranchRegionFilter] = useState<'ALL' | 'IRAQ' | 'KURDISTAN'>('ALL');
+  const [updatingBranchId, setUpdatingBranchId] = useState<string | null>(null);
+
+  const fetchBranchJurisdictions = async () => {
+    setIsLoadingBranches(true);
+    try {
+      const res = await fetch('/api/tax-module/branches/jurisdictions').then((r) => r.json());
+      const list = res.branches || res.jurisdictions || [];
+      setBranches(list);
+    } catch (err) {
+      console.error('Failed to fetch branch jurisdictions:', err);
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'branch_jurisdictions') {
+      fetchBranchJurisdictions();
+    }
+  }, [activeTab]);
+
+  const handleUpdateBranchJurisdiction = async (branchId: string, newRegion: 'IRAQ' | 'KURDISTAN') => {
+    setUpdatingBranchId(branchId);
+    try {
+      const res = await fetch(`/api/tax-module/branches/jurisdictions/${encodeURIComponent(branchId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tax_region: newRegion }),
+      }).then((r) => r.json());
+
+      if (res.success) {
+        showNotification(
+          lang === 'ar'
+            ? `تم تعيين ولاية المكتب (${branchId}) إلى ${newRegion === 'KURDISTAN' ? 'إقليم كردستان العراق' : 'العراق الاتحادي (الافتراضي)'} بنجاح`
+            : `Successfully updated office (${branchId}) tax jurisdiction to ${newRegion === 'KURDISTAN' ? 'Kurdistan Region' : 'Federal Iraq (Default)'}`,
+          'success'
+        );
+        setBranches((prev) =>
+          prev.map((b) => (b.id === branchId ? { ...b, tax_region: newRegion } : b))
+        );
+        refreshData();
+      } else {
+        showNotification(res.error || 'Failed to update branch jurisdiction', 'error');
+      }
+    } catch (err: any) {
+      showNotification(err.message || 'Failed to update branch jurisdiction', 'error');
+    } finally {
+      setUpdatingBranchId(null);
+    }
+  };
 
   // Variable Mapping Form State
   const [isVarModalOpen, setIsVarModalOpen] = useState(false);
@@ -314,6 +381,17 @@ export const SettingsView: React.FC = () => {
           >
             <Share2 className="w-3.5 h-3.5 text-emerald-500" />
             <span>{lang === 'ar' ? 'تكامل الموارد البشرية' : 'HRMS Integration'}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('branch_jurisdictions')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              activeTab === 'branch_jurisdictions'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <span>{lang === 'ar' ? 'ولاية المكاتب والفروع (كردستان / العراق)' : 'Branch Tax Jurisdictions'}</span>
           </button>
         </div>
       </div>
@@ -795,6 +873,318 @@ export const SettingsView: React.FC = () => {
               </div>
               <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-2">hr_system_audit_logs</div>
               <div className="text-xs text-slate-400 mt-1">Auto-synced JSON events</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Branch Jurisdictions (ولاية المكاتب والفروع - العراق / كردستان) */}
+      {activeTab === 'branch_jurisdictions' && (
+        <div className="space-y-4">
+          {/* Header Card */}
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                {lang === 'ar'
+                  ? 'ولاية المكاتب والفروع وتعيين معادلات الاحتساب'
+                  : 'Branch Office Tax & Social Security Jurisdictions'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
+                {lang === 'ar'
+                  ? 'لغرض احتساب الضريبة والضمان بشكل صحيح، يتم تعيين ولاية كل مكتب (العراق الاتحادي أم إقليم كردستان العراق) لتطبيق المعادلة القانونية الخاصة به، مع اعتماد جمهورية العراق كخيار افتراضي لكافة المكاتب غير المعينة.'
+                  : 'Assign tax jurisdictions to offices to ensure exact legal calculation of Social Security & Income Tax (Federal Iraq vs. Kurdistan Region), with Iraq set as strict default.'}
+              </p>
+            </div>
+
+            <button
+              onClick={fetchBranchJurisdictions}
+              disabled={isLoadingBranches}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all self-start sm:self-auto"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingBranches ? 'animate-spin' : ''}`} />
+              <span>{lang === 'ar' ? 'تحديث المكاتب' : 'Refresh Offices'}</span>
+            </button>
+          </div>
+
+          {/* KPI Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  {lang === 'ar' ? 'إجمالي المكاتب والفروع' : 'Total Registered Offices'}
+                </span>
+                <span className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  <Building2 className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">
+                {branches.length}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">
+                {lang === 'ar' ? 'جميع مكاتب شبكة فيتاس العراق' : 'All registered branch networks'}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/20 dark:bg-blue-950/10 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                  <span>{lang === 'ar' ? 'مكاتب العراق الاتحادي (الافتراضي)' : 'Federal Iraq Offices (Default)'}</span>
+                </span>
+                <span className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400">
+                  <Flag className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-2xl font-black text-blue-700 dark:text-blue-300 mt-2">
+                {branches.filter((b) => b.tax_region === 'IRAQ').length}
+              </div>
+              <div className="text-[11px] text-blue-600/80 dark:text-blue-400/80 mt-1">
+                {lang === 'ar'
+                  ? 'سقف الضمان 1.75M د.ع | استقطاع مباشر 70% | شرائح 3-15%'
+                  : 'SS Cap 1.75M IQD | 70% Direct W/H | Brackets 3-15%'}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/20 dark:bg-amber-950/10 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  {lang === 'ar' ? 'مكاتب إقليم كردستان العراق' : 'Kurdistan Region Offices'}
+                </span>
+                <span className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400">
+                  <MapPin className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-2xl font-black text-amber-700 dark:text-amber-300 mt-2">
+                {branches.filter((b) => b.tax_region === 'KURDISTAN').length}
+              </div>
+              <div className="text-[11px] text-amber-600/80 dark:text-amber-400/80 mt-1">
+                {lang === 'ar'
+                  ? 'ضمان بدون سقف | إعفاء قانوني مقطوع 1M د.ع | ضريبة ثابتة 5%'
+                  : 'No SS Cap | 1M IQD Relief | Flat 5% Tax'}
+              </div>
+            </div>
+          </div>
+
+          {/* Legal Rule Alert Box */}
+          <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/50 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <div className="font-bold text-indigo-950 dark:text-indigo-200">
+                {lang === 'ar'
+                  ? 'القاعدة القانونية المعتمدة: جمهورية العراق هي الولاية الافتراضية ("ليكن الافتراض العراق")'
+                  : 'Statutory Default: Federal Iraq ("Default is Federal Iraq")'}
+              </div>
+              <p className="text-indigo-800/90 dark:text-indigo-300 leading-relaxed">
+                {lang === 'ar'
+                  ? 'أي مكتب أو فرع جديد أو غير محدد، أو أي موظف لم تُحدَّد ولايته، يطبق عليه تلقائياً نظام جمهورية العراق (سقف الضمان 1.75 مليون د.ع، واحتساب الاستقطاع المباشر لضريبة الدخل وفق قانون 113 وتعديلاته). وعند تحديد المكتب كـ "إقليم كردستان العراق"، يتم احتساب رواتب منتسبيه فوراً وفق معادلة كردستان (قانون ضمان الإقليم بدون سقف، وإعفاء المليون دينار والضريبة الثابتة 5%).'
+                  : 'Any unassigned office or employee automatically defaults to the Federal Republic of Iraq formulas. Assigning an office to Kurdistan instantly activates the regional calculation formula (no SS cap, 1M flat allowance, 5% flat tax).'}
+              </p>
+            </div>
+          </div>
+
+          {/* Filter and Search Bar */}
+          <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-72">
+              <Search className="w-3.5 h-3.5 absolute right-3 rtl:right-3 ltr:left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={branchSearch}
+                onChange={(e) => setBranchSearch(e.target.value)}
+                placeholder={lang === 'ar' ? 'بحث باسم المكتب، الرمز أو المدينة...' : 'Search by branch name, code, or city...'}
+                className="w-full pl-3 pr-9 rtl:pr-9 rtl:pl-3 ltr:pl-9 ltr:pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 self-stretch sm:self-auto overflow-x-auto">
+              <button
+                onClick={() => setBranchRegionFilter('ALL')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  branchRegionFilter === 'ALL'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {lang === 'ar' ? 'جميع المكاتب' : 'All Offices'} ({branches.length})
+              </button>
+              <button
+                onClick={() => setBranchRegionFilter('IRAQ')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
+                  branchRegionFilter === 'IRAQ'
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                    : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 hover:bg-blue-100'
+                }`}
+              >
+                <Flag className="w-3 h-3" />
+                <span>{lang === 'ar' ? 'العراق الاتحادي (الافتراضي)' : 'Federal Iraq'}</span>
+                <span className="text-[10px] px-1 py-0.2 rounded-full bg-white/20">
+                  {branches.filter((b) => b.tax_region === 'IRAQ').length}
+                </span>
+              </button>
+              <button
+                onClick={() => setBranchRegionFilter('KURDISTAN')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
+                  branchRegionFilter === 'KURDISTAN'
+                    ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/20'
+                    : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100'
+                }`}
+              >
+                <MapPin className="w-3 h-3" />
+                <span>{lang === 'ar' ? 'إقليم كردستان العراق' : 'Kurdistan Region'}</span>
+                <span className="text-[10px] px-1 py-0.2 rounded-full bg-white/20">
+                  {branches.filter((b) => b.tax_region === 'KURDISTAN').length}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Offices Table */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-right rtl:text-right ltr:text-left">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
+                  <tr>
+                    <th className="px-4 py-3">{lang === 'ar' ? 'رمز المكتب (Branch ID)' : 'Branch ID'}</th>
+                    <th className="px-4 py-3">{lang === 'ar' ? 'اسم المكتب والفرع' : 'Office / Branch Name'}</th>
+                    <th className="px-4 py-3">{lang === 'ar' ? 'المدينة / المحافظة' : 'City / Region'}</th>
+                    <th className="px-4 py-3">{lang === 'ar' ? 'الولاية الضريبية المعتمدة' : 'Tax Jurisdiction'}</th>
+                    <th className="px-4 py-3">{lang === 'ar' ? 'معادلة الاحتساب المطبقة' : 'Applied Formulas'}</th>
+                    <th className="px-4 py-3 text-center">{lang === 'ar' ? 'تعيين الولاية (تغيير فوري)' : 'Assign Jurisdiction'}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {branches
+                    .filter((b) => {
+                      const matchesSearch =
+                        !branchSearch ||
+                        b.id.toLowerCase().includes(branchSearch.toLowerCase()) ||
+                        (b.name_ar && b.name_ar.toLowerCase().includes(branchSearch.toLowerCase())) ||
+                        (b.name_en && b.name_en.toLowerCase().includes(branchSearch.toLowerCase())) ||
+                        (b.city && b.city.toLowerCase().includes(branchSearch.toLowerCase()));
+                      const matchesRegion =
+                        branchRegionFilter === 'ALL' || b.tax_region === branchRegionFilter;
+                      return matchesSearch && matchesRegion;
+                    })
+                    .map((branch) => {
+                      const isKurdistan = branch.tax_region === 'KURDISTAN';
+                      const isUpdating = updatingBranchId === branch.id;
+
+                      return (
+                        <tr
+                          key={branch.id}
+                          className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                        >
+                          <td className="px-4 py-3.5">
+                            <code className="font-mono text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                              {branch.id}
+                            </code>
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            <div className="font-bold text-slate-900 dark:text-white">
+                              {branch.name_ar || branch.name_en}
+                            </div>
+                            {branch.name_en && branch.name_ar && (
+                              <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                {branch.name_en}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{branch.city || (lang === 'ar' ? 'غير محدد' : 'Unspecified')}</span>
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            {isKurdistan ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                {lang === 'ar' ? 'إقليم كردستان العراق' : 'Kurdistan Region'}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                {lang === 'ar' ? 'العراق الاتحادي (الافتراضي)' : 'Federal Iraq (Default)'}
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            {isKurdistan ? (
+                              <div className="text-[11px] text-slate-600 dark:text-slate-400 space-y-0.5">
+                                <div className="font-semibold text-amber-700 dark:text-amber-400">
+                                  {lang === 'ar' ? '• الضمان: بدون سقف (كامل الأساسي + البدلات)' : '• SS: No statutory cap'}
+                                </div>
+                                <div>
+                                  {lang === 'ar' ? '• الضريبة: إعفاء 1M د.ع + البدلات + نسبة 5% مقطوعة' : '• Tax: 1M IQD relief + Flat 5%'}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-[11px] text-slate-600 dark:text-slate-400 space-y-0.5">
+                                <div className="font-semibold text-blue-700 dark:text-blue-400">
+                                  {lang === 'ar' ? '• الضمان: سقف أعلى 1,750,000 د.ع (قانون 18)' : '• SS: Cap 1,750,000 IQD (Law 18)'}
+                                </div>
+                                <div>
+                                  {lang === 'ar' ? '• الضريبة: استقطاع مباشر (إعفاء 30% + سماحات + شرائح 3-15%)' : '• Tax: Direct W/H (30% exempt + brackets 3-15%)'}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                disabled={isUpdating || !isKurdistan}
+                                onClick={() => handleUpdateBranchJurisdiction(branch.id, 'IRAQ')}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                                  !isKurdistan
+                                    ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-600/30 cursor-default'
+                                    : 'bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 dark:bg-slate-800 dark:hover:bg-blue-950/50'
+                                } disabled:opacity-70`}
+                                title={lang === 'ar' ? 'تعيين كعراق اتحادي (الافتراضي)' : 'Set as Federal Iraq (Default)'}
+                              >
+                                {isUpdating && !isKurdistan ? (
+                                  <RefreshCw className="w-3 h-3 animate-spin mx-auto" />
+                                ) : (
+                                  <span>{lang === 'ar' ? 'العراق الاتحادي' : 'Federal Iraq'}</span>
+                                )}
+                              </button>
+
+                              <button
+                                disabled={isUpdating || isKurdistan}
+                                onClick={() => handleUpdateBranchJurisdiction(branch.id, 'KURDISTAN')}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                                  isKurdistan
+                                    ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-600/30 cursor-default'
+                                    : 'bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 dark:bg-slate-800 dark:hover:bg-amber-950/50'
+                                } disabled:opacity-70`}
+                                title={lang === 'ar' ? 'تعيين كإقليم كردستان العراق' : 'Set as Kurdistan Region'}
+                              >
+                                {isUpdating && isKurdistan ? (
+                                  <RefreshCw className="w-3 h-3 animate-spin mx-auto" />
+                                ) : (
+                                  <span>{lang === 'ar' ? 'إقليم كردستان' : 'Kurdistan'}</span>
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                  {branches.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-slate-400">
+                        {isLoadingBranches
+                          ? (lang === 'ar' ? 'جاري تحميل قائمة المكاتب والفروع...' : 'Loading branches...')
+                          : (lang === 'ar' ? 'لا توجد مكاتب مسجلة' : 'No branches found')}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

@@ -87,7 +87,8 @@ export const DICT_EN: Record<string, string> = {
   'cleaner/tea person': 'cleaner/tea person',
   'loan officer': 'Loan Officer',
   'teller': 'Teller',
-  'office manager': 'Office Manager'
+  'office manager': 'Office Manager',
+  'غير محدد': 'Unspecified'
 };
 
 export const DICT_AR: Record<string, string> = {

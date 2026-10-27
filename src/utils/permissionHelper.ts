@@ -169,12 +169,27 @@ export function getUserEffectivePermissions(
     currentUser?.role === 'Admin' || 
     currentUser?.can_manage_users === 1;
 
-  const isHRManagerRole = currentRole === 'HR Manager' || 
+  const isBranchManagerRole = currentRole === 'Branch Manager' ||
+    currentUser?.role === 'Branch Manager' ||
+    currentRole === 'مدير فرع' ||
+    currentRole === 'مدير مكتب' ||
+    String(currentRole).includes('مدير فرع') ||
+    String(currentRole).includes('مدير مكتب') ||
+    (currentUser?.job_title && (
+      String(currentUser.job_title).includes('مدير فرع') ||
+      String(currentUser.job_title).includes('مدير مكتب') ||
+      String(currentUser.job_title).toLowerCase().includes('branch manager') ||
+      String(currentUser.job_title).toLowerCase().includes('office manager')
+    ));
+
+  const isHRManagerRole = !isBranchManagerRole && (
+    currentRole === 'HR Manager' || 
     currentUser?.role === 'HR Manager' || 
     currentRole === 'مدير الموارد البشرية' ||
-    (currentUser?.role && String(currentUser.role).includes('مدير')) ||
-    (currentUser?.job_title && (String(currentUser.job_title).includes('مدير') || String(currentUser.job_title).toLowerCase().includes('manager') || String(currentUser.job_title).toLowerCase().includes('director'))) ||
-    (currentUser?.name && String(currentUser.name).includes('مدير الموارد البشرية'));
+    (currentUser?.role && (String(currentUser.role).includes('مدير الموارد البشرية') || String(currentUser.role).toLowerCase() === 'hr manager')) ||
+    (currentUser?.job_title && (String(currentUser.job_title).includes('مدير الموارد البشرية') || String(currentUser.job_title).toLowerCase().includes('hr manager') || String(currentUser.job_title).toLowerCase().includes('hr director'))) ||
+    (currentUser?.name && String(currentUser.name).includes('مدير الموارد البشرية'))
+  );
 
   const isRecruiterRole = currentRole === 'Recruiter';
   const isDeptHeadRole = currentRole === 'Department Head';
@@ -197,11 +212,11 @@ export function getUserEffectivePermissions(
     rawModules: perms,
     employees: hasExplicitPerms 
       ? Boolean(isAnyActive(['employees', 'cat-3-emp']) || hasActivePrefix('emp-')) 
-      : (hasCanManageFlags ? Boolean(currentUser?.can_manage_employees) : (isHRManagerRole || isDeptHeadRole)),
+      : (hasCanManageFlags ? Boolean(currentUser?.can_manage_employees) : (isHRManagerRole || isDeptHeadRole || isBranchManagerRole)),
     
     attendance: hasExplicitPerms 
       ? Boolean(isAnyActive(['attendance', 'cat-4-leave']) || hasActivePrefix('leave-')) 
-      : (isHRManagerRole || isDeptHeadRole || isEmployeeRole),
+      : (isHRManagerRole || isDeptHeadRole || isEmployeeRole || isBranchManagerRole),
     
     payroll: hasExplicitPerms 
       ? Boolean(isAnyActive(['payroll', 'cat-5-payroll']) || hasActivePrefix('payroll-') || hasActivePrefix('pay-')) 
@@ -213,7 +228,7 @@ export function getUserEffectivePermissions(
     
     reports: hasExplicitPerms 
       ? Boolean(isAnyActive(['reports', 'cat-2-dash', 'dashboard', 'sys-dynamic-reports']) || hasActivePrefix('dash-')) 
-      : (isHRManagerRole || isITAdminRole),
+      : (isHRManagerRole || isITAdminRole || isBranchManagerRole),
     
     performance: hasExplicitPerms 
       ? Boolean(isAnyActive(['performance', 'cat-7-perf']) || hasActivePrefix('perf-') || perms.recruitment) 
@@ -264,6 +279,28 @@ export function isModuleAuthorized(
   // Admin users are always authorized to manage user roles and permissions
   if ((currentRole === 'Admin' || currentRole === 'Super Admin') && (moduleId === 'sec-roles-permissions' || moduleId === 'sec-edit-role')) {
     return true;
+  }
+
+  // Branch Manager Scope Rules
+  const isBranchManagerRole = 
+    currentRole === 'Branch Manager' || 
+    currentRole === 'مدير فرع' || 
+    currentRole === 'مدير مكتب' ||
+    currentRole.includes('Branch Manager');
+
+  if (isBranchManagerRole) {
+    // 1. Completely hide Risk, Compliance and Security
+    if (catId === 'cat-9-risk' || moduleId.startsWith('risk-') || moduleId.startsWith('sec-')) {
+      return false;
+    }
+    // 2. Category 2: Dashboard & Executive -> ONLY System Overview, Employee Self Service (ESS), and Saved Reports (Dynamic Report Builder)
+    if (catId === 'cat-2-dash') {
+      return ['dash-overview', 'dash-ess', 'sys-dynamic-reports'].includes(moduleId);
+    }
+    // 3. Category 3: Employee Management -> ONLY HR Employee Directory and HR Employees Profiles
+    if (catId === 'cat-3-emp') {
+      return ['emp-hr-directory', 'emp-profile'].includes(moduleId);
+    }
   }
 
   // Country Scoping Rules for Dual-Country / Regional Offices:
@@ -686,37 +723,54 @@ export function getModuleAccessLevel(
   }
 
   // 5. Default Role-based fallbacks (for users without custom explicit permissions)
-  const isHRManagerRole = currentRole === 'HR Manager' || 
+  const isBranchManagerRole = currentRole === 'Branch Manager' ||
+    currentRole === 'مدير فرع' ||
+    currentRole === 'مدير مكتب' ||
+    String(currentRole).includes('مدير فرع') ||
+    String(currentRole).includes('مدير مكتب');
+
+  const isHRManagerRole = !isBranchManagerRole && (
+    currentRole === 'HR Manager' || 
     perms.employees ||
-    currentRole === 'مدير الموارد البشرية';
+    currentRole === 'مدير الموارد البشرية'
+  );
   const isITAdminRole = currentRole === 'IT Admin';
   const isRecruiterRole = currentRole === 'Recruiter';
 
   if (resolvedCatId === 'cat-3-emp') {
+    if (isBranchManagerRole) return 'read';
     return isHRManagerRole ? 'write' : 'read';
   }
   if (resolvedCatId === 'cat-4-leave') {
+    if (isBranchManagerRole) return 'read';
     return isHRManagerRole ? 'write' : 'read';
   }
   if (resolvedCatId === 'cat-5-payroll') {
+    if (isBranchManagerRole) return 'none';
     return (perms.payroll && isHRManagerRole) ? 'write' : 'read';
   }
   if (resolvedCatId === 'cat-6-recruit') {
+    if (isBranchManagerRole) return 'none';
     return (isHRManagerRole || isRecruiterRole) ? 'write' : 'read';
   }
   if (resolvedCatId === 'cat-7-perf') {
+    if (isBranchManagerRole) return 'read';
     return isHRManagerRole ? 'write' : 'read';
   }
   if (resolvedCatId === 'cat-8-assets') {
+    if (isBranchManagerRole) return 'read';
     return (isHRManagerRole || isITAdminRole) ? 'write' : 'read';
   }
   if (resolvedCatId === 'cat-9-risk') {
+    if (isBranchManagerRole) return 'none';
     return isITAdminRole ? 'write' : 'read';
   }
   if (resolvedCatId === 'cat-10-sys') {
+    if (isBranchManagerRole) return 'none';
     return isITAdminRole ? 'write' : 'read';
   }
   if (resolvedCatId === 'cat-drivers') {
+    if (isBranchManagerRole) return 'read';
     return isITAdminRole ? 'write' : 'read';
   }
 
@@ -732,6 +786,35 @@ export function canUserWrite(
   currentRole: string
 ): boolean {
   if (!currentUser) return false;
+  
+  const isBranchMgr = currentRole === 'Branch Manager' ||
+    currentUser?.role === 'Branch Manager' ||
+    currentRole === 'مدير فرع' ||
+    currentRole === 'مدير مكتب' ||
+    String(currentRole).includes('مدير فرع') ||
+    String(currentRole).includes('مدير مكتب') ||
+    (currentUser?.job_title && (
+      String(currentUser.job_title).includes('مدير فرع') ||
+      String(currentUser.job_title).includes('مدير مكتب') ||
+      String(currentUser.job_title).toLowerCase().includes('branch manager')
+    ));
+
+  // Branch Managers are strictly READ-ONLY for employee profiles, directory and system records
+  if (isBranchMgr) {
+    const mod = String(moduleId || '').toLowerCase();
+    if (
+      !mod || 
+      mod === 'employees' || 
+      mod.startsWith('emp-') || 
+      mod === 'cat-3-emp' || 
+      mod === 'settings' || 
+      mod.startsWith('sys-') || 
+      mod === 'cat-10-sys'
+    ) {
+      return false;
+    }
+  }
+
   const perms = getUserEffectivePermissions(currentUser, currentRole);
   const level = getModuleAccessLevel('', moduleId, perms, currentRole);
   return level === 'write';
@@ -746,8 +829,6 @@ export function isUserReadOnly(
   currentRole: string
 ): boolean {
   if (!currentUser) return true;
-  const perms = getUserEffectivePermissions(currentUser, currentRole);
-  const level = getModuleAccessLevel('', moduleId, perms, currentRole);
-  return level === 'read';
+  return !canUserWrite(moduleId, currentUser, currentRole);
 }
 

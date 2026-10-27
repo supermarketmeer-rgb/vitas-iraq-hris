@@ -20,6 +20,7 @@ import {
   generateIncomeTaxTemplateExcel,
   parseIncomeTaxExcel,
 } from '../../utils/payrollExcelHelper';
+import { isKurdistanLocation } from '../../utils/iraqPayrollTaxEngine';
 
 export const IncomeTaxView: React.FC = () => {
   const {
@@ -40,6 +41,7 @@ export const IncomeTaxView: React.FC = () => {
   const isDark = theme === 'dark';
 
   const [activeSubTab, setActiveSubTab] = useState<'brackets' | 'rules' | 'reports'>('brackets');
+  const [regionFilter, setRegionFilter] = useState<'ALL' | 'IRAQ' | 'KURDISTAN'>('ALL');
   const [isAddingBracket, setIsAddingBracket] = useState(false);
 
   // Excel Template & Import States
@@ -119,9 +121,14 @@ export const IncomeTaxView: React.FC = () => {
     status: 'ACTIVE',
   });
 
-  const currency = t('currency');
-  const taxRules = rules.filter((r) => r.category === 'INCOME_TAX' || r.category === 'EXEMPTION');
-  const taxSnapshots = snapshots.filter((s) => s.status === 'FINALIZED');
+  // Filter snapshots for income tax report with regional filter
+  const taxSnapshots = snapshots
+    .filter((s) => s.status === 'FINALIZED')
+    .filter((s) => {
+      if (regionFilter === 'ALL') return true;
+      const isKurd = isKurdistanLocation(s.branch_name, s.branch_id);
+      return regionFilter === 'KURDISTAN' ? isKurd : !isKurd;
+    });
 
   const handleSaveBracket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -452,16 +459,52 @@ export const IncomeTaxView: React.FC = () => {
       {/* 3. Sub-Tab: Income Tax Report */}
       {activeSubTab === 'reports' && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-amber-500" />
-              {t('income_tax_report')} ({activePeriod})
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {lang === 'ar'
-                ? 'كشف تفصيلي بالدخل الخاضع للضريبة والإعفاءات الممنوحة وضريبة الدخل المحسوبة'
-                : 'Detailed schedule of gross earnings, statutory relief, taxable base, and calculated income tax'}
-            </p>
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-amber-500" />
+                {t('income_tax_report')} ({activePeriod})
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {lang === 'ar'
+                  ? 'كشف تفصيلي بالدخل الخاضع للضريبة والإعفاءات الممنوحة وضريبة الدخل المحسوبة'
+                  : 'Detailed schedule of gross earnings, statutory relief, taxable base, and calculated income tax'}
+              </p>
+            </div>
+
+            {/* Regional Filter Switcher */}
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold shrink-0">
+              <button
+                onClick={() => setRegionFilter('ALL')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  regionFilter === 'ALL'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {lang === 'ar' ? 'الكل' : 'All'}
+              </button>
+              <button
+                onClick={() => setRegionFilter('IRAQ')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  regionFilter === 'IRAQ'
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {lang === 'ar' ? 'ضريبة العراق (الاستقطاع المباشر)' : 'Federal Iraq (Progressive 3-15%)'}
+              </button>
+              <button
+                onClick={() => setRegionFilter('KURDISTAN')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  regionFilter === 'KURDISTAN'
+                    ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/30'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {lang === 'ar' ? 'ضريبة كردستان (سماح 1م و 5%)' : 'Kurdistan (1M Relief + 5%)'}
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -469,25 +512,37 @@ export const IncomeTaxView: React.FC = () => {
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th className="p-3.5 text-start">{lang === 'ar' ? 'الموظف والرقم' : 'Employee & No.'}</th>
-                  <th className="p-3.5 text-start">{lang === 'ar' ? 'القسم' : 'Department'}</th>
+                  <th className="p-3.5 text-start">{lang === 'ar' ? 'القسم والفرع' : 'Department & Branch'}</th>
                   <th className="p-3.5 text-end">{lang === 'ar' ? 'الراتب الإجمالي' : 'Gross Earnings'}</th>
-                  <th className="p-3.5 text-end">{lang === 'ar' ? 'الإعفاءات الضريبية' : 'Exemptions'}</th>
-                  <th className="p-3.5 text-end">{lang === 'ar' ? 'الدخل الخاضع للضريبة' : 'Taxable Income'}</th>
+                  <th className="p-3.5 text-end">{lang === 'ar' ? 'الإعفاءات / التنزيلات' : 'Exemptions & Relief'}</th>
+                  <th className="p-3.5 text-end">{lang === 'ar' ? 'الوعاء الخاضع للضريبة' : 'Taxable Income'}</th>
                   <th className="p-3.5 text-end">{lang === 'ar' ? 'ضريبة الدخل المستحقة' : 'Income Tax'}</th>
                   <th className="p-3.5 text-end">{lang === 'ar' ? 'صافي الراتب' : 'Net Salary'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {taxSnapshots.map((s) => (
+                {taxSnapshots.map((s) => {
+                  const isKurd = isKurdistanLocation(s.branch_name, s.branch_id);
+                  return (
                   <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="p-3.5">
-                      <div className="font-bold text-slate-900 dark:text-white">
-                        {lang === 'ar' ? s.employee_name_ar : s.employee_name_en}
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {lang === 'ar' ? s.employee_name_ar : s.employee_name_en}
+                        </span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                          isKurd
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                        }`}>
+                          {isKurd ? 'كردستان' : 'العراق'}
+                        </span>
                       </div>
                       <div className="font-mono text-[11px] text-slate-400">{s.employee_number}</div>
                     </td>
                     <td className="p-3.5 text-slate-700 dark:text-slate-300 font-medium">
-                      {s.department_name}
+                      <div>{s.department_name}</div>
+                      <div className="text-[10px] text-slate-400">{s.branch_name}</div>
                     </td>
                     <td className="p-3.5 text-end font-semibold text-slate-900 dark:text-white">
                       {(s.calculation_result?.gross_salary ?? 0).toLocaleString()} {currency}
@@ -505,7 +560,7 @@ export const IncomeTaxView: React.FC = () => {
                       {(s.calculation_result?.net_salary ?? 0).toLocaleString()} {currency}
                     </td>
                   </tr>
-                ))}
+                ); })}
               </tbody>
             </table>
           </div>

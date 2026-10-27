@@ -208,3 +208,183 @@ export function getBranchName(
     return raw.replace(/_/g, ' ');
   }
 }
+
+/**
+ * Normalizes branch/office names for robust comparisons.
+ * e.g., 'مكتب الحلة', 'فرع الحلة', 'الحلة', 'بابل - الحلة' all match 'حلة'.
+ */
+export function normalizeBranchKey(name?: string | null): string {
+  if (!name) return '';
+  return String(name)
+    .trim()
+    .toLowerCase()
+    .replace(/[_\-–—]/g, ' ')
+    .replace(/\b(مكتب|فرع|محافظة|منطقة|ادارة|إدارة|office|branch)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Checks whether a user or role represents a Branch / Office Manager.
+ */
+export function isBranchManager(user?: any, role?: string): boolean {
+  if (!user && !role) return false;
+  const currentRole = String(role || user?.role || '').trim();
+  const jobTitle = String(user?.job_title || user?.position || user?.jobTitle || '').trim();
+  const name = String(user?.name || user?.full_name || '').trim();
+  const username = String(user?.username || '').trim().toLowerCase();
+
+  if (
+    currentRole === 'Branch Manager' ||
+    currentRole === 'مدير فرع' ||
+    currentRole === 'مدير مكتب' ||
+    currentRole.includes('مدير فرع') ||
+    currentRole.includes('مدير مكتب') ||
+    currentRole.toLowerCase().includes('branch manager') ||
+    currentRole.toLowerCase().includes('office manager')
+  ) {
+    return true;
+  }
+
+  if (
+    jobTitle.includes('مدير فرع') ||
+    jobTitle.includes('مدير مكتب') ||
+    jobTitle.toLowerCase().includes('branch manager') ||
+    jobTitle.toLowerCase().includes('office manager')
+  ) {
+    return true;
+  }
+
+  if (
+    username.includes('branchmanager') ||
+    username.endsWith('_manager') ||
+    username.startsWith('manager_')
+  ) {
+    return true;
+  }
+
+  if (
+    (name.includes('مدير فرع') || name.includes('مدير مكتب') || name.toLowerCase().includes('branch manager')) &&
+    !name.includes('مدير الموارد البشرية') &&
+    !name.includes('مدير النظام')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Extracts the user's assigned branch / office name cleanly.
+ */
+export function getUserBranch(user?: any): string {
+  if (!user) return '';
+  return String(
+    user.branch || 
+    user.office_name || 
+    user.officeName || 
+    user.location_ar || 
+    user.location || 
+    user.branch_ar || 
+    ''
+  ).trim();
+}
+
+/**
+ * Checks if an employee record matches a specific branch/office name.
+ */
+export function isEmployeeInBranch(emp: any, branchName: string): boolean {
+  if (!branchName) return true;
+  const targetKey = normalizeBranchKey(branchName);
+  if (!targetKey) return true;
+
+  const empBranch = emp.branch || emp.branch_ar || emp.location || emp.location_ar || emp.office_name || '';
+  const empBranchEn = emp.branchEn || emp.branch_en || emp.location_en || '';
+
+  const empKey = normalizeBranchKey(empBranch);
+  const empKeyEn = normalizeBranchKey(empBranchEn);
+
+  if (empKey && (empKey === targetKey || empKey.includes(targetKey) || targetKey.includes(empKey))) {
+    return true;
+  }
+  if (empKeyEn && (empKeyEn === targetKey || empKeyEn.includes(targetKey) || targetKey.includes(empKeyEn))) {
+    return true;
+  }
+
+  // Also check raw string inclusion for Arabic composite names like "مكتب الحلة" inside "الحلة"
+  const rawTarget = String(branchName).trim();
+  const rawEmpBranch = String(empBranch).trim();
+  if (rawTarget && rawEmpBranch && (rawTarget.includes(rawEmpBranch) || rawEmpBranch.includes(rawTarget))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Filters an employee list for the current user.
+ * If user is a Branch Manager, strictly scopes the list to their office employees.
+ * Otherwise returns the original list.
+ */
+export function filterEmployeesForUser(employees: any[], user?: any, role?: string): any[] {
+  if (!Array.isArray(employees)) return [];
+  if (!isBranchManager(user, role)) return employees;
+
+  const branch = getUserBranch(user);
+  if (!branch) return employees;
+
+  return employees.filter(emp => isEmployeeInBranch(emp, branch));
+}
+
+/**
+ * Filters system notifications for a Branch Manager.
+ * Ensures notifications pertaining to other branches are not mixed in,
+ * while keeping branch-relevant alerts, employees' alerts, and general company announcements.
+ */
+export function filterNotificationsForUser(
+  notifications: any[],
+  user?: any,
+  role?: string,
+  scopedEmployees?: any[]
+): any[] {
+  if (!Array.isArray(notifications)) return [];
+  if (!isBranchManager(user, role)) return notifications;
+
+  const branch = getUserBranch(user);
+  const branchKey = normalizeBranchKey(branch);
+  const scopedEmpNames = Array.isArray(scopedEmployees)
+    ? scopedEmployees.map(e => String(e.fullNameAr || e.fullName || e.name || e.full_name_ar || '').toLowerCase())
+    : [];
+
+  return notifications.filter(notif => {
+    // 1. General system announcements / company news are kept
+    if (notif.type === 'news' || notif.type === 'info') {
+      const msg = `${notif.title || ''} ${notif.message || ''}`.toLowerCase();
+      // If it mentions a specific other branch, exclude it
+      const otherBranches = ['بغداد', 'البصرة', 'النجف', 'الحلة', 'الكوت', 'كربلاء', 'السليمانية', 'أربيل', 'الموصل'];
+      const mentionsOtherBranch = otherBranches.some(b => {
+        const bKey = normalizeBranchKey(b);
+        return bKey !== branchKey && msg.includes(bKey);
+      });
+      if (mentionsOtherBranch && !msg.includes(branchKey)) {
+        return false;
+      }
+      return true;
+    }
+
+    const text = `${notif.title || ''} ${notif.message || ''}`.toLowerCase();
+
+    // 2. If mentions manager's branch
+    if (branchKey && text.includes(branchKey)) {
+      return true;
+    }
+
+    // 3. If mentions an employee from this manager's office
+    if (scopedEmpNames.some(name => name.length > 2 && text.includes(name))) {
+      return true;
+    }
+
+    // 4. Default: keep only if not mentioning another branch
+    return false;
+  });
+}

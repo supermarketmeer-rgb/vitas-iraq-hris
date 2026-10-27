@@ -52,19 +52,19 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
 
 
   const displayName = isEn 
-    ? (editedEmployee?.fullNameEn || 'Dina Haider Qasim') 
-    : (editedEmployee?.fullName || editedEmployee?.name || 'دينا حيدر قاسم');
+    ? (editedEmployee?.fullNameEn || editedEmployee?.full_name_en || editedEmployee?.fullName || editedEmployee?.full_name_ar || 'Employee') 
+    : (editedEmployee?.fullName || editedEmployee?.full_name_ar || editedEmployee?.name || 'الموظف');
   const displayPosition = isEn 
-    ? 'Receptionist' 
-    : (editedEmployee?.position || 'موظف استقبال');
+    ? (editedEmployee?.positionEn || editedEmployee?.jobTitleEn || editedEmployee?.position_en || editedEmployee?.position || 'Employee') 
+    : (editedEmployee?.position || editedEmployee?.position_ar || editedEmployee?.jobTitle || 'موظف');
   const displayDept = isEn 
-    ? 'Credit Department' 
-    : (editedEmployee?.department || 'الائتمان');
+    ? (editedEmployee?.departmentEn || editedEmployee?.department_en || editedEmployee?.department || 'Department') 
+    : (editedEmployee?.department || 'القسم');
   const displayBranch = isEn 
-    ? 'Najaf Office' 
-    : (editedEmployee?.branch || 'مكتب النجف');
+    ? (editedEmployee?.branchEn || editedEmployee?.branch_en || editedEmployee?.branch || editedEmployee?.location_ar || 'Branch') 
+    : (editedEmployee?.branch || editedEmployee?.location_ar || 'الفرع');
   const displayNationality = isEn 
-    ? 'Iraqi' 
+    ? (editedEmployee?.nationality || 'Iraqi') 
     : (editedEmployee?.nationality || 'عراقي');
 
   const handleSave = () => {

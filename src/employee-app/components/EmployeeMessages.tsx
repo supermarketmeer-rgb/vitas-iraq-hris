@@ -68,8 +68,10 @@ export const EmployeeMessages: React.FC<EmployeeMessagesProps> = ({ employee, on
     if (!newMessage.to || !newMessage.subject || !newMessage.content) return;
 
     addMessage({
-      from: isEn ? (employee?.fullNameEn || 'Dina Haider Qasim') : (employee?.fullName || 'دينا حيدر قاسم'),
-      fromId: employee?.employeeId || employee?.badgeNo || 'V167',
+      from: isEn 
+        ? (employee?.fullNameEn || employee?.full_name_en || employee?.fullName || employee?.full_name_ar || 'Employee') 
+        : (employee?.full_name_ar || employee?.fullNameAr || employee?.fullName || employee?.name || 'الموظف'),
+      fromId: employee?.badgeNo || employee?.badge_no || employee?.employeeId || employee?.employee_id || 'EMP',
       to: newMessage.to,
       subject: newMessage.subject,
       content: newMessage.content,

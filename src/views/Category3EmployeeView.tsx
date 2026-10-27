@@ -15,6 +15,7 @@ import { TrainingTable } from '../components/TrainingTable';
 import { WarningTable } from '../components/WarningTable';
 import { getBranchName } from '../utils/branchHelper';
 import { getDepartmentName, getJobTitleName, DICT_EN, isArabicText } from '../utils/orgDictionary';
+import { transliterateArabicNameToEnglish } from '../utils/nameHelper';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { DynamicHrisModule } from '../components/OrgModule/DynamicHrisModule';
 
@@ -34,8 +35,16 @@ export const Category3EmployeeView: React.FC = () => {
     currentUserRole,
     currentUser,
     canWrite,
-    isReadOnly
+    isReadOnly,
+    isBranchManager,
+    userBranch,
+    scopedEmployees
   } = useApp();
+
+  // Active employees list: strictly scoped to the branch if logged in as Branch Manager
+  const activeEmployees = useMemo(() => {
+    return isBranchManager ? scopedEmployees : employees;
+  }, [isBranchManager, scopedEmployees, employees]);
 
   // Selected employee for profile view
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
@@ -79,13 +88,19 @@ export const Category3EmployeeView: React.FC = () => {
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
   const [directoryViewMode, setDirectoryViewMode] = useState<'table' | 'rows' | 'cards'>('table');
 
-  // Calculate urgent contract alerts count (<= 7 days or overdue)
+  // Calculate urgent contract alerts count (<= 7 days or overdue within 14 days, active only, non-permanent)
   const urgentContractAlertsCount = useMemo(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     let count = 0;
 
-    employees.forEach((emp: any) => {
+    activeEmployees.forEach((emp: any) => {
+      // 1. Skip inactive or terminated employees
+      const empStatus = String(emp.status || '').toLowerCase().trim();
+      if (empStatus === 'terminated' || empStatus === 'resigned' || empStatus === 'inactive' || empStatus === 'مستقيل' || empStatus === 'مفصول' || empStatus === 'منتهي') {
+        return;
+      }
+
       const term = String(
         emp.termOfContract || 
         emp.term_of_contract || 
@@ -93,6 +108,13 @@ export const Category3EmployeeView: React.FC = () => {
         emp.contractType || 
         ''
       ).toLowerCase().trim();
+
+      // 2. Permanent contracts do not expire
+      const isPermanent = term.includes('دائم') || term.includes('غير محدد') || term.includes('permanent') || term.includes('indefinite');
+      if (isPermanent) {
+        return;
+      }
+
       const isNew = term.includes('جديد') || term.includes('new') || term.includes('تجربة') || term.includes('probation');
       
       const startRaw = emp.contractStartDate || emp.contract_start_date || emp.originalStartDate || emp.original_start_date || emp.joinDate;
@@ -126,14 +148,16 @@ export const Category3EmployeeView: React.FC = () => {
         const targetNormalized = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), targetDateObj.getDate());
         const diffMs = targetNormalized.getTime() - today.getTime();
         const daysRemaining = Math.round(diffMs / (1000 * 60 * 60 * 24));
-        if (daysRemaining <= 7) {
+        
+        // Logical threshold: only count genuine urgent contracts (due in 7 days or expired within last 14 days)
+        if (daysRemaining >= -14 && daysRemaining <= 7) {
           count++;
         }
       }
     });
 
     return count;
-  }, [employees]);
+  }, [activeEmployees]);
 
 
 
@@ -225,7 +249,7 @@ export const Category3EmployeeView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter employees based on search query (البادج، الاسم، المكتب، العنوان الوظيفي، القسم)
-  const filteredEmployees = employees.filter(emp => {
+  const filteredEmployees = activeEmployees.filter(emp => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase().trim();
     return (
@@ -274,7 +298,7 @@ export const Category3EmployeeView: React.FC = () => {
   // Filter employees for profile search box with full Arabic/English search support
   const matchingProfileEmployees = useMemo(() => {
     const rawQuery = (profileSearchQuery || '').trim();
-    if (!rawQuery) return employees;
+    if (!rawQuery) return activeEmployees;
 
     const normalize = (str: string) => {
       return str
@@ -288,7 +312,7 @@ export const Category3EmployeeView: React.FC = () => {
 
     const query = normalize(rawQuery);
 
-    return employees.filter(emp => {
+    return activeEmployees.filter(emp => {
       const candidates = [
         emp.fullName,
         emp.fullNameEn,
@@ -323,7 +347,7 @@ export const Category3EmployeeView: React.FC = () => {
 
       return candidates.some(c => c && normalize(String(c)).includes(query));
     });
-  }, [employees, profileSearchQuery]);
+  }, [activeEmployees, profileSearchQuery]);
 
   // Theme-based styling helpers for profile view
   const isDark = theme === 'dark';
@@ -453,9 +477,10 @@ export const Category3EmployeeView: React.FC = () => {
     if (!emp) return '-';
     if (language === 'en') {
       const enName = emp.fullNameEn || emp.full_name_en || emp.name_en;
-      if (enName && enName !== 'N/A' && enName.trim() !== '') return enName;
+      if (enName && enName !== 'N/A' && enName.trim() !== '' && !isArabicText(enName)) return enName;
       const arName = emp.fullName || emp.full_name_ar || emp.name_ar;
       if (arName && dictEn[arName]) return dictEn[arName];
+      if (arName && isArabicText(arName)) return transliterateArabicNameToEnglish(arName);
       return arName || '-';
     }
     return emp.fullName || emp.full_name_ar || emp.name_ar || '-';
@@ -465,12 +490,15 @@ export const Category3EmployeeView: React.FC = () => {
     if (!emp) return '-';
     if (language === 'en') {
       const enTitle = emp.jobTitleEn || emp.job_title_en;
-      if (enTitle && enTitle !== 'N/A' && enTitle.trim() !== '') return enTitle;
+      if (enTitle && enTitle !== 'N/A' && enTitle.trim() !== '' && !isArabicText(enTitle)) return enTitle;
       const arTitle = emp.jobTitle || emp.position_ar || emp.position;
+      if (!arTitle || arTitle === 'غير محدد' || arTitle === 'N/A') return 'Unspecified';
       const foundPos = positions.find((p: any) => p.name_ar === arTitle || p.name === arTitle);
-      if (foundPos?.name_en) return foundPos.name_en;
+      if (foundPos?.name_en && !isArabicText(foundPos.name_en)) return foundPos.name_en;
       if (arTitle && dictEn[arTitle]) return dictEn[arTitle];
-      return arTitle || '-';
+      const translated = getJobTitleName(arTitle, 'en', positions);
+      if (translated && !isArabicText(translated)) return translated;
+      return 'Unspecified';
     }
     return emp.jobTitle || emp.position_ar || emp.position || '-';
   };
@@ -479,12 +507,14 @@ export const Category3EmployeeView: React.FC = () => {
     if (!emp) return '-';
     if (language === 'en') {
       const enDept = emp.departmentEn || emp.department_en;
-      if (enDept && enDept !== 'N/A' && enDept.trim() !== '') return enDept;
+      if (enDept && enDept !== 'N/A' && enDept.trim() !== '' && !isArabicText(enDept)) return enDept;
       const arDept = emp.department || emp.department_ar;
       const foundDept = departments.find((d: any) => d.name_ar === arDept || d.name === arDept);
-      if (foundDept?.name_en) return foundDept.name_en;
+      if (foundDept?.name_en && !isArabicText(foundDept.name_en)) return foundDept.name_en;
       if (arDept && dictEn[arDept]) return dictEn[arDept];
-      return arDept || '-';
+      const translated = getDepartmentName(arDept, 'en');
+      if (translated && !isArabicText(translated)) return translated;
+      return 'Credit Department';
     }
     return emp.department || emp.department_ar || '-';
   };
@@ -496,21 +526,21 @@ export const Category3EmployeeView: React.FC = () => {
   };
 
   const selectedEmployee = useMemo(() => {
-    if (!employees || employees.length === 0) return null;
-    if (!selectedEmpId) return employees[0];
+    if (!activeEmployees || activeEmployees.length === 0) return null;
+    if (!selectedEmpId) return activeEmployees[0];
     const targetStr = String(selectedEmpId).toLowerCase().trim();
-    return employees.find(e => {
+    return activeEmployees.find(e => {
       return String(e.id).toLowerCase().trim() === targetStr ||
              (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
              (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr);
-    }) || employees[0];
-  }, [employees, selectedEmpId]);
+    }) || activeEmployees[0];
+  }, [activeEmployees, selectedEmpId]);
 
   useEffect(() => {
     setAvatarImgError(false);
 
-    if (employees.length > 0) {
-      const activeId = selectedEmpId || employees[0]?.id || employees[0]?.employeeId;
+    if (activeEmployees.length > 0) {
+      const activeId = selectedEmpId || activeEmployees[0]?.id || activeEmployees[0]?.employeeId;
       const targetStr = activeId ? String(activeId).toLowerCase().trim() : '';
       const hasIdChanged = targetStr !== lastSelectedEmpIdRef.current;
       const hasLangChanged = language !== lastLanguageRef.current;
@@ -521,11 +551,11 @@ export const Category3EmployeeView: React.FC = () => {
 
         // Never overwrite if user is actively searching or typing
         if (!isProfileSearchFocusedRef.current && !isSearchDropdownOpen) {
-          const found = employees.find(e => {
+          const found = activeEmployees.find(e => {
             return String(e.id).toLowerCase().trim() === targetStr ||
                    (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
                    (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr);
-          }) || employees[0];
+          }) || activeEmployees[0];
 
           if (found) {
             setProfileSearchQuery(getEmpFullName(found));
@@ -533,7 +563,7 @@ export const Category3EmployeeView: React.FC = () => {
         }
       }
     }
-  }, [selectedEmpId, employees.length, language, isSearchDropdownOpen]);
+  }, [selectedEmpId, activeEmployees, language, isSearchDropdownOpen]);
 
   // Click outside listener for the profile search dropdown
   useEffect(() => {
@@ -1692,7 +1722,7 @@ export const Category3EmployeeView: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <h1 className={`${(activeModuleId === 'emp-profile' || activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'text-base sm:text-lg' : 'text-2xl'} font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {activeModuleId === 'emp-directory' && t('دليل الموظفين المؤسسي', 'Corporate Employee Directory')}
-            {activeModuleId === 'emp-hr-directory' && t('دليل الموظفين الشامل - إدارة الموارد البشرية', 'Comprehensive Employee Directory - HR')}
+            {activeModuleId === 'emp-hr-directory' && t('دليل الموظفين - إدارة الموارد البشرية', 'Employee Directory - HR')}
             {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
               (activeModuleId === 'emp-edit' || selectedEmpId) 
                 ? t('تعديل بيانات الموظف (نموذج 7 تبويبات)', 'Edit Employee Data (7-Tab Form)')
@@ -1741,6 +1771,7 @@ export const Category3EmployeeView: React.FC = () => {
       {/* Directory View */}
       {(activeModuleId === 'emp-directory' || activeModuleId === 'emp-hr-directory') && (
         <div className="space-y-4">
+
           {/* Row containing Search Field + Smaller Action Buttons on the SAME LINE */}
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
             {/* Search Field (flex-1) */}
@@ -1854,7 +1885,7 @@ export const Category3EmployeeView: React.FC = () => {
               <span className={`px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold ${
                 theme === 'dark' ? 'bg-[#06080d] text-teal-400 border border-teal-500/30' : 'bg-teal-50 text-teal-800 border border-teal-200'
               }`}>
-                {filteredEmployees.length} / {employees.length}
+                {isBranchManager ? filteredEmployees.length : `${filteredEmployees.length} / ${employees.length}`}
               </span>
             </div>
 
@@ -2761,7 +2792,7 @@ export const Category3EmployeeView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        const curEmp = selectedEmployee || employees.find(e => String(e.id) === String(selectedEmpId));
+                        const curEmp = selectedEmployee || activeEmployees.find(e => String(e.id) === String(selectedEmpId));
                         if (curEmp) {
                           handleOpenContractPreview(curEmp);
                         } else {
@@ -3923,7 +3954,7 @@ export const Category3EmployeeView: React.FC = () => {
                   value={selectedEmployee ? String(selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id || '') : ''}
                   onChange={(e) => {
                     const val = e.target.value;
-                    const found = employees.find(emp => {
+                    const found = activeEmployees.find(emp => {
                       const tVal = String(val).toLowerCase().trim();
                       return String(emp.id).toLowerCase().trim() === tVal ||
                              (emp.employeeId && String(emp.employeeId).toLowerCase().trim() === tVal) ||
@@ -3939,7 +3970,7 @@ export const Category3EmployeeView: React.FC = () => {
                   className={`w-full ${profileColors.inputBg} border ${profileColors.inputBorder} rounded-xl px-3 py-1.5 text-xs ${profileColors.inputText} focus:outline-none focus:border-teal-500 ${isDark ? 'focus:bg-[#111827]' : 'focus:bg-white'} transition-all shadow-xs font-bold`}
                 >
                   <option value="" disabled>-- {t('اختر موظفاً مباشرة للتنقل السريع', 'Select an employee directly for fast navigation')} --</option>
-                  {employees.map(emp => {
+                  {activeEmployees.map(emp => {
                     const empOptId = String(emp.id || emp.employeeId || emp.employee_id || '');
                     return (
                       <option key={empOptId} value={empOptId}>
@@ -3952,7 +3983,7 @@ export const Category3EmployeeView: React.FC = () => {
 
               {/* Total Employees Count Badge */}
               <span className={`text-[11px] font-mono ${profileColors.textSecondary} font-bold ${isDark ? 'bg-white/5' : 'bg-slate-100'} px-2.5 py-1 rounded-xl border ${profileColors.border} shrink-0 whitespace-nowrap`}>
-                {t('إجمالي الموظفين:', 'Total Employees:')} {employees.length}
+                {t('إجمالي الموظفين:', 'Total Employees:')} {activeEmployees.length}
               </span>
             </div>
           </div>
@@ -5775,7 +5806,7 @@ export const Category3EmployeeView: React.FC = () => {
       <ContractRenewalAlertsModal
         isOpen={showRenewalAlertsModal}
         onClose={() => setShowRenewalAlertsModal(false)}
-        employees={employees}
+        employees={activeEmployees}
         onOpenContract={(emp) => handleOpenContractPreview(emp)}
         language={language}
         theme={theme}
@@ -5785,7 +5816,7 @@ export const Category3EmployeeView: React.FC = () => {
       <BatchOfficeContractRoutingModal
         isOpen={showBatchOfficeRoutingModal}
         onClose={() => setShowBatchOfficeRoutingModal(false)}
-        employees={employees}
+        employees={activeEmployees}
         language={language}
         theme={theme}
       />

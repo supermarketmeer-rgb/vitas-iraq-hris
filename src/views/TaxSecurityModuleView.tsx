@@ -11,59 +11,128 @@ import { PhpArchitectureView } from '../tax_module/components/PhpArchitectureVie
 import { SnapshotModal } from '../tax_module/components/SnapshotModal';
 import { RuleModal } from '../tax_module/components/RuleModal';
 
+import { useApp as useRootApp } from '../context/AppContext';
+
+const SuperAdminLockedNotice: React.FC = () => {
+  return (
+    <div className="p-12 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center text-center max-w-xl mx-auto my-12 space-y-4">
+      <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+        <span className="material-symbols-outlined text-4xl">lock</span>
+      </div>
+      <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+        صلاحية حصرية للسوبر آدمن (Super Admin Exclusive)
+      </h3>
+      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+        تم إلغاء وصول المستخدمين العاديين ومسؤولي الموارد البشرية إلى معادلات الاحتساب وقواعد الرواتب وواجهات الربط (API). أي تعديل مستقبلي في القواعد والشرائح والـ API يكون حصراً من قبل السوبر آدمن.
+      </p>
+      <div className="text-[11px] font-mono text-slate-400 bg-slate-50 dark:bg-slate-800/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+        Access Restricted: Role 'Super Admin' Required
+      </div>
+    </div>
+  );
+};
+
 const InnerTaxView: React.FC = () => {
-  const { activeTab, setActiveTab, loading, lang, theme } = useApp();
+  const {
+    activeTab,
+    setActiveTab,
+    loading,
+    lang,
+    theme,
+    activeDepartmentId,
+    setActiveDepartmentId,
+    activeBranchId,
+    setActiveBranchId,
+    departments,
+    branches,
+    t
+  } = useApp();
+  const { currentUser } = useRootApp();
   const isEn = lang === 'en';
   const isDark = theme === 'dark';
 
-  const tabs: Array<{ id: any; labelAr: string; labelEn: string; icon: string }> = [
+  const isSuperAdmin = currentUser?.role === 'Super Admin';
+
+  // Base operational tabs available to HR / General Users
+  const baseTabs: Array<{ id: any; labelAr: string; labelEn: string; icon: string }> = [
     { id: 'dashboard', labelAr: 'لوحة التحكم والمؤشرات', labelEn: 'Dashboard & KPIs', icon: 'dashboard' },
     { id: 'social_security', labelAr: 'الضمان الاجتماعي (قانون 18)', labelEn: 'Social Security (Law 18)', icon: 'shield_person' },
     { id: 'income_tax', labelAr: 'ضريبة الدخل (قانون 113)', labelEn: 'Income Tax (Law 113)', icon: 'receipt_long' },
-    { id: 'calculation_rules', labelAr: 'قواعد ومحرك الحسابات', labelEn: 'Rules Engine', icon: 'account_tree' },
     { id: 'simulator', labelAr: 'محاكي التقديرات وتتبع الخطوات', labelEn: 'Simulator & Trace', icon: 'calculate' },
     { id: 'reports', labelAr: 'التقارير والمطابقات', labelEn: 'Reports & Audits', icon: 'summarize' },
-    { id: 'php_architecture', labelAr: 'بنية PHP ومولد الكود', labelEn: 'PHP Generator', icon: 'code' },
-    { id: 'settings', labelAr: 'الشرائح والمتغيرات', labelEn: 'Settings & Variables', icon: 'tune' },
   ];
+
+  // Exclusive tabs for Super Admin ONLY (Rules, Formulas, Parameters, API Generator)
+  const superAdminTabs: Array<{ id: any; labelAr: string; labelEn: string; icon: string; isSuperAdminOnly?: boolean }> = [
+    { id: 'calculation_rules', labelAr: 'قواعد ومحرك المعادلات (Super Admin)', labelEn: 'Rules Engine (Super Admin)', icon: 'account_tree', isSuperAdminOnly: true },
+    { id: 'settings', labelAr: 'الشرائح والمتغيرات (Super Admin)', labelEn: 'Settings & Formulas (Super Admin)', icon: 'tune', isSuperAdminOnly: true },
+    { id: 'php_architecture', labelAr: 'بنية API ومولد الكود (Super Admin)', labelEn: 'API & PHP Generator (Super Admin)', icon: 'code', isSuperAdminOnly: true },
+  ];
+
+  const tabs = isSuperAdmin ? [...baseTabs, ...superAdminTabs] : baseTabs;
+
+  // Auto-redirect if a non-super-admin is somehow on a protected technical tab
+  React.useEffect(() => {
+    if (!isSuperAdmin && ['calculation_rules', 'settings', 'php_architecture'].includes(activeTab)) {
+      setActiveTab('dashboard');
+    }
+  }, [isSuperAdmin, activeTab, setActiveTab]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200/60 dark:border-slate-800">
         <div>
           <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {isEn ? 'Social Security & Income Tax Engine' : 'محرك الضمان الاجتماعي وضريبة الدخل'}
           </h1>
         </div>
 
-        <div className="flex items-center gap-3 self-end md:self-auto font-mono text-xs">
-          <div className="px-3.5 py-2 rounded-xl bg-teal-900/60 border border-teal-400/30 flex items-center gap-2 text-teal-100 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>vitasiraq_hris_db: {isEn ? 'Connected' : 'متصل'}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Dynamic Sub-Navigation Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl font-medium text-xs flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
-                isActive
-                  ? 'bg-white text-teal-900 font-bold shadow-lg scale-[1.02]'
-                  : 'bg-teal-600 text-white shadow-md hover:bg-teal-900/70 hover:text-white border border-teal-500/30'
-              }`}
+        {/* Filters and Dashboard & KPI button placed on the same line as screen title */}
+        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+          {/* Department Filter */}
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs shadow-sm">
+            <span className="material-symbols-outlined text-slate-400 text-sm">domain</span>
+            <select
+              value={activeDepartmentId}
+              onChange={(e) => setActiveDepartmentId(e.target.value)}
+              className="bg-transparent font-medium text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
             >
-              <span className="material-symbols-outlined text-sm">{tab.icon}</span>
-              <span>{isEn ? tab.labelEn : tab.labelAr}</span>
-            </button>
-          );
-        })}
+              <option value="">{t('all_departments')}</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id} className="dark:bg-slate-900">
+                  {lang === 'ar' ? d.name_ar : d.name_en}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Branch Filter */}
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs shadow-sm">
+            <span className="material-symbols-outlined text-slate-400 text-sm">filter_alt</span>
+            <select
+              value={activeBranchId}
+              onChange={(e) => setActiveBranchId(e.target.value)}
+              className="bg-transparent font-medium text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+            >
+              <option value="">{t('all_branches')}</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id} className="dark:bg-slate-900">
+                  {lang === 'ar' ? b.name_ar : b.name_en}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Dashboard & KPI button */}
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-teal-600/20 transition-all duration-200"
+          >
+            <span className="material-symbols-outlined text-sm">dashboard</span>
+            <span>{isEn ? 'Dashboard & KPI' : 'لوحة المؤشرات (Dashboard & KPI)'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Active Tab Content View */}
@@ -84,11 +153,11 @@ const InnerTaxView: React.FC = () => {
             {activeTab === 'dashboard' && <DashboardView />}
             {activeTab === 'social_security' && <SocialSecurityView />}
             {activeTab === 'income_tax' && <IncomeTaxView />}
-            {activeTab === 'calculation_rules' && <CalculationRulesView />}
             {activeTab === 'simulator' && <RuleSimulatorView />}
             {activeTab === 'reports' && <ReportsView />}
-            {activeTab === 'settings' && <SettingsView />}
-            {activeTab === 'php_architecture' && <PhpArchitectureView />}
+            {activeTab === 'calculation_rules' && (isSuperAdmin ? <CalculationRulesView /> : <SuperAdminLockedNotice />)}
+            {activeTab === 'settings' && (isSuperAdmin ? <SettingsView /> : <SuperAdminLockedNotice />)}
+            {activeTab === 'php_architecture' && (isSuperAdmin ? <PhpArchitectureView /> : <SuperAdminLockedNotice />)}
           </>
         )}
       </div>

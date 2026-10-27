@@ -22,7 +22,10 @@ export const Sidebar: React.FC = () => {
     documentRecords,
     currentUserRole,
     currentUser,
-    theme
+    theme,
+    isBranchManager,
+    userBranch,
+    scopedEmployees
   } = useApp();
 
   const currentRole = currentUserRole || currentUser?.role || 'Employee';
@@ -218,10 +221,18 @@ export const Sidebar: React.FC = () => {
     switch (moduleId) {
       case 'emp-directory':
       case 'emp-hr-directory':
-        return employees.length;
+        return isBranchManager ? scopedEmployees.length : employees.length;
       case 'leave-directory':
-      case 'leave-approvals':
-        return leaveRequests.filter(r => r.status === 'قيد الانتظار').length;
+      case 'leave-approvals': {
+        const activeLeaves = isBranchManager
+          ? leaveRequests.filter(r => {
+              const bKey = userBranch ? userBranch.replace(/^(مكتب|فرع)\s+/, '').trim() : '';
+              const scopedEmpIds = new Set(scopedEmployees.map(e => String(e.id || e.employeeId)));
+              return scopedEmpIds.has(String(r.employeeId)) || (r.branch && bKey && r.branch.includes(bKey));
+            })
+          : leaveRequests;
+        return activeLeaves.filter(r => r.status === 'قيد الانتظار').length;
+      }
       case 'recruit-dash':
         return jobVacancies.filter(j => j.status === 'مفتوحة' || j.status === 'Open').length;
       case 'recruit-ats':
@@ -247,10 +258,32 @@ export const Sidebar: React.FC = () => {
 
   // Pre-calculate count of permitted categories (Excluding authentication/login demo pages)
   const permittedCategories = CATEGORY_GROUPS
-    .filter(cat => cat.id !== 'cat-1-auth')
+    .filter(cat => {
+      if (cat.id === 'cat-1-auth') return false;
+      // Requirement: Completely hide Risk, Compliance and Security for Branch Manager
+      if (isBranchManager && (cat.id === 'cat-9-risk' || cat.titleEn.toLowerCase().includes('risk'))) {
+        return false;
+      }
+      return true;
+    })
     .map(cat => {
       const filteredModules = cat.modules.filter(m => {
         if (m.hidden) return false;
+
+        // Specific scope for Branch Manager
+        if (isBranchManager) {
+          // Category 2: Dashboard & Executive -> ONLY System Overview, ESS, and Saved Reports
+          if (cat.id === 'cat-2-dash') {
+            const allowedBranchDashModules = ['dash-overview', 'dash-ess', 'sys-dynamic-reports'];
+            if (!allowedBranchDashModules.includes(m.id)) return false;
+          }
+          // Category 3: Employee Management -> ONLY HR Employee Directory and HR Employees Profiles
+          if (cat.id === 'cat-3-emp') {
+            const allowedBranchEmpModules = ['emp-hr-directory', 'emp-profile'];
+            if (!allowedBranchEmpModules.includes(m.id)) return false;
+          }
+        }
+
         if (!isModuleAuthorized(cat.id, m.id, userPerms, currentRole)) {
           return false;
         }
@@ -258,6 +291,16 @@ export const Sidebar: React.FC = () => {
           return m.title.includes(sidebarFilter) || m.titleEn.toLowerCase().includes(sidebarFilter.toLowerCase());
         }
         return true;
+      }).map(m => {
+        // If Branch Manager, present sys-dynamic-reports specifically as Saved Reports
+        if (isBranchManager && m.id === 'sys-dynamic-reports') {
+          return {
+            ...m,
+            title: 'التقارير المحفوظة (Saved Reports)',
+            titleEn: 'Saved Reports'
+          };
+        }
+        return m;
       });
       return { ...cat, filteredModules };
     }).filter(c => c.filteredModules.length > 0);
@@ -378,7 +421,7 @@ export const Sidebar: React.FC = () => {
           {permittedCategories.map((cat, groupIndex) => {
             const isOpen = openCategories[cat.id];
             const displayCatTitle = language === 'en' ? cat.titleEn : cat.title;
-            const displayCatSubtitle = language === 'en' ? cat.title : cat.titleEn;
+            const displayCatSubtitle = language === 'en' ? '' : cat.titleEn;
 
             return (
               <div
@@ -404,9 +447,11 @@ export const Sidebar: React.FC = () => {
                       <h2 className="text-xs font-bold text-white group-hover:text-teal-400 transition-colors">
                         {displayCatTitle}
                       </h2>
-                      <p className="text-[10px] text-white/80 font-mono tracking-tight">
-                        {displayCatSubtitle}
-                      </p>
+                      {displayCatSubtitle ? (
+                        <p className="text-[10px] text-white/80 font-mono tracking-tight">
+                          {displayCatSubtitle}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 

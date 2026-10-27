@@ -18,6 +18,7 @@ import {
   generateSocialSecurityTemplateExcel,
   parseSocialSecurityExcel,
 } from '../../utils/payrollExcelHelper';
+import { isKurdistanLocation } from '../../utils/iraqPayrollTaxEngine';
 
 export const SocialSecurityView: React.FC = () => {
   const {
@@ -37,6 +38,7 @@ export const SocialSecurityView: React.FC = () => {
   const isDark = theme === 'dark';
 
   const [activeSubTab, setActiveSubTab] = useState<'rules' | 'parameters' | 'reports'>('rules');
+  const [regionFilter, setRegionFilter] = useState<'ALL' | 'IRAQ' | 'KURDISTAN'>('ALL');
   const [exemptEmployees, setExemptEmployees] = useState<any[]>([]);
 
   // Excel Template & Import States
@@ -119,8 +121,14 @@ export const SocialSecurityView: React.FC = () => {
 
   const currency = t('currency');
 
-  // Filter snapshots for social security report
-  const ssSnapshots = snapshots.filter((s) => s.status === 'FINALIZED');
+  // Filter snapshots for social security report with regional filter
+  const ssSnapshots = snapshots
+    .filter((s) => s.status === 'FINALIZED')
+    .filter((s) => {
+      if (regionFilter === 'ALL') return true;
+      const isKurd = isKurdistanLocation(s.branch_name, s.branch_id);
+      return regionFilter === 'KURDISTAN' ? isKurd : !isKurd;
+    });
 
   const handleUpdateParameter = async (param: any, newValue: number) => {
     try {
@@ -415,7 +423,7 @@ export const SocialSecurityView: React.FC = () => {
 
           {/* Regular SS Contribution Schedule */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
@@ -427,6 +435,40 @@ export const SocialSecurityView: React.FC = () => {
                     : 'Itemized schedule of employee and employer contributions calculated for the period'}
                 </p>
               </div>
+
+              {/* Regional Filter Switcher */}
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold shrink-0">
+                <button
+                  onClick={() => setRegionFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    regionFilter === 'ALL'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {lang === 'ar' ? 'الكل' : 'All'}
+                </button>
+                <button
+                  onClick={() => setRegionFilter('IRAQ')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    regionFilter === 'IRAQ'
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
+                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {lang === 'ar' ? 'العراق الاتحادي (سقف 1.75م)' : 'Federal Iraq (Cap 1.75M)'}
+                </button>
+                <button
+                  onClick={() => setRegionFilter('KURDISTAN')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    regionFilter === 'KURDISTAN'
+                      ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/30'
+                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {lang === 'ar' ? 'إقليم كردستان (5% + 12%)' : 'Kurdistan (5% + 12%)'}
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -437,17 +479,28 @@ export const SocialSecurityView: React.FC = () => {
                     <th className="p-3.5 text-start">{lang === 'ar' ? 'القسم والفرع' : 'Department'}</th>
                     <th className="p-3.5 text-end">{lang === 'ar' ? 'الراتب الأساسي' : 'Basic Salary'}</th>
                     <th className="p-3.5 text-end">{lang === 'ar' ? 'وعاء الاشتراك' : 'Contribution Base'}</th>
-                    <th className="p-3.5 text-end">{lang === 'ar' ? 'استقطاع الموظف' : 'Emp Contribution'}</th>
-                    <th className="p-3.5 text-end">{lang === 'ar' ? 'مساهمة جهة العمل' : 'Empr Contribution'}</th>
-                    <th className="p-3.5 text-end">{lang === 'ar' ? 'إجمالي الاشتراك' : 'Total Contribution'}</th>
+                    <th className="p-3.5 text-end">{lang === 'ar' ? 'استقطاع الموظف (5%)' : 'Emp Contribution (5%)'}</th>
+                    <th className="p-3.5 text-end">{lang === 'ar' ? 'مساهمة المؤسسة (12%)' : 'Empr Contribution (12%)'}</th>
+                    <th className="p-3.5 text-end">{lang === 'ar' ? 'إجمالي الاشتراك (17%)' : 'Total (17%)'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {ssSnapshots.map((s) => (
+                  {ssSnapshots.map((s) => {
+                    const isKurd = isKurdistanLocation(s.branch_name, s.branch_id);
+                    return (
                     <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="p-3.5">
-                        <div className="font-bold text-slate-900 dark:text-white">
-                          {lang === 'ar' ? s.employee_name_ar : s.employee_name_en}
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {lang === 'ar' ? s.employee_name_ar : s.employee_name_en}
+                          </span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                            isKurd
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                          }`}>
+                            {isKurd ? 'كردستان' : 'العراق'}
+                          </span>
                         </div>
                         <div className="font-mono text-[11px] text-slate-400">{s.employee_number}</div>
                       </td>
@@ -471,7 +524,7 @@ export const SocialSecurityView: React.FC = () => {
                         {(s.calculation_result?.total_social_security ?? 0).toLocaleString()} {currency}
                       </td>
                     </tr>
-                  ))}
+                  ); })}
                 </tbody>
               </table>
             </div>

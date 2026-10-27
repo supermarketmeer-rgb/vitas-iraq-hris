@@ -32,14 +32,14 @@ export const EmployeeLeaveRequests: React.FC<EmployeeLeaveRequestsProps> = ({ em
 
   // Employee details
   const empName = isEn 
-    ? (employee?.fullNameEn || 'Dina Haider Qasim') 
-    : (employee?.fullName || employee?.name || 'دينا حيدر قاسم');
+    ? (employee?.fullNameEn || employee?.full_name_en || employee?.fullName || employee?.full_name_ar || 'Employee') 
+    : (employee?.full_name_ar || employee?.fullNameAr || employee?.fullName || employee?.name || 'الموظف');
   const empTitle = isEn 
-    ? 'Receptionist' 
-    : (employee?.jobTitle || employee?.position || 'موظف استقبال');
+    ? (employee?.jobTitleEn || employee?.job_title_en || employee?.positionEn || employee?.jobTitle || employee?.position || 'Employee') 
+    : (employee?.jobTitle || employee?.position || employee?.job_title || 'موظف');
   const empDept = isEn 
-    ? 'Credit Department' 
-    : (employee?.department || 'قسم الائتمان');
+    ? (employee?.departmentEn || employee?.department_en || employee?.department || 'Department') 
+    : (employee?.department || employee?.department_ar || 'القسم');
 
   // Attendance Today State
   const [attendanceToday, setAttendanceToday] = useState({

@@ -1287,8 +1287,20 @@ app.get('/api/employees', async (req, res) => {
     if (badgeParam || idParam || employeeIdParam) {
       const conditions = [];
       if (badgeParam) {
-        conditions.push('(LOWER(badge_no) = LOWER(?) OR LOWER(employee_id) = LOWER(?))');
+        const isNum = !isNaN(Number(badgeParam)) && Number(badgeParam) > 0;
+        conditions.push(`(
+          LOWER(badge_no) = LOWER(?) 
+          OR LOWER(employee_id) = LOWER(?) 
+          ${isNum ? 'OR id = ?' : ''}
+          OR LOWER(waid) = LOWER(?) 
+          OR LOWER(phone) = LOWER(?) 
+          OR LOWER(email) = LOWER(?)
+          OR LOWER(full_name_ar) LIKE LOWER(?)
+          OR LOWER(full_name_en) LIKE LOWER(?)
+        )`);
         params.push(badgeParam, badgeParam);
+        if (isNum) params.push(Number(badgeParam));
+        params.push(badgeParam, badgeParam, badgeParam, `%${badgeParam}%`, `%${badgeParam}%`);
       }
       if (idParam) {
         conditions.push('(id = ? OR employee_id = ?)');

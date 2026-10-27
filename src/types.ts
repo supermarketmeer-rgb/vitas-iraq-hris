@@ -4,6 +4,7 @@ export type UserRole =
   | 'Super Admin' 
   | 'Admin'
   | 'HR Manager' 
+  | 'Branch Manager'
   | 'Recruiter' 
   | 'Department Head' 
   | 'Employee' 
@@ -20,6 +21,10 @@ export interface UserProfile {
   department: string;
   employeeId: string;
   branch: string;
+  officeId?: number | string;
+  office_id?: number | string;
+  officeName?: string;
+  office_name?: string;
   // User permissions (from PHP system)
   can_manage_employees?: number;
   can_manage_finance?: number;

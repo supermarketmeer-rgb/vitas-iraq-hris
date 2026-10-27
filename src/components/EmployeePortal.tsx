@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Employee } from '../types';
 import { 
+  getEmployeeLocalizedName, 
+  getLocalizedDepartment, 
+  getLocalizedJobTitle 
+} from '../utils/nameHelper';
+import { getBranchName } from '../utils/branchHelper';
+import { 
   Clock, 
   CreditCard, 
   Calendar, 
@@ -628,7 +634,7 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
             <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {t('بوابة الموظف الذاتية', 'Employee Self-Service Portal')}
             </h1>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{selectedEmployee?.fullName}</p>
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{getEmployeeLocalizedName(selectedEmployee, language)}</p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Notifications Button with unread counter badge */}
@@ -761,7 +767,7 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الاسم الكامل', 'Full Name')}</label>
-                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee?.fullName}</p>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{getEmployeeLocalizedName(selectedEmployee, language)}</p>
                 </div>
                 <div>
                   <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('رقم الموظف', 'Employee ID')}</label>
@@ -773,15 +779,15 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                 </div>
                 <div>
                   <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('القسم', 'Department')}</label>
-                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee?.department}</p>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{getLocalizedDepartment(selectedEmployee?.department, language)}</p>
                 </div>
                 <div>
                   <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('المسمى الوظيفي', 'Job Title')}</label>
-                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee?.jobTitle}</p>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{getLocalizedJobTitle(selectedEmployee?.jobTitle, language)}</p>
                 </div>
                 <div>
                   <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الفرع ومقر العمل', 'Branch / Location')}</label>
-                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedEmployee?.branch || t('المقر الرئيسي - بغداد', 'Headquarters - Baghdad')}</p>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{getBranchName(selectedEmployee?.branch, undefined, language) || (language === 'en' ? 'Headquarters - Baghdad' : 'المقر الرئيسي - بغداد')}</p>
                 </div>
                 <div>
                   <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('البريد الإلكتروني', 'Email')}</label>
@@ -2397,6 +2403,19 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                                 </div>
 
                                 <div className="flex items-center gap-1.5 shrink-0">
+                                  {/* Print Attachment Button */}
+                                  <button
+                                    onClick={() => {
+                                      handleOpenAttachmentPreview(att, notif);
+                                      setTimeout(() => window.print(), 350);
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 flex items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-xs"
+                                    title={t('طباعة المرفق الرسمي', 'Print official attachment')}
+                                  >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    <span>{t('طباعة', 'Print')}</span>
+                                  </button>
+
                                   {/* Preview Attachment Button */}
                                   <button
                                     onClick={() => handleOpenAttachmentPreview(att, notif)}
@@ -2528,6 +2547,18 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => {
+                                setShowNotificationsModal(false);
+                                handleOpenAttachmentPreview(att, notif);
+                                setTimeout(() => window.print(), 350);
+                              }}
+                              className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 flex items-center gap-1 cursor-pointer"
+                              title={t('طباعة', 'Print')}
+                            >
+                              <Printer className="w-3 h-3" />
+                              <span>{t('طباعة', 'Print')}</span>
+                            </button>
                             <button
                               onClick={() => {
                                 setShowNotificationsModal(false);

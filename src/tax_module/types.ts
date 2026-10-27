@@ -216,6 +216,7 @@ export interface Branch {
 
 export interface SimulationRequest {
   employee_id?: string;
+  region?: 'IRAQ' | 'KURDISTAN';
   basic_salary: number;
   allowances: {
     housing?: number;
@@ -237,6 +238,7 @@ export interface SimulationResponse {
   success: boolean;
   calculation_date: string;
   summary: {
+    region?: 'IRAQ' | 'KURDISTAN';
     basic_salary: number;
     total_allowances: number;
     gross_salary: number;

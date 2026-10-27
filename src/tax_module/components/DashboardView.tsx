@@ -139,67 +139,6 @@ export const DashboardView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header & Filter Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <LayoutDashboard className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            {t('dashboard')}
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {lang === 'ar'
-              ? 'ملخص إجماليات الرواتب، الضمان الاجتماعي، وضريبة الدخل مع تحليل توزيع 6 أشهر'
-              : 'Consolidated summary of gross salaries, social security, and tax distributions with 6-month historical trends'}
-          </p>
-        </div>
-
-        {/* Filter Controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Department Filter */}
-          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs">
-            <Building2 className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={activeDepartmentId}
-              onChange={(e) => setActiveDepartmentId(e.target.value)}
-              className="bg-transparent font-medium text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
-            >
-              <option value="">{t('all_departments')}</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id} className="dark:bg-slate-900">
-                  {lang === 'ar' ? d.name_ar : d.name_en}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Branch Filter */}
-          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={activeBranchId}
-              onChange={(e) => setActiveBranchId(e.target.value)}
-              className="bg-transparent font-medium text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
-            >
-              <option value="">{t('all_branches')}</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id} className="dark:bg-slate-900">
-                  {lang === 'ar' ? b.name_ar : b.name_en}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Run Simulator Button */}
-          <button
-            onClick={() => setActiveTab('simulator')}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 transition-all"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{t('rule_simulator')}</span>
-          </button>
-        </div>
-      </div>
-
       {/* KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Employees & Nominal (Basic) Salaries */}
