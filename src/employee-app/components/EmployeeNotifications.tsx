@@ -13,7 +13,14 @@ import {
   X,
   ShieldCheck,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  Edit3,
+  Save,
+  Users,
+  Building2,
+  ShieldAlert,
+  Star
 } from 'lucide-react';
 
 export interface MobileAttachment {
@@ -33,6 +40,12 @@ export interface MobileAttachment {
   tableData?: Array<{ [key: string]: string | number }>;
   tableDataEn?: Array<{ [key: string]: string | number }>;
   deliveryId?: string;
+  signatureMode?: 'wet_signature' | 'electronic_copy';
+  isEditable?: boolean;
+  formData?: any;
+  recipientName?: string;
+  branchName?: string;
+  supervisorName?: string;
 }
 
 export interface MobileNotification {
@@ -63,15 +76,61 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
   const { markNotificationAsRead, unreadNotifications, theme, language } = useEmployeeContext();
   const isDark = theme === 'dark';
   const isEn = language === 'en';
+  const isAr = !isEn;
 
   const [filter, setFilter] = useState<'all' | 'unread' | 'attachments'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [routedDeliveries, setRoutedDeliveries] = useState<any[]>([]);
+  const [activeScope, setActiveScope] = useState<'own' | 'subordinates' | 'branch_wet_signature'>('own');
   const [previewData, setPreviewData] = useState<{
     attachment: MobileAttachment;
     notifTitle: string;
     notifDate: string;
+    delivery?: any;
   } | null>(null);
+
+  // Collaborative Electronic Form State
+  const [formInputs, setFormInputs] = useState<{
+    selfRating: number;
+    achievements: string;
+    employeeNotes: string;
+    supervisorRating: number;
+    supervisorComments: string;
+    supervisorDecision: string;
+  }>({
+    selfRating: 5,
+    achievements: '',
+    employeeNotes: '',
+    supervisorRating: 5,
+    supervisorComments: '',
+    supervisorDecision: 'approved'
+  });
+  const [isSavingForm, setIsSavingForm] = useState(false);
+  const [formSaveSuccess, setFormSaveSuccess] = useState<string | null>(null);
+
+  // Role detection for scope tabs
+  const userPos = String(employee?.position || employee?.jobTitle || '').toLowerCase();
+  const isBranchManager = userPos.includes('مدير مكتب') || userPos.includes('مدير فرع') || userPos.includes('office manager') || userPos.includes('branch manager');
+  const isSupervisor = userPos.includes('مشرف') || userPos.includes('مسؤول') || userPos.includes('supervisor') || userPos.includes('team lead') || isBranchManager;
+
+  // Intercept Ctrl+P to prevent printing electronic copies
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        if (previewData && previewData.attachment?.signatureMode === 'electronic_copy') {
+          e.preventDefault();
+          e.stopPropagation();
+          alert(
+            isEn
+              ? 'Security Policy: Printing is strictly restricted for this electronic copy document.'
+              : 'سياسة الأمان والامتثال: الطباعة محظورة تماماً لهذه النسخة الإلكترونية المعتمدة.'
+          );
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewData, isEn]);
 
   // Exact Official Notifications List matching the ESS Portal
   const [portalNotifications, setPortalNotifications] = useState<MobileNotification[]>([
@@ -270,10 +329,10 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
     }
   ]);
 
-  // Fetch Live Routed Documents from Centralized Routing API
+  // Fetch Live Routed Documents from Centralized Routing API with Scope
   const fetchRoutedDeliveries = () => {
     const empIdentifier = employee?.id || employee?.employeeId || employee?.badgeNo || '85';
-    fetch(`/api/routing/employee/${encodeURIComponent(empIdentifier)}/notifications`)
+    fetch(`/api/routing/employee/${encodeURIComponent(empIdentifier)}/notifications?scope=${activeScope}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -287,49 +346,74 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
     fetchRoutedDeliveries();
     const interval = setInterval(fetchRoutedDeliveries, 10000);
     return () => clearInterval(interval);
-  }, [employee]);
+  }, [employee, activeScope]);
 
   // Convert Live Routed Documents into official notifications format
   const routedNotifications: MobileNotification[] = routedDeliveries.map(del => {
     const isContract = del.document_type === 'employment_contract' || String(del.document_id).startsWith('CON-');
+    const isWetSig = (del.signature_mode || 'wet_signature') === 'wet_signature';
+    const isElectronic = del.signature_mode === 'electronic_copy';
+    const isEditable = Boolean(del.is_editable || del.document_type === 'appraisal' || del.document_type === 'evaluation');
+
     const docDate = del.created_at ? new Date(del.created_at).toISOString().split('T')[0] : '2026-10-17';
     const docTimeAr = del.created_at ? new Date(del.created_at).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }) : '11:00 ص';
     const docTimeEn = del.created_at ? new Date(del.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '11:00 AM';
 
-    const empName = isEn ? (employee?.fullNameEn || 'Dina Haider Qasim') : (employee?.fullName || 'دينا حيدر قاسم');
+    const empName = del.recipient_name || (isEn ? (employee?.fullNameEn || 'Dina Haider Qasim') : (employee?.fullName || 'دينا حيدر قاسم'));
+
+    let parsedFormData: any = {};
+    if (del.form_data) {
+      try {
+        parsedFormData = typeof del.form_data === 'string' ? JSON.parse(del.form_data) : del.form_data;
+      } catch {}
+    }
 
     return {
       id: `routed-${del.id}`,
-      title: `عقد عمل رسمي معتمد: ${del.document_title}`,
-      titleEn: `Official Employment Contract: ${del.document_title}`,
+      title: `${isContract ? 'عقد عمل معتمد' : del.document_title}: ${del.document_title}`,
+      titleEn: `Official Document: ${del.document_title}`,
       sender: del.sender_name || 'إدارة الموارد البشرية - فيتاس العراق',
       senderEn: del.sender_name ? `${del.sender_name} (HR)` : 'HR Department - VITAS Iraq',
       category: isContract ? 'contract' : 'decision',
-      categoryLabelAr: isContract ? 'عقد رسمي' : 'قرار رسمي',
-      categoryLabelEn: isContract ? 'Official Contract' : 'Official Decision',
+      categoryLabelAr: isContract ? (isWetSig ? 'عقد (توقيع حي)' : 'عقد إلكتروني') : (isWetSig ? 'مستند (توقيع حي)' : 'نسخة إلكترونية'),
+      categoryLabelEn: isWetSig ? 'Live Signature' : 'Electronic Copy',
       date: docDate,
       time: docTimeAr,
       timeEn: docTimeEn,
-      message: `تم توجيه مستند رسمي (${del.document_title}) إليك برقم مرجعي (${del.document_id}) عبر نظام التوجيه الإلكتروني. يرجى مراجعة وتدقيق المستند المرفق أصولياً.`,
-      messageEn: `Official document (${del.document_title}) routed to you with reference ID (${del.document_id}). Please review and acknowledge formally.`,
+      message: isWetSig
+        ? `تم توجيه مستند رسمي يتطلب توقيعاً حياً (${del.document_title}) برقم مرجعي (${del.document_id}). متاح للطباعة والتوقيع.`
+        : `تم توجيه نسخة إلكترونية (${del.document_title}) برقم مرجعي (${del.document_id}). الطباعة محظورة • قابلة للتعديل والاعتماد.`,
+      messageEn: isWetSig
+        ? `Official document requiring live signature (${del.document_title}) ref (${del.document_id}). Download and print permitted.`
+        : `Electronic official copy (${del.document_title}). Printing restricted • Editable online.`,
       read: del.app_status === 'read',
-      priority: 'urgent',
+      priority: isWetSig ? 'urgent' : 'important',
       attachments: [
         {
           id: `att-routed-${del.id}`,
           name: `${del.document_title}.pdf`,
-          nameEn: `Employment_Contract_${del.document_id}.pdf`,
+          nameEn: `${del.document_title}_${del.document_id}.pdf`,
           type: 'pdf',
           size: '1.2 MB',
           refNo: del.document_id,
           docTitle: del.document_title,
-          docTitleEn: `Official Employment Contract - ${del.document_id}`,
+          docTitleEn: `${del.document_title} - ${del.document_id}`,
           docDate: docDate,
           issuer: 'قسم الموارد البشرية - فيتاس العراق',
           issuerEn: 'Human Resources Department - VITAS Iraq',
           deliveryId: del.id,
-          contentSnippet: `مستند رسمي معتمد صادر عن مؤسسة فيتاس العراق.\nالعنوان: ${del.document_title}\nالرقم المرجعي: ${del.document_id}\nالمستلم: ${empName}\nالحالة: معتمد وموجه أصولياً.`,
-          contentSnippetEn: `Official verified employment contract issued by VITAS Iraq.\nTitle: ${del.document_title}\nReference No: ${del.document_id}\nRecipient: ${empName}\nStatus: Verified and Formally Routed.`
+          signatureMode: isWetSig ? 'wet_signature' : 'electronic_copy',
+          isEditable,
+          formData: parsedFormData,
+          recipientName: del.recipient_name,
+          branchName: del.branch_name,
+          supervisorName: del.supervisor_name,
+          contentSnippet: isWetSig
+            ? `مستند رسمي معتمد صادر عن مؤسسة فيتاس العراق يتطلب توقيعاً حياً أصلياً.\nالعنوان: ${del.document_title}\nالرقم المرجعي: ${del.document_id}\nالمستلم: ${empName}\nالفرع: ${del.branch_name || 'الفرع الرئيسي'}\nالحالة: معتمد للتوقيع الحي والطباعة الأصولية.`
+            : `نسخة إلكترونية معتمدة صادرة عن مؤسسة فيتاس العراق (الطباعة محظورة قانونياً).\nالعنوان: ${del.document_title}\nالرقم المرجعي: ${del.document_id}\nالمستلم: ${empName}\nالحالة: نموذج إلكتروني قابل للتعديل والمصادقة المباشرة.`,
+          contentSnippetEn: isWetSig
+            ? `Official verified document issued by VITAS Iraq requiring live wet signature.\nTitle: ${del.document_title}\nRef No: ${del.document_id}\nRecipient: ${empName}\nStatus: Verified for Live Printing & Physical Signature.`
+            : `Electronic certified document issued by VITAS Iraq (Printing Strictly Restricted).\nTitle: ${del.document_title}\nRef: ${del.document_id}\nRecipient: ${empName}\nStatus: Verified Electronic Form for Online Collaboration.`
         }
       ]
     };
@@ -378,12 +462,88 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
   const handleOpenPreview = (att: MobileAttachment, notif: MobileNotification) => {
     if (att.deliveryId) {
       handleMarkAsRead(`routed-${att.deliveryId}`);
+      // Record access in backend
+      fetch(`/api/routing/deliveries/${att.deliveryId}/access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: employee?.id || employee?.employeeId || employee?.badgeNo || '85',
+          documentId: att.refNo,
+          action: 'view'
+        })
+      }).catch(() => {});
     }
+
+    // Populate form data if editable
+    if (att.formData) {
+      const empIn = att.formData.employee_inputs || {};
+      const supIn = att.formData.supervisor_inputs || {};
+      setFormInputs({
+        selfRating: empIn.selfRating || 5,
+        achievements: empIn.achievements || '',
+        employeeNotes: empIn.employeeNotes || '',
+        supervisorRating: supIn.supervisorRating || 5,
+        supervisorComments: supIn.supervisorComments || '',
+        supervisorDecision: supIn.supervisorDecision || 'approved'
+      });
+    } else {
+      setFormInputs({
+        selfRating: 5,
+        achievements: '',
+        employeeNotes: '',
+        supervisorRating: 5,
+        supervisorComments: '',
+        supervisorDecision: 'approved'
+      });
+    }
+
     setPreviewData({
       attachment: att,
       notifTitle: isEn ? (notif.titleEn || notif.title) : notif.title,
       notifDate: notif.date
     });
+  };
+
+  // Collaborative electronic form save
+  const handleSaveFormData = async (role: 'employee' | 'supervisor') => {
+    if (!previewData?.attachment?.deliveryId) return;
+    setIsSavingForm(true);
+    setFormSaveSuccess(null);
+    try {
+      const inputs = role === 'employee' 
+        ? {
+            selfRating: formInputs.selfRating,
+            achievements: formInputs.achievements,
+            employeeNotes: formInputs.employeeNotes
+          }
+        : {
+            supervisorRating: formInputs.supervisorRating,
+            supervisorComments: formInputs.supervisorComments,
+            supervisorDecision: formInputs.supervisorDecision
+          };
+
+      const res = await fetch(`/api/routing/deliveries/${previewData.attachment.deliveryId}/form-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: employee?.id || employee?.employeeId || employee?.badgeNo || '85',
+          userRole: role,
+          inputs
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFormSaveSuccess(isEn ? 'Changes saved successfully!' : 'تم حفظ التعديلات بنجاح!');
+        setTimeout(() => setFormSaveSuccess(null), 3500);
+        fetchRoutedDeliveries();
+      } else {
+        alert(data.error || 'Failed to save');
+      }
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setIsSavingForm(false);
+    }
   };
 
   const handleDownloadAttachment = (att: MobileAttachment) => {
@@ -447,6 +607,56 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
           </button>
         )}
       </div>
+
+      {/* Role-based Workflow Scope Selector (Supervisor & Branch Manager) */}
+      {(isSupervisor || isBranchManager) && (
+        <div className={`p-1.5 rounded-2xl border flex items-center gap-1 shadow-xs ${
+          isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-100 border-slate-200'
+        }`}>
+          <button
+            type="button"
+            onClick={() => setActiveScope('own')}
+            className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeScope === 'own'
+                ? 'bg-teal-600 text-white shadow-xs'
+                : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>👤</span>
+            <span>{isEn ? 'My Documents' : 'مستنداتي الشخصية'}</span>
+          </button>
+
+          {isSupervisor && (
+            <button
+              type="button"
+              onClick={() => setActiveScope('subordinates')}
+              className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeScope === 'subordinates'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Users className="w-3 h-3" />
+              <span>{isEn ? 'Team (Supervisor)' : 'مستندات فريقي (مشرف)'}</span>
+            </button>
+          )}
+
+          {isBranchManager && (
+            <button
+              type="button"
+              onClick={() => setActiveScope('branch_wet_signature')}
+              className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeScope === 'branch_wet_signature'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Building2 className="w-3 h-3" />
+              <span>{isEn ? 'Branch (Wet Sig Only)' : 'الفرع (توقيع حي ورقي)'}</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Filter Chips Matching ESS Portal */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
@@ -638,9 +848,22 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                                 <p className={`text-xs font-black truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                   {attName}
                                 </p>
-                                <p className={`text-[9px] font-mono truncate font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                  {att.type.toUpperCase()} • {att.size} {att.refNo && `• ${att.refNo}`}
-                                </p>
+                                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                  <span className={`text-[9px] font-mono truncate font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                    {att.type.toUpperCase()} • {att.size} {att.refNo && `• ${att.refNo}`}
+                                  </span>
+                                  {att.signatureMode === 'electronic_copy' ? (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20 flex items-center gap-0.5">
+                                      <Lock className="w-2.5 h-2.5" />
+                                      <span>{isEn ? 'No Print • Editable' : 'الطباعة محظورة • قابل للتعديل'}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-0.5">
+                                      <Printer className="w-2.5 h-2.5" />
+                                      <span>{isEn ? 'Live Signature • Printable' : 'توقيع حي • متاح للطباعة'}</span>
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
@@ -707,6 +930,38 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
+                {/* Print button based on signatureMode */}
+                {previewData.attachment.signatureMode === 'wet_signature' ? (
+                  <button
+                    onClick={() => {
+                      if (previewData.attachment.deliveryId) {
+                        fetch(`/api/routing/deliveries/${previewData.attachment.deliveryId}/access`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            employeeId: employee?.id || employee?.employeeId || '85',
+                            action: 'print'
+                          })
+                        }).catch(() => {});
+                      }
+                      window.print();
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                    title={isEn ? 'Print for Live Wet Signature' : 'طباعة المستند الورقي للتوقيع الحي باليد'}
+                  >
+                    <Printer className="w-3 h-3" />
+                    <span>{isEn ? 'Print' : 'طباعة'}</span>
+                  </button>
+                ) : (
+                  <div
+                    className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1 cursor-not-allowed select-none opacity-80"
+                    title={isEn ? 'Printing is strictly disabled for electronic copy documents' : 'الطباعة محظورة تماماً للنسخ الإلكترونية المعتمدة'}
+                  >
+                    <Lock className="w-3 h-3 text-rose-400" />
+                    <span>{isEn ? 'Print Locked' : 'الطباعة مقفلة'}</span>
+                  </div>
+                )}
+
                 <button
                   onClick={() => handleDownloadAttachment(previewData.attachment)}
                   className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-teal-600 hover:bg-teal-500 text-white flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
@@ -813,6 +1068,224 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
                     </div>
                   )}
                 </div>
+
+                {/* Collaborative Editable Form Section (For Appraisals & Electronic Forms) */}
+                {previewData.attachment.isEditable && (
+                  <div className="my-5 p-4 rounded-2xl border bg-indigo-50/40 dark:bg-slate-900/90 border-indigo-200 dark:border-indigo-900/50 space-y-4">
+                    <div className="flex items-center justify-between border-b pb-2.5 border-indigo-200 dark:border-indigo-800">
+                      <div className="flex items-center gap-2">
+                        <Edit3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        <h4 className="text-xs font-black text-indigo-900 dark:text-indigo-200">
+                          {isEn ? 'Collaborative Interactive Form (Editable Online)' : 'استمارة تفاعلية مشتركة (قابلة للتعديل والاعتماد الإلكتروني)'}
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-bold text-rose-500 flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        <span>{isEn ? 'Printing Restricted' : 'الطباعة محظورة أصولياً'}</span>
+                      </span>
+                    </div>
+
+                    {formSaveSuccess && (
+                      <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                        <Check className="w-4 h-4" />
+                        <span>{formSaveSuccess}</span>
+                      </div>
+                    )}
+
+                    {/* Employee Self-Appraisal Section */}
+                    <div className="space-y-3 p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                          <span>👤</span>
+                          <span>{isEn ? '1. Employee Self-Appraisal & Notes' : '1. تقييم الموظف الذاتي والملاحظات'}</span>
+                        </h5>
+                        <span className="text-[10px] font-mono font-bold text-teal-600">
+                          {previewData.attachment.recipientName || employee?.fullName}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1">
+                          {isEn ? 'Self Rating (Punctuality, Quality & Commitment):' : 'التقييم الذاتي للالتزام وجودة العمل:'}
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setFormInputs(prev => ({ ...prev, selfRating: star }))}
+                              className={`p-1 rounded-lg transition cursor-pointer ${
+                                formInputs.selfRating >= star ? 'text-amber-400' : 'text-slate-300 dark:text-slate-600'
+                              }`}
+                            >
+                              <Star className="w-4 h-4 fill-current" />
+                            </button>
+                          ))}
+                          <span className="text-xs font-mono font-bold text-amber-500 mr-2">
+                            {formInputs.selfRating} / 5
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1">
+                          {isEn ? 'Key Achievements & Completed Tasks:' : 'أبرز الإنجازات المحققة والمهام المنفذة:'}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={formInputs.achievements}
+                          onChange={(e) => setFormInputs(prev => ({ ...prev, achievements: e.target.value }))}
+                          placeholder={isEn ? 'Write achievements...' : 'اكتب تفاصيل إنجازاتك خلال هذه الفترة...'}
+                          className={`w-full p-2 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                            isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                          }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1">
+                          {isEn ? 'Employee Notes / Training Goals:' : 'ملاحظات الموظف والأهداف التدريبية المقترحة:'}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={formInputs.employeeNotes}
+                          onChange={(e) => setFormInputs(prev => ({ ...prev, employeeNotes: e.target.value }))}
+                          placeholder={isEn ? 'Write training goals or suggestions...' : 'اكتب المقترحات أو الاحتياجات التدريبية...'}
+                          className={`w-full p-2 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                            isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                          }`}
+                        />
+                      </div>
+
+                      <div className="flex justify-end pt-1">
+                        <button
+                          type="button"
+                          disabled={isSavingForm}
+                          onClick={() => handleSaveFormData('employee')}
+                          className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition active:scale-95"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>{isEn ? 'Save Employee Inputs' : 'حفظ مدخلات الموظف'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Direct Supervisor Evaluation Section */}
+                    <div className="space-y-3 p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                          <span>👥</span>
+                          <span>{isEn ? '2. Direct Supervisor Evaluation & Recommendation' : '2. تقييم المشرف المباشر والتوصيات'}</span>
+                        </h5>
+                        <span className="text-[10px] font-mono font-bold text-indigo-600">
+                          {isEn ? 'Supervisor Review' : 'مراجعة المشرف'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1">
+                          {isEn ? 'Supervisor Assessment Score:' : 'درجة تقييم المشرف المباشر للإنتاجية:'}
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setFormInputs(prev => ({ ...prev, supervisorRating: star }))}
+                              className={`p-1 rounded-lg transition cursor-pointer ${
+                                formInputs.supervisorRating >= star ? 'text-indigo-500' : 'text-slate-300 dark:text-slate-600'
+                              }`}
+                            >
+                              <Star className="w-4 h-4 fill-current" />
+                            </button>
+                          ))}
+                          <span className="text-xs font-mono font-bold text-indigo-600 mr-2">
+                            {formInputs.supervisorRating} / 5
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1">
+                          {isEn ? 'Supervisor Comments & Development Feedback:' : 'ملاحظات المشرف المباشر وتوجيهات التطوير:'}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={formInputs.supervisorComments}
+                          onChange={(e) => setFormInputs(prev => ({ ...prev, supervisorComments: e.target.value }))}
+                          placeholder={isEn ? 'Supervisor notes and recommendations...' : 'اكتب تعليق المشرف وتوصياته المهنية...'}
+                          className={`w-full p-2 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                            isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                          }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1">
+                          {isEn ? 'Supervisor Decision / Action:' : 'قرار وتوصية المشرف:'}
+                        </label>
+                        <select
+                          value={formInputs.supervisorDecision}
+                          onChange={(e) => setFormInputs(prev => ({ ...prev, supervisorDecision: e.target.value }))}
+                          className={`w-full p-2 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                            isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                          }`}
+                        >
+                          <option value="approved">{isAr ? 'مصادقة واعتماد التقييم رسمياً' : 'Formally Approved'}</option>
+                          <option value="promotion_recommended">{isAr ? 'يوصى بالترقية أو منح مكافأة تشجيعية' : 'Recommended for Promotion / Bonus'}</option>
+                          <option value="needs_training">{isAr ? 'إدراج في خطة التدريب وتحسين الأداء' : 'Needs Performance Improvement Plan'}</option>
+                        </select>
+                      </div>
+
+                      <div className="flex justify-end pt-1">
+                        <button
+                          type="button"
+                          disabled={isSavingForm}
+                          onClick={() => handleSaveFormData('supervisor')}
+                          className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition active:scale-95"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>{isEn ? 'Save Supervisor Evaluation' : 'حفظ تقييم المشرف المباشر'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Wet Signature Physical Blocks (Only for wet_signature documents) */}
+                {previewData.attachment.signatureMode === 'wet_signature' && (
+                  <div className="my-5 p-4 rounded-2xl border-2 border-dashed border-emerald-500/40 bg-emerald-50/20 dark:bg-emerald-950/20 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                        <Printer className="w-4 h-4" />
+                        <span>{isAr ? 'خانات التوقيع الحي الورقي (مطلوبة بعد الطباعة)' : 'Physical Wet Signature Blocks'}</span>
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
+                        {isAr ? 'نسخة أصلية حية' : 'Live Original'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center pt-2">
+                      <div className="p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70">
+                        <p className="text-[10px] font-bold text-slate-500">{isAr ? 'توقيع الموظف المعني' : 'Employee Signature'}</p>
+                        <div className="h-10 border-b border-dashed border-slate-400 mt-2" />
+                        <p className="text-[9px] text-slate-400 mt-1 font-mono">{previewData.attachment.recipientName || 'التوقيع الحي'}</p>
+                      </div>
+
+                      <div className="p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70">
+                        <p className="text-[10px] font-bold text-slate-500">{isAr ? 'المشرف المباشر' : 'Direct Supervisor'}</p>
+                        <div className="h-10 border-b border-dashed border-slate-400 mt-2" />
+                        <p className="text-[9px] text-slate-400 mt-1 font-mono">{previewData.attachment.supervisorName || 'توقيع المشرف'}</p>
+                      </div>
+
+                      <div className="p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70">
+                        <p className="text-[10px] font-bold text-slate-500">{isAr ? 'مدير المكتب / الفرع' : 'Branch Manager'}</p>
+                        <div className="h-10 border-b border-dashed border-slate-400 mt-2" />
+                        <p className="text-[9px] text-slate-400 mt-1 font-mono">{isAr ? 'المصادقة والأرشفة' : 'Branch Verification'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Official Stamps & Signatures Footer */}
                 <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">

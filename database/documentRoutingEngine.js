@@ -99,6 +99,36 @@ export async function initDocumentRoutingTables(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // Ensure columns for signature_mode, editability, form data, branch & supervisor hierarchy exist
+    try {
+      const existingCols = await query('SHOW COLUMNS FROM document_deliveries').catch(() => []);
+      const colMap = new Set(existingCols.map(c => c.Field));
+
+      if (!colMap.has('signature_mode')) {
+        await query(`ALTER TABLE document_deliveries ADD COLUMN signature_mode ENUM('wet_signature', 'electronic_copy') DEFAULT 'wet_signature'`).catch(() => {});
+      }
+      if (!colMap.has('is_editable')) {
+        await query(`ALTER TABLE document_deliveries ADD COLUMN is_editable TINYINT(1) DEFAULT 0`).catch(() => {});
+      }
+      if (!colMap.has('form_data')) {
+        await query(`ALTER TABLE document_deliveries ADD COLUMN form_data JSON NULL`).catch(() => {});
+      }
+      if (!colMap.has('branch_name')) {
+        await query(`ALTER TABLE document_deliveries ADD COLUMN branch_name VARCHAR(150) NULL`).catch(() => {});
+      }
+      if (!colMap.has('supervisor_name')) {
+        await query(`ALTER TABLE document_deliveries ADD COLUMN supervisor_name VARCHAR(255) NULL`).catch(() => {});
+      }
+      if (!colMap.has('supervisor_employee_id')) {
+        await query(`ALTER TABLE document_deliveries ADD COLUMN supervisor_employee_id VARCHAR(50) NULL`).catch(() => {});
+      }
+
+      // Ensure access logs action supports print and edit
+      await query(`ALTER TABLE document_access_logs MODIFY COLUMN action VARCHAR(50) NOT NULL DEFAULT 'view'`).catch(() => {});
+    } catch (migErr) {
+      console.warn('[DOCUMENT ROUTING] Table schema migration warning:', migErr.message);
+    }
+
     // 4. Seed default routing rules if empty
     const existingRules = await query('SELECT COUNT(*) as cnt FROM document_routing_rules');
     if (!existingRules || existingRules[0]?.cnt === 0) {
@@ -533,7 +563,10 @@ export async function sendDocumentThroughRouting(pool, {
   attachments = [], // [{ name, contentType, contentBytes, size }]
   approvalWorkflowId = null,
   idempotencyKey = null,
-  currentUser = null
+  currentUser = null,
+  signatureMode = 'wet_signature', // 'wet_signature' | 'electronic_copy'
+  isEditable = 0,
+  formData = null
 }) {
   const query = (sql, params = []) => new Promise((resolve, reject) => {
     pool.query(sql, params, (err, res) => (err ? reject(err) : resolve(res)));
@@ -576,6 +609,33 @@ export async function sendDocumentThroughRouting(pool, {
     const recipientName = recipient.name_ar || recipient.name_en || recipient.name || 'موظف';
     const recipientEmail = recipient.org_email || recipient.email || '';
     const recipientType = recipient.recipient_type || 'specific_employee';
+
+    // Enrich branch and supervisor details
+    let recipientBranch = recipient.branch || recipient.location_ar || '';
+    let recipientSupervisor = recipient.supervisor_name || '';
+    let recipientSupervisorId = recipient.supervisor_employee_id || recipient.supervisor_id || '';
+
+    const empRows = await query(
+      `SELECT id, employee_id, badge_no, branch, location_ar, supervisor_name FROM employees 
+       WHERE id = ? OR employee_id = ? OR badge_no = ? LIMIT 1`,
+      [recipientEmpId, recipientEmpId, recipientEmpId]
+    ).catch(() => []);
+
+    if (empRows && empRows.length > 0) {
+      recipientBranch = recipientBranch || empRows[0].branch || empRows[0].location_ar || '';
+      recipientSupervisor = recipientSupervisor || empRows[0].supervisor_name || '';
+    }
+
+    if (recipientSupervisor && !recipientSupervisorId) {
+      const supRows = await query(
+        `SELECT id, employee_id, badge_no FROM employees 
+         WHERE full_name_ar = ? OR full_name_en = ? LIMIT 1`,
+        [recipientSupervisor, recipientSupervisor]
+      ).catch(() => []);
+      if (supRows && supRows.length > 0) {
+        recipientSupervisorId = String(supRows[0].id);
+      }
+    }
 
     let emailStatus = 'not_applicable';
     let emailMessageId = null;
@@ -698,25 +758,39 @@ export async function sendDocumentThroughRouting(pool, {
       attachmentNames: (attachments || []).map(a => a.name)
     });
 
+    const initialFormData = formData 
+      ? (typeof formData === 'string' ? formData : JSON.stringify(formData))
+      : JSON.stringify({
+          employee_inputs: {},
+          supervisor_inputs: {},
+          created_at: new Date().toISOString()
+        });
+
     await query(
       `INSERT INTO document_deliveries
         (id, document_type, document_id, document_title, source_module, sender_id, sender_name,
          recipient_employee_id, recipient_name, recipient_email, recipient_type, channel_requested,
          email_status, email_message_id, email_error, email_sent_at, email_retry_count,
          app_status, app_notification_id, app_error, app_delivered_at, overall_status,
-         subject, message, attachments_meta, approval_workflow_id, idempotency_key, created_at, updated_at)
+         subject, message, attachments_meta, approval_workflow_id, idempotency_key,
+         signature_mode, is_editable, form_data, branch_name, supervisor_name, supervisor_employee_id,
+         created_at, updated_at)
        VALUES
         (?, ?, ?, ?, ?, ?, ?,
          ?, ?, ?, ?, ?,
          ?, ?, ?, ?, 0,
          ?, ?, ?, ?, ?,
-         ?, ?, ?, ?, ?, NOW(), NOW())`,
+         ?, ?, ?, ?, ?,
+         ?, ?, ?, ?, ?, ?,
+         NOW(), NOW())`,
       [
         deliveryId, documentType, documentId, documentTitle, sourceModule, senderId, senderName,
         recipientEmpId, recipientName, recipientEmail, recipientType, channelRequested,
         emailStatus, emailMessageId, emailError, emailSentAt,
         appStatus, appNotificationId, appError, appDeliveredAt, overallStatus,
-        subject, message, metaJson, approvalWorkflowId, idempotencyKey
+        subject, message, metaJson, approvalWorkflowId, idempotencyKey,
+        signatureMode || 'wet_signature', isEditable ? 1 : 0, initialFormData,
+        recipientBranch, recipientSupervisor, recipientSupervisorId
       ]
     );
 
@@ -729,7 +803,9 @@ export async function sendDocumentThroughRouting(pool, {
       emailError,
       appStatus,
       appError,
-      overallStatus
+      overallStatus,
+      signatureMode: signatureMode || 'wet_signature',
+      isEditable: Boolean(isEditable)
     });
   }
 
@@ -812,7 +888,7 @@ export async function recordDocumentAccess(pool, {
   deliveryId,
   documentId,
   employeeId,
-  action = 'view',
+  action = 'view', // 'view', 'download', 'edit', 'print', 'read_confirm'
   ipAddress = '',
   userAgent = ''
 }) {
@@ -828,19 +904,87 @@ export async function recordDocumentAccess(pool, {
 
   const delivery = records[0];
 
-  // Prevent employees from accessing documents belonging to other employees unless authorized
-  const isRecipient = String(delivery.recipient_employee_id) === String(employeeId);
+  // Fetch requesting employee profile to evaluate hierarchical permissions
+  const userRows = await query(
+    `SELECT id, employee_id, badge_no, full_name_ar, full_name_en, branch, location_ar, position, position_ar FROM employees 
+     WHERE id = ? OR employee_id = ? OR badge_no = ? LIMIT 1`,
+    [employeeId, employeeId, employeeId]
+  ).catch(() => []);
+  const reqUser = userRows && userRows.length > 0 ? userRows[0] : null;
+
+  // Check 1: Is Recipient (Employee accessing their own document)
+  const isRecipient = String(delivery.recipient_employee_id) === String(employeeId) ||
+                      (reqUser && (String(delivery.recipient_employee_id) === String(reqUser.id) || 
+                                   String(delivery.recipient_employee_id) === String(reqUser.badge_no) ||
+                                   String(delivery.recipient_employee_id) === String(reqUser.employee_id)));
+
+  // Check 2: Is Sender (HR/Initiator)
   const isSender = String(delivery.sender_id) === String(employeeId);
 
-  // Check if user is Super Admin or HR
-  const isPrivileged = String(employeeId).toLowerCase().includes('admin') || String(employeeId).toLowerCase().includes('hr');
+  // Check 3: Is Direct Supervisor (Accessing their own + direct subordinates' documents)
+  let isSupervisor = false;
+  if (reqUser) {
+    const userAr = String(reqUser.full_name_ar || '').trim().toLowerCase();
+    const userEn = String(reqUser.full_name_en || '').trim().toLowerCase();
+    const docSup = String(delivery.supervisor_name || '').trim().toLowerCase();
+    
+    if (docSup && (docSup === userAr || docSup === userEn || userAr.includes(docSup) || docSup.includes(userAr))) {
+      isSupervisor = true;
+    } else if (delivery.supervisor_employee_id && String(delivery.supervisor_employee_id) === String(reqUser.id)) {
+      isSupervisor = true;
+    }
+  }
 
-  if (!isRecipient && !isSender && !isPrivileged) {
+  // Check 4: Is Branch / Office Manager
+  let isBranchManager = false;
+  if (reqUser) {
+    const pos = String(reqUser.position || reqUser.position_ar || '').toLowerCase();
+    const isMgrTitle = pos.includes('مدير مكتب') || pos.includes('مدير فرع') || pos.includes('office manager') || pos.includes('branch manager');
+    const userBranch = String(reqUser.branch || reqUser.location_ar || '').trim().toLowerCase();
+    const docBranch = String(delivery.branch_name || '').trim().toLowerCase();
+    
+    if (isMgrTitle && userBranch && docBranch && (userBranch === docBranch || userBranch.includes(docBranch) || docBranch.includes(userBranch))) {
+      isBranchManager = true;
+    }
+  }
+
+  // Check 5: Is Super Admin or HR
+  const isPrivileged = String(employeeId).toLowerCase().includes('admin') || 
+                       String(employeeId).toLowerCase().includes('hr') ||
+                       (reqUser && (String(reqUser.position || '').includes('مدير الموارد') || String(reqUser.position || '').includes('HR')));
+
+  const isWetSig = delivery.signature_mode === 'wet_signature';
+  const isElectronic = delivery.signature_mode === 'electronic_copy';
+
+  // Strict Rule for Branch Manager: Can ONLY access documents that require live wet signatures!
+  if (isBranchManager && !isRecipient && !isSupervisor && !isPrivileged) {
+    if (!isWetSig) {
+      return {
+        success: false,
+        isUnauthorized: true,
+        error: 'Branch Managers can only access documents that require live wet signatures. Electronic copy documents are restricted.',
+        error_ar: 'غير مصرح لمدير المكتب بالاطلاع على النسخ الإلكترونية. الصلاحية مقتصرة على المستندات التي تتطلب توقيعاً حياً فقط.'
+      };
+    }
+  }
+
+  // Access validation: Recipient OR Sender OR Supervisor OR (Branch Manager AND Wet Signature) OR Privileged
+  if (!isRecipient && !isSender && !isSupervisor && !(isBranchManager && isWetSig) && !isPrivileged) {
     return {
       success: false,
       isUnauthorized: true,
-      error: 'Unauthorized: You do not have permission to access this confidential document.',
+      error: 'Unauthorized: You do not have permission to access this document.',
       error_ar: 'غير مصرح: ليس لديك صلاحية للاطلاع على هذا المستند السري.'
+    };
+  }
+
+  // Printing Restriction: Electronic copies strictly forbid printing
+  if (action === 'print' && isElectronic) {
+    return {
+      success: false,
+      isUnauthorized: true,
+      error: 'Printing is strictly disabled for electronic copy documents.',
+      error_ar: 'الطباعة محظورة تماماً للنسخ الإلكترونية المعتمدة.'
     };
   }
 
@@ -863,9 +1007,84 @@ export async function recordDocumentAccess(pool, {
   return {
     success: true,
     accessGranted: true,
-    documentId: delivery.document_id,
-    documentTitle: delivery.document_title,
-    documentType: delivery.document_type
+    delivery,
+    permissions: {
+      canPrint: isWetSig,
+      canDownload: true,
+      canEdit: Boolean(delivery.is_editable),
+      isRecipient,
+      isSupervisor,
+      isBranchManager,
+      signatureMode: delivery.signature_mode
+    }
+  };
+}
+
+/**
+ * Update Document Form Data (for editable electronic documents like Appraisals)
+ * Allows Employee to update employee_inputs and Supervisor to update supervisor_inputs
+ */
+export async function updateDocumentFormData(pool, {
+  deliveryId,
+  employeeId,
+  userRole = 'employee', // 'employee' or 'supervisor'
+  inputs = {}
+}) {
+  const query = (sql, params = []) => new Promise((resolve, reject) => {
+    pool.query(sql, params, (err, res) => (err ? reject(err) : resolve(res)));
+  });
+
+  const records = await query('SELECT * FROM document_deliveries WHERE id = ? LIMIT 1', [deliveryId]);
+  if (!records || records.length === 0) {
+    return { success: false, error: 'Document not found.', error_ar: 'المستند غير موجود.' };
+  }
+  const delivery = records[0];
+
+  let currentFormData = {};
+  if (delivery.form_data) {
+    try {
+      currentFormData = typeof delivery.form_data === 'string' ? JSON.parse(delivery.form_data) : delivery.form_data;
+    } catch {
+      currentFormData = {};
+    }
+  }
+
+  if (userRole === 'supervisor') {
+    currentFormData.supervisor_inputs = {
+      ...(currentFormData.supervisor_inputs || {}),
+      ...inputs,
+      updated_by: employeeId,
+      updated_at: new Date().toISOString()
+    };
+  } else {
+    currentFormData.employee_inputs = {
+      ...(currentFormData.employee_inputs || {}),
+      ...inputs,
+      updated_by: employeeId,
+      updated_at: new Date().toISOString()
+    };
+  }
+
+  currentFormData.last_modified_by = employeeId;
+  currentFormData.last_modified_at = new Date().toISOString();
+
+  await query(
+    `UPDATE document_deliveries SET form_data = ?, updated_at = NOW() WHERE id = ?`,
+    [JSON.stringify(currentFormData), deliveryId]
+  );
+
+  const logId = `ACC-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+  await query(
+    `INSERT INTO document_access_logs (id, delivery_id, document_id, employee_id, action, ip_address, created_at)
+     VALUES (?, ?, ?, ?, 'edit', '127.0.0.1', NOW())`,
+    [logId, deliveryId, delivery.document_id, employeeId]
+  ).catch(() => {});
+
+  return {
+    success: true,
+    message: 'تم حفظ التعديلات بنجاح.',
+    message_en: 'Form data saved successfully.',
+    formData: currentFormData
   };
 }
 

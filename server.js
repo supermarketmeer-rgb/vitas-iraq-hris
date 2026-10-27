@@ -37,6 +37,7 @@ import {
   batchRouteContractsByOffice,
   retryEmailDelivery,
   recordDocumentAccess,
+  updateDocumentFormData,
   runDocumentRoutingAcceptanceTests
 } from './database/documentRoutingEngine.js';
 import { testGraphConnection, getGraphConfig } from './database/msGraphService.js';
@@ -5974,28 +5975,115 @@ app.post('/api/routing/documents/:deliveryId/access', async (req, res) => {
   }
 });
 
-// 11. Get Employee Routed Documents & Notifications (for Employee App)
+// 11. Get Employee Routed Documents & Notifications (with RBAC Scopes: own, subordinates, branch_wet_signature)
 app.get('/api/routing/employee/:employeeId/notifications', async (req, res) => {
   try {
     const empId = req.params.employeeId;
-    const deliveries = await query(
-      `SELECT d.*, 
-              (SELECT COUNT(*) FROM document_access_logs l WHERE l.delivery_id = d.id) as access_count
-       FROM document_deliveries d
-       WHERE (
-         d.recipient_employee_id = ? 
-         OR d.recipient_employee_id = (SELECT CAST(id AS CHAR) FROM employees WHERE badge_no = ? OR employee_id = ? LIMIT 1)
-         OR d.recipient_employee_id = (SELECT employee_id FROM employees WHERE id = ? OR badge_no = ? LIMIT 1)
-         OR d.recipient_employee_id = (SELECT badge_no FROM employees WHERE id = ? OR employee_id = ? LIMIT 1)
-       )
-         AND (d.channel_requested IN ('app', 'both'))
-       ORDER BY d.created_at DESC LIMIT 50`,
-      [empId, empId, empId, empId, empId, empId, empId]
+    const scope = req.query.scope || 'own'; // 'own' | 'subordinates' | 'branch_wet_signature'
+
+    // Look up current employee profile
+    const empRows = await query(
+      `SELECT id, employee_id, badge_no, full_name_ar, full_name_en, branch, location_ar, position, position_ar 
+       FROM employees 
+       WHERE id = ? OR badge_no = ? OR employee_id = ? LIMIT 1`,
+      [empId, empId, empId]
     ).catch(() => []);
+    const emp = empRows && empRows.length > 0 ? empRows[0] : null;
+
+    let deliveries = [];
+
+    if (scope === 'subordinates') {
+      // Supervisor View: Only documents belonging to subordinates of this supervisor
+      if (emp) {
+        const arName = emp.full_name_ar ? emp.full_name_ar.trim() : '';
+        const enName = emp.full_name_en ? emp.full_name_en.trim() : '';
+        deliveries = await query(
+          `SELECT d.*, 
+                  (SELECT COUNT(*) FROM document_access_logs l WHERE l.delivery_id = d.id) as access_count
+           FROM document_deliveries d
+           WHERE (
+             d.supervisor_employee_id = ? 
+             OR d.supervisor_name = ? 
+             OR d.supervisor_name = ?
+             OR d.supervisor_name LIKE ?
+           )
+             AND (d.channel_requested IN ('app', 'both'))
+           ORDER BY d.created_at DESC LIMIT 50`,
+          [String(emp.id), arName, enName, `%${arName}%`]
+        ).catch(() => []);
+      }
+    } else if (scope === 'branch_wet_signature') {
+      // Branch Manager View: Only documents in this branch that REQUIRE LIVE WET SIGNATURE
+      // Electronic copies are strictly excluded from branch manager view!
+      if (emp) {
+        const branchName = emp.branch || emp.location_ar || '';
+        deliveries = await query(
+          `SELECT d.*, 
+                  (SELECT COUNT(*) FROM document_access_logs l WHERE l.delivery_id = d.id) as access_count
+           FROM document_deliveries d
+           WHERE (d.branch_name = ? OR d.branch_name LIKE ?)
+             AND (d.signature_mode = 'wet_signature')
+             AND (d.channel_requested IN ('app', 'both'))
+           ORDER BY d.created_at DESC LIMIT 50`,
+          [branchName, `%${branchName}%`]
+        ).catch(() => []);
+      }
+    } else {
+      // Default: Employee's own documents
+      deliveries = await query(
+        `SELECT d.*, 
+                (SELECT COUNT(*) FROM document_access_logs l WHERE l.delivery_id = d.id) as access_count
+         FROM document_deliveries d
+         WHERE (
+           d.recipient_employee_id = ? 
+           OR d.recipient_employee_id = (SELECT CAST(id AS CHAR) FROM employees WHERE badge_no = ? OR employee_id = ? LIMIT 1)
+           OR d.recipient_employee_id = (SELECT employee_id FROM employees WHERE id = ? OR badge_no = ? LIMIT 1)
+           OR d.recipient_employee_id = (SELECT badge_no FROM employees WHERE id = ? OR employee_id = ? LIMIT 1)
+         )
+           AND (d.channel_requested IN ('app', 'both'))
+         ORDER BY d.created_at DESC LIMIT 50`,
+        [empId, empId, empId, empId, empId, empId, empId]
+      ).catch(() => []);
+    }
 
     res.json(deliveries);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// 11.1 Record Document Access (with live wet_signature vs electronic_copy RBAC check)
+app.post('/api/routing/deliveries/:id/access', async (req, res) => {
+  try {
+    const result = await recordDocumentAccess(db, {
+      deliveryId: req.params.id,
+      documentId: req.body.documentId,
+      employeeId: req.body.employeeId,
+      action: req.body.action || 'view',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+    if (!result.success && result.isUnauthorized) {
+      return res.status(403).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 11.2 Update Document Form Data (Employee or Supervisor collaborative edits)
+app.post('/api/routing/deliveries/:id/form-data', async (req, res) => {
+  try {
+    const result = await updateDocumentFormData(db, {
+      deliveryId: req.params.id,
+      employeeId: req.body.employeeId,
+      userRole: req.body.userRole || 'employee',
+      inputs: req.body.inputs || {}
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

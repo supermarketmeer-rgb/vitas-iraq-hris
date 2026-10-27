@@ -19,6 +19,8 @@ export const DocumentRoutingModal: React.FC = () => {
 
   // Delivery Channel
   const [channel, setChannel] = useState<'both' | 'email' | 'app'>('both');
+  const [signatureMode, setSignatureMode] = useState<'wet_signature' | 'electronic_copy'>('wet_signature');
+  const [isEditable, setIsEditable] = useState<boolean>(false);
   const [m365Status, setM365Status] = useState<any>(null);
   const [recipientSearch, setRecipientSearch] = useState('');
 
@@ -42,6 +44,19 @@ export const DocumentRoutingModal: React.FC = () => {
 
     const defaultType = routingOptions.suggestedRecipient || 'direct_supervisor';
     setRecipientType(defaultType);
+
+    // Initialize signature and editability based on document type
+    const isEvalOrForm = routingOptions.documentType === 'appraisal' || 
+                         routingOptions.documentType === 'evaluation' || 
+                         routingOptions.documentType === 'hr_form' || 
+                         Boolean(routingOptions.metadata?.is_editable);
+    if (isEvalOrForm) {
+      setSignatureMode('electronic_copy');
+      setIsEditable(true);
+    } else {
+      setSignatureMode((routingOptions.metadata?.signature_mode as any) || 'wet_signature');
+      setIsEditable(Boolean(routingOptions.metadata?.is_editable));
+    }
 
     const docName = routingOptions.documentTitle || 'مستند إداري';
     const docRef = routingOptions.documentId || '';
@@ -189,6 +204,8 @@ export const DocumentRoutingModal: React.FC = () => {
           recipient_type: recipientType
         })),
         channelRequested: channel,
+        signatureMode,
+        isEditable,
         subject,
         message,
         attachments,
@@ -533,6 +550,84 @@ export const DocumentRoutingModal: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* 1.5 Document Signature Mode & Collaboration Policy */}
+          <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-white/10">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                <span className="material-symbols-outlined text-base text-teal-600">history_edu</span>
+                <span>{t('نوع النسخة ومسار الاعتماد / التوقيع', 'Document Copy Type & Signature Mode')}</span>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Option 1: Wet Signature */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSignatureMode('wet_signature');
+                  setIsEditable(false);
+                }}
+                className={`p-3 rounded-2xl border text-right cursor-pointer transition flex flex-col justify-between ${
+                  signatureMode === 'wet_signature'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
+                    : isDark
+                      ? 'bg-slate-900/60 border-white/10 text-slate-300 hover:bg-slate-800'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-xl">history_edu</span>
+                    <span className="text-xs font-bold">{isAr ? 'نسخة أصلية بتوقيع حي' : 'Live Wet Signature'}</span>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
+                    signatureMode === 'wet_signature' ? 'bg-white/20 text-white' : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                  }`}>
+                    {isAr ? 'قابلة للطباعة والتنزيل' : 'Print & Download'}
+                  </span>
+                </div>
+                <p className={`text-[11px] leading-relaxed ${signatureMode === 'wet_signature' ? 'text-emerald-50' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {isAr 
+                    ? 'تتطلب توقيعاً حياً باليد. يتاح تنزيلها وطباعتها للموظف المعني، المشرف المباشر، ومدير المكتب/الفرع لكافة موظفي مكتبه.'
+                    : 'Requires live physical pen signature. Download & print permitted for employee, supervisor, and branch manager.'}
+                </p>
+              </button>
+
+              {/* Option 2: Electronic Copy (Editable) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSignatureMode('electronic_copy');
+                  setIsEditable(true);
+                }}
+                className={`p-3 rounded-2xl border text-right cursor-pointer transition flex flex-col justify-between ${
+                  signatureMode === 'electronic_copy'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
+                    : isDark
+                      ? 'bg-slate-900/60 border-white/10 text-slate-300 hover:bg-slate-800'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-xl">edit_document</span>
+                    <span className="text-xs font-bold">{isAr ? 'نسخة إلكترونية تفاعلية' : 'Electronic Copy (Editable)'}</span>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
+                    signatureMode === 'electronic_copy' ? 'bg-white/20 text-white' : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                  }`}>
+                    {isAr ? 'الطباعة محظورة • قابلة للتعديل' : 'No Print • Editable'}
+                  </span>
+                </div>
+                <p className={`text-[11px] leading-relaxed ${signatureMode === 'electronic_copy' ? 'text-indigo-50' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {isAr 
+                    ? 'لا يُسمح بطباعتها نهائياً. قابلة للتعديل من الموظف والمشرف (مثل فورم التقييم). محجوبة عن مدير المكتب.'
+                    : 'Strictly no printing allowed. Editable collaboratively by employee and supervisor (like appraisals). Restricted from branch manager.'}
+                </p>
+              </button>
+            </div>
           </div>
 
           {/* 2. Delivery Channel Selection */}
