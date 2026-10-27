@@ -295,12 +295,6 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
     }
   };
 
-  // Quick fill and login handler
-  const handleQuickLogin = (badge: string, pass: string = '123456') => {
-    setBadgeNumber(badge);
-    setPassword(pass);
-    handleLogin(undefined, badge, pass);
-  };
 
   return (
     <div className="w-full max-w-md mx-auto p-4 my-auto -translate-y-2 flex flex-col items-center justify-center relative animate-in fade-in duration-300 space-y-3.5">
@@ -476,79 +470,6 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
           </button>
         </form>
 
-        {/* Quick Demo Test Accounts Box */}
-        <div className={`mt-5 pt-4 border-t ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className={`text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {isEn ? '⚡ Quick Test Logins (1-Click):' : '⚡ حسابات تجريبية سريعة (ضغطة واحدة):'}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('V132', '123456')}
-              className={`p-2 rounded-xl border text-[11px] font-bold text-start transition-all cursor-pointer flex items-center justify-between ${
-                isDark 
-                  ? 'bg-slate-900/60 border-slate-700/60 text-slate-200 hover:border-teal-500/50 hover:bg-slate-800' 
-                  : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-teal-400 hover:bg-teal-50/50'
-              }`}
-            >
-              <div className="truncate">
-                <span className="block truncate font-bold text-teal-600 dark:text-teal-400">أحمد كريم</span>
-                <span className="text-[10px] text-slate-400">V132 • كود VIT-0002</span>
-              </div>
-              <span className="material-symbols-outlined text-sm text-slate-400">arrow_forward</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('V133', '123456')}
-              className={`p-2 rounded-xl border text-[11px] font-bold text-start transition-all cursor-pointer flex items-center justify-between ${
-                isDark 
-                  ? 'bg-slate-900/60 border-slate-700/60 text-slate-200 hover:border-teal-500/50 hover:bg-slate-800' 
-                  : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-teal-400 hover:bg-teal-50/50'
-              }`}
-            >
-              <div className="truncate">
-                <span className="block truncate font-bold text-teal-600 dark:text-teal-400">نور فاضل</span>
-                <span className="text-[10px] text-slate-400">V133 • كود VIT-0003</span>
-              </div>
-              <span className="material-symbols-outlined text-sm text-slate-400">arrow_forward</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('V167', '123456')}
-              className={`p-2 rounded-xl border text-[11px] font-bold text-start transition-all cursor-pointer flex items-center justify-between ${
-                isDark 
-                  ? 'bg-slate-900/60 border-slate-700/60 text-slate-200 hover:border-teal-500/50 hover:bg-slate-800' 
-                  : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-teal-400 hover:bg-teal-50/50'
-              }`}
-            >
-              <div className="truncate">
-                <span className="block truncate font-bold text-teal-600 dark:text-teal-400">دينا حيدر</span>
-                <span className="text-[10px] text-slate-400">V167 • النجف</span>
-              </div>
-              <span className="material-symbols-outlined text-sm text-slate-400">arrow_forward</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('admin', 'admin')}
-              className={`p-2 rounded-xl border text-[11px] font-bold text-start transition-all cursor-pointer flex items-center justify-between ${
-                isDark 
-                  ? 'bg-slate-900/60 border-slate-700/60 text-slate-200 hover:border-teal-500/50 hover:bg-slate-800' 
-                  : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-teal-400 hover:bg-teal-50/50'
-              }`}
-            >
-              <div className="truncate">
-                <span className="block truncate font-bold text-amber-600 dark:text-amber-400">آدمن النظام</span>
-                <span className="text-[10px] text-slate-400">admin • كامل الصلاحيات</span>
-              </div>
-              <span className="material-symbols-outlined text-sm text-slate-400">arrow_forward</span>
-            </button>
-          </div>
-        </div>
 
         {/* Footer */}
         <div className={`mt-4 text-center text-xs ${isDark ? 'text-teal-400' : 'text-slate-500'}`}>
