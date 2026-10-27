@@ -19,21 +19,43 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
   const isDark = theme === 'dark';
   const isEn = language === 'en';
 
+  // Helper to convert Eastern Arabic numerals (١٢٣) to standard Western digits (123)
+  const toStandardDigits = (str: string): string => {
+    return String(str || '')
+      .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 1632))
+      .replace(/[\u06f0-\u06f9]/g, d => String(d.charCodeAt(0) - 1776));
+  };
+
+  // Helper to normalize Arabic letters (hamza, taa marbuta, alif maksura, tashkeel)
+  const normalizeArabic = (str: string): string => {
+    return toStandardDigits(str)
+      .trim()
+      .toLowerCase()
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .replace(/[\u064B-\u065F]/g, '');
+  };
+
   const handleLogin = async (e?: React.FormEvent, directBadge?: string, directPassword?: string) => {
     if (e) e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    const inputBadge = (directBadge !== undefined ? directBadge : badgeNumber).trim();
-    const inputPass = (directPassword !== undefined ? directPassword : password).trim();
+    const rawBadge = directBadge !== undefined ? directBadge : badgeNumber;
+    const rawPass = directPassword !== undefined ? directPassword : password;
+
+    const inputBadge = toStandardDigits(rawBadge).trim();
+    const inputPass = toStandardDigits(rawPass).trim();
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const cleanInput = inputBadge.toLowerCase();
+      const normInput = normalizeArabic(inputBadge);
       const cleanInputAlpha = cleanInput.replace(/[^a-z0-9]/g, '');
 
-      if (!cleanInput) {
+      if (!inputBadge) {
         setError(isEn ? 'Please enter badge number, employee ID, or name' : 'يرجى إدخال رقم الباجة، كود الموظف، أو الاسم');
         setIsLoading(false);
         return;
@@ -53,8 +75,8 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
           const dbUsers = await uRes.json();
           if (Array.isArray(dbUsers) && dbUsers.length > 0) {
             matchedDbUser = dbUsers.find((u: any) => {
-              const uUser = String(u.username || '').toLowerCase();
-              const uEmp = String(u.employee_id || '').toLowerCase();
+              const uUser = toStandardDigits(String(u.username || '')).toLowerCase().trim();
+              const uEmp = toStandardDigits(String(u.employee_id || '')).toLowerCase().trim();
               return (
                 uUser === cleanInput ||
                 uEmp === cleanInput ||
@@ -68,18 +90,17 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
       }
 
       // Password verification logic:
-      // If user is registered in `users` table with an explicit password, verify it (or accept 123456 as universal fallback)
+      // Accepts registered password, standard 123456, admin, or the employee's badge code
       if (matchedDbUser) {
-        const expectedPass = matchedDbUser.password || '123456';
+        const expectedPass = toStandardDigits(matchedDbUser.password || '123456').trim();
         if (inputPass !== expectedPass && inputPass !== '123456' && inputPass !== 'admin') {
           setError(isEn ? 'Incorrect password. Default password is: 123456' : 'كلمة المرور غير صحيحة. كلمة المرور الافتراضية هي: 123456');
           setIsLoading(false);
           return;
         }
       } else {
-        // Normal employee: Accept 123456, the badge number, admin, or any non-empty password
+        // Normal employee: Accept 123456, the badge number, admin, or any password >= 3 chars
         const isStandardPass = inputPass === '123456' || inputPass === 'admin' || inputPass.toLowerCase() === cleanInput;
-        // If not standard and longer than 3 chars, accept it or fallback to 123456
         if (!isStandardPass && inputPass.length < 3) {
           setError(isEn ? 'Password must be at least 3 characters. Default: 123456' : 'كلمة المرور غير صحيحة. كلمة المرور الافتراضية للموظفين هي: 123456');
           setIsLoading(false);
@@ -92,7 +113,7 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 7000);
 
         // First try targeted search
         const response = await fetch(`/api/employees?badge=${encodeURIComponent(cleanInput)}`, {
@@ -117,17 +138,18 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
 
           if (emps.length > 0) {
             const found = emps.find((emp: any) => {
-              const bNo = String(emp.badge_no || emp.badgeNo || '').trim().toLowerCase();
-              const eId = String(emp.employee_id || emp.employeeId || emp.id || '').trim().toLowerCase();
-              const nameAr = String(emp.full_name_ar || emp.fullName || '').trim().toLowerCase();
+              const bNo = toStandardDigits(String(emp.badge_no || emp.badgeNo || '')).trim().toLowerCase();
+              const eId = toStandardDigits(String(emp.employee_id || emp.employeeId || emp.id || '')).trim().toLowerCase();
+              const normNameAr = normalizeArabic(emp.full_name_ar || emp.fullName || '');
               const nameEn = String(emp.full_name_en || emp.fullNameEn || '').trim().toLowerCase();
-              const waid = String(emp.waid || emp.wa_id || '').trim().toLowerCase();
-              const phone = String(emp.phone || emp.mobile || '').trim();
+              const waid = toStandardDigits(String(emp.waid || emp.wa_id || '')).trim().toLowerCase();
+              const phone = toStandardDigits(String(emp.phone || emp.mobile || '')).trim();
 
               return (
                 bNo === cleanInput ||
                 eId === cleanInput ||
-                nameAr.includes(cleanInput) ||
+                normNameAr.includes(normInput) ||
+                normInput.includes(normNameAr) ||
                 nameEn.includes(cleanInput) ||
                 waid === cleanInput ||
                 phone === cleanInput ||

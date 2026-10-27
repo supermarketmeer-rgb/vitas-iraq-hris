@@ -92,7 +92,7 @@ function EmployeeAppMain() {
         {isAuthenticated && <EmployeeTopTabBar onLogout={handleLogout} />}
 
         {/* Dynamic Route Content (Main Scrollable Area) */}
-        <div className={`flex-1 overflow-y-auto relative no-scrollbar ${!isAuthenticated ? 'h-full min-h-full flex flex-col justify-center items-center' : ''}`}>
+        <div className={`flex-1 overflow-y-auto relative no-scrollbar ${!isAuthenticated ? 'min-h-full flex flex-col justify-start md:justify-center items-center py-4 md:py-0' : ''}`}>
           {!isAuthenticated ? (
             <EmployeeLogin onLogin={handleLogin} />
           ) : (
