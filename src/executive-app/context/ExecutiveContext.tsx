@@ -568,8 +568,67 @@ const INITIAL_DECREES: ExecutiveDecree[] = [
 const ExecutiveContext = createContext<ExecutiveContextType | undefined>(undefined);
 
 export const ExecutiveContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [language, setLanguage] = useState<'ar' | 'en'>('ar');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      return (localStorage.getItem('vitas_theme') as 'dark' | 'light') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+  const [language, setLanguage] = useState<'ar' | 'en'>(() => {
+    try {
+      return (localStorage.getItem('vitas_language') as 'ar' | 'en') || 'ar';
+    } catch {
+      return 'ar';
+    }
+  });
+
+  const applyThemeToDOM = (nextTheme: 'dark' | 'light') => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.classList.add('disable-transitions');
+    if (nextTheme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem('vitas_theme', nextTheme);
+    } catch {}
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.classList.remove('disable-transitions');
+      });
+    });
+  };
+
+  const applyLanguageToDOM = (nextLang: 'ar' | 'en') => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.classList.add('disable-transitions');
+    root.dir = nextLang === 'ar' ? 'rtl' : 'ltr';
+    root.lang = nextLang;
+    try {
+      localStorage.setItem('vitas_language', nextLang);
+    } catch {}
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.classList.remove('disable-transitions');
+      });
+    });
+  };
+
+  React.useLayoutEffect(() => {
+    applyThemeToDOM(theme);
+  }, [theme]);
+
+  React.useLayoutEffect(() => {
+    applyLanguageToDOM(language);
+  }, [language]);
   
   const [executiveUser, setExecutiveUser] = useState<any>(() => {
     return {
@@ -601,8 +660,16 @@ export const ExecutiveContextProvider: React.FC<{ children: ReactNode }> = ({ ch
     setKpis(prev => ({ ...prev, pendingDecisionsCount: pendingCount }));
   }, [decisions]);
 
-  const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
-  const toggleLanguage = () => setLanguage(prev => (prev === 'ar' ? 'en' : 'ar'));
+  const toggleTheme = () => setTheme(prev => {
+    const next = prev === 'dark' ? 'light' : 'dark';
+    applyThemeToDOM(next);
+    return next;
+  });
+  const toggleLanguage = () => setLanguage(prev => {
+    const next = prev === 'ar' ? 'en' : 'ar';
+    applyLanguageToDOM(next);
+    return next;
+  });
   const t = (ar: string, en: string) => (language === 'ar' ? ar : en);
 
   const loginAsGeneralManager = () => {

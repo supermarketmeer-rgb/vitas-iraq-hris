@@ -525,23 +525,61 @@ export const Category3EmployeeView: React.FC = () => {
     return localized || '-';
   };
 
+  const getEmpContractType = (emp: any) => {
+    if (!emp) return language === 'en' ? 'Permanent Contract' : 'عقد دائمي';
+    const start = String(emp.originalStartDate || emp.original_start_date || emp.contract_original_start || emp.joinDate || '').split('T')[0].trim();
+    const contractStart = String(emp.contractStartDate || emp.contract_start_date || '').split('T')[0].trim();
+    const rawTerm = String(emp.termOfContract || emp.term_of_contract || emp.contract_type || '').trim();
+
+    // 1. Condition: New Employee Contract if Start Date = Contract Start Date
+    if (start && contractStart && start === contractStart) {
+      return language === 'en' ? 'New Employee Contract' : 'عقد موظف جديد';
+    }
+
+    // 2. Explicit match if already stored
+    if (rawTerm === 'عقد موظف جديد' || rawTerm.toLowerCase() === 'new employee contract') {
+      return language === 'en' ? 'New Employee Contract' : 'عقد موظف جديد';
+    }
+    if (rawTerm === 'عقد دائمي' || rawTerm.toLowerCase() === 'permanent contract') {
+      return language === 'en' ? 'Permanent Contract' : 'عقد دائمي';
+    }
+
+    // 3. Default: Permanent Contract
+    return language === 'en' ? 'Permanent Contract' : 'عقد دائمي';
+  };
+
   const selectedEmployee = useMemo(() => {
     if (!activeEmployees || activeEmployees.length === 0) return null;
     if (!selectedEmpId) return activeEmployees[0];
     const targetStr = String(selectedEmpId).toLowerCase().trim();
-    return activeEmployees.find(e => {
-      return String(e.id).toLowerCase().trim() === targetStr ||
-             (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
-             (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr);
-    }) || activeEmployees[0];
+
+    // 1. Strict match on unique Primary Key ID
+    const byId = activeEmployees.find(e => e.id != null && String(e.id).toLowerCase().trim() === targetStr);
+    if (byId) return byId;
+
+    // 2. Strict match on exact Employee ID (e.g. VIT-0034)
+    const byEmpId = activeEmployees.find(e => 
+      (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
+      (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr)
+    );
+    if (byEmpId) return byEmpId;
+
+    // 3. Match on badge number
+    const byBadge = activeEmployees.find(e =>
+      (e.badgeNo && String(e.badgeNo).toLowerCase().trim() === targetStr) ||
+      (e.badge_no && String(e.badge_no).toLowerCase().trim() === targetStr)
+    );
+    if (byBadge) return byBadge;
+
+    return activeEmployees[0];
   }, [activeEmployees, selectedEmpId]);
 
   useEffect(() => {
     setAvatarImgError(false);
 
     if (activeEmployees.length > 0) {
-      const activeId = selectedEmpId || activeEmployees[0]?.id || activeEmployees[0]?.employeeId;
-      const targetStr = activeId ? String(activeId).toLowerCase().trim() : '';
+      const activeId = selectedEmpId != null ? selectedEmpId : (activeEmployees[0]?.id || activeEmployees[0]?.employeeId);
+      const targetStr = activeId != null ? String(activeId).toLowerCase().trim() : '';
       const hasIdChanged = targetStr !== lastSelectedEmpIdRef.current;
       const hasLangChanged = language !== lastLanguageRef.current;
 
@@ -551,11 +589,9 @@ export const Category3EmployeeView: React.FC = () => {
 
         // Never overwrite if user is actively searching or typing
         if (!isProfileSearchFocusedRef.current && !isSearchDropdownOpen) {
-          const found = activeEmployees.find(e => {
-            return String(e.id).toLowerCase().trim() === targetStr ||
-                   (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) ||
-                   (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr);
-          }) || activeEmployees[0];
+          const found = activeEmployees.find(e => e.id != null && String(e.id).toLowerCase().trim() === targetStr) ||
+                        activeEmployees.find(e => (e.employeeId && String(e.employeeId).toLowerCase().trim() === targetStr) || (e.employee_id && String(e.employee_id).toLowerCase().trim() === targetStr)) ||
+                        activeEmployees[0];
 
           if (found) {
             setProfileSearchQuery(getEmpFullName(found));
@@ -1046,11 +1082,19 @@ export const Category3EmployeeView: React.FC = () => {
 
     const startDate = clean(emp.originalStartDate || emp.original_start_date || emp.contract_original_start || emp.joinDate || emp.hire_date) || new Date().toISOString().split('T')[0];
     setOriginalStartDate(startDate);
-    setPositionStartDate(clean(emp.positionStartDate || emp.position_start_date || startDate));
-    setContractStartDate(clean(emp.contractStartDate || emp.contract_start_date) || startDate);
+    const activeContractStart = clean(emp.contractStartDate || emp.contract_start_date) || startDate;
+    setContractStartDate(activeContractStart);
     setContractEndDate(clean(emp.contractEndDate || emp.contract_end_date));
     setProbationEndDate(clean(emp.probationEndDate || emp.probation_end_date));
-    setTermOfContract(emp.termOfContract || emp.term_of_contract || emp.contract_type || 'عقد محدد المدة (سنة واحدة)');
+
+    const isNewContract = startDate.split('T')[0] === activeContractStart.split('T')[0];
+    const computedContract = isNewContract ? 'عقد موظف جديد' : 'عقد دائمي';
+    const explicitContract = clean(emp.termOfContract || emp.term_of_contract || emp.contract_type);
+    setTermOfContract(
+      explicitContract === 'عقد موظف جديد' || explicitContract === 'عقد دائمي'
+        ? explicitContract
+        : computedContract
+    );
     setGrade(emp.grade || 'G-4 الدرجة الرابعة');
 
     setGender(emp.gender === 'أنثى' || emp.gender === 'female' || emp.gender === 'Female' ? 'أنثى' : 'ذكر');
@@ -1117,6 +1161,23 @@ export const Category3EmployeeView: React.FC = () => {
     }
     setSelectedPolicy('');
   };
+
+  const handleSelectProfileEmployee = (emp: any) => {
+    if (!emp) return;
+    const primaryId = String(emp.id != null ? emp.id : (emp.employeeId || emp.employee_id || ''));
+    setSelectedEmpId(primaryId);
+    lastSelectedEmpIdRef.current = primaryId.toLowerCase().trim();
+    setProfileSearchQuery(getEmpFullName(emp));
+    setIsSearchDropdownOpen(false);
+    isProfileSearchFocusedRef.current = false;
+    handleLoadEmployeeData(emp);
+  };
+
+  useEffect(() => {
+    if (activeModuleId === 'emp-profile' && selectedEmployee) {
+      handleLoadEmployeeData(selectedEmployee);
+    }
+  }, [selectedEmployee, activeModuleId]);
 
   const handleResetForm = () => {
     try { sessionStorage.removeItem('vitas_editing_emp_id'); } catch (e) {}
@@ -3873,7 +3934,13 @@ export const Category3EmployeeView: React.FC = () => {
                       }, 200);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (matchingProfileEmployees.length > 0) {
+                          handleSelectProfileEmployee(matchingProfileEmployees[0]);
+                          profileSearchInputRef.current?.blur();
+                        }
+                      } else if (e.key === 'Escape') {
                         setIsSearchDropdownOpen(false);
                         isProfileSearchFocusedRef.current = false;
                         if (selectedEmployee) {
@@ -3911,13 +3978,12 @@ export const Category3EmployeeView: React.FC = () => {
                         <button
                           key={emp.id}
                           type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectProfileEmployee(emp);
+                          }}
                           onClick={() => {
-                            const empId = emp.id || emp.employeeId || emp.employee_id;
-                            setSelectedEmpId(empId);
-                            lastSelectedEmpIdRef.current = String(empId).toLowerCase().trim();
-                            setProfileSearchQuery(getEmpFullName(emp));
-                            setIsSearchDropdownOpen(false);
-                            isProfileSearchFocusedRef.current = false;
+                            handleSelectProfileEmployee(emp);
                           }}
                           className={`w-full text-right p-2.5 ${profileColors.dropdownHover} flex items-center justify-between transition-colors group cursor-pointer`}
                         >
@@ -3951,7 +4017,7 @@ export const Category3EmployeeView: React.FC = () => {
               {/* Direct Select Menu */}
               <div className="flex-1 min-w-[200px]">
                 <select
-                  value={selectedEmployee ? String(selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id || '') : ''}
+                  value={selectedEmployee ? String(selectedEmployee.id != null ? selectedEmployee.id : (selectedEmployee.employeeId || selectedEmployee.employee_id || '')) : ''}
                   onChange={(e) => {
                     const val = e.target.value;
                     const found = activeEmployees.find(emp => {
@@ -3961,17 +4027,14 @@ export const Category3EmployeeView: React.FC = () => {
                              (emp.employee_id && String(emp.employee_id).toLowerCase().trim() === tVal);
                     });
                     if (found) {
-                      const targetId = found.id || found.employeeId || found.employee_id;
-                      setSelectedEmpId(targetId);
-                      lastSelectedEmpIdRef.current = String(targetId).toLowerCase().trim();
-                      setProfileSearchQuery(getEmpFullName(found));
+                      handleSelectProfileEmployee(found);
                     }
                   }}
                   className={`w-full ${profileColors.inputBg} border ${profileColors.inputBorder} rounded-xl px-3 py-1.5 text-xs ${profileColors.inputText} focus:outline-none focus:border-teal-500 ${isDark ? 'focus:bg-[#111827]' : 'focus:bg-white'} transition-all shadow-xs font-bold`}
                 >
                   <option value="" disabled>-- {t('اختر موظفاً مباشرة للتنقل السريع', 'Select an employee directly for fast navigation')} --</option>
                   {activeEmployees.map(emp => {
-                    const empOptId = String(emp.id || emp.employeeId || emp.employee_id || '');
+                    const empOptId = String(emp.id != null ? emp.id : (emp.employeeId || emp.employee_id || ''));
                     return (
                       <option key={empOptId} value={empOptId}>
                         {getEmpFullName(emp)} ({emp.employeeId || emp.employee_id || 'EMP'}) - {getEmpBranch(emp)}
@@ -4147,8 +4210,9 @@ export const Category3EmployeeView: React.FC = () => {
                             </div>
                             <div className={`p-2 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-0.5 shadow-xs`}>
                               <span className={`${profileColors.textSecondary} text-[10px] block`}>{t('نوع العقد والدرجة', 'Contract Type & Grade')}</span>
-                              <span className={`text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'} truncate block`}>
-                                {selectedEmployee.termOfContract || t('عقد محدد', 'Fixed Contract')} ({selectedEmployee.grade || 'G-4'})
+                              <span className={`text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'} truncate block`} title={`${getEmpContractType(selectedEmployee)} (${selectedEmployee.grade || 'G-4'})`}>
+                                <span>{getEmpContractType(selectedEmployee)}</span>
+                                <span className="font-mono opacity-80 ms-1.5" dir="ltr">({selectedEmployee.grade ? String(selectedEmployee.grade).split(' ')[0] : 'G-4'})</span>
                               </span>
                             </div>
                           </div>
@@ -4276,7 +4340,7 @@ export const Category3EmployeeView: React.FC = () => {
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
-                              <p className={`${profileColors.textSecondary}`}>{t('نوع وشروط العقد:', 'Contract Type & Terms:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.termOfContract || t('عقد محدد المدة', 'Fixed-term contract')}</span></p>
+                              <p className={`${profileColors.textSecondary}`}>{t('نوع وشروط العقد:', 'Contract Type & Terms:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{getEmpContractType(selectedEmployee)}</span></p>
                               <p className={`${profileColors.textSecondary}`}>{t('الدرجة الوظيفية:', 'Job Grade:')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.grade || 'G-4'}</span></p>
                               <p className={`${profileColors.textSecondary}`}>{t('تاريخ التعيين الأصلي:', 'Original Hire Date:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-mono`}>{selectedEmployee.originalStartDate || selectedEmployee.joinDate || '-'}</span></p>
                             </div>

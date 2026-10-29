@@ -136,11 +136,16 @@ export const ContractArchiveModal: React.FC<ContractArchiveModalProps> = ({
     const dept = employee.department || 'الإدارة العامة';
     const branch = employee.branch || 'المقر الرئيسي';
 
+    const isNewActive = String(originalStart).split('T')[0] === String(currentStart).split('T')[0];
+    const officialContractTitle = isNewActive
+      ? (isAr ? 'عقد موظف جديد' : 'New Employee Contract')
+      : (isAr ? 'عقد دائمي' : 'Permanent Contract');
+
     // 1. Current Active Contract
     result.push({
       id: `cur-${empId}`,
       contractNumber: `CNT-${curEndYear}-${cleanCode}-${curStartYear === origYear ? '01' : '0' + Math.max(1, curStartYear - origYear + 1)}`,
-      contractTypeTitle: employee.termOfContract || (isAr ? 'عقد محدد المدة (سنة واحدة)' : 'Fixed-Term Contract (1 Year)'),
+      contractTypeTitle: officialContractTitle,
       startDate: currentStart,
       endDate: currentEnd,
       jobTitle: jobTitle,

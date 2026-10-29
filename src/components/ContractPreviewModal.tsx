@@ -5,6 +5,7 @@ import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { useDocumentRouting } from '../context/DocumentRoutingContext';
 import { SendDocumentDialog } from './m365/SendDocumentDialog';
 import { useApp } from '../context/AppContext';
+import { getAnnexPages, AnnexPageItem } from './ContractAnnexPages';
 
 interface ContractClause {
   id?: number | string;
@@ -38,6 +39,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
   const [clauses, setClauses] = useState<ContractClause[]>([]);
   const [showMetaTable, setShowMetaTable] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [activeDocFilter, setActiveDocFilter] = useState<string>('all');
 
   // Helper to get clauses from localStorage synchronously
   const getCachedClauses = (typeId: number | string | null): ContractClause[] => {
@@ -90,21 +92,18 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
   // Match initial contract type from employee data
   useEffect(() => {
     if (employee && sortedContractTypes.length > 0) {
-      const empTypeStr = String(
-        employee.termOfContract ||
-        employee.term_of_contract ||
-        employee.contract_type ||
-        employee.contractType ||
-        ''
-      ).trim().toLowerCase();
+      const start = String(employee.originalStartDate || employee.original_start_date || employee.contract_original_start || employee.joinDate || '').split('T')[0].trim();
+      const contractStart = String(employee.contractStartDate || employee.contract_start_date || '').split('T')[0].trim();
+      const isNewEmployee = Boolean(start && contractStart && start === contractStart);
 
-      // Find all types matching employee's contract name or id
+      const targetContractNameAr = isNewEmployee ? 'عقد موظف جديد' : 'عقد دائمي';
+      const targetContractNameEn = isNewEmployee ? 'New Employee Contract' : 'Permanent Contract';
+
+      // 1. Match the designated official contract type
       const matchingType = sortedContractTypes.find((ct: any) => {
-        const nameAr = String(ct.name_ar || '').trim().toLowerCase();
-        const nameEn = String(ct.name_en || '').trim().toLowerCase();
-        const name = String(ct.name || '').trim().toLowerCase();
-        const idMatches = employee.contract_type_id && (ct.id === employee.contract_type_id || ct.id === Number(employee.contract_type_id));
-        return idMatches || (empTypeStr && (nameAr === empTypeStr || nameEn === empTypeStr || name === empTypeStr));
+        const nameAr = String(ct.name_ar || '').trim();
+        const nameEn = String(ct.name_en || '').trim();
+        return nameAr === targetContractNameAr || nameEn === targetContractNameEn;
       });
 
       if (matchingType) {
@@ -112,7 +111,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
         return;
       }
 
-      // Prefer official contract types
+      // 2. Fallback to existing logic if any
       const preferred = sortedContractTypes.find((ct: any) => ct.name_ar === 'عقد موظف جديد' || ct.name_en === 'New Employee Contract')
         || sortedContractTypes.find((ct: any) => ct.name_ar === 'عقد دائمي' || ct.name_en === 'Permanent Contract');
 
@@ -954,6 +953,21 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
   const contractNumber = `CON-VTS-${employee.badgeNo || employee.badge_no || empId}-${new Date().getFullYear()}`;
 
   const contractPages = getContractPages();
+  const annexPages = getAnnexPages(employee);
+  const totalPagesCount = contractPages.length + annexPages.length; // 14 pages total
+
+  const docTabs = [
+    { id: 'all', label: `كافة المستندات (${totalPagesCount} صفحة)`, icon: 'auto_stories' },
+    { id: 'contract', label: 'العقد الأساسي (4 صفحات)', icon: 'description' },
+    { id: 'undertaking_1', label: 'التعهد 1', icon: 'verified_user' },
+    { id: 'undertaking_2', label: 'التعهد 2', icon: 'lock' },
+    { id: 'undertaking_3', label: 'التعهد 3', icon: 'policy' },
+    { id: 'undertaking_full_time', label: 'تفرغ وظيفي', icon: 'schedule' },
+    { id: 'undertaking_5', label: 'التعهد 5', icon: 'shield' },
+    { id: 'medical_form', label: 'الاستمارة الطبية', icon: 'medical_services' },
+    { id: 'insurance_beneficiaries', label: 'المستفيدين', icon: 'family_restroom' },
+    { id: 'income_tax', label: 'Income Tax', icon: 'receipt_long' },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
@@ -967,12 +981,12 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                <span>معاينة وثيقة عقد العمل الرسمي</span>
+                <span>معاينة وثيقة عقد العمل والمستندات الملحقة</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-teal-700 dark:text-teal-300">
                   {currentContractType?.name_ar || 'عقد عمل معتمد'}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300">
-                  4 صفحات معتمدة
+                  {totalPagesCount} صفحة رسمية
                 </span>
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -1026,10 +1040,10 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
               type="button"
               onClick={handlePrint}
               className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-teal-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
-              title="طباعة العقد (4 صفحات مطابقة للوورد مع الشعار في كل صفحة)"
+              title="طباعة وثيقة العقد والمستندات الملحقة كاملة (14 صفحة)"
             >
               <span className="material-symbols-outlined text-base">print</span>
-              <span>طباعة العقد (4 صفحات)</span>
+              <span>طباعة العقد والمستندات ({totalPagesCount} صفحة)</span>
             </button>
 
             {/* Document Routing & Delivery Button - Restricted for Branch Manager */}
@@ -1100,6 +1114,36 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
           </div>
         </div>
 
+        {/* Document Quick Switcher Tabs */}
+        <div className="px-5 py-2.5 border-b border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-slate-900 no-print">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="doc-tab-label text-xs font-black flex items-center gap-1 pl-1">
+              <span className="material-symbols-outlined text-base text-teal-700">filter_list</span>
+              <span>المستندات:</span>
+            </span>
+            {docTabs.map((tab) => {
+              const isActive = activeDocFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveDocFilter(tab.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border shadow-2xs ${
+                    isActive ? 'doc-tab-selected ring-2 ring-teal-500/20' : 'doc-tab-unselected'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px]">
+                    {tab.icon}
+                  </span>
+                  <span>
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Contract Preview Area (Scrollable Multi-Page Document) */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/60 dark:bg-black/50 flex flex-col items-center">
           
@@ -1158,103 +1202,154 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
             </div>
           ) : (
             <div id="printableContractArea" className="w-full max-w-[800px]" dir="rtl">
-              {contractPages.map((page) => (
-                <div key={page.pageNumber} className="contract-page-wrapper mb-8">
-                  {/* Visual Page Indicator Header in Preview */}
-                  <div className="page-number-indicator flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 px-2 no-print">
-                    <span className="bg-slate-200 dark:bg-white/10 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
-                      <span className="material-symbols-outlined text-sm">article</span>
-                      <span>الصفحة {page.pageNumber} من 4</span>
-                    </span>
-                    <span className="text-[11px] font-normal text-slate-400">
-                      مؤسسة الإسكان التعاونية CHF • {currentContractType?.name_ar || 'عقد عمل'}
-                    </span>
-                  </div>
+              
+              {/* 1. CONTRACT CORE PAGES (PAGES 1 to 4) */}
+              {(activeDocFilter === 'all' || activeDocFilter === 'contract') && (
+                contractPages.map((page) => (
+                  <div key={`contract-page-${page.pageNumber}`} className="contract-page-wrapper mb-8">
+                    {/* Visual Page Indicator Header in Preview */}
+                    <div className="page-number-indicator flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 px-2 no-print">
+                      <span className="bg-slate-200 dark:bg-white/10 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                        <span className="material-symbols-outlined text-sm">article</span>
+                        <span>الصفحة {page.pageNumber} من {totalPagesCount}</span>
+                      </span>
+                      <span className="text-[11px] font-normal text-slate-400">
+                        مؤسسة الإسكان التعاونية CHF • {currentContractType?.name_ar || 'عقد عمل'} (الصفحة {page.pageNumber} من 4)
+                      </span>
+                    </div>
 
-                  {/* Single Contract Page Box */}
-                  <div 
-                    className={`contract-page bg-white text-slate-900 p-8 sm:p-12 rounded-xl shadow-xl border border-slate-200 flex flex-col justify-between font-['Cairo',sans-serif] ${page.isLastPage ? 'contract-page-last last-page' : ''}`}
-                    style={{ minHeight: '1020px' }}
-                  >
-                    {/* Official CHF Iraq Logo Header (Appears on EVERY page) */}
-                    <div className="contract-page-header text-center mb-4">
-                      <img 
-                        src={CHF_IRAQ_LOGO_BASE64} 
-                        alt="CHF Iraq Logo" 
-                        className="contract-header-logo h-14 sm:h-18 mx-auto object-contain mb-2"
-                      />
-                      {page.isFirstPage && (
-                        <h1 className="contract-main-title text-xl sm:text-2xl font-bold text-slate-900 m-0 my-2">
-                          عقد عمل
-                        </h1>
+                    {/* Single Contract Page Box */}
+                    <div 
+                      className={`contract-page bg-white text-slate-900 p-8 sm:p-12 rounded-xl shadow-xl border border-slate-200 flex flex-col justify-between font-['Cairo',sans-serif] ${page.isLastPage ? 'contract-page-last last-page' : ''}`}
+                      style={{ minHeight: '1020px' }}
+                    >
+                      {/* Official CHF Iraq Logo Header (Appears on EVERY page) */}
+                      <div className="contract-page-header text-center mb-4">
+                        <img 
+                          src={CHF_IRAQ_LOGO_BASE64} 
+                          alt="CHF Iraq Logo" 
+                          className="contract-header-logo h-14 sm:h-18 mx-auto object-contain mb-2"
+                        />
+                        {page.isFirstPage && (
+                          <h1 className="contract-main-title text-xl sm:text-2xl font-bold text-slate-900 m-0 my-2">
+                            عقد عمل
+                          </h1>
+                        )}
+                      </div>
+
+                      {/* Page Body Clauses */}
+                      <div className="contract-page-body flex-1 text-xs sm:text-[13.5px] leading-relaxed">
+                        {page.content}
+                      </div>
+
+                      {/* Bottom Stamp for Pages 1, 2, 3 (Matching desktop Word document) */}
+                      {page.hasStamp && (
+                        <div className="page-stamp-row mt-auto pt-4 border-t border-dashed border-slate-400 flex justify-between items-end text-xs sm:text-[14px] text-slate-800">
+                          <div className="space-y-1">
+                            <div className="font-bold text-slate-900 text-xs sm:text-[14px]">الطرف الثاني</div>
+                            <div className="font-bold text-slate-900 text-xs sm:text-[14px]">
+                              الاسم: ................................................
+                            </div>
+                            <div className="font-bold text-slate-900 text-xs sm:text-[14px]">
+                              التوقيع: ................................................
+                            </div>
+                          </div>
+                          <div className="stamp-box border border-dashed border-slate-500 rounded-lg px-4 py-2 text-center text-xs sm:text-[14px] font-bold text-slate-600">
+                            ختم المؤسسة
+                          </div>
+                        </div>
                       )}
-                    </div>
 
-                    {/* Page Body Clauses */}
-                    <div className="contract-page-body flex-1 text-xs sm:text-[13.5px] leading-relaxed">
-                      {page.content}
-                    </div>
-
-                    {/* Bottom Stamp for Pages 1, 2, 3 (Matching desktop Word document) */}
-                    {page.hasStamp && (
-                      <div className="page-stamp-row mt-auto pt-4 border-t border-dashed border-slate-400 flex justify-between items-end text-xs sm:text-[14px] text-slate-800">
-                        <div className="space-y-1">
-                          <div className="font-bold text-slate-900 text-xs sm:text-[14px]">الطرف الثاني</div>
-                          <div className="font-bold text-slate-900 text-xs sm:text-[14px]">
-                            الاسم: <span className="font-normal">{empFullName}</span>
+                      {/* Official Signatures Section for Page 4 (Matching desktop Word document) */}
+                      {page.hasSignatures && (
+                        <div className="signatures-section mt-auto pt-4 border-t-2 border-slate-900">
+                          <div className="sig-title text-center font-bold text-xs sm:text-[14px] text-slate-900 mb-2">
+                            نهاية العقد
                           </div>
-                          <div className="font-bold text-slate-900 text-xs sm:text-[14px]">
-                            التوقيع: ................................................
-                          </div>
-                        </div>
-                        <div className="stamp-box border border-dashed border-slate-500 rounded-lg px-4 py-2 text-center text-xs sm:text-[14px] font-bold text-slate-600">
-                          ختم المؤسسة
-                        </div>
-                      </div>
-                    )}
+                          <div className="sig-divider w-full border-t border-slate-400 mb-4"></div>
 
-                    {/* Official Signatures Section for Page 4 (Matching desktop Word document) */}
-                    {page.hasSignatures && (
-                      <div className="signatures-section mt-auto pt-4 border-t-2 border-slate-900">
-                        <div className="sig-title text-center font-bold text-xs sm:text-[14px] text-slate-900 mb-2">
-                          نهاية العقد
-                        </div>
-                        <div className="sig-divider w-full border-t border-slate-400 mb-4"></div>
-
-                        <table className="sig-table w-full text-xs sm:text-[14px]">
-                          <tbody>
-                            <tr>
-                              {/* Right column: الطرف الأول */}
-                              <td className="w-1/2 align-top pr-2 pl-4 text-right">
-                                <div className="sig-box space-y-2 text-xs sm:text-[14px]">
-                                  <p className="font-bold text-slate-900 m-0 text-xs sm:text-[14px]">الطرف الأول: مؤسسة الإسكان التعاونية (CHF)</p>
-                                  <p className="font-bold text-slate-800 m-0 text-xs sm:text-[14px]">عنها (إضافة لوظيفته) السيد: ثائر عذاب جاسم</p>
-                                  <p className="font-bold text-slate-700 m-0 pt-2 text-xs sm:text-[14px]">التوقيع: ................................................</p>
-                                  <div className="pt-2">
-                                    <span className="inline-block border border-dashed border-slate-400 rounded-lg px-4 py-2 text-xs sm:text-[14px] text-slate-500 font-bold">
-                                      ختم المؤسسة الرسمي
-                                    </span>
+                          <table className="sig-table w-full text-xs sm:text-[14px]">
+                            <tbody>
+                              <tr>
+                                {/* Right column: الطرف الأول */}
+                                <td className="w-1/2 align-top pr-2 pl-4 text-right">
+                                  <div className="sig-box space-y-2 text-xs sm:text-[14px]">
+                                    <p className="font-bold text-slate-900 m-0 text-xs sm:text-[14px]">الطرف الأول: مؤسسة الإسكان التعاونية (CHF)</p>
+                                    <p className="font-bold text-slate-800 m-0 text-xs sm:text-[14px]">عنها (إضافة لوظيفته) السيد: ثائر عذاب جاسم</p>
+                                    <p className="font-bold text-slate-700 m-0 pt-2 text-xs sm:text-[14px]">التوقيع: ................................................</p>
+                                    <div className="pt-2">
+                                      <span className="inline-block border border-dashed border-slate-400 rounded-lg px-4 py-2 text-xs sm:text-[14px] text-slate-500 font-bold">
+                                        ختم المؤسسة الرسمي
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
+                                </td>
 
-                              {/* Left column: الطرف الثاني */}
-                              <td className="w-1/2 align-top pl-2 pr-4 text-right">
-                                <div className="sig-box space-y-2 text-xs sm:text-[14px]">
-                                  <p className="font-bold text-slate-900 m-0 text-xs sm:text-[14px]">الطرف الثاني</p>
-                                  <p className="font-bold text-slate-800 m-0 text-xs sm:text-[14px]">الاسم: <span className="font-normal">{empFullName}</span></p>
-                                  <p className="font-bold text-slate-700 m-0 pt-2 text-xs sm:text-[14px]">التوقيع: ................................................</p>
-                                </div>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                                {/* Left column: الطرف الثاني */}
+                                <td className="w-1/2 align-top pl-2 pr-4 text-right">
+                                  <div className="sig-box space-y-2 text-xs sm:text-[14px]">
+                                    <p className="font-bold text-slate-900 m-0 text-xs sm:text-[14px]">الطرف الثاني</p>
+                                    <p className="font-bold text-slate-800 m-0 text-xs sm:text-[14px]">الاسم: ................................................</p>
+                                    <p className="font-bold text-slate-700 m-0 pt-2 text-xs sm:text-[14px]">التوقيع: ................................................</p>
+                                  </div>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
 
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
+
+              {/* 2. ATTACHED DOCUMENTS / ANNEXES (PAGES 5 to 14) - Appearing AFTER page 4 of the contract */}
+              {annexPages.map((annex) => {
+                const shouldShow =
+                  activeDocFilter === 'all' ||
+                  activeDocFilter === annex.documentKey ||
+                  (activeDocFilter === 'undertaking_2' && annex.documentKey.startsWith('undertaking_2')) ||
+                  (activeDocFilter === 'income_tax' && annex.documentKey.startsWith('income_tax'));
+
+                if (!shouldShow) return null;
+
+                return (
+                  <div key={`annex-page-${annex.pageNumber}`} className="contract-page-wrapper mb-8">
+                    {/* Visual Page Indicator Header in Preview */}
+                    <div className="page-number-indicator flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 px-2 no-print">
+                      <span className="bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                        <span className="material-symbols-outlined text-sm">verified</span>
+                        <span>الصفحة {annex.pageNumber} من {totalPagesCount}</span>
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                        {annex.documentTitle}
+                      </span>
+                    </div>
+
+                    {/* Single Annex Page Box matching Contract Page Styling & Cairo Font */}
+                    <div 
+                      className="contract-page bg-white text-slate-900 p-8 sm:p-12 rounded-xl shadow-xl border border-slate-200 flex flex-col justify-between font-['Cairo',sans-serif]"
+                      style={{ minHeight: '1020px' }}
+                    >
+                      {/* Official CHF Iraq Logo Header (Appears on EVERY page) */}
+                      <div className="contract-page-header text-center mb-3">
+                        <img 
+                          src={CHF_IRAQ_LOGO_BASE64} 
+                          alt="CHF Iraq Logo" 
+                          className="contract-header-logo h-14 sm:h-16 mx-auto object-contain mb-1"
+                        />
+                      </div>
+
+                      {/* Annex Page Body */}
+                      <div className="contract-page-body flex-1 text-xs sm:text-[13px] leading-relaxed">
+                        {annex.content}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
             </div>
           )}
 

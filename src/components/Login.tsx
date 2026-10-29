@@ -9,7 +9,7 @@ import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { t, language, theme, setCurrentUserRole, setCurrentUser, setActiveModuleId, employees } = useApp();
+  const { t, language, theme, toggleTheme, toggleLanguage, setCurrentUserRole, setCurrentUser, setActiveModuleId, employees } = useApp();
   const isDark = theme === 'dark';
 
   const [username, setUsername] = useState('');
@@ -646,20 +646,6 @@ export const Login: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Language toggle
-  const toggleLanguage = () => {
-    const newLang = language === 'ar' ? 'en' : 'ar';
-    localStorage.setItem('vitas_language', newLang);
-    window.location.reload();
-  };
-
-  // Theme toggle
-  const toggleTheme = () => {
-    const newTheme = isDark ? 'light' : 'dark';
-    localStorage.setItem('vitas_theme', newTheme);
-    window.location.reload();
   };
 
   return (

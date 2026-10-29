@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0f172a" />
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('vitas_theme') || localStorage.getItem('employee_app_theme') || 'dark';
+          var l = localStorage.getItem('vitas_language') || localStorage.getItem('employee_app_lang') || 'ar';
+          var d = document.documentElement;
+          if (t === 'dark') {
+            d.classList.add('dark');
+            d.classList.remove('light');
+          } else {
+            d.classList.add('light');
+            d.classList.remove('dark');
+          }
+          d.dir = l === 'ar' ? 'rtl' : 'ltr';
+          d.lang = l;
+        } catch(e) {}
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />

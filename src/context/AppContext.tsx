@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import {
   ThemeMode,
   UserRole,
@@ -679,10 +679,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
-  // Theme Handling
-  useEffect(() => {
+  // Synchronous DOM helpers with transition suppression for instantaneous, flicker-free toggling
+  const applyThemeImmediately = (nextTheme: ThemeMode) => {
+    if (typeof document === 'undefined') return;
     const root = document.documentElement;
-    if (theme === 'dark') {
+    root.classList.add('disable-transitions');
+    if (nextTheme === 'dark') {
       root.classList.add('dark');
       root.classList.remove('light');
     } else {
@@ -690,24 +692,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       root.classList.remove('dark');
     }
     try {
-      localStorage.setItem('vitas_theme', theme);
+      localStorage.setItem('vitas_theme', nextTheme);
     } catch (e) {}
+
+    // Remove transition suppression after browser commits paint
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.classList.remove('disable-transitions');
+      });
+    });
+  };
+
+  const applyLanguageImmediately = (nextLang: 'ar' | 'en') => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.classList.add('disable-transitions');
+    root.dir = nextLang === 'ar' ? 'rtl' : 'ltr';
+    root.lang = nextLang;
+    try {
+      localStorage.setItem('vitas_language', nextLang);
+    } catch (e) {}
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.classList.remove('disable-transitions');
+      });
+    });
+  };
+
+  // Synchronous layout effects ensure DOM attributes are ALWAYS updated before paint
+  useLayoutEffect(() => {
+    applyThemeImmediately(theme);
   }, [theme]);
 
-  // Language Handling
-  useEffect(() => {
-    const root = document.documentElement;
-    root.dir = language === 'ar' ? 'rtl' : 'ltr';
-    root.lang = language;
-    try {
-      localStorage.setItem('vitas_language', language);
-    } catch (e) {}
+  useLayoutEffect(() => {
+    applyLanguageImmediately(language);
   }, [language]);
 
-  const toggleTheme = () => setThemeState(prev => (prev === 'dark' ? 'light' : 'dark'));
-  const setTheme = (tMode: ThemeMode) => setThemeState(tMode);
-  const toggleLanguage = () => setLanguageState(prev => (prev === 'ar' ? 'en' : 'ar'));
-  const setLanguage = (lang: 'ar' | 'en') => setLanguageState(lang);
+  const toggleTheme = useCallback(() => {
+    setThemeState(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      applyThemeImmediately(next);
+      return next;
+    });
+  }, []);
+
+  const setTheme = useCallback((tMode: ThemeMode) => {
+    applyThemeImmediately(tMode);
+    setThemeState(tMode);
+  }, []);
+
+  const toggleLanguage = useCallback(() => {
+    setLanguageState(prev => {
+      const next = prev === 'ar' ? 'en' : 'ar';
+      applyLanguageImmediately(next);
+      return next;
+    });
+  }, []);
+
+  const setLanguage = useCallback((lang: 'ar' | 'en') => {
+    applyLanguageImmediately(lang);
+    setLanguageState(lang);
+  }, []);
+
   const t = (arText: string, enText: string) => (language === 'en' ? enText : arText);
 
   const setCurrentUserRole = (role: UserRole) => {

@@ -8,6 +8,21 @@
 @variant dark (&:where(.dark, .dark *));
 
 /* ================================================================
+   INSTANT THEME & LANGUAGE SWITCHING (ZERO FLICKER / ZERO DELAY)
+   Temporarily attached to <html> during toggle to eliminate any flicker
+   ================================================================ */
+html.disable-transitions,
+html.disable-transitions *,
+html.disable-transitions *::before,
+html.disable-transitions *::after {
+  transition: none !important;
+  animation: none !important;
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -o-transition: none !important;
+}
+
+/* ================================================================
    BASE STYLES
    Default = Light Mode. html.dark overrides for dark.
    ================================================================ */
@@ -875,7 +890,8 @@ html.light .text-slate-100:not(aside *):not(header *) {
 
 
  /* ================================================================
-   TEAL CUTTONS: PURE WHITE TEXT & ICONS ALWAYS IN ALL THEMES
+/* ================================================================
+   TEAL, EMERALD & AMBER BUTTONS: PURE WHITE TEXT & ICONS ALWAYS IN ALL THEMES
    ================================================================ */
 button[class*="bg-teal"],
 button[class*="from-teal"],
@@ -883,14 +899,33 @@ button[class*="to-teal"],
 button.bg-teal-600,
 button.bg-teal-700,
 button.bg-teal-800,
+button[class*="bg-emerald"],
+button.bg-emerald-600,
+button.bg-emerald-700,
+button.bg-emerald-800,
+button[class*="bg-amber"],
+button.bg-amber-600,
+.btn-payroll-release,
 html.light button[class*="bg-teal"],
 html.light button[class*="from-teal"],
 html.light button.bg-teal-600,
 html.light button.bg-teal-700,
+html.light button[class*="bg-emerald"],
+html.light button.bg-emerald-600,
+html.light button.bg-emerald-700,
+html.light button[class*="bg-amber"],
+html.light button.bg-amber-600,
+html.light .btn-payroll-release,
 html:not(.dark) button[class*="bg-teal"],
 html:not(.dark) button[class*="from-teal"],
 html:not(.dark) button.bg-teal-600,
-html:not(.dark) button.bg-teal-700 {
+html:not(.dark) button.bg-teal-700,
+html:not(.dark) button[class*="bg-emerald"],
+html:not(.dark) button.bg-emerald-600,
+html:not(.dark) button.bg-emerald-700,
+html:not(.dark) button[class*="bg-amber"],
+html:not(.dark) button.bg-amber-600,
+html:not(.dark) .btn-payroll-release {
   color: #ffffff !important;
 }
 
@@ -900,25 +935,48 @@ button[class*="to-teal"] *,
 button.bg-teal-600 *,
 button.bg-teal-700 *,
 button.bg-teal-800 *,
-/* html.light button[class*="bg-teal"] *, */
+button[class*="bg-emerald"] *,
+button.bg-emerald-600 *,
+button.bg-emerald-700 *,
+button.bg-emerald-800 *,
+button[class*="bg-amber"] *,
+button.bg-amber-600 *,
+.btn-payroll-release *,
+.btn-payroll-release span,
+html.light button[class*="bg-teal"] *,
 html.light button[class*="from-teal"] *,
 html.light button.bg-teal-600 *,
 html.light button.bg-teal-700 *,
-/* html:not(.dark) button[class*="bg-teal"] *, */
+html.light button[class*="bg-emerald"] *,
+html.light button.bg-emerald-600 *,
+html.light button.bg-emerald-700 *,
+html.light button[class*="bg-amber"] *,
+html.light button.bg-amber-600 *,
+html.light .btn-payroll-release *,
+html.light .btn-payroll-release span,
+html:not(.dark) button[class*="bg-teal"] *,
 html:not(.dark) button[class*="from-teal"] *,
 html:not(.dark) button.bg-teal-600 *,
-html:not(.dark) button.bg-teal-700 * {
+html:not(.dark) button.bg-teal-700 *,
+html:not(.dark) button[class*="bg-emerald"] *,
+html:not(.dark) button.bg-emerald-600 *,
+html:not(.dark) button.bg-emerald-700 *,
+html:not(.dark) button[class*="bg-amber"] *,
+html:not(.dark) button.bg-amber-600 *,
+html:not(.dark) .btn-payroll-release *,
+html:not(.dark) .btn-payroll-release span {
   color: #ffffff !important;
 }
 
+/* LIGHT MODE: TABLE DATA & CELL TEXT FOR REGULAR DATA CELLS (EXCLUDING ACTION BUTTONS) */
+html.light table td:not(:has(button)),
+html:not(.dark) table td:not(:has(button)) {
+  color: #0f172a !important;
+  font-weight: 400 !important;
+}
 
-/* LIGHT MODE: TABLE DATA & CELL TEXT MUST ALWAYS BE BLACK / DARK SLATE FOR MAXIMUM READABILITY */
-html.light table td,
-html.light table td *,
-html.light table td span,
-html:not(.dark) table td,
-html:not(.dark) table td *,
-html:not(.dark) table td span {
+html.light table td:not(:has(button)) > *:not(button),
+html:not(.dark) table td:not(:has(button)) > *:not(button) {
   color: #0f172a !important;
   font-weight: 400 !important;
 }
@@ -2675,5 +2733,118 @@ html.dark .badge-teal-white span {
   background-color: rgba(255, 255, 255, 0.25) !important;
 }
 
+/* ================================================================
+   FORCE SOLID BLACK TEXT ON CONTRACT PREVIEW DOCUMENT TABS
+   ================================================================ */
+.doc-tab-unselected,
+.doc-tab-unselected *,
+.doc-tab-unselected span,
+html.light .doc-tab-unselected,
+html.light .doc-tab-unselected *,
+html.light .doc-tab-unselected span,
+html:not(.dark) .doc-tab-unselected,
+html:not(.dark) .doc-tab-unselected *,
+html:not(.dark) .doc-tab-unselected span,
+html.dark .doc-tab-unselected,
+html.dark .doc-tab-unselected *,
+html.dark .doc-tab-unselected span {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
 
+.doc-tab-unselected,
+html.light .doc-tab-unselected,
+html:not(.dark) .doc-tab-unselected,
+html.dark .doc-tab-unselected {
+  background-color: #ffffff !important;
+  border: 1px solid #94a3b8 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+}
 
+.doc-tab-unselected:hover,
+html.light .doc-tab-unselected:hover,
+html:not(.dark) .doc-tab-unselected:hover,
+html.dark .doc-tab-unselected:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #475569 !important;
+}
+
+.doc-tab-selected,
+.doc-tab-selected *,
+.doc-tab-selected span,
+html.light .doc-tab-selected,
+html.light .doc-tab-selected *,
+html.light .doc-tab-selected span,
+html:not(.dark) .doc-tab-selected,
+html:not(.dark) .doc-tab-selected *,
+html:not(.dark) .doc-tab-selected span,
+html.dark .doc-tab-selected,
+html.dark .doc-tab-selected *,
+html.dark .doc-tab-selected span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.doc-tab-selected,
+html.light .doc-tab-selected,
+html:not(.dark) .doc-tab-selected,
+html.dark .doc-tab-selected {
+  background-color: #0d9488 !important;
+  border: 1px solid #0f766e !important;
+  box-shadow: 0 2px 4px rgba(13, 148, 136, 0.25) !important;
+}
+
+.doc-tab-label,
+.doc-tab-label *,
+html.light .doc-tab-label,
+html.light .doc-tab-label *,
+html:not(.dark) .doc-tab-label,
+html:not(.dark) .doc-tab-label *,
+html.dark .doc-tab-label,
+html.dark .doc-tab-label * {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+/* ================================================================
+   PAYROLL ACTION BUTTONS: RELEASE & TRACE BUTTONS MUST ALWAYS BE WHITE
+   ================================================================ */
+.btn-payroll-release,
+.btn-payroll-release *,
+.btn-payroll-release span,
+html.light .btn-payroll-release,
+html.light .btn-payroll-release *,
+html.light .btn-payroll-release span,
+html:not(.dark) .btn-payroll-release,
+html:not(.dark) .btn-payroll-release *,
+html:not(.dark) .btn-payroll-release span,
+html.dark .btn-payroll-release,
+html.dark .btn-payroll-release *,
+html.dark .btn-payroll-release span,
+button.btn-payroll-release,
+button.btn-payroll-release *,
+button.btn-payroll-release span,
+table td button.btn-payroll-release,
+table td button.btn-payroll-release *,
+table td button.btn-payroll-release span,
+table td button[class*="bg-emerald"],
+table td button[class*="bg-emerald"] *,
+table td button[class*="bg-emerald"] span,
+table td button[class*="bg-teal"],
+table td button[class*="bg-teal"] *,
+table td button[class*="bg-teal"] span,
+html.light table td button[class*="bg-emerald"],
+html.light table td button[class*="bg-emerald"] *,
+html.light table td button[class*="bg-emerald"] span,
+html:not(.dark) table td button[class*="bg-emerald"],
+html:not(.dark) table td button[class*="bg-emerald"] *,
+html:not(.dark) table td button[class*="bg-emerald"] span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+html.light table td button[disabled].btn-payroll-release,
+html.light table td button[disabled].btn-payroll-release *,
+html:not(.dark) table td button[disabled].btn-payroll-release,
+html:not(.dark) table td button[disabled].btn-payroll-release * {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+}

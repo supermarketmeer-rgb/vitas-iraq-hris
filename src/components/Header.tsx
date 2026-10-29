@@ -413,36 +413,6 @@ export const Header: React.FC = () => {
           </button>
         )}
 
-        {/* Theme Toggle Button */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className={`p-2 rounded-xl transition-all relative border flex items-center justify-center cursor-pointer shadow-xs active:scale-95 ${
-            isDark 
-              ? 'bg-[#06080d] text-amber-300 border-teal-500/40 hover:text-amber-200 hover:border-amber-400' 
-              : 'bg-white/10 text-amber-200 border-white/20 hover:bg-white/20 hover:border-amber-300'
-          }`}
-          title={theme === 'dark' ? t('الوضع الفاتح', 'Light Mode') : t('الوضع الداكن', 'Dark Mode')}
-        >
-          <span className="material-symbols-outlined text-xl">
-            {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-          </span>
-        </button>
-
-        {/* Language Toggle Button */}
-        <button
-          type="button"
-          onClick={toggleLanguage}
-          className={`p-2 px-2.5 rounded-xl transition-all relative border flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95 text-xs font-bold ${
-            isDark 
-              ? 'bg-[#06080d] text-teal-400 border-teal-500/40 hover:text-teal-300 hover:border-teal-400' 
-              : 'bg-white/10 text-teal-200 border-white/20 hover:bg-white/20 hover:border-teal-300'
-          }`}
-          title={language === 'ar' ? 'Switch to English' : 'التحويل إلى العربية'}
-        >
-          <span className="material-symbols-outlined text-lg">language</span>
-          <span className="font-mono text-xs uppercase">{language === 'ar' ? 'EN' : 'عربي'}</span>
-        </button>
 
         {/* Notifications Button */}
         <div className="relative">

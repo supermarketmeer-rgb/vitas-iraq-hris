@@ -1217,7 +1217,11 @@ const formatEmployeeRow = (row) => {
     contractEndDate: formatDateStr(row.contract_end_date),
     probationEndDate: formatDateStr(row.probation_end_date),
     exitDate: formatDateStr(row.exit_date),
-    termOfContract: row.term_of_contract || '',
+    termOfContract: (row.term_of_contract === 'عقد موظف جديد' || row.term_of_contract === 'عقد دائمي')
+      ? row.term_of_contract
+      : ((formatDateStr(row.original_start_date) && formatDateStr(row.contract_start_date) && formatDateStr(row.original_start_date) === formatDateStr(row.contract_start_date))
+          ? 'عقد موظف جديد'
+          : 'عقد دائمي'),
     grade: row.grade || '',
     trainingsRecord: row.trainings_record || '',
     warningsRecord: row.warnings_record || '',

@@ -1662,7 +1662,7 @@ export const SettingsSecurityView: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${language === 'ar' ? 'text-sm' : 'text-xs'} font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${language === 'ar' ? 'text-sm' : 'text-xs'} font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === tab.id
                 ? theme === 'dark'
                   ? 'bg-teal-500/20 border-teal-500/30 text-teal-400'
@@ -1673,7 +1673,7 @@ export const SettingsSecurityView: React.FC = () => {
                   : 'bg-rose-100 border-rose-300 text-rose-700 hover:bg-rose-200'
                 : theme === 'dark'
                   ? 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-[#e2e8f0]'
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                  : 'bg-white border-slate-300 text-slate-900 hover:bg-slate-100 hover:text-black shadow-2xs'
             }`}
           >
             <span className="material-symbols-outlined text-base">
@@ -2477,22 +2477,22 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
           <span>{clausesToast}</span>
         </div>
       )}
-      <h3 className="text-sm font-bold text-[#e2e8f0] flex items-center justify-between pb-3 border-b border-white/10">
+      <h3 className="text-sm font-bold text-slate-900 dark:text-[#e2e8f0] flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-teal-400">description</span>
-          <span className="font-bold text-teal-400">
+          <span className="material-symbols-outlined text-teal-700 dark:text-teal-400">description</span>
+          <span className="font-bold text-teal-800 dark:text-teal-400">
             {language === 'ar' ? 'إدارة القوالب (عقود، تقييمات، وغيرها)' : 'Templates Manager'}
           </span>
         </div>
         {/* Contract Type Selector + Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-slate-400">
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-400">
             {language === 'ar' ? 'نوع القالب:' : 'Template Type:'}
           </span>
           <select
             value={selectedContractType || ''}
             onChange={(e) => setSelectedContractType(e.target.value ? parseInt(e.target.value) : null)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-[#e2e8f0] focus:outline-none cursor-pointer"
+            className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-[#e2e8f0] focus:outline-none cursor-pointer"
           >
             <option value="">{language === 'ar' ? '-- اختر --' : '-- Select --'}</option>
             {contractTypes.map((type) => (
@@ -2506,7 +2506,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
           <button
             type="button"
             onClick={onAddContractType}
-            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-500 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-md hover:shadow-teal-500/30 hover:scale-105"
+            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-500 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-md hover:shadow-teal-500/30 hover:scale-105 cursor-pointer"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             <span>{language === 'ar' ? 'إضافة نوع العقد' : 'Add Contract Type'}</span>
@@ -2515,14 +2515,14 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
       </h3>
 
       {/* Contract Types Table */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-white/[0.02]">
+      <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-xs">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-teal-400 text-lg">description</span>
-            <span className="text-xs font-bold text-[#e2e8f0] uppercase tracking-wider">
+            <span className="material-symbols-outlined text-teal-700 dark:text-teal-400 text-lg">description</span>
+            <span className="text-xs font-bold text-slate-900 dark:text-[#e2e8f0] uppercase tracking-wider">
               {language === 'ar' ? 'جدول أنواع العقود المضافة' : 'Added Contract Types'}
             </span>
-            <span className="bg-teal-500/20 border border-teal-500/30 text-teal-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+            <span className="bg-teal-500/20 border border-teal-500/30 text-teal-800 dark:text-teal-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
               {contractTypes.length} {language === 'ar' ? 'عقد' : 'types'}
             </span>
           </div>
@@ -2530,7 +2530,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
           <button
             type="button"
             onClick={onAddContractType}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-md hover:shadow-teal-500/30"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-md hover:shadow-teal-500/30 cursor-pointer"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             <span>{language === 'ar' ? 'إضافة نوع العقد' : 'Add Contract Type'}</span>
@@ -2540,7 +2540,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
         {contractTypes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500 gap-3">
             <span className="material-symbols-outlined text-4xl text-slate-600">description</span>
-            <p className="text-xs">
+            <p className="text-xs font-medium">
               {language === 'ar' ? 'لا توجد أنواع عقود مضافة بعد. اضغط على زر "إضافة نوع العقد" للبدء.' : 'No contract types added yet. Click "Add Contract Type" to start.'}
             </p>
           </div>
@@ -2548,7 +2548,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-start border-collapse">
               <thead>
-                <tr className="border-b border-white/10 bg-white/[0.02] text-[11px] font-bold text-slate-400">
+                <tr className="border-b border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.02] text-[11px] font-bold text-slate-700 dark:text-slate-400">
                   <th className="py-3 px-4 text-center w-12">#</th>
                   <th className="py-3 px-4 text-start">{language === 'ar' ? 'نوع العقد (عربي)' : 'Contract Type (Arabic)'}</th>
                   <th className="py-3 px-4 text-start">{language === 'ar' ? 'اسم العقد (إنجليزي)' : 'Contract Type (English)'}</th>
@@ -2558,39 +2558,39 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
                   <th className="py-3 px-4 text-center w-28">{language === 'ar' ? 'الإجراءات' : 'Actions'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-xs">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-xs">
                 {contractTypes.map((type, index) => {
                   const isSelected = selectedContractType === (typeof type.id === 'number' ? type.id : parseInt(type.id as string));
                   return (
                     <tr
                       key={type.id}
-                      className={`transition-colors hover:bg-white/[0.04] ${
-                        isSelected ? 'bg-teal-500/10 border-l-4 border-l-teal-500 rtl:border-l-0 rtl:border-r-4 rtl:border-r-teal-500' : ''
+                      className={`transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04] ${
+                        isSelected ? 'bg-teal-50 dark:bg-teal-500/10 border-l-4 border-l-teal-600 dark:border-l-teal-500 rtl:border-l-0 rtl:border-r-4 rtl:border-r-teal-600 dark:rtl:border-r-teal-500' : ''
                       }`}
                     >
-                      <td className="py-3 px-4 text-center text-slate-500 font-mono text-[11px]">
+                      <td className="py-3 px-4 text-center text-slate-600 dark:text-slate-500 font-mono text-[11px]">
                         {index + 1}
                       </td>
-                      <td className="py-3 px-4 font-semibold text-[#e2e8f0]">
+                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-[#e2e8f0]">
                         <span 
-                          className="hover:text-teal-400 cursor-pointer" 
+                          className="hover:text-teal-700 dark:hover:text-teal-400 cursor-pointer" 
                           onClick={() => setSelectedContractType(typeof type.id === 'number' ? type.id : parseInt(type.id as string))}
                           title={language === 'ar' ? 'اضغط لتحديد هذا العقد وتحرير بنوده' : 'Click to select this contract'}
                         >
                           {type.name_ar || type.name || '—'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 font-medium text-slate-300">
+                      <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
                         {type.name_en || '—'}
                       </td>
-                      <td className="py-3 px-4 text-center font-mono text-slate-400">
+                      <td className="py-3 px-4 text-center font-mono text-slate-600 dark:text-slate-400">
                         {type.sort_order ?? 0}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           type.status === 'Active'
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                            : 'bg-slate-500/15 text-slate-400 border border-slate-500/30'
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
+                            : 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border border-slate-500/30'
                         }`}>
                           {type.status === 'Active'
                             ? (language === 'ar' ? 'نشط' : 'Active')
@@ -2599,7 +2599,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
                       </td>
                       <td className="py-3 px-4 text-center">
                         {isSelected ? (
-                          <span className="inline-flex items-center gap-1 bg-teal-500/20 text-teal-300 border border-teal-500/40 text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                          <span className="inline-flex items-center gap-1 bg-teal-500/20 text-teal-800 dark:text-teal-300 border border-teal-500/40 text-[10px] font-bold px-2.5 py-1 rounded-lg">
                             <span className="material-symbols-outlined text-xs">check</span>
                             <span>{language === 'ar' ? 'مُحدد حالياً' : 'Selected'}</span>
                           </span>
@@ -2609,7 +2609,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
                             onClick={() => {
                               setSelectedContractType(typeof type.id === 'number' ? type.id : parseInt(type.id as string));
                             }}
-                            className="inline-flex items-center gap-1 bg-white/5 hover:bg-teal-500/20 text-slate-300 hover:text-teal-300 border border-white/10 hover:border-teal-500/30 text-[10px] font-semibold px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                            className="inline-flex items-center gap-1 bg-slate-100 dark:bg-white/5 hover:bg-teal-50 dark:hover:bg-teal-500/20 text-slate-800 dark:text-slate-300 hover:text-teal-700 dark:hover:text-teal-300 border border-slate-300 dark:border-white/10 hover:border-teal-500/30 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                             title={language === 'ar' ? 'اختيار هذا العقد لعرض وصياغة بنوده' : 'Select this contract to edit clauses'}
                           >
                             <span className="material-symbols-outlined text-xs">edit_note</span>
@@ -2649,55 +2649,111 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
       </div>
 
       {/* Dynamic Placeholders Guide */}
-      <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-2">
-        <h4 className="text-xs font-bold text-[#e2e8f0]">
+      <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 rounded-xl space-y-2">
+        <h4 className="text-xs font-bold text-slate-900 dark:text-[#e2e8f0]">
           {language === 'ar' ? 'دليل المتغيرات التلقائية المتاحة للاستخدام في نصوص العقود' : 'Dynamic Placeholders Guide'}
         </h4>
-        <p className="text-sm text-slate-400 leading-relaxed">
+        <p className="text-sm text-slate-700 dark:text-slate-400 leading-relaxed font-medium">
           {language === 'ar' 
             ? 'أثناء صياغة البنود، يمكنك كتابة المتغيرات التالية داخل النص ليقوم النظام باستبدالها تلقائياً ببيانات الموظف الفعلية:'
             : 'You can insert the following placeholders in your contract text. They will be automatically replaced with the actual employee data when generating the document:'}
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 text-xs text-teal-400">
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{employee_name_ar}'}</code> {language === 'ar' ? 'الاسم بالعربي' : 'Name (AR)'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{employee_name_en}'}</code> {language === 'ar' ? 'الاسم بالإنجليزي' : 'Name (EN)'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{employee_id}'}</code> {language === 'ar' ? 'ID الموظف' : 'Employee ID'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{badge_no}'}</code> {language === 'ar' ? 'الرقم الوظيفي' : 'Badge No'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{position_ar}'}</code> {language === 'ar' ? 'المسمى الوظيفي' : 'Position'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{location_ar}'}</code> {language === 'ar' ? 'موقع العمل/الفرع' : 'Location'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{basic_salary}'}</code> {language === 'ar' ? 'الراتب الأساسي' : 'Basic Salary'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{written_basic_salary_ar}'}</code> {language === 'ar' ? 'الراتب كتابةً' : 'Salary (Written)'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{transportation_fixed}'}</code> {language === 'ar' ? 'مخصصات النقل' : 'Transportation'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{contract_start_date}'}</code> {language === 'ar' ? 'بدء العقد' : 'Contract Start'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{contract_end_date}'}</code> {language === 'ar' ? 'انتهاء العقد' : 'Contract End'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{term_of_contract}'}</code> {language === 'ar' ? 'مدة العقد' : 'Contract Term'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{grade}'}</code> {language === 'ar' ? 'الدرجة الوظيفية' : 'Grade'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{national_id_no}'}</code> {language === 'ar' ? 'رقم الهوية' : 'National ID'}</div>
-          <div><code className="bg-white/5 border border-white/10 px-1 py-0.5 rounded">{'{institution_name}'}</code> {language === 'ar' ? 'اسم المؤسسة' : 'Institution Name'}</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 text-xs text-teal-800 dark:text-teal-400 font-bold">
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{employee_name_ar}'}</code> {language === 'ar' ? 'الاسم بالعربي' : 'Name (AR)'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{employee_name_en}'}</code> {language === 'ar' ? 'الاسم بالإنجليزي' : 'Name (EN)'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{employee_id}'}</code> {language === 'ar' ? 'ID الموظف' : 'Employee ID'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{badge_no}'}</code> {language === 'ar' ? 'الرقم الوظيفي' : 'Badge No'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{position_ar}'}</code> {language === 'ar' ? 'المسمى الوظيفي' : 'Position'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{location_ar}'}</code> {language === 'ar' ? 'موقع العمل/الفرع' : 'Location'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{basic_salary}'}</code> {language === 'ar' ? 'الراتب الأساسي' : 'Basic Salary'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{written_basic_salary_ar}'}</code> {language === 'ar' ? 'الراتب كتابةً' : 'Salary (Written)'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{transportation_fixed}'}</code> {language === 'ar' ? 'مخصصات النقل' : 'Transportation'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{contract_start_date}'}</code> {language === 'ar' ? 'بدء العقد' : 'Contract Start'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{contract_end_date}'}</code> {language === 'ar' ? 'انتهاء العقد' : 'Contract End'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{term_of_contract}'}</code> {language === 'ar' ? 'مدة العقد' : 'Contract Term'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{grade}'}</code> {language === 'ar' ? 'الدرجة الوظيفية' : 'Grade'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{national_id_no}'}</code> {language === 'ar' ? 'رقم الهوية' : 'National ID'}</div>
+          <div><code className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 px-1 py-0.5 rounded text-slate-900 dark:text-teal-300">{'{institution_name}'}</code> {language === 'ar' ? 'اسم المؤسسة' : 'Institution Name'}</div>
+        </div>
+      </div>
+
+      {/* Contract Annexes & Mandatory Undertakings Section */}
+      <div className="bg-teal-50/70 dark:bg-gradient-to-r dark:from-teal-500/10 dark:via-blue-500/10 dark:to-transparent border border-teal-300 dark:border-teal-500/30 p-4 rounded-xl space-y-3 shadow-2xs">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-teal-700 dark:text-teal-400">verified_user</span>
+            <h4 className="text-xs font-bold text-teal-900 dark:text-teal-300">
+              {language === 'ar' 
+                ? 'المستندات والتعهدات الإلزامية الملحقة بالعقد (8 مستندات رسمية)' 
+                : 'Mandatory Contract Annexes & Undertakings (8 Official Documents)'}
+            </h4>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-600 text-white dark:bg-teal-500/20 dark:text-teal-300 border border-teal-600 dark:border-teal-500/40">
+            {language === 'ar' ? 'مفعلة تلقائياً بعد آخر صفحة من العقد' : 'Appended after last page'}
+          </span>
+        </div>
+        <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+          {language === 'ar'
+            ? 'تضاف المستندات الرسمية التالية تلقائياً بعد الصفحة الرابعة (آخر صفحة من العقد) لكلا العقدين (عقد موظف جديد وعقد دائمي) بنفس خط وهوية العقود الرسمية وتعبأ تلقائياً ببيانات الموظف:'
+            : 'The following official documents are automatically appended after the 4th page (last page of the contract) for both contract types using the official contract font:'}
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+          <div className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 p-2.5 rounded-lg flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-[10px]">1</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">التعهد 1 (ضوابط سلوك العمل)</span>
+          </div>
+          <div className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 p-2.5 rounded-lg flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-[10px]">2</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">التعهد 2 (سرية المعلومات)</span>
+          </div>
+          <div className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 p-2.5 rounded-lg flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-[10px]">3</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">التعهد 3 (السياسات والإجراءات)</span>
+          </div>
+          <div className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 p-2.5 rounded-lg flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-[10px]">4</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">تعهد تفرغ وظيفي</span>
+          </div>
+          <div className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 p-2.5 rounded-lg flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-[10px]">5</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">التعهد 5 (مسؤول قروض 5-ب)</span>
+          </div>
+          <div className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 p-2.5 rounded-lg flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-[10px]">6</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">الاستمارة الطبية</span>
+          </div>
+          <div className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 p-2.5 rounded-lg flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-[10px]">7</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">المستفيدين من التأمين</span>
+          </div>
+          <div className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 p-2.5 rounded-lg flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-[10px]">8</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">ضريبة الدخل (Income Tax)</span>
+          </div>
         </div>
       </div>
 
       {/* Contract Clauses */}
       {selectedContractType && (
         <div className="space-y-4 pt-2">
-          <div className="flex items-center justify-between p-3.5 bg-teal-500/10 border border-teal-500/30 rounded-xl">
+          <div className="flex items-center justify-between p-3.5 bg-teal-50 dark:bg-teal-500/10 border border-teal-300 dark:border-teal-500/30 rounded-xl">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-400">gavel</span>
-              <span className="text-xs font-bold text-teal-300">
+              <span className="material-symbols-outlined text-teal-700 dark:text-teal-400">gavel</span>
+              <span className="text-xs font-bold text-teal-900 dark:text-teal-300">
                 {language === 'ar' ? 'بنود العقد المُحدد:' : 'Selected Contract Clauses:'}{' '}
-                <span className="text-white font-semibold underline decoration-teal-400/50">
+                <span className="text-slate-900 dark:text-white font-bold underline decoration-teal-500/50">
                   {contractTypes.find(c => c.id === selectedContractType)?.name_ar || contractTypes.find(c => c.id === selectedContractType)?.name_en || ''}
                 </span>
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-teal-400 font-mono font-bold bg-teal-500/20 px-2.5 py-0.5 rounded-full">
+              <span className="text-[11px] text-teal-800 dark:text-teal-400 font-mono font-bold bg-teal-500/20 px-2.5 py-0.5 rounded-full">
                 {contractClauses.length} {language === 'ar' ? 'بند' : 'clauses'}
               </span>
               <button
                 type="button"
                 onClick={() => setSelectedContractType(null)}
-                className="text-slate-400 hover:text-slate-200 text-xs p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 text-xs p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
                 title={language === 'ar' ? 'إغلاق المحرر' : 'Close Editor'}
               >
                 <span className="material-symbols-outlined text-sm">close</span>
@@ -2706,30 +2762,30 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
           </div>
           <div id="clausesContainer" className="space-y-4">
             {contractClauses.length === 0 ? (
-              <div className="text-xs text-slate-400 text-center py-6 border border-dashed border-white/20 rounded-xl">
+              <div className="text-xs text-slate-500 text-center py-6 border border-dashed border-slate-300 dark:border-white/20 rounded-xl font-medium">
                 {language === 'ar' 
                   ? 'لا توجد بنود حالياً لهذا النوع من العقود. اضغط على زر "إضافة بند جديد" للبدء بالصياغة.'
                   : 'No clauses currently exist for this contract type. Click "Add Clause" to start drafting.'}
               </div>
             ) : (
               contractClauses.map((clause) => (
-                <div key={clause.id} className="bg-white/5 border border-white/10 p-5 rounded-xl space-y-4 relative">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <div key={clause.id} className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 relative shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-teal-400">
+                      <span className="text-xs font-bold text-teal-700 dark:text-teal-400">
                         {language === 'ar' ? 'رقم البند' : 'Clause Number'}
                       </span>
                       <input
                         type="number"
                         value={isNaN(clause.clause_number) ? '' : clause.clause_number}
                         onChange={(e) => updateClause(clause.id, 'clause_number', parseInt(e.target.value) || 0)}
-                        className="w-16 bg-white/5 border border-white/10 rounded-xl px-2 py-1 text-xs text-center text-[#e2e8f0] focus:outline-none focus:border-teal-500"
+                        className="w-16 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl px-2 py-1 text-xs text-center text-slate-900 dark:text-[#e2e8f0] font-bold focus:outline-none focus:border-teal-500"
                         required
                       />
                     </div>
                     <button
                       onClick={() => removeClause(clause.id)}
-                      className="text-rose-400 hover:text-rose-500 text-xs flex items-center gap-1"
+                      className="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-500 text-xs font-bold flex items-center gap-1 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-sm">delete</span>
                       <span>{language === 'ar' ? 'حذف البند / Delete' : 'Delete Clause'}</span>
@@ -2737,26 +2793,26 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-400 mb-1">
                         {language === 'ar' ? 'عنوان البند (مثال: البند الأول: أطراف العقد)' : 'Clause Title (e.g., Clause 1: Contract Parties)'}
                       </label>
                       <input
                         type="text"
                         value={clause.title_ar || ''}
                         onChange={(e) => updateClause(clause.id, 'title_ar', e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-[#e2e8f0] focus:outline-none focus:border-teal-500"
+                        className="w-full bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-[#e2e8f0] font-medium focus:outline-none focus:border-teal-500"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-400 mb-1">
                         {language === 'ar' ? 'نص البند (باللغة العربية)' : 'Clause Text (in Arabic)'}
                       </label>
                       <textarea
                         value={clause.text_ar || ''}
                         onChange={(e) => updateClause(clause.id, 'text_ar', e.target.value)}
                         rows={4}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-[#e2e8f0] focus:outline-none focus:border-teal-500"
+                        className="w-full bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-[#e2e8f0] font-medium focus:outline-none focus:border-teal-500 leading-relaxed"
                         required
                       />
                     </div>

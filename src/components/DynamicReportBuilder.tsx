@@ -851,7 +851,7 @@ export const DynamicReportBuilder: React.FC = () => {
       const cells = selectedMetas.map(meta => {
         const val = (row as any)[meta.key];
         const displayVal = meta.type === 'currency' 
-          ? `${Number(val || 0).toLocaleString(isEn ? 'en-US' : 'ar-IQ')} ${isEn ? 'IQD' : 'د.ع'}`
+          ? `${Number(val || 0).toLocaleString('en-US')} ${isEn ? 'IQD' : 'د.ع'}`
           : (val ?? '-');
         return `<td style="padding: 5px 9px; border: 1px solid #e2e8f0; white-space: nowrap; text-align: ${isEn ? 'left' : 'right'}; font-size: 10px;">${displayVal}</td>`;
       }).join('');
@@ -859,7 +859,7 @@ export const DynamicReportBuilder: React.FC = () => {
       return `<tr style="background: ${bg};"><td style="padding: 5px 8px; border: 1px solid #e2e8f0; text-align: center; font-family: monospace; font-size: 10px; color: #64748b;">${idx + 1}</td>${cells}</tr>`;
     }).join('');
 
-    const dateStr = new Date().toLocaleDateString(isEn ? 'en-US' : 'ar-IQ');
+    const dateStr = new Date().toLocaleDateString('en-US');
     const docRef = `VR-REP-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const htmlContent = `<!DOCTYPE html>
@@ -1604,7 +1604,7 @@ export const DynamicReportBuilder: React.FC = () => {
                         <td key={fKey} className="p-2.5 border-l border-slate-200 whitespace-nowrap text-slate-900 font-bold">
                           {meta?.type === 'currency' ? (
                             <span className="font-mono font-bold text-teal-600 dark:text-teal-400">
-                              {Number(val || 0).toLocaleString(language === 'en' ? 'en-US' : 'ar-IQ')} {t('د.ع', 'IQD')}
+                              {Number(val || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}
                             </span>
                           ) : meta?.type === 'badge' ? (
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-white border border-teal-200 dark:border-teal-500/20">
@@ -1633,7 +1633,7 @@ export const DynamicReportBuilder: React.FC = () => {
                     if (meta?.type === 'currency') {
                       return (
                         <td key={fKey} className="p-3 border-l border-slate-300 dark:border-white/10 font-mono text-slate-900 dark:text-white">
-                          {t('مجموع:', 'Total:')} {(columnTotals[fKey] || 0).toLocaleString(language === 'en' ? 'en-US' : 'ar-IQ')} {t('د.ع', 'IQD')}
+                          {t('مجموع:', 'Total:')} {(columnTotals[fKey] || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}
                         </td>
                       );
                     }
@@ -2065,7 +2065,7 @@ export const DynamicReportBuilder: React.FC = () => {
                         const val = (row as any)[fKey];
                         return (
                           <td key={fKey} className={`p-2 border border-slate-300 font-sans whitespace-nowrap ${language === 'en' ? 'text-left' : 'text-right'}`}>
-                            {meta?.type === 'currency' ? `${Number(val || 0).toLocaleString(language === 'en' ? 'en-US' : 'ar-IQ')} ${t('د.ع', 'IQD')}` : String(val ?? '-')}
+                            {meta?.type === 'currency' ? `${Number(val || 0).toLocaleString('en-US')} ${t('د.ع', 'IQD')}` : String(val ?? '-')}
                           </td>
                         );
                       })}

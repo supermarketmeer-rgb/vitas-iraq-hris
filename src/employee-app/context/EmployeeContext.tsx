@@ -62,10 +62,11 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
     }
   });
 
-  // Synchronize Employee App theme with document.documentElement for global CSS variant compatibility
-  React.useEffect(() => {
+  const applyThemeToDOM = (nextTheme: 'dark' | 'light') => {
+    if (typeof document === 'undefined') return;
     const root = document.documentElement;
-    if (theme === 'dark') {
+    root.classList.add('disable-transitions');
+    if (nextTheme === 'dark') {
       root.classList.add('dark');
       root.classList.remove('light');
     } else {
@@ -73,8 +74,36 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
       root.classList.remove('dark');
     }
     try {
-      localStorage.setItem('employee_app_theme', theme);
+      localStorage.setItem('employee_app_theme', nextTheme);
     } catch {}
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.classList.remove('disable-transitions');
+      });
+    });
+  };
+
+  const applyLanguageToDOM = (nextLang: 'ar' | 'en') => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.classList.add('disable-transitions');
+    root.dir = nextLang === 'ar' ? 'rtl' : 'ltr';
+    root.lang = nextLang;
+    try {
+      localStorage.setItem('employee_app_lang', nextLang);
+    } catch {}
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.classList.remove('disable-transitions');
+      });
+    });
+  };
+
+  // Synchronize Employee App theme with document.documentElement
+  React.useLayoutEffect(() => {
+    applyThemeToDOM(theme);
   }, [theme]);
 
   const [language, setLanguageState] = useState<'ar' | 'en'>(() => {
@@ -86,12 +115,14 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
     }
   });
 
+  React.useLayoutEffect(() => {
+    applyLanguageToDOM(language);
+  }, [language]);
+
   const toggleTheme = () => {
     setTheme(prev => {
       const next = prev === 'dark' ? 'light' : 'dark';
-      try {
-        localStorage.setItem('employee_app_theme', next);
-      } catch {}
+      applyThemeToDOM(next);
       return next;
     });
   };
@@ -99,18 +130,14 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
   const toggleLanguage = () => {
     setLanguageState(prev => {
       const next = prev === 'ar' ? 'en' : 'ar';
-      try {
-        localStorage.setItem('employee_app_lang', next);
-      } catch {}
+      applyLanguageToDOM(next);
       return next;
     });
   };
 
   const setLanguage = (lang: 'ar' | 'en') => {
+    applyLanguageToDOM(lang);
     setLanguageState(lang);
-    try {
-      localStorage.setItem('employee_app_lang', lang);
-    } catch {}
   };
 
   const logout = React.useCallback(() => {
