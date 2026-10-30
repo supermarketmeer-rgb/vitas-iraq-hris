@@ -2804,6 +2804,8 @@ html.dark .doc-tab-label,
 html.dark .doc-tab-label * {
   color: #000000 !important;
   -webkit-text-fill-color: #000000 !important;
+}
+
 /* ================================================================
    PAYROLL ACTION BUTTONS: RELEASE & TRACE BUTTONS MUST ALWAYS BE WHITE
    ================================================================ */
