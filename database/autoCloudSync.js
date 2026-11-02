@@ -126,7 +126,7 @@ export function triggerRealtimeSync(localPool, tableName = null) {
     fetch(`${cloudUrl}/api/sync/notify-change`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ table: tableName })
+      body: JSON.stringify({ table: tableName, origin: 'local' })
     }).catch(() => {});
   }
 
@@ -195,6 +195,10 @@ export function startCloudRealtimeListener(localPool) {
                 const event = JSON.parse(line.slice(6));
                 if (event.type === 'DATA_CHANGED') {
                   broadcastRealtimeEvent(event);
+                  if (event.origin === 'local') {
+                    // Suppress echo from local instance
+                    continue;
+                  }
                   if (event.table && event.table !== 'all') {
                     if (sseDebounceTimer) clearTimeout(sseDebounceTimer);
                     sseDebounceTimer = setTimeout(async () => {
@@ -237,7 +241,7 @@ export function startCloudRealtimeListener(localPool) {
 }
 
 export async function startAutoCloudSync(localPool) {
-  const PERIODIC_FULL_SYNC_MS = 60 * 1000;
+  const PERIODIC_FULL_SYNC_MS = 15 * 60 * 1000;
   
   setInterval(async () => {
     if (isSyncing || isFullSyncing) return;

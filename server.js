@@ -329,10 +329,11 @@ app.get('/api/sync/events', (req, res) => {
 
 // Real-Time Notification Webhook between Servers
 app.post('/api/sync/notify-change', (req, res) => {
-  const { table } = req.body || {};
+  const { table, origin } = req.body || {};
   broadcastRealtimeEvent({
     type: 'DATA_CHANGED',
     table: table || 'all',
+    origin: origin || (isRailway ? 'cloud' : 'local'),
     timestamp: new Date().toISOString()
   });
   res.json({ success: true, notified: true });
