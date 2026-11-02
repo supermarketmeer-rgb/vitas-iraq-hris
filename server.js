@@ -789,6 +789,12 @@ const ensureSettingsSeededAndSynced = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `).catch(() => {});
 
+    // Ensure attendance table indexes exist for high-speed queries
+    await query('ALTER TABLE attendance ADD INDEX idx_att_date_check (attendance_date, check_in)').catch(() => {});
+    await query('ALTER TABLE attendance ADD INDEX idx_att_emp (employee_id)').catch(() => {});
+    await query('ALTER TABLE employees ADD INDEX idx_emp_num (employee_id)').catch(() => {});
+    await query('ALTER TABLE employees ADD INDEX idx_emp_badge (badge_no)').catch(() => {});
+
     await query(`
       CREATE TABLE IF NOT EXISTS holidays (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -3937,11 +3943,8 @@ app.get('/api/attendance', async (req, res) => {
         a.updated_at
       FROM attendance a 
       LEFT JOIN employees e ON (
-        a.employee_id = e.id 
-        OR a.employee_id = e.employee_id 
-        OR a.employee_id = e.badge_no 
-        OR (e.employee_id IS NOT NULL AND a.employee_id = CAST(e.employee_id AS CHAR))
-        OR (e.badge_no IS NOT NULL AND a.employee_id = CAST(e.badge_no AS CHAR))
+        a.employee_id = e.employee_id 
+        OR a.employee_id = e.badge_no
       )
       WHERE 1=1
     `;
@@ -3964,7 +3967,7 @@ app.get('/api/attendance', async (req, res) => {
       params.push(status);
     }
 
-    const limit = parseInt(reqLimit, 10) || 1000;
+    const limit = parseInt(reqLimit, 10) || 500;
     sql += ' ORDER BY a.attendance_date DESC, a.check_in DESC, a.employee_id ASC LIMIT ' + limit;
 
     const results = await query(sql, params);

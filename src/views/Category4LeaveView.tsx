@@ -54,6 +54,8 @@ export const Category4LeaveView: React.FC = () => {
     appUser?.id === 1 ||
     appUser?.id === '1';
 
+  const isEmployeeRole = !isSuperAdminOrHR && (currentUserRole === 'Employee' || appUser?.role === 'Employee');
+
   const scopedEmpSet = React.useMemo(() => {
     const list = Array.isArray(scopedEmployees) && scopedEmployees.length > 0 ? scopedEmployees : (appUser ? [appUser] : []);
     const ids = new Set<string>();
@@ -136,7 +138,7 @@ export const Category4LeaveView: React.FC = () => {
       const attRes = await leavesApi.getAttendanceRecords();
       if (attRes.data) {
         const filtered = isEmployeeRole ? attRes.data.filter(matchesCurrentEmployee) : attRes.data;
-        setAttendanceRecords(filtered.length > 0 ? filtered : attRes.data.slice(0, 1));
+        setAttendanceRecords(filtered);
       }
 
       const reqsRes = await leavesApi.getLeaveRequests();
@@ -166,7 +168,7 @@ export const Category4LeaveView: React.FC = () => {
       const rawRes = await leavesApi.getRawAttendanceLogs();
       if (rawRes.data) {
         const filteredRaw = isEmployeeRole ? rawRes.data.filter(matchesCurrentEmployee) : rawRes.data;
-        setRawLogs(filteredRaw.length > 0 ? filteredRaw : rawRes.data.slice(0, 2));
+        setRawLogs(filteredRaw);
       }
 
       const balRes = await leavesApi.getLeaveBalances();

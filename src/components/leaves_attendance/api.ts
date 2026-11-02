@@ -505,6 +505,7 @@ export const api = {
         if (v !== undefined && v !== null && v !== '') query.append(k, String(v));
       });
     }
+    if (!query.has('limit')) query.set('limit', '500');
     const data = await safeFetchJson(`/api/attendance?${query.toString()}`);
     const rawList = Array.isArray(data) ? data : (data && Array.isArray(data.records) ? data.records : null);
 
