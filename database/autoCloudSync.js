@@ -405,6 +405,28 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
     return null;
   };
 
+  // Helper for flexible employee matching across employee_id, badge_no, email, and full name
+  const findEmployeeMatch = (row, map) => {
+    if (!row) return null;
+    const empId = row.employee_id ? String(row.employee_id).trim().toLowerCase() : null;
+    const badge = row.badge_no ? String(row.badge_no).trim().toLowerCase() : null;
+    const eml = (row.email || row.corporate_email || row.personal_email) ? String(row.email || row.corporate_email || row.personal_email).trim().toLowerCase() : null;
+    const nAr = row.full_name_ar ? String(row.full_name_ar).trim().toLowerCase() : null;
+    const nEn = row.full_name_en ? String(row.full_name_en).trim().toLowerCase() : null;
+
+    if (empId && map.has(empId)) return map.get(empId);
+
+    for (const other of map.values()) {
+      if (empId && other.employee_id && String(other.employee_id).trim().toLowerCase() === empId) return other;
+      if (badge && other.badge_no && String(other.badge_no).trim().toLowerCase() === badge) return other;
+      const otherEml = (other.email || other.corporate_email || other.personal_email) ? String(other.email || other.corporate_email || other.personal_email).trim().toLowerCase() : null;
+      if (eml && otherEml && eml === otherEml) return other;
+      if (nAr && other.full_name_ar && String(other.full_name_ar).trim().toLowerCase() === nAr) return other;
+      if (nEn && other.full_name_en && String(other.full_name_en).trim().toLowerCase() === nEn) return other;
+    }
+    return null;
+  };
+
   // 2. Process Deletions from pre-fetched deletions map
   const allKnownDeletions = new Set();
   if (!isSystemTable && !isImmutableLog) {
@@ -488,7 +510,9 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
     if (allKnownDeletions.has(key) || (lRow.id && allKnownDeletions.has(String(lRow.id).toLowerCase()))) {
       continue;
     }
-    const cRow = table === 'users' ? findUserMatch(lRow, cloudMap) : cloudMap.get(key);
+    const cRow = table === 'users' 
+      ? findUserMatch(lRow, cloudMap) 
+      : (table === 'employees' ? findEmployeeMatch(lRow, cloudMap) : cloudMap.get(key));
     
     if (!cRow) {
       rowsToInsertOnCloud.push(lRow);
@@ -531,6 +555,12 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
           const vals = [...updateCols.map(k => sanitizeVal(lRow[k])), cRow.id, cRow.username, cRow.employee_id];
           await cloudPool.query(sql, vals).catch(() => {});
           pushed++;
+        } else if (table === 'employees') {
+          const updateCols = commonCols.filter(k => k !== 'id');
+          const sql = `UPDATE employees SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE id = ? OR employee_id = ? OR badge_no = ?`;
+          const vals = [...updateCols.map(k => sanitizeVal(lRow[k])), cRow.id, cRow.employee_id, cRow.badge_no];
+          await cloudPool.query(sql, vals).catch(() => {});
+          pushed++;
         } else {
           const updateCols = commonCols.filter(k => k !== syncKey && k !== 'id');
           if (updateCols.length > 0) {
@@ -545,6 +575,12 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
           const updateCols = commonCols.filter(k => k !== 'id');
           const sql = `UPDATE users SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE id = ? OR username = ? OR employee_id = ?`;
           const vals = [...updateCols.map(k => sanitizeVal(cRow[k])), lRow.id, lRow.username, lRow.employee_id];
+          await queryLocal(sql, vals).catch(() => {});
+          pulled++;
+        } else if (table === 'employees') {
+          const updateCols = commonCols.filter(k => k !== 'id');
+          const sql = `UPDATE employees SET ${updateCols.map(k => `\`${k}\` = ?`).join(', ')} WHERE id = ? OR employee_id = ? OR badge_no = ?`;
+          const vals = [...updateCols.map(k => sanitizeVal(cRow[k])), lRow.id, lRow.employee_id, lRow.badge_no];
           await queryLocal(sql, vals).catch(() => {});
           pulled++;
         } else {
@@ -580,7 +616,9 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
     if (allKnownDeletions.has(key) || (cRow.id && allKnownDeletions.has(String(cRow.id).toLowerCase()))) {
       continue;
     }
-    const matchedLRow = table === 'users' ? findUserMatch(cRow, localMap) : localMap.get(key);
+    const matchedLRow = table === 'users' 
+      ? findUserMatch(cRow, localMap) 
+      : (table === 'employees' ? findEmployeeMatch(cRow, localMap) : localMap.get(key));
     if (!matchedLRow) {
       rowsToInsertOnLocal.push(cRow);
     }
