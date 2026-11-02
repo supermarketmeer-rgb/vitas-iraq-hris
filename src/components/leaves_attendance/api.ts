@@ -506,7 +506,68 @@ export const api = {
       });
     }
     const data = await safeFetchJson(`/api/attendance?${query.toString()}`);
-    if (data && Array.isArray(data.records)) return data;
+    const rawList = Array.isArray(data) ? data : (data && Array.isArray(data.records) ? data.records : null);
+
+    if (rawList && rawList.length > 0) {
+      let records: AttendanceRecord[] = rawList.map((r: any) => {
+        const dateStr = r.date || (r.attendance_date ? String(r.attendance_date).slice(0, 10) : '');
+        const empNum = r.emp_number || r.employee_number || String(r.employee_id || '');
+        const empNameAr = r.full_name_ar || r.employee_name_ar || `موظف ${empNum}`;
+        const empNameEn = r.full_name_en || r.employee_name_en || `Employee ${empNum}`;
+        const checkIn = r.first_punch || r.check_in || null;
+        const checkOut = r.last_punch || r.check_out || null;
+        const workedMins = r.worked_minutes !== undefined ? r.worked_minutes : (r.work_hours ? Math.round(Number(r.work_hours) * 60) : 0);
+
+        return {
+          id: Number(r.id),
+          employee_id: Number(r.employee_id) || 0,
+          employee_number: empNum,
+          employee_name_ar: empNameAr,
+          employee_name_en: empNameEn,
+          department_name_ar: r.department_name_ar || r.department || 'العمليات',
+          department_name_en: r.department_name_en || r.department || 'Operations',
+          branch_name_ar: r.branch_name_ar || r.branch || 'المقر الرئيسي',
+          branch_name_en: r.branch_name_en || r.branch || 'Headquarters',
+          date: dateStr,
+          scheduled_start: r.scheduled_start || '08:00',
+          scheduled_end: r.scheduled_end || '16:00',
+          first_punch: checkIn,
+          last_punch: checkOut,
+          punches: Array.isArray(r.punches) ? r.punches : (checkIn ? [{
+            id: Number(r.id) * 10 + 1,
+            punch_time: checkIn,
+            punch_type: 'check_in',
+            source: 'biometric',
+            is_valid: true
+          }] : []),
+          worked_minutes: workedMins,
+          late_minutes: Number(r.late_minutes) || 0,
+          early_leave_minutes: Number(r.early_leave_minutes) || 0,
+          overtime_minutes: Number(r.overtime_minutes) || 0,
+          status: (r.status as AttendanceStatus) || 'present',
+          is_locked: !!r.is_locked,
+          notes: r.notes || ''
+        };
+      });
+
+      if (params?.status) {
+        records = records.filter((r) => r.status === params.status);
+      }
+      if (params?.late_only) {
+        records = records.filter((r) => r.late_minutes > 0 || r.status === 'late');
+      }
+      if (params?.early_only) {
+        records = records.filter((r) => r.early_leave_minutes > 0 || r.status === 'early_leave');
+      }
+      if (params?.missing_only) {
+        records = records.filter((r) => r.status === 'missing_punch');
+      }
+      if (params?.overtime_only) {
+        records = records.filter((r) => r.overtime_minutes > 0);
+      }
+
+      return { records, total: records.length };
+    }
 
     let filtered = [...mockAttendance];
     if (params?.status) {

@@ -3906,7 +3906,26 @@ app.post('/api/calendar/holidays/:holidayId/branches/remove', async (req, res) =
 app.get('/api/attendance', async (req, res) => {
   try {
     const { employee_id, start_date, end_date, status } = req.query;
-    let sql = 'SELECT a.*, e.full_name_ar, e.full_name_en, e.employee_id as emp_number FROM attendance a LEFT JOIN employees e ON a.employee_id = e.id WHERE 1=1';
+    let sql = `
+      SELECT 
+        a.*, 
+        e.full_name_ar, 
+        e.full_name_en, 
+        e.employee_id as emp_number,
+        e.department as department_name_ar,
+        e.department as department_name_en,
+        e.branch as branch_name_ar,
+        e.branch as branch_name_en
+      FROM attendance a 
+      LEFT JOIN employees e ON (
+        a.employee_id = e.id 
+        OR a.employee_id = e.employee_id 
+        OR a.employee_id = e.badge_no 
+        OR (e.employee_id IS NOT NULL AND a.employee_id = CAST(e.employee_id AS CHAR))
+        OR (e.badge_no IS NOT NULL AND a.employee_id = CAST(e.badge_no AS CHAR))
+      )
+      WHERE 1=1
+    `;
     const params = [];
 
     if (employee_id) {
