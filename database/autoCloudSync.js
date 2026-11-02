@@ -34,7 +34,9 @@ const IMMUTABLE_LOG_TABLES = new Set([
   'sql_server_sync_log',
   'raw_attendance_logs',
   'sync_logs',
-  'tax_audit_logs'
+  'tax_audit_logs',
+  'attendance',
+  'attendance_details'
 ]);
 
 export function addSseClient(res) {
@@ -316,20 +318,35 @@ function areBusinessRowsEqual(lRow, cRow, commonCols) {
 }
 
 // ─── SMART PER-TABLE BIDIRECTIONAL SYNC ENGINE ───
-async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, preferCloud = false) {
-  const isSystemTable = ['sync_changes', 'sync_logs', 'sync_queue', 'sync_conflicts', 'sync_deleted_records'].includes(table);
-  const isImmutableLog = IMMUTABLE_LOG_TABLES.has(table);
+const tableColsCache = new Map();
 
+async function getTableCols(queryLocal, cloudPool, table) {
+  if (tableColsCache.has(table)) {
+    return tableColsCache.get(table);
+  }
   const localCols = await queryLocal(`DESCRIBE \`${table}\``).catch(() => []);
   const [cloudCols] = await cloudPool.query(`DESCRIBE \`${table}\``).catch(() => [[]]);
 
   const localColNames = (Array.isArray(localCols) ? localCols : []).map(c => c.Field);
   const cloudColNames = (Array.isArray(cloudCols) ? cloudCols : []).map(c => c.Field);
   const commonCols = localColNames.filter(k => cloudColNames.includes(k));
+  const pkColObj = (localCols || []).find(c => c.Key === 'PRI');
+
+  const cached = { localCols, cloudCols, commonCols, pkColObj };
+  if (commonCols.length > 0) {
+    tableColsCache.set(table, cached);
+  }
+  return cached;
+}
+
+async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, preferCloud = false) {
+  const isSystemTable = ['sync_changes', 'sync_logs', 'sync_queue', 'sync_conflicts', 'sync_deleted_records'].includes(table);
+  const isImmutableLog = IMMUTABLE_LOG_TABLES.has(table);
+
+  const { localCols, cloudCols, commonCols, pkColObj } = await getTableCols(queryLocal, cloudPool, table);
 
   if (commonCols.length === 0) return { pushed: 0, pulled: 0, deleted: 0 };
 
-  const pkColObj = (localCols || []).find(c => c.Key === 'PRI');
   const naturalKey = TABLE_BUSINESS_KEYS[table];
   const syncKey = (naturalKey && commonCols.includes(naturalKey)) ? naturalKey : (pkColObj ? pkColObj.Field : (commonCols.includes('id') ? 'id' : commonCols[0]));
   const hasUpdatedAt = commonCols.includes('updated_at');
@@ -749,8 +766,8 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
     let totalPulledToLocal = 0;
     let totalRowsDeleted = 0;
 
-    // Process tables in parallel chunks of 3 to avoid pool exhaustion
-    const CHUNK_SIZE = 3;
+    // Process tables in parallel chunks of 8 to achieve ultra-fast sync speed
+    const CHUNK_SIZE = 8;
     for (let i = 0; i < allTables.length; i += CHUNK_SIZE) {
       const chunk = allTables.slice(i, i + CHUNK_SIZE);
       await Promise.all(chunk.map(async (table) => {

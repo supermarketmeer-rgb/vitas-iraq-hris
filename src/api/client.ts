@@ -346,7 +346,7 @@ export const api = {
   updateAttendanceSettings: (settings: Record<string, string>) => apiClient.post('/attendance-settings/bulk', settings),
 
   // Cloud & Database Synchronization
-  syncNow: (options?: { force?: boolean }) => apiClient.post('/sync-now', { force: true, ...(options || {}) }, 45000),
+  syncNow: (options?: { force?: boolean }) => apiClient.post('/sync-now', { force: true, ...(options || {}) }, 120000),
 
   // Security Audit Logs & Governance
   getAuditLogs: (params?: { limit?: number }) => apiClient.get(`/audit-logs${params?.limit ? `?limit=${params.limit}` : ''}`),
