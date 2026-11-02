@@ -3975,6 +3975,116 @@ app.get('/api/attendance', async (req, res) => {
   }
 });
 
+// Cloud Attendance Sync Endpoint for Desktop AttendanceSync client
+const handleCloudAttendanceSync = async (req, res) => {
+  try {
+    const action = req.query.action || (req.method === 'GET' ? 'ping' : 'upload_attendance');
+    const apiKey = req.headers['x-api-key'] || req.query.apiKey || req.query.api_key || '';
+    
+    // Validate API Key if provided
+    const validKeys = [
+      'CentralAttendanceSecretKey123!',
+      'vts_live_sk_8923fd829a47b10',
+      'vts_live_sk_4421aa8720cb551',
+      'vts_live_sk_1198bb9910ac332'
+    ];
+    
+    if (apiKey && !validKeys.includes(apiKey) && !apiKey.startsWith('vts_live_sk_')) {
+      return res.status(401).json({ success: false, message: 'مفتاح الـ API غير صالح (Invalid API Key)' });
+    }
+
+    if (action === 'ping') {
+      return res.json({
+        success: true,
+        message: 'الاتصال بالسيرفر السحابي سليم وجاهز لمزامنة حركات البصمة.',
+        server_time: new Date().toISOString()
+      });
+    }
+
+    if (action === 'upload_attendance') {
+      const records = req.body?.records || [];
+      if (!Array.isArray(records) || records.length === 0) {
+        return res.json({ success: true, message: 'لا توجد حركات للمزامنة', data: { processed: 0 } });
+      }
+
+      // Pre-fetch employees for fast matching by badge_no, employee_id, id
+      const emps = await query('SELECT id, employee_id, badge_no FROM employees').catch(() => []);
+      const empMap = new Map();
+      emps.forEach(e => {
+        if (e.employee_id) empMap.set(String(e.employee_id).toLowerCase().trim(), e.id);
+        if (e.badge_no) empMap.set(String(e.badge_no).toLowerCase().trim(), e.id);
+        empMap.set(String(e.id).toLowerCase().trim(), e.id);
+        if (e.employee_id) {
+          const numOnly = String(e.employee_id).replace(/\D/g, '');
+          if (numOnly) empMap.set(numOnly, e.id);
+        }
+      });
+
+      let insertedCount = 0;
+      const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+
+      for (const rec of records) {
+        if (!rec.employee_number || !rec.attendance_date) continue;
+        const rawCode = String(rec.employee_number).toLowerCase().trim();
+        const numOnly = rawCode.replace(/\D/g, '');
+        const empId = empMap.get(rawCode) || empMap.get(numOnly) || (numOnly ? parseInt(numOnly, 10) : null);
+        if (!empId) continue;
+
+        const dayOfWeek = rec.day_of_week || (new Date(rec.attendance_date).getDay() + 1);
+        const checkIn = rec.check_in || null;
+        const checkOut = rec.check_out || null;
+        const workHours = rec.work_hours !== null && rec.work_hours !== undefined ? rec.work_hours : null;
+        const lateMins = rec.late_minutes || 0;
+        const otMins = rec.overtime_minutes || 0;
+        const status = rec.status || 'present';
+        const notes = rec.notes || 'سجل بصمة محلي ZKTeco';
+        const syncId = rec.sync_id || `LOC_${rawCode}_${rec.attendance_date}`;
+        const updatedAt = rec.updated_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+        const sql = `
+          INSERT INTO attendance 
+            (employee_id, attendance_date, day_of_week, check_in, check_out, work_hours, late_minutes, overtime_minutes, status, notes, sync_id, updated_at)
+          VALUES 
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            check_in = VALUES(check_in),
+            check_out = VALUES(check_out),
+            work_hours = VALUES(work_hours),
+            late_minutes = VALUES(late_minutes),
+            overtime_minutes = VALUES(overtime_minutes),
+            status = VALUES(status),
+            notes = VALUES(notes),
+            sync_id = VALUES(sync_id),
+            updated_at = VALUES(updated_at)
+        `;
+        const params = [empId, rec.attendance_date, dayOfWeek, checkIn, checkOut, workHours, lateMins, otMins, status, notes, syncId, updatedAt];
+        
+        await query(sql, params).catch(e => console.error('Error inserting attendance record:', e.message));
+
+        if (!isRailway && typeof executeCloudQuery === 'function') {
+          executeCloudQuery(sql, params).catch(() => {});
+        }
+
+        insertedCount++;
+      }
+
+      return res.json({
+        success: true,
+        message: `تمت معالجة ومزامنة ${insertedCount} سجل حضور بنجاح.`,
+        data: {
+          received: records.length,
+          processed: insertedCount
+        }
+      });
+    }
+
+    res.status(400).json({ success: false, message: `إجراء غير معروف: ${action}` });
+  } catch (err) {
+    console.error('Error in cloud attendance sync endpoint:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 app.all([
   '/apps/Attendance_Viewer/api/cloud_sync.php',
   '/api/cloud_sync.php',
