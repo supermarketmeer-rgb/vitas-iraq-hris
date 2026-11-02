@@ -3905,17 +3905,36 @@ app.post('/api/calendar/holidays/:holidayId/branches/remove', async (req, res) =
 // Attendance System endpoints
 app.get('/api/attendance', async (req, res) => {
   try {
-    const { employee_id, start_date, end_date, status } = req.query;
+    const { employee_id, start_date, end_date, status, limit: reqLimit } = req.query;
     let sql = `
       SELECT 
-        a.*, 
-        e.full_name_ar, 
-        e.full_name_en, 
-        e.employee_id as emp_number,
-        e.department as department_name_ar,
-        e.department as department_name_en,
-        e.branch as branch_name_ar,
-        e.branch as branch_name_en
+        a.id,
+        a.employee_id,
+        COALESCE(e.employee_id, CAST(a.employee_id AS CHAR)) AS employee_number,
+        COALESCE(e.employee_id, CAST(a.employee_id AS CHAR)) AS emp_number,
+        COALESCE(e.full_name_ar, CONCAT('موظف ', a.employee_id)) AS employee_name_ar,
+        COALESCE(e.full_name_en, CONCAT('Employee ', a.employee_id)) AS employee_name_en,
+        COALESCE(e.full_name_ar, CONCAT('موظف ', a.employee_id)) AS full_name_ar,
+        COALESCE(e.full_name_en, CONCAT('Employee ', a.employee_id)) AS full_name_en,
+        COALESCE(e.department, 'العمليات') AS department_name_ar,
+        COALESCE(e.department, 'Operations') AS department_name_en,
+        COALESCE(e.branch, 'المقر الرئيسي') AS branch_name_ar,
+        COALESCE(e.branch, 'Headquarters') AS branch_name_en,
+        DATE_FORMAT(a.attendance_date, '%Y-%m-%d') AS date,
+        a.attendance_date,
+        a.day_of_week,
+        a.check_in AS first_punch,
+        a.check_in,
+        a.check_out AS last_punch,
+        a.check_out,
+        ROUND(COALESCE(a.work_hours * 60, 0)) AS worked_minutes,
+        a.work_hours,
+        COALESCE(a.late_minutes, 0) AS late_minutes,
+        COALESCE(a.overtime_minutes, 0) AS overtime_minutes,
+        a.status,
+        a.notes,
+        a.sync_id,
+        a.updated_at
       FROM attendance a 
       LEFT JOIN employees e ON (
         a.employee_id = e.id 
@@ -3929,8 +3948,8 @@ app.get('/api/attendance', async (req, res) => {
     const params = [];
 
     if (employee_id) {
-      sql += ' AND a.employee_id = ?';
-      params.push(employee_id);
+      sql += ' AND (a.employee_id = ? OR e.employee_id = ? OR e.badge_no = ?)';
+      params.push(employee_id, employee_id, employee_id);
     }
     if (start_date) {
       sql += ' AND a.attendance_date >= ?';
@@ -3945,7 +3964,8 @@ app.get('/api/attendance', async (req, res) => {
       params.push(status);
     }
 
-    sql += ' ORDER BY a.attendance_date DESC, a.employee_id ASC';
+    const limit = parseInt(reqLimit, 10) || 1000;
+    sql += ' ORDER BY a.attendance_date DESC, a.check_in DESC, a.employee_id ASC LIMIT ' + limit;
 
     const results = await query(sql, params);
     res.json(results);
@@ -3954,117 +3974,6 @@ app.get('/api/attendance', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// Cloud Attendance Sync Endpoint for Desktop AttendanceSync client
-const handleCloudAttendanceSync = async (req, res) => {
-  try {
-    const action = req.query.action || (req.method === 'GET' ? 'ping' : 'upload_attendance');
-    const apiKey = req.headers['x-api-key'] || req.query.apiKey || req.query.api_key || '';
-    
-    // Validate API Key if provided
-    const validKeys = [
-      'CentralAttendanceSecretKey123!',
-      'vts_live_sk_8923fd829a47b10',
-      'vts_live_sk_4421aa8720cb551',
-      'vts_live_sk_1198bb9910ac332'
-    ];
-    
-    if (apiKey && !validKeys.includes(apiKey) && !apiKey.startsWith('vts_live_sk_')) {
-      return res.status(401).json({ success: false, message: 'مفتاح الـ API غير صالح (Invalid API Key)' });
-    }
-
-    if (action === 'ping') {
-      return res.json({
-        success: true,
-        message: 'الاتصال بالسيرفر السحابي سليم وجاهز لمزامنة حركات البصمة.',
-        server_time: new Date().toISOString()
-      });
-    }
-
-    if (action === 'upload_attendance') {
-      const records = req.body?.records || [];
-      if (!Array.isArray(records) || records.length === 0) {
-        return res.json({ success: true, message: 'لا توجد حركات للمزامنة', data: { processed: 0 } });
-      }
-
-      // Pre-fetch employees for fast matching by badge_no, employee_id, id
-      const emps = await query('SELECT id, employee_id, badge_no FROM employees').catch(() => []);
-      const empMap = new Map();
-      emps.forEach(e => {
-        if (e.employee_id) empMap.set(String(e.employee_id).toLowerCase().trim(), e.id);
-        if (e.badge_no) empMap.set(String(e.badge_no).toLowerCase().trim(), e.id);
-        empMap.set(String(e.id).toLowerCase().trim(), e.id);
-        if (e.employee_id) {
-          const numOnly = String(e.employee_id).replace(/\D/g, '');
-          if (numOnly) empMap.set(numOnly, e.id);
-        }
-      });
-
-      let insertedCount = 0;
-      const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
-
-      for (const rec of records) {
-        if (!rec.employee_number || !rec.attendance_date) continue;
-        const rawCode = String(rec.employee_number).toLowerCase().trim();
-        const numOnly = rawCode.replace(/\D/g, '');
-        const empId = empMap.get(rawCode) || empMap.get(numOnly) || (numOnly ? parseInt(numOnly, 10) : null);
-        if (!empId) continue;
-
-        const dayOfWeek = rec.day_of_week || (new Date(rec.attendance_date).getDay() + 1);
-        const checkIn = rec.check_in || null;
-        const checkOut = rec.check_out || null;
-        const workHours = rec.work_hours !== null && rec.work_hours !== undefined ? rec.work_hours : null;
-        const lateMins = rec.late_minutes || 0;
-        const otMins = rec.overtime_minutes || 0;
-        const status = rec.status || 'present';
-        const notes = rec.notes || 'سجل بصمة محلي ZKTeco';
-        const syncId = rec.sync_id || `LOC_${rawCode}_${rec.attendance_date}`;
-        const updatedAt = rec.updated_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
-
-        const sql = `
-          INSERT INTO attendance 
-            (employee_id, attendance_date, day_of_week, check_in, check_out, work_hours, late_minutes, overtime_minutes, status, notes, sync_id, updated_at)
-          VALUES 
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON DUPLICATE KEY UPDATE
-            check_in = VALUES(check_in),
-            check_out = VALUES(check_out),
-            work_hours = VALUES(work_hours),
-            late_minutes = VALUES(late_minutes),
-            overtime_minutes = VALUES(overtime_minutes),
-            status = VALUES(status),
-            notes = VALUES(notes),
-            sync_id = VALUES(sync_id),
-            updated_at = VALUES(updated_at)
-        `;
-        const params = [empId, rec.attendance_date, dayOfWeek, checkIn, checkOut, workHours, lateMins, otMins, status, notes, syncId, updatedAt];
-        
-        await query(sql, params).catch(e => console.error('Error inserting attendance record:', e.message));
-
-        // Sync to cloud DB as well if local server
-        if (!isRailway && typeof executeCloudQuery === 'function') {
-          executeCloudQuery(sql, params).catch(() => {});
-        }
-
-        insertedCount++;
-      }
-
-      return res.json({
-        success: true,
-        message: `تمت معالجة ومزامنة ${insertedCount} سجل حضور بنجاح.`,
-        data: {
-          received: records.length,
-          processed: insertedCount
-        }
-      });
-    }
-
-    res.status(400).json({ success: false, message: `إجراء غير معروف: ${action}` });
-  } catch (err) {
-    console.error('Error in cloud attendance sync endpoint:', err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
 
 app.all([
   '/apps/Attendance_Viewer/api/cloud_sync.php',

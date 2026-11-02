@@ -420,7 +420,7 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
   }
 };
 
-const safeFetchJson = async (url: string, options?: RequestInit, timeoutMs = 400): Promise<any | null> => {
+const safeFetchJson = async (url: string, options?: RequestInit, timeoutMs = 15000): Promise<any | null> => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
