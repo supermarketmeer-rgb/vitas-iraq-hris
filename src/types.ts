@@ -3,8 +3,10 @@ export type ThemeMode = 'dark' | 'light';
 export type UserRole = 
   | 'Super Admin' 
   | 'Admin'
+  | 'General Manager'
   | 'HR Manager' 
   | 'Branch Manager'
+  | 'Supervisor'
   | 'Recruiter' 
   | 'Department Head' 
   | 'Employee' 
@@ -142,7 +144,41 @@ export interface Employee {
   childrenDetails?: string;
   trainingsRecord?: string;
   warningsRecord?: string;
+  onHold?: boolean;
+  on_hold?: number | boolean;
+  on_hold_date?: string;
+  on_hold_reason?: string;
+  on_hold_year?: number;
+  on_hold_month?: number;
+  release_date?: string;
+  release_year?: number;
+  release_month?: number;
+  release_note?: string;
   status: 'Active' | 'On Leave' | 'Terminated' | 'Onboarding' | 'active' | 'inactive' | 'onboarding' | string;
+}
+
+export interface SalaryHoldRecord {
+  id: string;
+  employee_id: string;
+  badge_no?: string;
+  employee_name?: string;
+  branch?: string;
+  department?: string;
+  position?: string;
+  basic_salary?: number;
+  hold_date: string;
+  hold_year: number;
+  hold_month: number;
+  hold_reason?: string;
+  is_manual?: boolean;
+  status: 'ON_HOLD' | 'RELEASED';
+  release_date?: string | null;
+  release_year?: number | null;
+  release_month?: number | null;
+  release_note?: string | null;
+  action_by?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface LeaveRequest {

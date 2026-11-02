@@ -1037,58 +1037,99 @@ html.dark .query-primary-table-label * {
 }
 
 /* ================================================================
-   TABLE HEADERS MUST ALWAYS HAVE PURE WHITE TEXT IN ALL THEMES
+   TABLE HEADERS STYLING:
+   - Dark Mode: Clear crisp white text
+   - Light Mode: Handled via high contrast light mode rules below
    ================================================================ */
-table th,
-table th *,
-table th span,
-table thead th,
-table thead th *,
-table thead th span,
-html.light table th,
-html.light table th *,
-html.light table th span,
-html.light table thead th,
-html.light table thead th *,
-html.light table thead th span,
-html:not(.dark) table th,
-html:not(.dark) table th *,
-html:not(.dark) table th span,
-html:not(.dark) table thead th,
-html:not(.dark) table thead th *,
-html:not(.dark) table thead th span {
+html.dark table th,
+html.dark table th *,
+html.dark table th span,
+html.dark table th div,
+html.dark table thead th,
+html.dark table thead th *,
+html.dark table thead th span,
+html.dark table thead th div {
   color: #ffffff !important;
-  font-weight: 400 !important;
+  font-weight: 500 !important;
 }
 
-table th,
-table th *,
-table th span,
-table th div,
-table thead th,
-table thead th *,
-table thead th span,
-table thead th div,
-html.light table th,
-html.light table th *,
-html.light table th span,
-html.light table th div,
-html.light table thead th,
-html.light table thead th *,
-html.light table thead th span,
-html.light table thead th div,
-html:not(.dark) table th,
-html:not(.dark) table th *,
-html:not(.dark) table th span,
-html:not(.dark) table th div,
-html:not(.dark) table thead th,
-html:not(.dark) table thead th *,
-html:not(.dark) table thead th span,
-html:not(.dark) table thead th div {
-  color: #ffffff !important;
-  font-weight: 400 !important;
+/* ================================================================
+   INCENTIVES & TARGET MODULE TABLE HEADERS - HIGH CONTRAST & LEGIBILITY
+   ================================================================ */
+html:not(.dark) .incentives-table-header,
+html:not(.dark) thead.incentives-table-header,
+html:not(.dark) thead.incentives-table-header tr,
+html.light .incentives-table-header,
+html.light thead.incentives-table-header,
+html.light thead.incentives-table-header tr {
+  background-color: #cbd5e1 !important;
+  border-bottom: 2px solid #94a3b8 !important;
 }
 
+html:not(.dark) .incentives-table-header th,
+html:not(.dark) .incentives-table-header th *,
+html:not(.dark) .incentives-table-header th span,
+html:not(.dark) .incentives-table-header th div,
+html.light .incentives-table-header th,
+html.light .incentives-table-header th *,
+html.light .incentives-table-header th span,
+html.light .incentives-table-header th div {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+html:not(.dark) .incentives-table-header th.th-incentives,
+html:not(.dark) .incentives-table-header th.th-incentives *,
+html.light .incentives-table-header th.th-incentives,
+html.light .incentives-table-header th.th-incentives * {
+  color: #065f46 !important;
+  font-weight: 800 !important;
+}
+
+html:not(.dark) .incentives-table-header th.th-transport,
+html:not(.dark) .incentives-table-header th.th-transport *,
+html.light .incentives-table-header th.th-transport,
+html.light .incentives-table-header th.th-transport * {
+  color: #0369a1 !important;
+  font-weight: 800 !important;
+}
+
+html:not(.dark) .incentives-table-header th.th-bonus,
+html:not(.dark) .incentives-table-header th.th-bonus *,
+html.light .incentives-table-header th.th-bonus,
+html.light .incentives-table-header th.th-bonus * {
+  color: #92400e !important;
+  font-weight: 800 !important;
+}
+
+html.dark .incentives-table-header,
+html.dark thead.incentives-table-header,
+html.dark thead.incentives-table-header tr {
+  background-color: #1e293b !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+html.dark .incentives-table-header th,
+html.dark .incentives-table-header th *,
+html.dark .incentives-table-header th span,
+html.dark .incentives-table-header th div {
+  color: #ffffff !important;
+}
+
+html.dark .incentives-table-header th.th-incentives,
+html.dark .incentives-table-header th.th-incentives * {
+  color: #34d399 !important;
+}
+
+html.dark .incentives-table-header th.th-transport,
+html.dark .incentives-table-header th.th-transport * {
+  color: #38bdf8 !important;
+}
+
+html.dark .incentives-table-header th.th-bonus,
+html.dark .incentives-table-header th.th-bonus * {
+  color: #fbbf24 !important;
+}
 
 /* ================================================================
    HEADER LANGUAGE TOGGLE & USER PROFILE TEXT COLOR -> PURE BLACK
@@ -1587,9 +1628,17 @@ html:not(.dark) body textarea:not(aside textarea):not(header textarea):focus {
 
 /* Light Mode Tables (Table Headers, Table Rows & Records) */
 html.light table thead th,
+html.light table thead th *,
+html.light table thead th span,
+html.light table thead th div,
 html.light table thead tr th,
+html.light table thead tr th *,
 html:not(.dark) table thead th,
-html:not(.dark) table thead tr th {
+html:not(.dark) table thead th *,
+html:not(.dark) table thead th span,
+html:not(.dark) table thead th div,
+html:not(.dark) table thead tr th,
+html:not(.dark) table thead tr th * {
   background-color: #eef2f6 !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;

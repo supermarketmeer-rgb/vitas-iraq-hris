@@ -7,6 +7,7 @@ import { transliterateEnglishNameToArabic, hasArabicCharacters } from '../utils/
 import { CATEGORY_GROUPS } from '../data/categories';
 import * as XLSX from 'xlsx';
 import { PoliciesSection } from '../components/PoliciesSection';
+import { isSubordinateOf } from '../utils/branchHelper';
 
 export const Category9RiskComplianceView: React.FC = () => {
   const {
@@ -599,6 +600,7 @@ export const Category9RiskComplianceView: React.FC = () => {
   // Add New User Modal State & SubTab Switcher (Users vs Policies Mini-Settings)
   const [rolePermissionsSubTab, setRolePermissionsSubTab] = useState<'users' | 'policies'>('users');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [selectedRolePreset, setSelectedRolePreset] = useState<string>('manual');
   const [moduleFilterQuery, setModuleFilterQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'cat-2-dash': true,
@@ -616,6 +618,7 @@ export const Category9RiskComplianceView: React.FC = () => {
   });
   const [newUserForm, setNewUserForm] = useState({
     id: undefined as number | string | undefined,
+    userType: 'employee' as 'employee' | 'special_executive',
     originalUsername: '',
     originalEmployeeId: '',
     originalEmail: '',
@@ -644,6 +647,10 @@ export const Category9RiskComplianceView: React.FC = () => {
   const [quickNewPassword, setQuickNewPassword] = useState('');
   const [showQuickPassword, setShowQuickPassword] = useState(false);
   const [isSavingQuickPassword, setIsSavingQuickPassword] = useState(false);
+
+  // Delete User Confirmation State
+  const [userToDeleteConfirm, setUserToDeleteConfirm] = useState<any | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const handleQuickChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -745,6 +752,94 @@ export const Category9RiskComplianceView: React.FC = () => {
     }
   };
 
+  const handleConfirmDeleteUser = async () => {
+    if (!userToDeleteConfirm) return;
+    setIsDeletingUser(true);
+    const u = userToDeleteConfirm;
+    const fullName = u.full_name || u.name || u.username;
+
+    try {
+      // 1. Optimistic UI update: immediately remove from table
+      setDbUsers(prev => prev.filter(user => user.id !== u.id && user.username !== u.username));
+
+      // 2. Call backend deletion API (try by id first, then username/employee_id)
+      const targetIdent = u.id != null ? u.id : (u.username || u.employee_id);
+      await api.deleteUser(targetIdent).catch(async () => {
+        if (u.username && u.username !== targetIdent) {
+          await api.deleteUser(u.username).catch(() => {});
+        }
+      });
+
+      // 3. Clean up localStorage entries
+      try {
+        const rawCustom = localStorage.getItem('vitas_custom_users');
+        if (rawCustom) {
+          const parsed = JSON.parse(rawCustom);
+          const keys = [
+            u.username,
+            u.username?.toLowerCase(),
+            u.username?.toUpperCase(),
+            u.employee_id,
+            u.employee_id?.toLowerCase(),
+            u.employee_id?.toUpperCase()
+          ].filter(Boolean);
+          keys.forEach(k => delete parsed[k]);
+          localStorage.setItem('vitas_custom_users', JSON.stringify(parsed));
+        }
+      } catch (e) {}
+
+      try {
+        const rawPerms = localStorage.getItem('vitas_custom_employee_permissions');
+        if (rawPerms) {
+          const parsed = JSON.parse(rawPerms);
+          const keys = [
+            u.employee_id,
+            u.username,
+            u.username?.toUpperCase(),
+            `VTS-${u.username?.toUpperCase()}`
+          ].filter(Boolean);
+          keys.forEach(k => delete parsed[k]);
+          localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(parsed));
+        }
+      } catch (e) {}
+
+      // 4. Broadcast change event
+      window.dispatchEvent(new CustomEvent('vitas:users_changed'));
+
+      // 5. Audit Log
+      const auditEntry = {
+        id: `LOG-DEL-${Date.now().toString().slice(-6)}`,
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        userId: currentUser?.id || 'USR-ADMIN',
+        userName: currentUser?.name || 'مدير النظام والامتثال',
+        userRole: currentUser?.role || 'Super Admin',
+        action: 'حذف حساب وصلاحيات مستخدم',
+        actionType: 'DELETE',
+        severity: 'danger' as const,
+        module: 'إدارة المستخدمين والصلاحيات (sec-roles-permissions)',
+        ipAddress: '192.168.1.109',
+        userDevice: navigator.userAgent || 'Web Client',
+        status: 'ناجح' as const,
+        details: `تم حذف حساب المستخدم (${fullName} - ${u.username}) نهائياً من قاعدة البيانات.`
+      };
+      setAuditLogs(prev => [auditEntry, ...prev]);
+      api.addAuditLog?.(auditEntry).catch(() => {});
+
+      // 6. Refresh from DB
+      fetchUsersFromDb();
+
+      setCustomEmpSavedToast(
+        language === 'ar' ? `تم حذف حساب المستخدم (${fullName}) بنجاح.` : `User account (${fullName}) deleted.`
+      );
+      setTimeout(() => setCustomEmpSavedToast(null), 4000);
+    } catch (err: any) {
+      alert(language === 'ar' ? `فشل حذف المستخدم: ${err.message || err}` : `Failed to delete user: ${err.message || err}`);
+    } finally {
+      setIsDeletingUser(false);
+      setUserToDeleteConfirm(null);
+    }
+  };
+
   // Granular Permission Helpers
   const getModLevel = (modId: string): 'write' | 'read' | 'none' => {
     const val = (newUserForm.modules as any)?.[modId];
@@ -815,6 +910,343 @@ export const Category9RiskComplianceView: React.FC = () => {
         });
       });
       return { ...prev, modules: nextModules };
+    });
+  };
+
+  const ROLE_PRESET_CONFIGS = [
+    {
+      id: 'manual',
+      titleAr: 'تخصيص يدوي حر (Manual / Custom Permissions)',
+      titleEn: 'Manual / Custom Permissions',
+      badgeAr: 'تخصيص يدوي',
+      badgeEn: 'Manual Custom',
+      icon: 'tune',
+      descAr: 'تحديد الصلاحيات لكل شاشة وموديول يدوياً من المصفوفة أدناه بحرية كاملة دون التقيد بقالب مسبق.',
+      descEn: 'Manually configure screen permissions from the matrix below without applying a pre-configured template.'
+    },
+    {
+      id: 'General Manager',
+      titleAr: 'المدير العام / الرئيس التنفيذي (General Manager / CEO)',
+      titleEn: 'General Manager / Chief Executive Officer',
+      role: 'General Manager' as UserRole,
+      badgeAr: 'رؤية وتحكم شامل بالمؤسسة',
+      badgeEn: 'Full Executive Oversight',
+      icon: 'corporate_fare',
+      descAr: 'صلاحيات قيادية وتنفيذية عليا تشمل الاطلاع والتحكم بكافة فروع وموظفي المؤسسة، التقارير الاستراتيجية، ومصفوفة الحوكمة.',
+      descEn: 'Executive-level permissions covering all company branches, personnel, strategic analytics, and governance.',
+      modules: {
+        'cat-2-dash': 'write',
+        'dash-overview': 'write',
+        'dash-exec-1': 'write',
+        'dash-exec-2': 'write',
+        'dash-search': 'write',
+        'sys-dynamic-reports': 'write',
+        'cat-3-emp': 'write',
+        'emp-list': 'write',
+        'emp-contracts': 'write',
+        'emp-org-chart': 'write',
+        'emp-directory': 'write',
+        'emp-hr-directory': 'write',
+        'cat-4-leave': 'write',
+        'leave-attendance': 'write',
+        'leave-approvals': 'write',
+        'cat-5-payroll': 'write',
+        'pay-dashboard': 'write',
+        'payroll-analytics': 'write',
+        'cat-6-recruit': 'write',
+        'recruit-dash': 'write',
+        'cat-7-perf': 'write',
+        'perf-kpi': 'write',
+        'cat-8-assets': 'write',
+        'doc-company': 'write',
+        'cat-9-risk': 'write',
+        'cat-12-archive': 'write'
+      }
+    },
+    {
+      id: 'Supervisor',
+      titleAr: 'مشرف مباشر / مسؤول فريق (Supervisor)',
+      titleEn: 'Direct Supervisor / Team Lead',
+      role: 'Supervisor' as UserRole,
+      badgeAr: 'صلاحيات إشرافية',
+      badgeEn: 'Supervisory Scope',
+      icon: 'supervisor_account',
+      descAr: 'عرض وقراءة بيانات موظفيه التابعين له، اعتماد ومتابعة الإجازات، وعرض وطباعة وثائق وعقود فريقه فقط.',
+      descEn: 'Read subordinates, approve team leaves, and view/print team documents.',
+      modules: {
+        'cat-2-dash': 'read',
+        'dash-overview': 'read',
+        'dash-ess': 'write',
+        'sys-dynamic-reports': 'read',
+        'cat-3-emp': 'read',
+        'emp-hr-directory': 'read',
+        'emp-profile': 'read',
+        'cat-4-leave': 'write',
+        'leave-directory': 'read',
+        'leave-approvals': 'write',
+        'leave-apply': 'write',
+        'leave-attendance': 'read',
+        'leave-timesheets': 'read',
+        'cat-8-assets': 'read',
+        'doc-mgmt': 'read',
+        'doc-edms': 'read',
+        'doc-my-docs': 'write',
+        'asset-documents': 'read',
+        'asset-inventory': 'read',
+        'asset-my-requests': 'write',
+        'cat-7-perf': 'read',
+        'perf-reviews': 'read',
+        'perf-goals': 'read'
+      }
+    },
+    {
+      id: 'HR Manager',
+      titleAr: 'مدير الموارد البشرية (HR Manager)',
+      titleEn: 'Human Resources Manager',
+      role: 'HR Manager' as UserRole,
+      badgeAr: 'إدارة كاملة للموظفين والرواتب',
+      badgeEn: 'Full HR & Payroll',
+      icon: 'badge',
+      descAr: 'تحكم شامل بملفات الموظفين، مسير الرواتب والمكافآت، الإجازات، الهيكل الإداري، والأرشيف والتقارير.',
+      descEn: 'Full control over employee records, payroll, allowances, leaves, org chart, and reports.',
+      modules: {
+        'cat-2-dash': 'write',
+        'dash-overview': 'write',
+        'dash-ess': 'write',
+        'sys-dynamic-reports': 'write',
+        'dash-exec-1': 'write',
+        'dash-exec-2': 'write',
+        'cat-3-emp': 'write',
+        'emp-hr-directory': 'write',
+        'emp-profile': 'write',
+        'emp-list': 'write',
+        'emp-add': 'write',
+        'emp-branches': 'write',
+        'emp-org-chart': 'write',
+        'emp-regional-lebanon': 'write',
+        'cat-4-leave': 'write',
+        'leave-directory': 'write',
+        'leave-approvals': 'write',
+        'leave-apply': 'write',
+        'leave-attendance': 'write',
+        'leave-timesheets': 'write',
+        'leave-balance': 'write',
+        'cat-5-payroll': 'write',
+        'pay-sheets': 'write',
+        'pay-advances': 'write',
+        'pay-bank': 'write',
+        'pay-tax-ss': 'write',
+        'pay-adjustments': 'write',
+        'pay-reports': 'write',
+        'payroll-payslip': 'write',
+        'cat-6-recruit': 'write',
+        'recruit-jobs': 'write',
+        'recruit-pipeline': 'write',
+        'recruit-candidates': 'write',
+        'recruit-interviews': 'write',
+        'recruit-onboarding': 'write',
+        'cat-7-perf': 'write',
+        'perf-reviews': 'write',
+        'perf-goals': 'write',
+        'perf-kpis': 'write',
+        'perf-training': 'write',
+        'cat-8-assets': 'write',
+        'doc-mgmt': 'write',
+        'doc-edms': 'write',
+        'doc-my-docs': 'write',
+        'asset-documents': 'write',
+        'asset-inventory': 'write',
+        'asset-my-requests': 'write',
+        'employees': 'write',
+        'attendance': 'write',
+        'payroll': 'write',
+        'recruitment': 'write',
+        'reports': 'write',
+        'assets': 'write'
+      }
+    },
+    {
+      id: 'Branch Manager',
+      titleAr: 'مدير فرع / مكتب (Branch Manager)',
+      titleEn: 'Branch / Office Manager',
+      role: 'Branch Manager' as UserRole,
+      badgeAr: 'نطاق الفرع المخصص',
+      badgeEn: 'Branch Office Scope',
+      icon: 'domain',
+      descAr: 'إدارة موظفي الفرع المخصص، متابعة الحضور والدوام، واعتماد إجازات موظفي المكتب (محصور في نطاق فرعه).',
+      descEn: 'Supervision of assigned branch employees, attendance, and leave approvals strictly within office scope.',
+      modules: {
+        'cat-2-dash': 'read',
+        'dash-overview': 'read',
+        'dash-ess': 'write',
+        'sys-dynamic-reports': 'read',
+        'cat-3-emp': 'read',
+        'emp-hr-directory': 'read',
+        'emp-profile': 'read',
+        'cat-4-leave': 'read',
+        'leave-directory': 'read',
+        'leave-approvals': 'write',
+        'leave-apply': 'write',
+        'leave-attendance': 'read',
+        'leave-timesheets': 'read',
+        'cat-8-assets': 'read',
+        'doc-mgmt': 'read',
+        'doc-edms': 'read',
+        'asset-documents': 'read',
+        'doc-my-docs': 'write',
+        'cat-7-perf': 'read',
+        'perf-reviews': 'read',
+        'perf-goals': 'read'
+      }
+    },
+    {
+      id: 'Employee',
+      titleAr: 'موظف عادي - خدمة ذاتية (Employee / ESS)',
+      titleEn: 'Regular Employee (Self-Service ESS)',
+      role: 'Employee' as UserRole,
+      badgeAr: 'نطاق ذاتي فقط',
+      badgeEn: 'Self Scope',
+      icon: 'person',
+      descAr: 'بوابة الموظف الذاتية: تقديم الإجازات ومتابعتها، استعراض كشف الراتب الشهري، وتتبع الحضور والمستندات الشخصية.',
+      descEn: 'Self-service portal: submit leaves, view payslip, personal attendance, and personal documents.',
+      modules: {
+        'cat-2-dash': 'read',
+        'dash-ess': 'write',
+        'cat-4-leave': 'read',
+        'leave-apply': 'write',
+        'leave-attendance': 'read',
+        'cat-5-payroll': 'read',
+        'payroll-payslip': 'read',
+        'cat-8-assets': 'read',
+        'doc-my-docs': 'write',
+        'asset-my-requests': 'write'
+      }
+    },
+    {
+      id: 'Super Admin',
+      titleAr: 'مسؤول نظام أعلى (Super Admin / Admin)',
+      titleEn: 'Super Administrator',
+      role: 'Admin' as UserRole,
+      badgeAr: 'صلاحيات إدارية عليا',
+      badgeEn: 'Admin System Control',
+      icon: 'admin_panel_settings',
+      descAr: 'صلاحيات عليا لإدارة المستخدمين والصلاحيات (IAM/RBAC)، النسخ الاحتياطي، المزامنة، وكافة شاشات النظام.',
+      descEn: 'Complete administrative access including RBAC user management, backups, and security settings.',
+      modules: {
+        'sec-roles-permissions': 'write',
+        'sec-roles': 'write',
+        'cat-9-risk': 'write',
+        'risk': 'write',
+        'employees': 'write',
+        'attendance': 'write',
+        'payroll': 'write',
+        'recruitment': 'write',
+        'reports': 'write',
+        'settings': 'write',
+        'assets': 'write'
+      }
+    },
+    {
+      id: 'Recruiter',
+      titleAr: 'مسؤول التوظيف والاستقطاب (Recruiter / ATS)',
+      titleEn: 'Recruiter & Talent Acquisition',
+      role: 'Recruiter' as UserRole,
+      badgeAr: 'التوظيف والمقابلات',
+      badgeEn: 'Recruitment & ATS',
+      icon: 'person_search',
+      descAr: 'إدارة الشواغر، استلام وفرز السير الذاتية، ومتابعة مراحل التوظيف وجدولة المقابلات.',
+      descEn: 'Job vacancies, ATS candidate pipeline, resume screening, and interview scheduling.',
+      modules: {
+        'cat-2-dash': 'read',
+        'dash-overview': 'read',
+        'dash-ess': 'write',
+        'cat-3-emp': 'read',
+        'emp-hr-directory': 'read',
+        'cat-6-recruit': 'write',
+        'recruit-jobs': 'write',
+        'recruit-pipeline': 'write',
+        'recruit-candidates': 'write',
+        'recruit-interviews': 'write',
+        'recruit-onboarding': 'write'
+      }
+    },
+    {
+      id: 'Compliance',
+      titleAr: 'مسؤول الامتثال والمخاطر (Compliance & Risk)',
+      titleEn: 'Compliance & Risk Officer',
+      role: 'Compliance Officer' as UserRole,
+      badgeAr: 'المخاطر والرقابة',
+      badgeEn: 'Risk & Governance',
+      icon: 'policy',
+      descAr: 'سجل تقييم المخاطر، الامتثال والسياسات، التدقيق والرقابة المصرفية، وقوائم المراجعة.',
+      descEn: 'Risk assessment register, regulatory compliance, banking supervision logs, and checklist.',
+      modules: {
+        'cat-2-dash': 'read',
+        'dash-overview': 'read',
+        'dash-ess': 'write',
+        'cat-9-risk': 'write',
+        'risk-governance': 'write',
+        'risk-assessment': 'write',
+        'risk-tracker': 'write',
+        'risk-policies': 'write',
+        'risk-audit-reports': 'write'
+      }
+    },
+    {
+      id: 'IT Admin',
+      titleAr: 'مسؤول تكنولوجيا المعلومات (IT Admin)',
+      titleEn: 'IT Administrator',
+      role: 'IT Admin' as UserRole,
+      badgeAr: 'العهد واللوجستيات',
+      badgeEn: 'IT & Hardware Logistics',
+      icon: 'computer',
+      descAr: 'إدارة الأصول التقنية والعهد، سجل الصيانة والدعم الفني، وإدارة أسطول السائقين واللوجستيات.',
+      descEn: 'IT assets and inventory, hardware maintenance, and driver logistics.',
+      modules: {
+        'cat-2-dash': 'read',
+        'dash-overview': 'read',
+        'dash-ess': 'write',
+        'cat-8-assets': 'write',
+        'asset-inventory': 'write',
+        'asset-details': 'write',
+        'asset-my-requests': 'write',
+        'doc-mgmt': 'read',
+        'cat-drivers': 'write',
+        'drivers-fleet': 'write',
+        'drivers-requests': 'write'
+      }
+    }
+  ];
+
+  const handleApplyRolePreset = (presetId: string) => {
+    setSelectedRolePreset(presetId);
+    const preset = ROLE_PRESET_CONFIGS.find(p => p.id === presetId);
+    if (!preset || preset.id === 'manual') {
+      return;
+    }
+
+    setNewUserForm(prev => {
+      let nextModules: Record<string, any> = {};
+
+      if (preset.id === 'Super Admin') {
+        CATEGORY_GROUPS.filter(c => c.id !== 'cat-1-auth').forEach(c => {
+          nextModules[c.id] = 'write';
+          c.modules.forEach(m => {
+            nextModules[m.id] = 'write';
+          });
+        });
+      } else {
+        nextModules = { ...(preset.modules || {}) };
+      }
+
+      const isAdmin = preset.id === 'Super Admin';
+
+      return {
+        ...prev,
+        role: preset.role,
+        canManageUsers: isAdmin,
+        modules: nextModules
+      };
     });
   };
 
@@ -905,6 +1337,7 @@ export const Category9RiskComplianceView: React.FC = () => {
   }, [moduleFilterQuery]);
   const [badgeSearchQuery, setBadgeSearchQuery] = useState<string>('');
   const [matchedEmployee, setMatchedEmployee] = useState<any>(null);
+  const [matchedEmpSubCount, setMatchedEmpSubCount] = useState<number>(0);
   const [isComboboxOpen, setIsComboboxOpen] = useState<boolean>(false);
   const comboboxRef = useRef<HTMLDivElement | null>(null);
 
@@ -943,42 +1376,53 @@ export const Category9RiskComplianceView: React.FC = () => {
       .trim();
   };
 
-  // Dynamic filter for Combobox search (instant search on any 1-2 characters in name or badge)
-  const filteredEmployeesForCombobox = useMemo(() => {
-    const rawQ = badgeSearchQuery.trim();
-    if (!rawQ) return (employees || []).slice(0, 50);
-
-    const normQ = normalizeSearchText(rawQ);
-    const cleanQ = normQ.replace(/^vts-?/i, '').replace(/^v-?/i, '').replace(/^b-?/i, '').trim();
-
-    return (employees || []).filter((e: any) => {
+  // Pre-indexed search data for employees (computes only when employees array changes, not on every keystroke!)
+  const employeesSearchIndex = useMemo(() => {
+    return (employees || []).map((e: any) => {
       const b = normalizeSearchText(e.badge_no || e.badgeNo || '');
       const id = normalizeSearchText(e.employee_id || e.employeeId || e.id || '');
       const cleanB = b.replace(/^vts-?/i, '').replace(/^v-?/i, '').replace(/^b-?/i, '').trim();
       const cleanId = id.replace(/^vts-?/i, '').replace(/^v-?/i, '').replace(/^b-?/i, '').trim();
-
       const nameAr = normalizeSearchText(e.full_name_ar || e.fullNameAr || e.name_ar || e.fullName || e.full_name || e.name || '');
       const nameEn = normalizeSearchText(e.full_name_en || e.fullNameEn || e.name_en || '');
       const dept = normalizeSearchText(e.department || e.department_ar || '');
       const pos = normalizeSearchText(e.position || e.position_ar || e.job_title || e.jobTitle || '');
 
-      return (
-        b.includes(normQ) ||
-        (cleanQ && cleanB.includes(cleanQ)) ||
-        id.includes(normQ) ||
-        (cleanQ && cleanId.includes(cleanQ)) ||
-        nameAr.includes(normQ) ||
-        nameEn.includes(normQ) ||
-        dept.includes(normQ) ||
-        pos.includes(normQ)
-      );
-    }).slice(0, 60);
-  }, [employees, badgeSearchQuery]);
+      return {
+        emp: e,
+        searchStr: `${b} ${cleanB} ${id} ${cleanId} ${nameAr} ${nameEn} ${dept} ${pos}`
+      };
+    });
+  }, [employees]);
+
+  // Instant filter for Combobox search with early exit (blazing fast 0ms response)
+  const filteredEmployeesForCombobox = useMemo(() => {
+    const rawQ = badgeSearchQuery.trim();
+    if (!rawQ) return (employees || []).slice(0, 40);
+
+    const normQ = normalizeSearchText(rawQ);
+    const cleanQ = normQ.replace(/^vts-?/i, '').replace(/^v-?/i, '').replace(/^b-?/i, '').trim();
+
+    const matches: any[] = [];
+    for (let i = 0; i < employeesSearchIndex.length; i++) {
+      const item = employeesSearchIndex[i];
+      if (item.searchStr.includes(normQ) || (cleanQ && item.searchStr.includes(cleanQ))) {
+        matches.push(item.emp);
+        if (matches.length >= 40) break;
+      }
+    }
+    return matches;
+  }, [employeesSearchIndex, badgeSearchQuery, employees]);
 
   const handleAutofillFromEmployee = (emp: any) => {
     if (!emp) return;
     setMatchedEmployee(emp);
     setIsComboboxOpen(false);
+
+    // Automatic supervisor detection: Check if any employee in the company reports to this employee
+    const directSubordinates = (employees || []).filter(e => isSubordinateOf(e, emp));
+    const isSupervisorEmp = directSubordinates.length > 0;
+    setMatchedEmpSubCount(directSubordinates.length);
 
     const badge = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id || '';
     
@@ -1007,7 +1451,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       department: dept || prev.department,
       branch: branch || prev.branch,
       email: email || prev.email,
-      phone: phone || prev.phone
+      phone: phone || prev.phone,
+      role: isSupervisorEmp ? 'Supervisor' : 'Employee'
     }));
   };
 
@@ -1135,8 +1580,30 @@ export const Category9RiskComplianceView: React.FC = () => {
     }
 
     const cleanUsername = newUserForm.username.trim();
-    const empCode = cleanUsername.toUpperCase().startsWith('VTS') ? cleanUsername.toUpperCase() : `VTS-${cleanUsername.toUpperCase()}`;
+    const isExplicitAdmin = Boolean(newUserForm.canManageUsers || newUserForm.role === 'Admin');
+    const jobTitleLower = (newUserForm.jobTitle || '').toLowerCase();
+    const isGM = newUserForm.role === 'General Manager' || newUserForm.jobTitle.includes('مدير عام') || newUserForm.jobTitle.includes('المدير العام') || jobTitleLower.includes('general manager') || jobTitleLower.includes('ceo');
+    const isHRM = newUserForm.role === 'HR Manager' || newUserForm.jobTitle.includes('مدير الموارد البشرية') || jobTitleLower.includes('hr manager') || jobTitleLower.includes('hr director');
+    const isExecutiveOrSpecial = newUserForm.userType === 'special_executive' || isGM || isHRM;
+
+    const defaultPrefix = isExecutiveOrSpecial ? 'EXEC' : 'VTS';
+    const empCode = (matchedEmployee?.employee_id || matchedEmployee?.badge_no || `${defaultPrefix}-${cleanUsername.toUpperCase()}`).toUpperCase();
     const cleanEmpCode = newUserForm.originalEmployeeId || empCode;
+
+    const targetEmpObj = matchedEmployee || (employees || []).find(e => String(e.badge_no || e.badgeNo || e.employee_id || e.employeeId || e.id) === String(cleanEmpCode)) || { id: cleanEmpCode, employeeId: cleanEmpCode, name: newUserForm.fullNameAr };
+    const directSubordinates = (employees || []).filter(e => isSubordinateOf(e, targetEmpObj));
+
+    const assignedRole: UserRole = isExplicitAdmin
+      ? 'Admin'
+      : isGM
+        ? 'General Manager'
+        : isHRM
+          ? 'HR Manager'
+          : (directSubordinates.length > 0 || newUserForm.role === 'Supervisor' || newUserForm.jobTitle.includes('مشرف') || jobTitleLower.includes('supervisor'))
+            ? 'Supervisor'
+            : (newUserForm.role === 'Branch Manager' || newUserForm.jobTitle.includes('مدير فرع') || jobTitleLower.includes('branch manager'))
+              ? 'Branch Manager'
+              : (newUserForm.role || 'Employee');
     
     try {
       // NOTE: Creating a User NEVER adds or modifies records in the employees table!
@@ -1196,16 +1663,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       try {
         const existingUsersRaw = localStorage.getItem('vitas_custom_users') || '{}';
         existingUsers = JSON.parse(existingUsersRaw);
-        const isExplicitAdmin = Boolean(newUserForm.canManageUsers || newUserForm.role === 'Admin');
-        const assignedRole: UserRole = isExplicitAdmin
-          ? 'Admin'
-          : (newUserForm.jobTitle.includes('مدير الموارد البشرية') ||
-            newUserForm.jobTitle.toLowerCase().includes('hr manager') ||
-            newUserForm.jobTitle.toLowerCase().includes('hr director'))
-              ? 'HR Manager'
-              : 'Employee';
 
-        if (isExplicitAdmin) {
+        if (isExplicitAdmin || isGM) {
           fullModules['sec-roles-permissions'] = 'write';
           fullModules['sec-roles'] = 'write';
           fullModules['cat-9-risk'] = 'write';
@@ -1224,7 +1683,7 @@ export const Category9RiskComplianceView: React.FC = () => {
           password: finalSavedPassword,
           name: newUserForm.fullNameAr.trim(),
           role: assignedRole,
-          can_manage_users: isExplicitAdmin ? 1 : 0,
+          can_manage_users: (isExplicitAdmin || isGM) ? 1 : 0,
           employeeId: cleanEmpCode,
           jobTitle: newUserForm.jobTitle.trim(),
           modules: fullModules
@@ -1233,15 +1692,6 @@ export const Category9RiskComplianceView: React.FC = () => {
       } catch (err) {
         console.error(err);
       }
-
-      const isExplicitAdmin = Boolean(newUserForm.canManageUsers || newUserForm.role === 'Admin');
-      const assignedRole: UserRole = isExplicitAdmin
-        ? 'Admin'
-        : (newUserForm.jobTitle.includes('مدير الموارد البشرية') ||
-          newUserForm.jobTitle.toLowerCase().includes('hr manager') ||
-          newUserForm.jobTitle.toLowerCase().includes('hr director'))
-            ? 'HR Manager'
-            : 'Employee';
 
       // 2. Save delegated module permissions (Local state)
       const updatedDelegations = {
@@ -1308,72 +1758,56 @@ export const Category9RiskComplianceView: React.FC = () => {
         return;
       }
 
-      fetchUsersFromDb();
-      window.dispatchEvent(new CustomEvent('vitas:users_changed'));
+      // Optimistic instant UI update: close modal & update dbUsers state immediately
+      const savedUserRow = {
+        id: newUserForm.id || Date.now(),
+        username: cleanUsername,
+        full_name: newUserForm.fullNameAr.trim(),
+        name: newUserForm.fullNameAr.trim(),
+        email: newUserForm.email.trim() || `${cleanUsername.toLowerCase()}@vitasiraq.iq`,
+        job_title: newUserForm.jobTitle.trim(),
+        role: assignedRole,
+        department: newUserForm.department,
+        employee_id: cleanEmpCode,
+        branch: newUserForm.branch,
+        allowed_screens: fullModules,
+        status: 'active'
+      };
 
-      await api.updateAppSettingsBulk({
-        vitas_custom_employee_permissions: JSON.stringify(updatedDelegations),
-        vitas_custom_users: JSON.stringify(existingUsers)
-      }).catch((err: any) => {
-        console.warn('Notice saving custom users to DB:', err.message);
+      setDbUsers(prev => {
+        const idx = prev.findIndex(u => (newUserForm.id && u.id === newUserForm.id) || u.username === cleanUsername);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...savedUserRow };
+          return next;
+        }
+        return [...prev, savedUserRow];
       });
 
-      api.getUsers().then((usersList: any) => {
-        if (Array.isArray(usersList)) {
-          const nonAdminUsers = usersList.filter((u: any) => u.username !== 'admin' && u.username !== 'admin_super');
-          const delegationsFromDb: Record<string, any> = {};
-          nonAdminUsers.forEach((u: any) => {
-            const uCode = (u.employee_id || u.username || String(u.id)).toUpperCase();
-            let parsedModules: Record<string, boolean> = {
-              employees: Boolean(u.can_manage_employees),
-              payroll: Boolean(u.can_manage_finance),
-              recruitment: Boolean(u.can_manage_recruitment),
-              settings: Boolean(u.can_manage_settings),
-              attendance: false,
-              reports: false,
-              risk: false
-            };
-            if (u.allowed_screens) {
-              try {
-                const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
-                if (s && typeof s === 'object') parsedModules = { ...s };
-              } catch (e) {}
-            }
-            delegationsFromDb[uCode] = {
-              id: u.id,
-              username: u.username,
-              employeeId: uCode,
-              employeeName: u.name || u.full_name || u.username,
-              employeeNameEn: u.full_name || u.name || u.username,
-              department: u.department || 'الموارد البشرية والشؤون الإدارية',
-              jobTitle: u.job_title || u.role || 'مسؤول رواتب وحضور',
-              modules: parsedModules,
-              level: 'full',
-              notes: 'مسؤول رواتب وحضور',
-              grantedBy: 'مدير النظام (Super Admin)',
-              grantedAt: u.created_at ? new Date(u.created_at).toISOString().slice(0, 16) : '2026-09-02 11:30'
-            };
-          });
-          setSavedEmpDelegations(prev => ({ ...prev, ...delegationsFromDb }));
-        }
-      }).catch(() => {});
-
-      api.syncNow().catch(() => {});
-
-      // 4. Select this user and feedback
-      setSelectedEmpId(cleanEmpCode);
+      // Close modal instantly (0ms delay)
       setIsAddUserModalOpen(false);
+      setSelectedEmpId(cleanEmpCode);
+
       const isEditingUser = Boolean(newUserForm.id);
       setCustomEmpSavedToast(
         language === 'ar'
           ? (isEditingUser
               ? `تم تحديث بيانات المستخدم (${newUserForm.fullNameAr}) وكلمة المرور والصلاحيات بنجاح!`
-              : `تم حفظ وإنشاء حساب المستخدم (${newUserForm.fullNameAr}) ومزامنته مع السرفر السحابي بنجاح!`)
+              : `تم حفظ وإنشاء حساب المستخدم (${newUserForm.fullNameAr}) بنجاح!`)
           : (isEditingUser
               ? `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}), password and permissions updated successfully!`
-              : `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}) saved and synced to cloud successfully!`)
+              : `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}) saved successfully!`)
       );
       setTimeout(() => setCustomEmpSavedToast(null), 5000);
+
+      // Async background sync without blocking UI
+      api.updateAppSettingsBulk({
+        vitas_custom_employee_permissions: JSON.stringify(updatedDelegations),
+        vitas_custom_users: JSON.stringify(existingUsers)
+      }).catch(() => {});
+
+      fetchUsersFromDb();
+      window.dispatchEvent(new CustomEvent('vitas:users_changed'));
 
       // Reset form
       setNewUserForm({
@@ -2636,91 +3070,69 @@ export const Category9RiskComplianceView: React.FC = () => {
           ========================================================================= */}
       {(activeModuleId === 'sec-roles-permissions' || activeModuleId === 'sec-edit-role') && (
         <div className="space-y-4">
-          {/* SubTab Switcher: User Role & Permission vs Policies & Mini-Settings */}
-          <div className={`p-3 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md ${
-            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-          }`}>
-            <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setRolePermissionsSubTab('users')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  rolePermissionsSubTab === 'users'
-                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
-                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg">manage_accounts</span>
-                <span>{t('أدوار وصلاحيات المستخدمين (RBAC)', 'User Roles & Permissions')}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setRolePermissionsSubTab('policies')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  rolePermissionsSubTab === 'policies'
-                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
-                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg">policy</span>
-                <span>{t('شاشة مصغرة للإعدادات والسياسات (Policies)', 'Mini Settings & Policies')}</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/30">
-                  {t('تعديل تواريخ العقود', 'Contracts')}
-                </span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2 px-2 text-xs text-slate-500 dark:text-slate-400">
-              <span className="material-symbols-outlined text-teal-500 text-base">verified_user</span>
-              <span className="text-[11px] font-medium">
-                {rolePermissionsSubTab === 'policies'
-                  ? t('السياسات والضوابط، وتعديل تواريخ العقود الدائمية بكبسة زر واحدة', 'Central policies & one-click permanent contract dates batch update')
-                  : t('إدارة مستخدمي النظام ومصفوفة الصلاحيات الدقيقة', 'Manage system users and granular RBAC access matrix')}
-              </span>
-            </div>
-          </div>
-
-          {/* Policies & Mini-Settings Tab Content */}
-          {rolePermissionsSubTab === 'policies' && (
-            <PoliciesSection
-              language={language}
-              t={t}
-              employees={employees}
-            />
-          )}
-
-          {/* Users & Permissions Table Content */}
-          {rolePermissionsSubTab === 'users' && (
-            <div className={`rounded-3xl border shadow-xl overflow-hidden space-y-0 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
-
-          {/* Prominent Add User CTA Banner */}
-          <div className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 ${
+          {/* Unified Header & Actions Bar (Tabs Switcher + Status + Add User Button) */}
+          <div className={`p-4 rounded-3xl border shadow-lg flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${
             isDark ? 'bg-teal-950/30 border-teal-500/40' : 'bg-teal-50 border-teal-400'
           }`}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-600/30">
-                <span className="material-symbols-outlined text-xl">manage_accounts</span>
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-600/30 shrink-0">
+                <span className="material-symbols-outlined text-2xl">
+                  {rolePermissionsSubTab === 'policies' ? 'policy' : 'manage_accounts'}
+                </span>
               </div>
               <div>
-                <h2 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                  {t('إدارة المستخدمين وصلاحيات الموديولات', 'User Management & Module Permissions')}
+                <h2 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {rolePermissionsSubTab === 'policies'
+                    ? t('شاشة مصغرة للإعدادات والسياسات', 'Mini Settings & Central Policies')
+                    : t('إدارة المستخدمين وصلاحيات الموديولات', 'User Management & Module Permissions')}
                 </h2>
-                <p className="text-teal-600 dark:text-teal-400 text-[11px] font-medium">
-                  {t('أضف مستخدمين جدد وحدد الموديولات المصرح بها عبر علامات ✓ (Tick)', 'Add new users and assign permitted modules via ✓ checkboxes')}
+                <p className="text-teal-700 dark:text-teal-300 text-xs font-medium">
+                  {rolePermissionsSubTab === 'policies'
+                    ? t('السياسات والضوابط، وتعديل تواريخ العقود الدائمية بكبسة زر واحدة', 'Central policies & one-click permanent contract dates batch update')
+                    : t('أضف مستخدمين جدد وحدد الموديولات المصرح بها عبر علامات ✓ (Tick)', 'Add new users and assign permitted modules via ✓ checkboxes')}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-teal-600 dark:text-teal-400 font-bold bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs shrink-0">
-                <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
-                <span>{currentUser?.role === 'Admin' ? t('مسؤول نظام (Admin) نشط', 'Admin Active') : (currentUser?.role === 'Super Admin' ? t('Super Admin نشط', 'Super Admin Active') : t('إدارة الصلاحيات', 'RBAC Active'))}</span>
-              </span>
+            <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+              {/* 1. Navigation Tabs Switcher */}
+              <div className="flex items-center p-1 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-teal-500/20 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setRolePermissionsSubTab('users')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    rolePermissionsSubTab === 'users'
+                      ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
+                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">manage_accounts</span>
+                  <span>{t('أدوار وصلاحيات المستخدمين (RBAC)', 'User Roles & Permissions')}</span>
+                </button>
 
+                <button
+                  type="button"
+                  onClick={() => setRolePermissionsSubTab('policies')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    rolePermissionsSubTab === 'policies'
+                      ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
+                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">policy</span>
+                  <span>{t('الإعدادات والسياسات', 'Mini Settings & Policies')}</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/30">
+                    {t('تعديل تواريخ العقود', 'Contracts')}
+                  </span>
+                </button>
+              </div>
+
+              {/* 2. Add New User Button */}
               <button
                 type="button"
                 onClick={() => {
+                  setRolePermissionsSubTab('users');
+                  setSelectedRolePreset('manual');
                   setNewUserForm({
                     id: undefined,
                     originalUsername: '',
@@ -2749,15 +3161,29 @@ export const Category9RiskComplianceView: React.FC = () => {
                   });
                   setBadgeSearchQuery('');
                   setMatchedEmployee(null);
+                  setMatchedEmpSubCount(0);
                   setIsAddUserModalOpen(true);
                 }}
-                className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-teal-600/30 transition-all cursor-pointer shrink-0 border-2 border-teal-400/30"
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-teal-600/30 transition-all cursor-pointer shrink-0 border border-teal-400/40 hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-base">person_add</span>
-                <span>{t('+ إضافة مستخدم جديد مع الصلاحيات', '+ Add New User with Permissions')}</span>
+                <span>{t('+ مستخدم جديد', '+ New User')}</span>
               </button>
             </div>
           </div>
+
+          {/* Policies & Mini-Settings Tab Content */}
+          {rolePermissionsSubTab === 'policies' && (
+            <PoliciesSection
+              language={language}
+              t={t}
+              employees={employees}
+            />
+          )}
+
+          {/* Users & Permissions Table Content */}
+          {rolePermissionsSubTab === 'users' && (
+            <div className={`rounded-3xl border shadow-xl overflow-hidden space-y-0 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
 
           {/* Sub-header info row */}
           <div className={`px-6 py-3 border-b flex items-center gap-2 ${isDark ? 'border-white/10 bg-[#0a0c10]/50' : 'border-slate-200 bg-slate-50/50'}`}>
@@ -2948,6 +3374,18 @@ export const Category9RiskComplianceView: React.FC = () => {
                                     Admin
                                   </span>
                                 )}
+                                {(u.role === 'General Manager' || (u.job_title || '').includes('مدير عام')) && (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold text-[9px] inline-flex items-center gap-0.5 border border-purple-500/30">
+                                    <span className="material-symbols-outlined text-[11px]">corporate_fare</span>
+                                    {t('مدير عام', 'General Manager')}
+                                  </span>
+                                )}
+                                {(u.role === 'HR Manager' || (u.job_title || '').includes('مدير الموارد البشرية')) && (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-teal-500/20 text-teal-700 dark:text-teal-300 font-bold text-[9px] inline-flex items-center gap-0.5 border border-teal-500/30">
+                                    <span className="material-symbols-outlined text-[11px]">badge</span>
+                                    {t('مدير HR', 'HR Manager')}
+                                  </span>
+                                )}
                               </div>
                               <p className="text-teal-600 dark:text-teal-400 font-mono text-[11px]">
                                 {uCode}
@@ -3034,6 +3472,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                               type="button"
                               onClick={() => {
                                 const isUserAdmin = Boolean(u.can_manage_users === 1 || u.role === 'Admin' || u.role === 'Super Admin');
+                                setSelectedRolePreset(u.role || 'manual');
                                 setNewUserForm({
                                   id: u.id,
                                   originalUsername: u.username,
@@ -3058,13 +3497,13 @@ export const Category9RiskComplianceView: React.FC = () => {
                                 setShowUserPassword(false);
                                 setIsAddUserModalOpen(true);
                               }}
-                              className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-emerald-500/10 hover:bg-emerald-500/20"
+                              className="w-8 h-8 rounded-xl bg-teal-600 hover:bg-teal-500 text-white flex items-center justify-center transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
                               title={t('تعديل بيانات وصلاحيات المستخدم', 'Edit User & Permissions')}
                             >
                               <span className="material-symbols-outlined text-base">edit</span>
                             </button>
 
-                            {/* Quick Change Password Button */}
+                            {/* Quick Change Password Button - Vibrant Solid Amber Background with Crisp White Icon */}
                             <button
                               type="button"
                               onClick={() => {
@@ -3072,31 +3511,17 @@ export const Category9RiskComplianceView: React.FC = () => {
                                 setQuickNewPassword('');
                                 setShowQuickPassword(false);
                               }}
-                              className="p-1.5 rounded-lg text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-amber-500/10 hover:bg-amber-500/20"
+                              className="w-8 h-8 rounded-xl bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
                               title={t('تغيير كلمة المرور مباشرة', 'Change Password Directly')}
                             >
                               <span className="material-symbols-outlined text-base">key</span>
                             </button>
 
-                            {/* Delete Button */}
+                            {/* Delete Button - Reliable In-App Confirmation Modal */}
                             <button
                               type="button"
-                              onClick={async () => {
-                                const confirmMsg = language === 'ar'
-                                  ? `هل أنت متأكد من حذف حساب وصلاحيات المستخدم (${fullName})؟`
-                                  : `Are you sure you want to delete user account (${fullName})?`;
-
-                                if (confirm(confirmMsg)) {
-                                  await api.deleteUser(u.username || u.employee_id || u.id).catch(() => {});
-                                  fetchUsersFromDb();
-                                  window.dispatchEvent(new CustomEvent('vitas:users_changed'));
-                                  setCustomEmpSavedToast(
-                                    language === 'ar' ? `تم حذف حساب المستخدم (${fullName}) بنجاح.` : `User account (${fullName}) deleted.`
-                                  );
-                                  setTimeout(() => setCustomEmpSavedToast(null), 4000);
-                                }
-                              }}
-                              className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:scale-110 active:scale-95 transition-all cursor-pointer bg-rose-500/10 hover:bg-rose-500/20"
+                              onClick={() => setUserToDeleteConfirm(u)}
+                              className="w-8 h-8 rounded-xl bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
                               title={t('حذف المستخدم', 'Delete User')}
                             >
                               <span className="material-symbols-outlined text-base">delete</span>
@@ -3358,6 +3783,151 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <span>{t('1. بيانات المستخدم ونوع الوظيفة (User & Position Details)', '1. User Account & Position Details')}</span>
                 </h4>
 
+                {/* 🌟 Account Type Switcher: Employee vs Executive / Special Admin */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-1 bg-slate-200/70 dark:bg-slate-800/90 rounded-2xl border border-slate-300/60 dark:border-white/10">
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewUserForm(prev => ({
+                          ...prev,
+                          userType: 'employee',
+                          role: 'Employee'
+                        }));
+                      }}
+                      className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        newUserForm.userType !== 'special_executive'
+                          ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
+                          : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base">badge</span>
+                      <span>{t('موظف من كادر المؤسسة (Employee Directory)', 'Staff Employee')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewUserForm(prev => ({
+                          ...prev,
+                          userType: 'special_executive',
+                          jobTitle: 'المدير العام (General Manager)',
+                          department: 'الإدارة العليا والتنفيذية',
+                          role: 'General Manager'
+                        }));
+                        setMatchedEmployee(null);
+                        setMatchedEmpSubCount(0);
+                      }}
+                      className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        newUserForm.userType === 'special_executive'
+                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
+                          : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base">corporate_fare</span>
+                      <span>{t('كادر قيادي / مدير عام / خاص (غير مدرج بالموظفين)', 'Special / Executive (Not in Employee Directory)')}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Branch A: Special Executive Account UI */}
+                {newUserForm.userType === 'special_executive' ? (
+                  <div className={`p-4 rounded-2xl border space-y-3 ${
+                    isDark ? 'bg-purple-950/20 border-purple-500/30' : 'bg-purple-50 border-purple-300'
+                  }`}>
+                    <div className="flex items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                          <span className="material-symbols-outlined text-xl">corporate_fare</span>
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-xs text-purple-900 dark:text-purple-200">
+                            {t('حساب إداري / قيادي خاص (غير مدرج في كادر الموظفين الاعتيادي)', 'Special Executive Account (Not in Employee Directory)')}
+                          </h5>
+                          <p className="text-[11px] text-purple-700 dark:text-purple-400 mt-0.5">
+                            {t('مخصص للمدراء العامين، مدير الموارد البشرية، والقيادات التنفيذية. يمكنك تحديد الصلاحيات والبيانات يدوياً دون الحاجة لوجوده في جدول كادر ورواتب الموظفين.',
+                               'For General Managers, HR Directors, and leadership staff. Customize credentials and permissions directly without linking to the staff payroll table.')}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold text-[10px] border border-purple-500/30 shrink-0">
+                        👑 {t('رؤية شاملة للمؤسسة', 'Company-Wide Scope')}
+                      </span>
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="pt-2 border-t border-purple-200/60 dark:border-purple-800/40 flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-bold text-purple-800 dark:text-purple-300">{t('نماذج جاهزة سريعة:', 'Quick Roles:')}</span>
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          applyRolePreset('General Manager');
+                          setNewUserForm(prev => ({
+                            ...prev,
+                            userType: 'special_executive',
+                            jobTitle: 'المدير العام (General Manager)',
+                            department: 'الإدارة العليا والتنفيذية',
+                            role: 'General Manager',
+                            level: 'full',
+                            fullNameAr: prev.fullNameAr || 'المدير العام التنفيذي',
+                            fullNameEn: prev.fullNameEn || 'General Manager / CEO',
+                            username: prev.username || 'gm.executive'
+                          }));
+                        }}
+                        className="px-3 py-1 rounded-xl bg-purple-600 text-white hover:bg-purple-500 font-bold text-[11px] flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                      >
+                        <span>👔</span>
+                        <span>{t('المدير العام (GM / CEO)', 'General Manager (GM)')}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          applyRolePreset('HR Manager');
+                          setNewUserForm(prev => ({
+                            ...prev,
+                            userType: 'special_executive',
+                            jobTitle: 'مدير الموارد البشرية والشؤون الإدارية',
+                            department: 'الموارد البشرية والشؤون الإدارية',
+                            role: 'HR Manager',
+                            level: 'full',
+                            fullNameAr: prev.fullNameAr || 'مدير الموارد البشرية',
+                            fullNameEn: prev.fullNameEn || 'HR Director',
+                            username: prev.username || 'hr.director'
+                          }));
+                        }}
+                        className="px-3 py-1 rounded-xl bg-teal-600 text-white hover:bg-teal-500 font-bold text-[11px] flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                      >
+                        <span>👥</span>
+                        <span>{t('مدير الموارد البشرية (HR Manager)', 'HR Manager')}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          applyRolePreset('Compliance Officer');
+                          setNewUserForm(prev => ({
+                            ...prev,
+                            userType: 'special_executive',
+                            jobTitle: 'مسؤول الرقابة والامتثال والحوكمة',
+                            department: 'المخاطر والامتثال والحوكمة',
+                            role: 'Compliance Officer',
+                            level: 'read',
+                            fullNameAr: prev.fullNameAr || 'مسؤول الامتثال والحوكمة',
+                            fullNameEn: prev.fullNameEn || 'Compliance Officer',
+                            username: prev.username || 'compliance.officer'
+                          }));
+                        }}
+                        className="px-3 py-1 rounded-xl bg-amber-600 text-white hover:bg-amber-500 font-bold text-[11px] flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                      >
+                        <span>⚖️</span>
+                        <span>{t('مسؤول رقابة وامتثال (Compliance)', 'Compliance Officer')}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
                 {/* 🌟 Dynamic Searchable Combobox for Badge & Employee Name */}
                 <div className={`p-3.5 rounded-2xl border space-y-2 relative ${
                   isDark ? 'bg-teal-950/20 border-teal-500/30' : 'bg-teal-50/70 border-teal-500/30'
@@ -3545,6 +4115,68 @@ export const Category9RiskComplianceView: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                {/* 🌟 Dynamic Supervisor / Employee Scope Indicator Banner */}
+                {matchedEmployee ? (
+                  <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    matchedEmpSubCount > 0
+                      ? (isDark ? 'bg-amber-950/25 border-amber-500/40 text-amber-200' : 'bg-amber-50 border-amber-500/40 text-amber-900')
+                      : (isDark ? 'bg-emerald-950/25 border-emerald-500/40 text-emerald-200' : 'bg-emerald-50 border-emerald-500/40 text-emerald-900')
+                  }`}>
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
+                        matchedEmpSubCount > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
+                      }`}>
+                        <span className="material-symbols-outlined text-2xl">
+                          {matchedEmpSubCount > 0 ? 'supervised_user_circle' : 'person'}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-xs">
+                            {matchedEmpSubCount > 0
+                              ? t(`تم الكشف تلقائياً: هذا الموظف مشرف مباشر على (${matchedEmpSubCount}) موظفاً في الشركة`,
+                                  `Auto-Detected: This employee directly supervises (${matchedEmpSubCount}) staff members`)
+                              : t('موظف اعتيادي (لا يوجد موظفون تابعون له مباشرة في الشركة)',
+                                  'Standard Employee (Does not supervise subordinates in the company)')}
+                          </span>
+                        </div>
+                        <p className="text-[11px] opacity-85 mt-0.5 leading-relaxed">
+                          {matchedEmpSubCount > 0
+                            ? t('سيتم ضبط نطاق البيانات تلقائياً ليشمل داشبورد موظفيه، والبروفايل، والإجازات، والحضور، والوثائق التابعة لموظفيه وبياناته الشخصية، خاضعاً للصلاحيات المحددة في المصفوفة أدناه.',
+                                'Data scope will automatically include team dashboard, employee profiles, leaves, attendance, and documents of their team + self, governed by permissions matrix below.')
+                            : t('سيقتصر نطاق البيانات التلقائي على بياناته الشخصية كموظف (ملفه الشخصي، إجازاته، دوامه، ومستنداته) خاضعاً لمصفوفة الصلاحيات المحددة أدناه.',
+                                'Data scope will automatically restrict to personal employee records (own profile, leaves, attendance, and documents) governed by permissions matrix below.')}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 self-end sm:self-center">
+                      <span className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm ${
+                        matchedEmpSubCount > 0
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-emerald-600 text-white'
+                      }`}>
+                        <span className="material-symbols-outlined text-sm">
+                          {matchedEmpSubCount > 0 ? 'workspace_premium' : 'badge'}
+                        </span>
+                        <span>{matchedEmpSubCount > 0 ? t('مشرف (Supervisor)', 'Supervisor') : t('موظف (Employee)', 'Employee')}</span>
+                      </span>
+                    </div>
+                  </div>
+                ) : !newUserForm.id ? (
+                  <div className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs ${
+                    isDark ? 'bg-sky-950/20 border-sky-500/30 text-sky-300' : 'bg-sky-50 border-sky-300 text-sky-800'
+                  }`}>
+                    <span className="material-symbols-outlined text-lg shrink-0 text-sky-500">info</span>
+                    <p className="text-[11px] leading-relaxed">
+                      {t('يمكنك اختيار موظف مسجل لربطه وتحديد صفته الإشرافية تلقائياً، أو التبديل إلى "كادر قيادي / خاص" أعلاه للمدراء العامين ومدير الموارد البشرية.',
+                         'Select an employee to link them and auto-detect supervision, or switch to "Special / Executive" above for General Managers and HR Directors.')}
+                    </p>
+                  </div>
+                ) : null}
+                  </>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {/* Username */}
@@ -3779,6 +4411,88 @@ export const Category9RiskComplianceView: React.FC = () => {
                   </label>
                 </div>
               </div>
+
+              {/* Role & Automatic Permissions Combobox */}
+              {(() => {
+                const activePreset = ROLE_PRESET_CONFIGS.find(p => p.id === selectedRolePreset) || ROLE_PRESET_CONFIGS[0];
+                return (
+                  <div className={`p-4 rounded-2xl border space-y-3 transition-all ${
+                    isDark ? 'bg-gradient-to-r from-teal-950/30 to-[#0a0c10] border-teal-500/40' : 'bg-gradient-to-r from-teal-50/90 to-sky-50/70 border-teal-500/40'
+                  }`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h4 className="font-bold text-xs flex items-center gap-2 text-teal-700 dark:text-teal-300">
+                          <span className="material-symbols-outlined text-base">auto_fix_high</span>
+                          <span>{t('تحديد الصلاحيات تلقائياً حسب نوع الوظيفة (Role-Based Preset) أو يدوياً', 'Automatic Role Preset or Manual Customization')}</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {t('اختر دوراً وظيفياً لتعبئة مصفوفة الصلاحيات تلقائياً، مع إمكانية التعديل اليدوي على أي شاشة لاحقاً', 
+                             'Select a preset role to auto-configure permissions, with full ability to manually customize any screen below')}
+                        </p>
+                      </div>
+
+                      {activePreset && activePreset.id !== 'manual' && (
+                        <span className="px-3 py-1 rounded-full bg-teal-500/20 text-teal-800 dark:text-teal-300 border border-teal-500/40 text-[10px] font-bold self-start sm:self-auto flex items-center gap-1 shadow-2xs">
+                          <span className="material-symbols-outlined text-xs">verified</span>
+                          <span>{language === 'ar' ? activePreset.badgeAr : activePreset.badgeEn}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="relative flex items-center">
+                      <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'right-3.5' : 'left-3.5'} text-lg pointer-events-none text-teal-600 dark:text-teal-400`}>
+                        {activePreset?.icon || 'tune'}
+                      </span>
+                      <select
+                        value={selectedRolePreset}
+                        onChange={(e) => handleApplyRolePreset(e.target.value)}
+                        className={`w-full ${language === 'ar' ? 'pr-11 pl-9' : 'pl-11 pr-9'} py-2.5 rounded-xl border text-xs font-bold outline-none cursor-pointer appearance-none shadow-sm transition-all ${
+                          isDark 
+                            ? 'bg-[#111827] border-teal-500/50 text-white focus:border-teal-400' 
+                            : 'bg-white border-teal-500/50 text-slate-900 focus:border-teal-600'
+                        }`}
+                      >
+                        {ROLE_PRESET_CONFIGS.map(preset => (
+                          <option key={preset.id} value={preset.id} className={isDark ? 'bg-[#111827] text-white' : 'bg-white text-slate-900'}>
+                            {language === 'ar' ? preset.titleAr : preset.titleEn}
+                          </option>
+                        ))}
+                      </select>
+                      <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'left-3.5' : 'right-3.5'} text-base pointer-events-none text-slate-400`}>
+                        expand_more
+                      </span>
+                    </div>
+
+                    {/* Active Preset Details Card */}
+                    {activePreset && (
+                      <div className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 transition-all ${
+                        activePreset.id === 'manual'
+                          ? (isDark ? 'bg-[#0a0c10] border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600')
+                          : (isDark ? 'bg-teal-950/40 border-teal-500/40 text-slate-200' : 'bg-white border-teal-500/30 text-slate-800 shadow-2xs')
+                      }`}>
+                        <span className={`material-symbols-outlined text-base shrink-0 mt-0.5 ${activePreset.id === 'manual' ? 'text-slate-400' : 'text-teal-500'}`}>
+                          {activePreset.id === 'manual' ? 'edit_note' : 'info'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-[11px] text-teal-700 dark:text-teal-300">
+                              {language === 'ar' ? activePreset.titleAr : activePreset.titleEn}
+                            </span>
+                            {activePreset.id !== 'manual' && (
+                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                                ({t('تم تطبيق الصلاحيات تلقائياً على المصفوفة أدناه ويمكنك تعديلها يدوياً', 'Permissions auto-applied to matrix below; you can also tweak manually')})
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] leading-relaxed mt-1 text-slate-600 dark:text-slate-300">
+                            {language === 'ar' ? activePreset.descAr : activePreset.descEn}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Section 2: Dynamic Hierarchical Module & Screen Permissions */}
               <div className="space-y-4">
@@ -4241,6 +4955,95 @@ export const Category9RiskComplianceView: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          CONFIRM DELETE USER MODAL (RELIABLE IN-APP MODAL)
+      ============================================================ */}
+      {userToDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${
+            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`p-5 border-b flex items-center justify-between ${
+              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-500 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-2xl">delete_forever</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-rose-600 dark:text-rose-400">
+                    {t('تأكيد حذف المستخدم', 'Confirm User Deletion')}
+                  </h3>
+                  <p className="text-slate-500 text-[11px]">
+                    {userToDeleteConfirm.full_name || userToDeleteConfirm.name || userToDeleteConfirm.username}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUserToDeleteConfirm(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className={`p-4 rounded-2xl border space-y-2 ${
+                isDark ? 'bg-rose-950/20 border-rose-500/30 text-rose-200' : 'bg-rose-50 border-rose-300 text-rose-900'
+              }`}>
+                <p className="font-bold text-xs flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-base text-rose-600">warning</span>
+                  <span>{t('هل أنت متأكد من رغبتك بحذف هذا الحساب نهائياً؟', 'Are you sure you want to permanently delete this user account?')}</span>
+                </p>
+                <p className="text-[11px] leading-relaxed opacity-90">
+                  {t('سيتم إلغاء صلاحيات الدخول للمستخدم وحذف بياناته وحسابه من قاعدة البيانات فوراً. لا يؤثر هذا على بطاقة الموظف في جدول الموظفين.',
+                     'The user login and assigned permissions will be deleted immediately. This does not delete their record from the employees table.')}
+                </p>
+              </div>
+
+              <div className={`p-3.5 rounded-2xl border space-y-1.5 ${
+                isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">{t('اسم الدخول:', 'Username:')}</span>
+                  <span className="font-mono font-bold text-teal-600 dark:text-teal-400">{userToDeleteConfirm.username}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">{t('كود الموظف:', 'Employee Code:')}</span>
+                  <span className="font-mono text-slate-700 dark:text-slate-300">{userToDeleteConfirm.employee_id || '-'}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">{t('المسمى الوظيفي:', 'Position:')}</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-semibold">{userToDeleteConfirm.job_title || userToDeleteConfirm.role || '-'}</span>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setUserToDeleteConfirm(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-white/5 font-bold transition-all cursor-pointer text-slate-600 dark:text-slate-300"
+                >
+                  {t('إلغاء التراجع', 'Cancel')}
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingUser}
+                  onClick={handleConfirmDeleteUser}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold transition-all shadow-md shadow-rose-600/30 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    {isDeletingUser ? 'hourglass_top' : 'delete'}
+                  </span>
+                  <span>{isDeletingUser ? t('جارٍ الحذف...', 'Deleting...') : t('نعم، احذف المستخدم', 'Yes, Delete User')}</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

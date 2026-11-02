@@ -9,18 +9,28 @@ import { EmployeePayoutRecord } from '../types/excelIncentives';
 
 export function exportExtractedDataToExcel(
   records: EmployeePayoutRecord[],
-  filename = 'Extracted_Incentives_Payout.xlsx'
+  filename = 'Extracted_Incentives_Payout_USD.xlsx',
+  fxRate = 1310
 ): void {
-  // Format rows strictly containing only the 7 required columns
-  const exportRows = records.map((rec) => ({
-    'Employee ID': rec.employeeId,
-    'Office': rec.office,
-    'Employee Name': rec.employeeName,
-    'Job Title': rec.jobTitle,
-    'Incentives': rec.incentives !== null ? rec.incentives : '—',
-    'Transportation': rec.transportation !== null ? rec.transportation : '—',
-    'Bonus': rec.bonus !== null ? rec.bonus : '—',
-  }));
+  // Format rows with both USD amounts and IQD conversion based on official Policy rate
+  const exportRows = records.map((rec) => {
+    const incUSD = rec.incentives !== null ? rec.incentives : 0;
+    const transUSD = rec.transportation !== null ? rec.transportation : 0;
+    const bonusUSD = rec.bonus !== null ? rec.bonus : 0;
+    const totalUSD = incUSD + transUSD + bonusUSD;
+    return {
+      'Employee ID': rec.employeeId,
+      'Office': rec.office,
+      'Employee Name': rec.employeeName,
+      'Job Title': rec.jobTitle,
+      'Incentives ($ USD)': rec.incentives !== null ? rec.incentives : '—',
+      'Transportation ($ USD)': rec.transportation !== null ? rec.transportation : '—',
+      'Bonus ($ USD)': rec.bonus !== null ? rec.bonus : '—',
+      'Total ($ USD)': totalUSD > 0 ? totalUSD : '—',
+      'Total in IQD (الدينار العراقي)': totalUSD > 0 ? Math.round(totalUSD * fxRate) : 0,
+      'Applied FX Rate': fxRate,
+    };
+  });
 
   const worksheet = XLSX.utils.json_to_sheet(exportRows);
 

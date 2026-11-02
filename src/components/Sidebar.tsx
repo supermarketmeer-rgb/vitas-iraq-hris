@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CATEGORY_GROUPS } from '../data/categories';
 import { useApp } from '../context/AppContext';
 import { getUserEffectivePermissions, isModuleAuthorized } from '../utils/permissionHelper';
 
 export const Sidebar: React.FC = () => {
+  const navigate = useNavigate();
   const {
     activeModuleId,
     setActiveModuleId,
@@ -22,6 +24,8 @@ export const Sidebar: React.FC = () => {
     documentRecords,
     currentUserRole,
     currentUser,
+    setCurrentUser,
+    setAuthenticated,
     theme,
     isBranchManager,
     userBranch,
@@ -551,43 +555,84 @@ export const Sidebar: React.FC = () => {
           )}
         </nav>
 
-        {/* Settings & Bottom Controls (Settings & Security + Language Icon + Theme Icon on the SAME row) */}
+        {/* Settings & Bottom Controls (Password + Logout + Language + Theme on the SAME row) */}
         <div
           id="sidebar-footer-controls"
+          dir="ltr"
           className={`p-1.5 border-t flex items-center gap-1.5 ${isDark ? "border-[#1e2a44] bg-[#06080d]" : "border-[#cbd5e1] bg-[#eef2f6]"}`}
         >
-          {/* Employee Profile Button (Settings & Security is hidden from all users) */}
+          {/* Employee Profile Button (Hidden as requested, preserved without deleting) */}
           <button
             onClick={() => handleSelectModule('emp-profile')}
-            className={`flex-1 px-2.5 h-8 rounded-xl flex items-center gap-2 transition-all text-[11px] font-normal cursor-pointer ${
-              activeModuleId === 'emp-profile'
-                ? 'bg-[#06080d] text-teal-400 border border-teal-500 shadow-md'
-                : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-teal-400 border border-slate-800/80'
-            }`}
+            className="hidden"
+            aria-hidden="true"
             title={t('ملفي الوظيفي', 'My Profile')}
           >
             <span className="material-symbols-outlined text-base">person</span>
             <span className="truncate">{t('ملفي الوظيفي', 'My Profile')}</span>
           </button>
 
-          {/* Language AR/EN Toggle Button */}
+          {/* 1. Language AR/EN Toggle Button */}
           <button
+            type="button"
             onClick={toggleLanguage}
-            className="h-8 px-3 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer bg-slate-900/80 border-slate-800/80 text-white hover:bg-slate-800 hover:border-teal-500/50"
+            className={`h-8 px-3 rounded-xl border flex items-center justify-center transition-all shadow-xs shrink-0 text-xs font-normal cursor-pointer ${
+              isDark
+                ? 'bg-slate-900/80 border-slate-800/80 text-white hover:bg-slate-800 hover:border-teal-500/50'
+                : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-100 hover:border-teal-400'
+            }`}
             title={language === 'ar' ? 'Switch to English' : 'التحويل للعربية'}
           >
-            <span className="text-xs tracking-wider font-normal text-white">
+            <span className="text-xs tracking-wider font-bold">
               {language === 'ar' ? 'EN' : 'AR'}
             </span>
           </button>
 
-          {/* Theme Day/Night Toggle Button */}
+          {/* 2. Theme Day/Night Toggle Button */}
           <button
+            type="button"
             onClick={toggleTheme}
-            className="h-8 px-2.5 rounded-xl border flex items-center justify-center transition-all shadow-sm shrink-0 text-xs font-normal cursor-pointer bg-slate-900/80 border-slate-800/80 text-white hover:bg-slate-800 hover:border-teal-500/50"
+            className={`h-8 px-2.5 rounded-xl border flex items-center justify-center transition-all shadow-xs shrink-0 text-xs font-normal cursor-pointer ${
+              isDark
+                ? 'bg-slate-900/80 border-slate-800/80 text-white hover:bg-slate-800 hover:border-teal-500/50'
+                : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-100 hover:border-teal-400'
+            }`}
             title={theme === 'dark' ? t('الوضع الفاتح', 'Light Mode') : t('الوضع الداكن', 'Dark Mode')}
           >
             <span className="text-sm">{isDark ? '☀️' : '🌙'}</span>
+          </button>
+
+          {/* 3. Change Password Quick Action Button */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('vitas:open_change_password'))}
+            className={`h-8 px-2.5 rounded-xl border flex items-center justify-center transition-all shadow-xs shrink-0 cursor-pointer ${
+              isDark
+                ? 'bg-slate-900/80 border-slate-800/80 text-teal-400 hover:bg-slate-800 hover:border-teal-500/50'
+                : 'bg-white border-slate-300 text-teal-700 hover:bg-slate-100 hover:border-teal-400'
+            }`}
+            title={t('تغيير كلمة المرور الخاصة بي', 'Change My Password')}
+          >
+            <span className="material-symbols-outlined text-base">key</span>
+          </button>
+
+          {/* 4. Logout Quick Action Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setCurrentUser(null);
+              setAuthenticated(false);
+              navigate('/login');
+            }}
+            className={`flex-1 h-8 px-2.5 rounded-xl border flex items-center justify-center gap-1 transition-all shadow-xs text-xs font-bold cursor-pointer ${
+              isDark
+                ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border-rose-500/30'
+                : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
+            }`}
+            title={t('تسجيل الخروج', 'Logout')}
+          >
+            <span className="material-symbols-outlined text-base">logout</span>
+            <span className="text-xs font-bold">{t('خروج', 'Logout')}</span>
           </button>
         </div>
 

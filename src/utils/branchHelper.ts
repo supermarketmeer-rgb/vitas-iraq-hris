@@ -322,18 +322,176 @@ export function isEmployeeInBranch(emp: any, branchName: string): boolean {
 }
 
 /**
+ * Checks if emp matches user themselves across IDs, codes, names, or usernames.
+ */
+export function isSelfEmployee(emp: any, user?: any): boolean {
+  if (!emp || !user) return false;
+  const empId = String(emp.id != null ? emp.id : '').trim();
+  const empCode = String(emp.employeeId || emp.employee_id || emp.badge_no || emp.badgeNo || '').trim().toLowerCase();
+  const empArName = String(emp.fullNameAr || emp.fullName || emp.name || emp.name_ar || '').trim().toLowerCase();
+  const empEnName = String(emp.fullNameEn || emp.name_en || '').trim().toLowerCase();
+
+  const userId = String(user.id != null ? user.id : '').trim();
+  const userEmpId = String(user.employeeId || user.employee_id || user.originalEmployeeId || user.badge_no || user.badgeNo || '').trim().toLowerCase();
+  const userName = String(user.name || user.fullNameAr || user.fullName || user.name_ar || '').trim().toLowerCase();
+  const userEnName = String(user.fullNameEn || user.name_en || '').trim().toLowerCase();
+  const username = String(user.username || '').trim().toLowerCase();
+
+  if (userId && empId && userId === empId) return true;
+  if (userEmpId && empCode && (userEmpId === empCode || userEmpId.replace(/[^a-z0-9]/g, '') === empCode.replace(/[^a-z0-9]/g, ''))) return true;
+  if (username && empCode && (username === empCode || username.replace(/[^a-z0-9]/g, '') === empCode.replace(/[^a-z0-9]/g, ''))) return true;
+  if (userName && (empArName === userName || empEnName === userName)) return true;
+  if (userEnName && (empArName === userEnName || empEnName === userEnName)) return true;
+
+  return false;
+}
+
+/**
+ * Checks if emp is a subordinate of supervisor across direct reporting line, names, and IDs.
+ */
+export function isSubordinateOf(emp: any, supervisor?: any): boolean {
+  if (!emp || !supervisor) return false;
+  // If emp is supervisor themselves, not a subordinate
+  if (isSelfEmployee(emp, supervisor)) return false;
+
+  const directSup = String(emp.supervisorName || emp.supervisor_name || '').trim().toLowerCase();
+  const directSupId = String(emp.supervisor_employee_id || emp.supervisor_id || '').trim().toLowerCase();
+
+  const supId = String(supervisor.id != null ? supervisor.id : '').trim();
+  const supEmpId = String(supervisor.employeeId || supervisor.employee_id || supervisor.originalEmployeeId || supervisor.badge_no || supervisor.badgeNo || '').trim().toLowerCase();
+  const supName = String(supervisor.name || supervisor.fullNameAr || supervisor.fullName || supervisor.name_ar || '').trim().toLowerCase();
+  const supEnName = String(supervisor.fullNameEn || supervisor.name_en || '').trim().toLowerCase();
+
+  // Match by supervisor ID / Badge Code
+  if (directSupId) {
+    if (supId && directSupId === supId) return true;
+    if (supEmpId && (directSupId === supEmpId || directSupId.replace(/[^a-z0-9]/g, '') === supEmpId.replace(/[^a-z0-9]/g, ''))) return true;
+  }
+
+  // Match by supervisor Name (with Arabic normalization)
+  if (directSup && directSup.length > 2) {
+    const norm = (s: string) => s.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+    const normDirect = norm(directSup);
+    if (supName) {
+      const normSup = norm(supName);
+      if (normDirect === normSup || normDirect.includes(normSup) || normSup.includes(normDirect)) return true;
+    }
+    if (supEnName) {
+      const normSupEn = norm(supEnName);
+      if (normDirect === normSupEn || normDirect.includes(normSupEn) || normSupEn.includes(normDirect)) return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Detects if the current user has Supervisor / Team Lead role or permissions.
+ * Also checks if any employees report to this user in the employees table.
+ */
+export function isSupervisor(user?: any, role?: string, employees?: any[]): boolean {
+  if (!user && !role) return false;
+  const currentRole = String(role || user?.role || '').trim();
+  const jobTitle = String(user?.job_title || user?.jobTitle || '').toLowerCase();
+
+  if (
+    currentRole === 'Supervisor' ||
+    currentRole === 'مشرف' ||
+    currentRole.includes('Supervisor') ||
+    currentRole.includes('مشرف')
+  ) {
+    return true;
+  }
+
+  if (
+    jobTitle.includes('مشرف') ||
+    jobTitle.toLowerCase().includes('supervisor')
+  ) {
+    return true;
+  }
+
+  if (Boolean(user?.is_supervisor) || Boolean(user?.isSupervisor)) {
+    return true;
+  }
+
+  // Dynamic hierarchy check: if this user has subordinates, they are automatically a supervisor!
+  if (Array.isArray(employees) && employees.length > 0) {
+    return employees.some(e => isSubordinateOf(e, user));
+  }
+
+  return false;
+}
+
+/**
  * Filters an employee list for the current user.
- * If user is a Branch Manager, strictly scopes the list to their office employees.
- * Otherwise returns the original list.
+ * 1. Super Admin: Full bypass (developer - sees all records).
+ * 2. HR Manager: Full view of all company employees.
+ * 3. Branch Manager: Strictly scopes the list to their office employees.
+ * 4. Supervisor: Strictly scopes the list to their direct subordinates + themselves.
+ * 5. Regular Employee: Strictly scopes the list to themselves only.
  */
 export function filterEmployeesForUser(employees: any[], user?: any, role?: string): any[] {
   if (!Array.isArray(employees)) return [];
-  if (!isBranchManager(user, role)) return employees;
+  if (!user) return employees;
 
-  const branch = getUserBranch(user);
-  if (!branch) return employees;
+  const currentRole = String(role || user?.role || '').trim();
+  const username = String(user?.username || '').trim().toLowerCase();
 
-  return employees.filter(emp => isEmployeeInBranch(emp, branch));
+  // 1. Super Admin & Admin bypass (developer / full admin - unrestricted)
+  if (currentRole === 'Super Admin' || currentRole === 'Admin' || username === 'admin' || user?.id === 1 || user?.id === '1') {
+    return employees;
+  }
+
+  // 2. General Manager & HR Manager bypass (executives & HR directors - company-wide access)
+  const jobTitleStr = String(user?.job_title || user?.jobTitle || '').toLowerCase();
+  if (
+    currentRole === 'HR Manager' || 
+    currentRole === 'General Manager' || 
+    username === 'hrmanager' ||
+    jobTitleStr.includes('مدير عام') ||
+    jobTitleStr.includes('المدير العام') ||
+    jobTitleStr.includes('general manager') ||
+    jobTitleStr.includes('ceo') ||
+    jobTitleStr.includes('مدير الموارد البشرية') ||
+    jobTitleStr.includes('hr manager') ||
+    jobTitleStr.includes('hr director')
+  ) {
+    return employees;
+  }
+
+  // 3. Branch Manager scope
+  if (isBranchManager(user, role)) {
+    const branch = getUserBranch(user);
+    if (!branch) return employees;
+    return employees.filter(emp => isEmployeeInBranch(emp, branch));
+  }
+
+  // 4. Supervisor / Team Lead scope (Subordinates + Supervisor themselves)
+  const subordinates = employees.filter(emp => isSubordinateOf(emp, user));
+  const hasSubordinates = subordinates.length > 0;
+  const userIsSupervisor = hasSubordinates || isSupervisor(user, role, employees);
+
+  if (userIsSupervisor) {
+    const selfEmp = employees.find(emp => isSelfEmployee(emp, user));
+    const result: any[] = [];
+    if (selfEmp) {
+      result.push(selfEmp);
+    }
+    subordinates.forEach(sub => {
+      if (!result.some(e => String(e.id) === String(sub.id))) {
+        result.push(sub);
+      }
+    });
+    return result;
+  }
+
+  // 5. Regular Employee scope (Strictly self only)
+  const selfEmp = employees.find(emp => isSelfEmployee(emp, user));
+  if (selfEmp) {
+    return [selfEmp];
+  }
+
+  return employees;
 }
 
 /**

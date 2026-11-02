@@ -185,7 +185,7 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         title: 'الإجازات المستحقة',
         titleEn: 'Earned Leaves',
         icon: 'account_balance_wallet',
-        description: 'احتساب أرصدة ومستحقات الإجازات المالية وفق معادلة رصيد Curry Forward والدوام والراتب'
+        description: 'احتساب أرصدة ومستحقات الإجازات المالية وفق معادلة رصيد Starting Leave Balance والدوام والراتب'
       },
       {
         id: 'leave-timesheets',

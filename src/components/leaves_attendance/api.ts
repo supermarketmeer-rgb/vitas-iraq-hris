@@ -85,9 +85,13 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
 
   // Extract policy settings from Settings > Policies if configured
   const annualLimit = appSettings && appSettings['annual_leave_balance'] ? (parseFloat(appSettings['annual_leave_balance']) || 21) : 21;
-  const sickLimit = appSettings && appSettings['max_sick_leave'] ? (parseFloat(appSettings['max_sick_leave']) || 14) : 14;
-  const emergencyLimit = appSettings && appSettings['emergency_leave_limit'] ? (parseFloat(appSettings['emergency_leave_limit']) || 5) : 5;
-  const maternityLimit = appSettings && appSettings['maternity_leave_limit'] ? (parseFloat(appSettings['maternity_leave_limit']) || 70) : 70;
+  const sickLimit = appSettings && appSettings['max_sick_leave'] ? (parseFloat(appSettings['max_sick_leave']) || 30) : 30;
+  const emergencyLimit = appSettings && appSettings['emergency_leave_limit'] ? (parseFloat(appSettings['emergency_leave_limit']) || 3) : 3;
+  const maternityLimit = appSettings && appSettings['maternity_leave_limit'] ? (parseFloat(appSettings['maternity_leave_limit']) || 72) : 72;
+  const paternityLimit = appSettings && appSettings['paternity_leave_limit'] ? (parseFloat(appSettings['paternity_leave_limit']) || 3) : 3;
+  const marriageLimit = appSettings && appSettings['marriage_leave_limit'] ? (parseFloat(appSettings['marriage_leave_limit']) || 7) : 7;
+  const bereavementDirectLimit = appSettings && appSettings['bereavement_direct_leave_limit'] ? (parseFloat(appSettings['bereavement_direct_leave_limit']) || 3) : 3;
+  const bereavementIndirectLimit = appSettings && appSettings['bereavement_indirect_leave_limit'] ? (parseFloat(appSettings['bereavement_indirect_leave_limit']) || 2) : 2;
   const workStart = (appSettings && appSettings['official_work_hours_start']) || '08:00';
   const workEnd = (appSettings && appSettings['official_work_hours_end']) || '16:00';
 
@@ -98,6 +102,10 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
     else if (lt.code === 'SICK') maxDays = sickLimit;
     else if (lt.code === 'EMERGENCY') maxDays = emergencyLimit;
     else if (lt.code === 'MATERNITY') maxDays = maternityLimit;
+    else if (lt.code === 'PATERNITY') maxDays = paternityLimit;
+    else if (lt.code === 'MARRIAGE') maxDays = marriageLimit;
+    else if (lt.code === 'BEREAVEMENT_DIRECT') maxDays = bereavementDirectLimit;
+    else if (lt.code === 'BEREAVEMENT_INDIRECT') maxDays = bereavementIndirectLimit;
 
     return { ...lt, max_days_per_year: maxDays };
   });
@@ -252,13 +260,13 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
   const generatedBalances: LeaveBalance[] = [];
   let balId = 1;
 
-  // Retrieve any previously saved employee Curry Forward overrides
-  let savedCurryOverrides: Record<string, number> = {};
+  // Retrieve any previously saved employee Starting Leave Balance overrides
+  let savedStartingBalanceOverrides: Record<string, number> = {};
   try {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('vitas_emp_curry_forward') : null;
-    if (stored) savedCurryOverrides = JSON.parse(stored);
+    const stored = typeof window !== 'undefined' ? (localStorage.getItem('vitas_emp_starting_leave_balance') || localStorage.getItem('vitas_emp_curry_forward')) : null;
+    if (stored) savedStartingBalanceOverrides = JSON.parse(stored);
   } catch {
-    savedCurryOverrides = {};
+    savedStartingBalanceOverrides = {};
   }
 
   mappedEmps.forEach((emp) => {
@@ -266,7 +274,7 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
     const usedSick = emp.id % 3;
     const usedEmg = emp.id % 2;
 
-    // Check individual employee carried_forward_days from:
+    // Check individual employee Starting Leave Balance (carried_forward_days) from:
     // 1. LocalStorage saved override for this employee
     // 2. Existing balance in mockBalances
     // 3. Initial balances in mockHrisDb
@@ -275,14 +283,14 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
     const initialBal = initialLeaveBalances.find(b => (b.employee_id === emp.id || b.employee_number === emp.employee_number) && b.leave_type_code === 'ANNUAL');
 
     let empCarryForward = 0;
-    if (savedCurryOverrides[emp.employee_number] !== undefined) {
-      empCarryForward = Number(savedCurryOverrides[emp.employee_number]);
+    if (savedStartingBalanceOverrides[emp.employee_number] !== undefined) {
+      empCarryForward = Number(savedStartingBalanceOverrides[emp.employee_number]);
     } else if (existingBal && existingBal.carried_forward_days !== undefined) {
       empCarryForward = existingBal.carried_forward_days;
     } else if (initialBal && initialBal.carried_forward_days !== undefined) {
       empCarryForward = initialBal.carried_forward_days;
     } else {
-      // Historical carry forward varies per employee (e.g. 4, 6, 2, 0, 1, 3, 5...)
+      // Historical starting balance varies per employee (e.g. 4, 6, 2, 0, 1, 3, 5...)
       const variance = [4, 6, 2, 0, 1, 3, 5, 2, 0, 4, 1, 3];
       empCarryForward = variance[(emp.id - 1) % variance.length];
     }
@@ -586,13 +594,14 @@ export const api = {
       }
       try {
         if (typeof window !== 'undefined' && mockBalances[idx].employee_number && updates.carried_forward_days !== undefined) {
-          const stored = localStorage.getItem('vitas_emp_curry_forward') || '{}';
+          const stored = localStorage.getItem('vitas_emp_starting_leave_balance') || localStorage.getItem('vitas_emp_curry_forward') || '{}';
           const parsed = JSON.parse(stored);
           parsed[mockBalances[idx].employee_number] = updates.carried_forward_days;
+          localStorage.setItem('vitas_emp_starting_leave_balance', JSON.stringify(parsed));
           localStorage.setItem('vitas_emp_curry_forward', JSON.stringify(parsed));
         }
       } catch (e) {
-        console.warn('Could not persist curry forward', e);
+        console.warn('Could not persist starting leave balance', e);
       }
       return { balance: mockBalances[idx] };
     }

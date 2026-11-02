@@ -12,8 +12,33 @@ export const Category8AssetsDocumentsView: React.FC = () => {
     addDocumentRecord,
     currentUser,
     isDark,
+    isSupervisor,
+    scopedEmployees,
     t
   } = useApp();
+
+  const scopedEmpIds = React.useMemo(() => new Set((scopedEmployees || []).map(e => String(e.id || e.employeeId))), [scopedEmployees]);
+  const scopedEmpNames = React.useMemo(() => (scopedEmployees || []).map(e => String(e.fullNameAr || e.fullName || e.name || '').toLowerCase()).filter(Boolean), [scopedEmployees]);
+
+  const isSuperAdminOrHR =
+    currentUser?.role === 'Super Admin' ||
+    currentUser?.role === 'HR Manager' ||
+    currentUser?.username === 'admin' ||
+    currentUser?.username === 'hrmanager' ||
+    currentUser?.id === 1 ||
+    currentUser?.id === '1';
+
+  const effectiveDocuments = React.useMemo(() => {
+    if (isSuperAdminOrHR) return documentRecords;
+    const curName = String(currentUser?.name || '').toLowerCase();
+    return documentRecords.filter(doc => {
+      if (doc.uploadedBy && doc.uploadedBy.toLowerCase().includes(curName)) return true;
+      if (doc.employeeId && scopedEmpIds.has(String(doc.employeeId))) return true;
+      if (scopedEmpNames.some(name => (doc.employeeName || doc.title || '').toLowerCase().includes(name))) return true;
+      if (doc.category === 'لوائح وسياسات' || doc.type === 'سياسة') return true;
+      return false;
+    });
+  }, [documentRecords, isSuperAdminOrHR, currentUser, scopedEmpIds, scopedEmpNames]);
 
   // Asset Form State
   const [assetName, setAssetName] = useState('');
@@ -318,7 +343,7 @@ export const Category8AssetsDocumentsView: React.FC = () => {
 
             {/* List */}
             <div className="lg:col-span-2 space-y-3">
-              {documentRecords.length === 0 ? (
+              {effectiveDocuments.length === 0 ? (
                 <EmptyState
                   icon="folder_shared"
                   title={t('سجل إدارة المستندات فارغ', 'Document Register Empty')}
@@ -326,7 +351,7 @@ export const Category8AssetsDocumentsView: React.FC = () => {
                 />
               ) : (
                 <div className="space-y-2 text-xs">
-                  {documentRecords.map(doc => (
+                  {effectiveDocuments.map(doc => (
                     <div key={doc.id} className="p-3.5 rounded-2xl bg-[#0a0c10] border border-white/10 flex items-center justify-between shadow-sm hover:border-teal-500/40 transition-all">
                       <div className="flex items-center gap-3">
                         <span className="material-symbols-outlined text-teal-400 text-2xl">

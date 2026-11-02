@@ -191,6 +191,13 @@ export function getUserEffectivePermissions(
     (currentUser?.name && String(currentUser.name).includes('مدير الموارد البشرية'))
   );
 
+  const isSupervisorRole = 
+    currentRole === 'Supervisor' || 
+    currentUser?.role === 'Supervisor' || 
+    currentRole === 'مشرف' ||
+    (currentUser?.role && (String(currentUser.role).includes('مشرف') || String(currentUser.role).toLowerCase() === 'supervisor')) ||
+    (currentUser?.job_title && (String(currentUser.job_title).includes('مشرف') || String(currentUser.job_title).toLowerCase().includes('supervisor')));
+
   const isRecruiterRole = currentRole === 'Recruiter';
   const isDeptHeadRole = currentRole === 'Department Head';
   const isITAdminRole = currentRole === 'IT Admin';
@@ -212,11 +219,11 @@ export function getUserEffectivePermissions(
     rawModules: perms,
     employees: hasExplicitPerms 
       ? Boolean(isAnyActive(['employees', 'cat-3-emp']) || hasActivePrefix('emp-')) 
-      : (hasCanManageFlags ? Boolean(currentUser?.can_manage_employees) : (isHRManagerRole || isDeptHeadRole || isBranchManagerRole)),
+      : (hasCanManageFlags ? Boolean(currentUser?.can_manage_employees) : (isHRManagerRole || isDeptHeadRole || isBranchManagerRole || isSupervisorRole)),
     
     attendance: hasExplicitPerms 
       ? Boolean(isAnyActive(['attendance', 'cat-4-leave']) || hasActivePrefix('leave-')) 
-      : (isHRManagerRole || isDeptHeadRole || isEmployeeRole || isBranchManagerRole),
+      : (isHRManagerRole || isDeptHeadRole || isEmployeeRole || isBranchManagerRole || isSupervisorRole),
     
     payroll: hasExplicitPerms 
       ? Boolean(isAnyActive(['payroll', 'cat-5-payroll']) || hasActivePrefix('payroll-') || hasActivePrefix('pay-')) 
@@ -228,15 +235,15 @@ export function getUserEffectivePermissions(
     
     reports: hasExplicitPerms 
       ? Boolean(isAnyActive(['reports', 'cat-2-dash', 'dashboard', 'sys-dynamic-reports']) || hasActivePrefix('dash-')) 
-      : (isHRManagerRole || isITAdminRole || isBranchManagerRole),
+      : (isHRManagerRole || isITAdminRole || isBranchManagerRole || isSupervisorRole),
     
     performance: hasExplicitPerms 
       ? Boolean(isAnyActive(['performance', 'cat-7-perf']) || hasActivePrefix('perf-') || perms.recruitment) 
-      : false,
+      : isSupervisorRole,
     
     assets: hasExplicitPerms 
       ? Boolean(isAnyActive(['assets', 'cat-8-assets']) || hasActivePrefix('asset-') || hasActivePrefix('doc-')) 
-      : false,
+      : isSupervisorRole,
     
     archive: hasExplicitPerms 
       ? Boolean(isAnyActive(['archive', 'cat-12-archive', 'cat-9-archive']) || hasActivePrefix('archive-')) 
@@ -300,6 +307,44 @@ export function isModuleAuthorized(
     // 3. Category 3: Employee Management -> ONLY HR Employee Directory and HR Employees Profiles
     if (catId === 'cat-3-emp') {
       return ['emp-hr-directory', 'emp-profile'].includes(moduleId);
+    }
+  }
+
+  // Supervisor Scope Rules
+  const isSupervisorRole = 
+    currentRole === 'Supervisor' || 
+    currentRole === 'مشرف' ||
+    currentRole.includes('Supervisor') ||
+    currentRole.includes('مشرف');
+
+  if (isSupervisorRole) {
+    // 1. Completely hide Risk, Compliance and Security
+    if (catId === 'cat-9-risk' || moduleId.startsWith('risk-') || moduleId.startsWith('sec-')) {
+      return false;
+    }
+    // 2. Hide Payroll (except personal payslip)
+    if (catId === 'cat-5-payroll') {
+      return moduleId === 'payroll-payslip';
+    }
+    // 3. Category 2: Dashboard & Executive -> System Overview, Employee Self Service (ESS), and Saved Reports
+    if (catId === 'cat-2-dash') {
+      return ['dash-overview', 'dash-ess', 'sys-dynamic-reports'].includes(moduleId);
+    }
+    // 4. Category 3: Employee Management -> HR Employee Directory and HR Employees Profiles (for their subordinates)
+    if (catId === 'cat-3-emp') {
+      return ['emp-hr-directory', 'emp-profile'].includes(moduleId);
+    }
+    // 5. Category 4: Leaves & Attendance -> Leave Approvals, Directory, Apply, Attendance
+    if (catId === 'cat-4-leave') {
+      return ['leave-directory', 'leave-approvals', 'leave-apply', 'leave-attendance', 'leave-timesheets'].includes(moduleId);
+    }
+    // 6. Category 8: Documents & Assets -> Document Management, EDMS Portal, My Documents, Assets
+    if (catId === 'cat-8-assets') {
+      return ['doc-mgmt', 'doc-edms', 'doc-my-docs', 'asset-documents', 'asset-inventory', 'asset-my-requests'].includes(moduleId);
+    }
+    // 7. Category 7: Performance
+    if (catId === 'cat-7-perf') {
+      return ['perf-reviews', 'perf-goals'].includes(moduleId);
     }
   }
 

@@ -19,6 +19,7 @@ import { syncEngine } from '../services/syncEngine';
 import { canUserWrite, isUserReadOnly, getModuleAccessLevel, getUserEffectivePermissions } from '../utils/permissionHelper';
 import {
   isBranchManager as isBranchManagerHelper,
+  isSupervisor as isSupervisorHelper,
   getUserBranch as getUserBranchHelper,
   filterEmployeesForUser,
   filterNotificationsForUser
@@ -92,14 +93,17 @@ interface AppContextType {
 
   // App Settings
   appSettings: Record<string, string>;
+  updateAppSetting?: (key: string, value: string) => Promise<void>;
+  updateAppSettings?: (newSettings: Record<string, string>) => Promise<void>;
 
   // Permissions & Granular Access Control
   canWrite: (moduleId?: string) => boolean;
   isReadOnly: (moduleId?: string) => boolean;
   getAccessLevel: (moduleId?: string) => 'write' | 'read' | 'none';
 
-  // Branch Manager Scope & Segregation
+  // Branch Manager & Supervisor Scope & Segregation
   isBranchManager: boolean;
+  isSupervisor: boolean;
   userBranch: string;
   scopedEmployees: Employee[];
   scopedNotifications: SystemNotification[];
@@ -567,6 +571,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const interval = setInterval(async () => {
       try {
+        // Skip background poll if tab is hidden/inactive
+        if (typeof document !== 'undefined' && document.hidden) return;
+
         const [candData, jobData, empData, leaveData, setsData] = await Promise.all([
           api.getCandidates().catch(() => null),
           api.getJobVacancies().catch(() => null),
@@ -577,44 +584,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (Array.isArray(candData)) {
           setCandidates(prev => {
-            if (prev.length === candData.length && JSON.stringify(prev) === JSON.stringify(candData)) return prev;
+            if (prev.length === candData.length) return prev;
             try { localStorage.setItem('vitas_candidates', JSON.stringify(candData)); } catch (e) {}
             return candData;
           });
         }
         if (Array.isArray(jobData) && jobData.length > 0) {
           setJobVacancies(prev => {
-            if (prev.length === jobData.length && JSON.stringify(prev) === JSON.stringify(jobData)) return prev;
+            if (prev.length === jobData.length) return prev;
             return jobData;
           });
         }
         if (Array.isArray(empData) && empData.length > 0) {
           setEmployees(prev => {
-            if (prev.length === empData.length && JSON.stringify(prev) === JSON.stringify(empData)) return prev;
+            if (prev.length === empData.length) return prev;
             try { localStorage.setItem('vitas_employees', JSON.stringify(empData)); } catch (e) {}
             return empData;
           });
         }
         if (Array.isArray(leaveData) && leaveData.length > 0) {
           setLeaveRequests(prev => {
-            if (prev.length === leaveData.length && JSON.stringify(prev) === JSON.stringify(leaveData)) return prev;
+            if (prev.length === leaveData.length) return prev;
             return leaveData;
           });
         }
         if (setsData && typeof setsData === 'object') {
           setAppSettings(prev => {
-            if (JSON.stringify(prev) === JSON.stringify(setsData)) return prev;
+            if (prev && Object.keys(prev).length === Object.keys(setsData).length) return prev;
             if ((setsData as any).vitas_hris_sync_schedule) {
               syncEngine.loadScheduleFromBackend().catch(() => {});
             }
             return setsData;
           });
         }
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('vitas:users_changed'));
-        }
       } catch (e) {}
-    }, 4000);
+    }, 30000);
 
     const handleCustomEmpUpdate = (e: any) => {
       if (e?.detail && Array.isArray(e.detail) && e.detail.length > 0) {
@@ -1259,6 +1263,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateAppSetting = useCallback(async (key: string, value: string) => {
+    setAppSettings(prev => {
+      const next = { ...prev, [key]: value };
+      try {
+        localStorage.setItem('vitas_app_settings', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+    try {
+      await api.updateAppSettingsBulk({ [key]: value });
+    } catch (e) {
+      console.warn('Failed to update app setting:', e);
+    }
+  }, []);
+
+  const updateAppSettings = useCallback(async (newSettings: Record<string, string>) => {
+    setAppSettings(prev => {
+      const next = { ...prev, ...newSettings };
+      try {
+        localStorage.setItem('vitas_app_settings', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+    try {
+      await api.updateAppSettingsBulk(newSettings);
+    } catch (e) {
+      console.warn('Failed to update app settings bulk:', e);
+    }
+  }, []);
+
   const addNotification = async (notif: Omit<SystemNotification, 'id' | 'timestamp' | 'read'>) => {
     try {
       const newN = await api.addNotification(notif);
@@ -1319,6 +1353,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return isBranchManagerHelper(currentUser, currentUser?.role);
   }, [currentUser]);
 
+  const isSupervisor = useMemo(() => {
+    return isSupervisorHelper(currentUser, currentUser?.role, employees);
+  }, [currentUser, employees]);
+
   const userBranch = useMemo(() => {
     return getUserBranchHelper(currentUser);
   }, [currentUser]);
@@ -1334,14 +1372,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Granular Permission Helpers
   const canWrite = useCallback((moduleId?: string): boolean => {
     const targetModule = moduleId || activeModuleId;
-    if (isBranchManager) {
+    if (isBranchManager || isSupervisor) {
       const m = String(targetModule || '').toLowerCase();
-      if (!m || m === 'employees' || m.startsWith('emp-') || m === 'cat-3-emp' || m === 'settings' || m.startsWith('sys-') || m === 'cat-10-sys') {
+      if (!m || m === 'employees' || m.startsWith('emp-') || m === 'cat-3-emp' || m === 'settings' || m.startsWith('sys-') || m === 'cat-10-sys' || m.startsWith('pay-') || m === 'cat-5-payroll') {
         return false;
       }
     }
     return canUserWrite(targetModule, currentUser, currentUser?.role || 'Employee');
-  }, [activeModuleId, currentUser, isBranchManager]);
+  }, [activeModuleId, currentUser, isBranchManager, isSupervisor]);
 
   const isReadOnly = useCallback((moduleId?: string): boolean => {
     const targetModule = moduleId || activeModuleId;
@@ -1408,10 +1446,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markAllNotificationsAsRead,
         addNotification,
         appSettings,
+        updateAppSetting,
+        updateAppSettings,
         canWrite,
         isReadOnly,
         getAccessLevel,
         isBranchManager,
+        isSupervisor,
         userBranch,
         scopedEmployees,
         scopedNotifications,

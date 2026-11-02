@@ -37,14 +37,72 @@ export const Category3EmployeeView: React.FC = () => {
     canWrite,
     isReadOnly,
     isBranchManager,
+    isSupervisor,
     userBranch,
     scopedEmployees
   } = useApp();
 
-  // Active employees list: strictly scoped to the branch if logged in as Branch Manager
+  // Helper to get an employee's salary hold/release status and history
+  const getEmployeeSalaryHoldInfo = (emp: any) => {
+    if (!emp) return null;
+    let historyRec: any = null;
+    try {
+      const saved = localStorage.getItem('vitas_payroll_salary_holds_history');
+      if (saved) {
+        const records = JSON.parse(saved);
+        if (Array.isArray(records)) {
+          historyRec = records.find(r => String(r.employee_id) === String(emp.id) || String(r.employee_id) === String(emp.employeeId) || String(r.badge_no) === String(emp.badgeNo));
+        }
+      }
+    } catch (e) {}
+
+    const isOnHold = Boolean(emp.onHold || emp.on_hold === 1 || (historyRec && historyRec.status === 'ON_HOLD'));
+    const holdDate = historyRec?.hold_date || emp.on_hold_date || null;
+    const holdYear = historyRec?.hold_year || emp.on_hold_year || null;
+    const holdMonth = historyRec?.hold_month || emp.on_hold_month || null;
+    const holdReason = historyRec?.hold_reason || emp.on_hold_reason || null;
+
+    const isReleased = Boolean(historyRec?.status === 'RELEASED' || emp.release_date || emp.release_year);
+    const releaseDate = historyRec?.release_date || emp.release_date || null;
+    const releaseYear = historyRec?.release_year || emp.release_year || null;
+    const releaseMonth = historyRec?.release_month || emp.release_month || null;
+    const releaseNote = historyRec?.release_note || emp.release_note || null;
+
+    return {
+      isOnHold,
+      holdDate,
+      holdYear,
+      holdMonth,
+      holdReason,
+      isReleased,
+      releaseDate,
+      releaseYear,
+      releaseMonth,
+      releaseNote
+    };
+  };
+
+  const handleOpenEmployeePayrollPeriod = (year?: number | null, month?: number | null, empId?: string | number) => {
+    const y = year || new Date().getFullYear();
+    const m = month || (new Date().getMonth() + 1);
+    try {
+      localStorage.setItem('vitas_payroll_target_period', JSON.stringify({ year: y, month: m, empId: String(empId || '') }));
+    } catch (e) {}
+    window.dispatchEvent(new CustomEvent('vitas_navigate_payroll_period', { detail: { year: y, month: m, empId: String(empId || '') } }));
+    setActiveModuleId('cat-5-payroll');
+  };
+
+  // Super Admin & HR Manager have full company-wide visibility
+  const isSuperAdminOrHR = useMemo(() => {
+    const role = currentUser?.role || '';
+    const username = String(currentUser?.username || '').toLowerCase();
+    return role === 'Super Admin' || role === 'HR Manager' || username === 'admin' || username === 'hrmanager' || currentUser?.id === 1 || currentUser?.id === '1';
+  }, [currentUser]);
+
+  // Active employees list: Super Admin/HR see all; Branch Manager, Supervisor and Employee see scopedEmployees
   const activeEmployees = useMemo(() => {
-    return isBranchManager ? scopedEmployees : employees;
-  }, [isBranchManager, scopedEmployees, employees]);
+    return isSuperAdminOrHR ? employees : scopedEmployees;
+  }, [isSuperAdminOrHR, scopedEmployees, employees]);
 
   // Selected employee for profile view
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
@@ -715,8 +773,28 @@ export const Category3EmployeeView: React.FC = () => {
 
   // Auto-update spouse & child allowances from appSettings policy settings dynamically
   useEffect(() => {
-    const policySpouseAllowance = parseFloat(appSettings['marriage_allowance_default'] || appSettings['spouse_allowance_default'] || appSettings['marriage_allowance'] || '50000');
-    const policyChildAllowance = parseFloat(appSettings['child_allowance_default'] || appSettings['child_allowance'] || '25000');
+    const fxRate = parseFloat(appSettings['usd_to_iqd_rate'] || '1310') || 1310;
+    const rawSpouse = parseFloat(appSettings['marriage_allowance_default'] || appSettings['spouse_allowance_default'] || appSettings['marriage_allowance'] || '50000');
+    const spouseCurr = appSettings['marriage_allowance_currency'] || 'IQD';
+    const policySpouseAllowance = spouseCurr === 'USD' ? Math.round(rawSpouse * fxRate) : rawSpouse;
+    const posStr = `${jobTitle || ''} ${jobTitleEn || ''} ${grade || ''}`.toLowerCase();
+    const isLoanOfficer = posStr.includes('loan officer') || 
+                          posStr.includes('senior loan officer') || 
+                          posStr.includes('مسؤول قروض') || 
+                          posStr.includes('مسؤول القروض') || 
+                          posStr.includes('ضابط قروض') ||
+                          posStr.includes('مشرف مسؤولي القروض') ||
+                          posStr.includes('مسؤول قروض أقدم');
+
+    const loChildValRaw = parseFloat(appSettings['child_allowance_loan_officer_default'] || '5');
+    const loChildCurr = appSettings['child_allowance_loan_officer_currency'] || 'USD';
+    const loChildAllowance = loChildCurr === 'USD' ? Math.round(loChildValRaw * fxRate) : loChildValRaw;
+
+    const otherChildValRaw = parseFloat(appSettings['child_allowance_default'] || appSettings['child_allowance'] || '4');
+    const otherChildCurr = appSettings['child_allowance_currency'] || 'USD';
+    const otherChildAllowance = otherChildCurr === 'USD' ? Math.round(otherChildValRaw * fxRate) : otherChildValRaw;
+
+    const policyChildAllowance = isLoanOfficer ? loChildAllowance : otherChildAllowance;
 
     const isMarried = maritalStatus === 'متأهل' || maritalStatus === 'متزوج' || maritalStatus === 'married';
 
@@ -729,7 +807,7 @@ export const Category3EmployeeView: React.FC = () => {
     }
 
     setChildAllowance(policyChildAllowance);
-  }, [maritalStatus, spouseEmployedHere, appSettings]);
+  }, [maritalStatus, spouseEmployedHere, jobTitle, jobTitleEn, grade, appSettings]);
 
   // Calculate family allowance: spouse allowance + (children under 18 * child allowance)
   useEffect(() => {
@@ -3171,6 +3249,103 @@ export const Category3EmployeeView: React.FC = () => {
             )}
 
             {/* TAB 4: Financial, Salary & Allowances */}
+
+                {/* Comprehensive Salary Hold & Release Audit Card */}
+                {selectedEmployee && (() => {
+                  const holdInfo = getEmployeeSalaryHoldInfo(selectedEmployee);
+                  if (!holdInfo) return null;
+                  return (
+                    <div className={`p-4 rounded-2xl border ${
+                      holdInfo.isOnHold
+                        ? 'bg-amber-500/10 border-amber-500/30'
+                        : holdInfo.isReleased
+                        ? 'bg-emerald-500/10 border-emerald-500/30'
+                        : 'bg-slate-500/5 border-slate-300 dark:border-white/10'
+                    } space-y-2`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 dark:border-white/10 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`material-symbols-outlined text-lg ${
+                            holdInfo.isOnHold ? 'text-amber-500' : holdInfo.isReleased ? 'text-emerald-500' : 'text-slate-400'
+                          }`}>
+                            {holdInfo.isOnHold ? 'front_hand' : holdInfo.isReleased ? 'verified' : 'payments'}
+                          </span>
+                          <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+                            {t('حالة وتاريخ إيقاف / إطلاق الراتب (Salary Hold & Release Status)', 'Salary Hold & Release Status')}
+                          </span>
+                        </div>
+                        {holdInfo.isOnHold ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 inline-flex items-center gap-1 shadow-xs">
+                            <span className="material-symbols-outlined text-xs">front_hand</span>
+                            {t('موقوف حالياً (On Hold)', 'On Hold')}
+                          </span>
+                        ) : holdInfo.isReleased ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1 shadow-xs">
+                            <span className="material-symbols-outlined text-xs">check_circle</span>
+                            {t('تم إطلاق الراتب بنجاح (Released)', 'Released')}
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300">
+                            {t('نشط وغير موقوف (Active)', 'Active')}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs pt-1">
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400 block text-[11px]">{t('تاريخ وضع الراتب On Hold:', 'Hold Date:')}</span>
+                          <span className="font-mono font-bold text-slate-900 dark:text-white">
+                            {holdInfo.holdDate || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400 block text-[11px]">{t('بيرول الإيقاف (Hold Period):', 'Hold Payroll:')}</span>
+                          {holdInfo.holdYear && holdInfo.holdMonth ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEmployeePayrollPeriod(holdInfo.holdYear, holdInfo.holdMonth, selectedEmployee.id)}
+                              className="font-mono font-bold text-amber-700 dark:text-amber-300 hover:underline flex items-center gap-1 cursor-pointer"
+                              title={t('انقر للانتقال مباشرة إلى مسير هذا الشهر', 'Click to open payroll')}
+                            >
+                              <span>{holdInfo.holdMonth} / {holdInfo.holdYear}</span>
+                              <span className="material-symbols-outlined text-xs">open_in_new</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 font-mono">—</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400 block text-[11px]">{t('تاريخ الإطلاق (Release Date):', 'Release Date:')}</span>
+                          <span className={`font-mono font-bold ${holdInfo.releaseDate ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-400'}`}>
+                            {holdInfo.releaseDate || (holdInfo.isOnHold ? t('قيد الإيقاف (Pending)', 'Pending') : '—')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400 block text-[11px]">{t('بيرول الإطلاق (Release Payroll):', 'Release Payroll:')}</span>
+                          {holdInfo.releaseYear && holdInfo.releaseMonth ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEmployeePayrollPeriod(holdInfo.releaseYear, holdInfo.releaseMonth, selectedEmployee.id)}
+                              className="font-mono font-bold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1 cursor-pointer"
+                              title={t('انقر للانتقال مباشرة إلى مسير هذا الشهر', 'Click to open payroll')}
+                            >
+                              <span>{holdInfo.releaseMonth} / {holdInfo.releaseYear}</span>
+                              <span className="material-symbols-outlined text-xs">open_in_new</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 font-mono">—</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {(holdInfo.holdReason || holdInfo.releaseNote) && (
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-black/5 dark:bg-white/5 p-2 rounded-xl">
+                          {holdInfo.holdReason && <div><span className="font-bold">{t('سبب الإيقاف:', 'Hold Reason:')}</span> {holdInfo.holdReason}</div>}
+                          {holdInfo.releaseNote && <div><span className="font-bold text-emerald-600 dark:text-emerald-400">{t('ملاحظة الإطلاق:', 'Release Note:')}</span> {holdInfo.releaseNote}</div>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
             {activeTab === 4 && (
               <div className="space-y-4 animate-in fade-in duration-200">
                 <div className="flex items-center gap-2 border-b border-white/10 pb-2">
@@ -4014,8 +4189,8 @@ export const Category3EmployeeView: React.FC = () => {
                 )}
               </div>
 
-              {/* Direct Select Menu */}
-              <div className="flex-1 min-w-[200px]">
+              {/* Direct Select Menu (Hidden as requested, preserved for full logic compatibility) */}
+              <div className="hidden" aria-hidden="true">
                 <select
                   value={selectedEmployee ? String(selectedEmployee.id != null ? selectedEmployee.id : (selectedEmployee.employeeId || selectedEmployee.employee_id || '')) : ''}
                   onChange={(e) => {
@@ -4148,6 +4323,58 @@ export const Category3EmployeeView: React.FC = () => {
                         {getEmpBranch(selectedEmployee)}
                       </span>
                     </div>
+
+                    {/* Salary On-Hold / Release Audit Badge */}
+                    {(() => {
+                      const holdInfo = getEmployeeSalaryHoldInfo(selectedEmployee);
+                      if (!holdInfo || (!holdInfo.isOnHold && !holdInfo.isReleased)) return null;
+                      return (
+                        <div className="w-full mt-1.5 p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 text-start space-y-1">
+                          <div className="flex items-center justify-between gap-1">
+                            {holdInfo.isOnHold ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 inline-flex items-center gap-1 shadow-xs">
+                                <span className="material-symbols-outlined text-xs">front_hand</span>
+                                {t('الراتب موقوف', 'Salary On Hold')}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1 shadow-xs">
+                                <span className="material-symbols-outlined text-xs">check_circle</span>
+                                {t('أُطلق الراتب', 'Salary Released')}
+                              </span>
+                            )}
+
+                            {(holdInfo.releaseYear && holdInfo.releaseMonth) ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEmployeePayrollPeriod(holdInfo.releaseYear, holdInfo.releaseMonth, selectedEmployee.id)}
+                                className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all flex items-center gap-0.5 cursor-pointer shadow-xs"
+                                title={t('انتقل إلى مسير شهر الإطلاق', 'Open release payroll')}
+                              >
+                                <span className="material-symbols-outlined text-[10px]">open_in_new</span>
+                                <span>{holdInfo.releaseMonth}/{holdInfo.releaseYear}</span>
+                              </button>
+                            ) : (holdInfo.holdYear && holdInfo.holdMonth) ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEmployeePayrollPeriod(holdInfo.holdYear, holdInfo.holdMonth, selectedEmployee.id)}
+                                className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-amber-600 text-white hover:bg-amber-700 transition-all flex items-center gap-0.5 cursor-pointer shadow-xs"
+                                title={t('انتقل إلى مسير شهر الإيقاف', 'Open hold payroll')}
+                              >
+                                <span className="material-symbols-outlined text-[10px]">open_in_new</span>
+                                <span>{holdInfo.holdMonth}/{holdInfo.holdYear}</span>
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                            {holdInfo.isOnHold ? (
+                              <span>{t('تاريخ الإيقاف:', 'Hold:')} <strong className="font-mono text-slate-800 dark:text-slate-200">{holdInfo.holdDate}</strong></span>
+                            ) : (
+                              <span>{t('تاريخ الإطلاق:', 'Released:')} <strong className="font-mono text-emerald-700 dark:text-emerald-300">{holdInfo.releaseDate}</strong></span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Action Buttons: Print Contract & Edit Employee (Fixed in place under employee photo & badges) */}
                     <div className="flex flex-col gap-1.5 w-full pt-1">

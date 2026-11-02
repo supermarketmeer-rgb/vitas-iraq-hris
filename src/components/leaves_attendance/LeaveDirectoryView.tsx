@@ -42,7 +42,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
   const [balTypeFilter, setBalTypeFilter] = useState('all');
   const [balPage, setBalPage] = useState(1);
 
-  // Inline editing state for Curry Forward (carried_forward_days)
+  // Inline editing state for Starting Leave Balance (carried_forward_days)
   const [editingBalanceId, setEditingBalanceId] = useState<number | null>(null);
   const [editCurryValue, setEditCurryValue] = useState<string>('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
     setLocalBalances(balances);
   }, [balances]);
 
-  // Handle saving individual employee Curry Forward
+  // Handle saving individual employee Starting Leave Balance
   const handleSaveCurry = async (balance: LeaveBalance) => {
     const parsed = Math.max(0, parseInt(editCurryValue, 10) || 0);
     const newAvailable = Math.max(0, balance.entitled_days + parsed - balance.used_days - balance.pending_days);
@@ -66,15 +66,16 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
 
     // Save to localStorage so EarnedLeavesView picks it up instantly
     try {
-      const stored = localStorage.getItem('vitas_emp_curry_forward');
+      const stored = localStorage.getItem('vitas_emp_starting_leave_balance') || localStorage.getItem('vitas_emp_curry_forward');
       const overrides = stored ? JSON.parse(stored) : {};
       if (balance.employee_number) {
         overrides[balance.employee_number] = parsed;
       }
       overrides[String(balance.employee_id)] = parsed;
+      localStorage.setItem('vitas_emp_starting_leave_balance', JSON.stringify(overrides));
       localStorage.setItem('vitas_emp_curry_forward', JSON.stringify(overrides));
     } catch (e) {
-      console.error('Failed to update localStorage curry forward:', e);
+      console.error('Failed to update localStorage starting leave balance:', e);
     }
 
     // Call API / parent updater
@@ -97,8 +98,8 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
     setEditingBalanceId(null);
     setSaveSuccessMsg(
       isAr
-        ? `تم تحديث رصيد Curry Forward للموظف (${balance.employee_name_ar || balance.employee_name_en}) بنجاح إلى ${parsed} يوم.`
-        : `Updated Curry Forward for (${balance.employee_name_en || balance.employee_name_ar}) to ${parsed} days.`
+        ? `تم تحديث رصيد الإجازات الافتتاحي (Starting Leave Balance) للموظف (${balance.employee_name_ar || balance.employee_name_en}) بنجاح إلى ${parsed} يوم.`
+        : `Updated Starting Leave Balance for (${balance.employee_name_en || balance.employee_name_ar}) to ${parsed} days.`
     );
     setTimeout(() => setSaveSuccessMsg(null), 4000);
   };
@@ -182,13 +183,13 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
               {isAr ? 'جدول الإجازات وأرصدة الموظفين' : 'Leave Directory & Balances'}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/20">
-              {isAr ? 'يتضمن Curry Forward المخصص' : 'Custom Curry Forward Included'}
+              {isAr ? 'يتضمن Starting Leave Balance (مستحقات البداية)' : 'Starting Leave Balance Included'}
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
             {isAr
-              ? 'إدارة سجل طلبات الإجازات وجدول أرصدة الموظفين بما في ذلك مستحقات السنوات الماضية المرحّلة (Curry Forward)'
-              : 'Manage leave requests and employee balance tables including custom carry-forward entitlements'}
+              ? 'إدارة سجل طلبات الإجازات وجدول أرصدة الموظفين بما في ذلك مستحقات الإجازات السابقة (Starting Leave Balance)'
+              : 'Manage leave requests and employee balance tables including Starting Leave Balance (prior entitlements)'}
           </p>
         </div>
 
@@ -241,7 +242,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
           }`}
         >
           <span className="material-symbols-outlined text-base">account_balance_wallet</span>
-          <span>{isAr ? 'جدول أرصدة الإجازات و Curry Forward' : 'Leave Balances & Curry Forward'}</span>
+          <span>{isAr ? 'جدول أرصدة الإجازات و Starting Leave Balance' : 'Leave Balances & Starting Leave Balance'}</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
               activeTab === 'balances' ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
@@ -272,11 +273,11 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: LEAVE BALANCES & CURRY FORWARD TABLE                               */}
+      {/* TAB 1: LEAVE BALANCES & STARTING LEAVE BALANCE TABLE                      */}
       {/* ========================================================================= */}
       {activeTab === 'balances' && (
         <div className="space-y-4">
-          {/* Curry Forward Explanatory Notice */}
+          {/* Starting Leave Balance Explanatory Notice */}
           <div className="p-4 rounded-3xl bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-slate-800 dark:text-slate-200">
             <div className="flex items-start gap-3">
               <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-xl mt-0.5">
@@ -284,12 +285,12 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
               </span>
               <div className="text-xs space-y-1">
                 <div className="font-bold text-emerald-900 dark:text-emerald-300 text-sm">
-                  {isAr ? 'مستحقات الإجازات من السنوات الماضية (Curry Forward)' : 'Carry Forward Entitlements'}
+                  {isAr ? 'رصيد الإجازات الافتتاحي (Starting Leave Balance) - مستحقات سابقة' : 'Starting Leave Balance (Prior Entitlements)'}
                 </div>
                 <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
                   {isAr
-                    ? 'نظراً لأن رصيد السنوات السابقة (Curry Forward) يختلف من موظف لآخر بحسب استهلاكهم للإجازات وتاريخ خدمتهم، تم تخصيص هذا الحقل مباشرة في جدول أرصدة الإجازات. يمكنك النقر على رقم الرصيد المرحّل لأي موظف لتعديله فورياً، وسيتم تحديث استحقاقاته المالية في شاشة الإجازات المستحقة تلقائياً.'
-                    : 'Because carry forward leave balances vary from employee to employee based on their past leave consumption, Curry Forward is tracked per employee directly in this table. Click any carry-forward number to edit inline.'}
+                    ? 'بما أن قانون الإجازات يتم تطبيقه الآن مع إطلاق النظام والموظفون قدماء، فإن هذا الحقل مخصص لإدخال مستحقات الإجازات السابقة (Starting Leave Balance) لكل موظف ليبدأ النظام باحتساب رصيد الإجازات التي يستحقها الموظف بدقة طبقاً للقانون المطبق. يمكنك النقر على الرقم لتعديله فورياً وسيتم تحديثه في شاشة الإجازات المستحقة مباشرة.'
+                    : 'Because the leave law is being applied with the system startup and employees are existing staff, Starting Leave Balance is used to input prior leave entitlements so the system accurately computes accrued leaves under the applicable law. Click any number to edit inline.'}
                 </p>
               </div>
             </div>
@@ -321,7 +322,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
                 className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-white/15 text-slate-800 dark:text-slate-200 focus:outline-none"
               >
                 <option value="all">{isAr ? 'جميع أنواع الإجازات' : 'All Leave Types'}</option>
-                <option value="ANNUAL">{isAr ? 'الإجازة الاعتيادية (Annual Leave - Curry Forward)' : 'Annual Leave'}</option>
+                <option value="ANNUAL">{isAr ? 'الإجازة الاعتيادية (Annual Leave - Starting Balance)' : 'Annual Leave'}</option>
                 <option value="SICK">{isAr ? 'الإجازة المرضية (Sick Leave)' : 'Sick Leave'}</option>
                 <option value="CASUAL">{isAr ? 'الإجازة العارضة / الطارئة (Casual Leave)' : 'Casual Leave'}</option>
               </select>
@@ -341,7 +342,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
                     <th className="px-3.5 py-3 text-center">{isAr ? 'الاستحقاق السنوي' : 'Annual Entitled'}</th>
                     <th className="px-3.5 py-3 text-center text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-500/5">
                       <div className="flex items-center justify-center gap-1">
-                        <span>{isAr ? 'Curry Forward (السنوات الماضية)' : 'Curry Forward'}</span>
+                        <span>{isAr ? 'Starting Leave Balance (الرصيد الافتتاحي)' : 'Starting Leave Balance'}</span>
                         <span className="text-[9px] px-1 rounded bg-emerald-200 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-300 font-bold">+</span>
                       </div>
                     </th>
@@ -384,7 +385,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
                           {bal.entitled_days} {isAr ? 'يوم' : 'd'}
                         </td>
 
-                        {/* Curry Forward (Inline Editable per employee) */}
+                        {/* Starting Leave Balance (Inline Editable per employee) */}
                         <td className="px-3.5 py-3 text-center bg-emerald-50/40 dark:bg-emerald-500/5">
                           {editingBalanceId === bal.id ? (
                             <div className="flex items-center justify-center gap-1">
@@ -400,7 +401,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
                               <button
                                 onClick={() => handleSaveCurry(bal)}
                                 className="p-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 cursor-pointer"
-                                title={isAr ? 'حفظ رصيد Curry Forward' : 'Save'}
+                                title={isAr ? 'حفظ Starting Leave Balance' : 'Save'}
                               >
                                 <span className="material-symbols-outlined text-base">check</span>
                               </button>
@@ -419,7 +420,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
                                 setEditCurryValue(String(bal.carried_forward_days || 0));
                               }}
                               className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-100/70 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-mono font-bold cursor-pointer hover:bg-emerald-200/80 dark:hover:bg-emerald-500/20 transition-all shadow-sm"
-                              title={isAr ? 'انقر لتعديل رصيد Curry Forward لهذا الموظف' : 'Click to edit Curry Forward'}
+                              title={isAr ? 'انقر لتعديل رصيد الإجازات الافتتاحي (Starting Leave Balance) لهذا الموظف' : 'Click to edit Starting Leave Balance'}
                             >
                               <span>{bal.carried_forward_days || 0}</span>
                               <span className="text-[10px]">{isAr ? 'يوم' : 'd'}</span>
@@ -450,10 +451,10 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
                               setEditCurryValue(String(bal.carried_forward_days || 0));
                             }}
                             className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 text-[11px] font-semibold transition-all cursor-pointer inline-flex items-center gap-1"
-                            title={isAr ? 'تعديل رصيد التدوير (Curry Forward)' : 'Edit Curry Forward'}
+                            title={isAr ? 'تعديل رصيد البداية الافتتاحي (Starting Leave Balance)' : 'Edit Starting Leave Balance'}
                           >
                             <span className="material-symbols-outlined text-xs">edit_calendar</span>
-                            <span>{isAr ? 'تعديل Curry' : 'Edit Curry'}</span>
+                            <span>{isAr ? 'تعديل الرصيد الافتتاحي' : 'Edit Starting Balance'}</span>
                           </button>
                         </td>
                       </tr>

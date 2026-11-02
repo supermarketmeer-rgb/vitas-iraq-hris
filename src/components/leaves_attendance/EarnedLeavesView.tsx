@@ -27,7 +27,8 @@ interface EmployeeEarnedLeaveRow {
   positionEn: string;
   basicSalary: number;
   dailyBasicSalary: number;
-  curryForward: number;
+  startingLeaveBalance: number;
+  curryForward: number; // backward compatibility
   annualLeave: number;
   takenLeaves: number;
   lateMinutes: number;
@@ -74,11 +75,11 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
   // Global settings values
   const globalAnnualLeave = parseFloat(safeAppSettings['annual_leave_balance'] || '21') || 21;
 
-  // Local overrides for curry forward per employee if adjusted manually
-  const [customCurryOverrides, setCustomCurryOverrides] = useState<Record<string, number>>(() => {
+  // Local overrides for Starting Leave Balance per employee if adjusted manually
+  const [customStartingBalanceOverrides, setCustomStartingBalanceOverrides] = useState<Record<string, number>>(() => {
     try {
       if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('vitas_emp_curry_forward');
+        const stored = localStorage.getItem('vitas_emp_starting_leave_balance') || localStorage.getItem('vitas_emp_curry_forward');
         return stored ? JSON.parse(stored) : {};
       }
     } catch {
@@ -97,9 +98,9 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
   // Modal inspection
   const [selectedRowForModal, setSelectedRowForModal] = useState<EmployeeEarnedLeaveRow | null>(null);
 
-  // Quick edit mode
+  // Quick edit mode for Starting Leave Balance
   const [editingEmpId, setEditingEmpId] = useState<string | null>(null);
-  const [editCurryValue, setEditCurryValue] = useState<string>('');
+  const [editStartingBalanceValue, setEditStartingBalanceValue] = useState<string>('');
 
   // Extract Departments and Branches for filter dropdowns
   const departments = useMemo(() => {
@@ -139,6 +140,7 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
           positionEn: 'Staff',
           basicSalary: 1000000,
           dailyBasicSalary: 33333.33,
+          startingLeaveBalance: 0,
           curryForward: 0,
           annualLeave: 21,
           takenLeaves: 0,
@@ -179,17 +181,19 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
         return matchId && isAnnual;
       });
 
-      // Curry Forward:
+      // Starting Leave Balance (مستحقات الإجازات السابقة الافتتاحية للموظفين القدماء):
       // Individual employee entitlement from Leave Balances table (carried_forward_days)
-      let curryForward = 0;
-      if (customCurryOverrides[empNumber] !== undefined) {
-        curryForward = customCurryOverrides[empNumber];
+      let startingLeaveBalance = 0;
+      if (customStartingBalanceOverrides[empNumber] !== undefined) {
+        startingLeaveBalance = customStartingBalanceOverrides[empNumber];
       } else if (annualBalance && annualBalance.carried_forward_days !== undefined) {
-        curryForward = annualBalance.carried_forward_days;
+        startingLeaveBalance = annualBalance.carried_forward_days;
+      } else if (emp.starting_leave_balance !== undefined && emp.starting_leave_balance !== null && emp.starting_leave_balance !== '') {
+        startingLeaveBalance = Number(emp.starting_leave_balance);
       } else if (emp.curry_forward !== undefined && emp.curry_forward !== null && emp.curry_forward !== '') {
-        curryForward = Number(emp.curry_forward);
+        startingLeaveBalance = Number(emp.curry_forward);
       } else if (emp.carry_forward !== undefined && emp.carry_forward !== null && emp.carry_forward !== '') {
-        curryForward = Number(emp.carry_forward);
+        startingLeaveBalance = Number(emp.carry_forward);
       }
 
       // Annual Leave entitlement
@@ -225,8 +229,8 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
       const hoursPerDay = workHoursPerDay > 0 ? workHoursPerDay : 8;
       const lateDeductionDays = lateHours / hoursPerDay;
 
-      // number of earned leave days = Curry forward + Annual leave - taken leaves - (late time / work hours)
-      const rawEarnedDays = curryForward + annualLeave - takenLeaves - lateDeductionDays;
+      // number of earned leave days = Starting Leave Balance + Annual leave - taken leaves - (late time / work hours)
+      const rawEarnedDays = startingLeaveBalance + annualLeave - takenLeaves - lateDeductionDays;
       const earnedLeaveDays = Number(rawEarnedDays.toFixed(2));
 
       // Formula 2:
@@ -247,7 +251,8 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
         positionEn: posEn,
         basicSalary,
         dailyBasicSalary: Number(dailyBasicSalary.toFixed(2)),
-        curryForward,
+        startingLeaveBalance,
+        curryForward: startingLeaveBalance,
         annualLeave,
         takenLeaves,
         lateMinutes,
@@ -264,7 +269,7 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
     leaveBalances,
     leaveRequests,
     globalAnnualLeave,
-    customCurryOverrides,
+    customStartingBalanceOverrides,
     workHoursPerDay,
     dayDivisor,
   ]);
@@ -326,11 +331,11 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
     };
   }, [filteredData]);
 
-  // Save inline curry forward edit and persist to leave balances table
-  const handleSaveCurryOverride = async (empNumber: string) => {
-    const parsed = parseFloat(editCurryValue);
+  // Save inline Starting Leave Balance edit and persist to leave balances table
+  const handleSaveStartingBalanceOverride = async (empNumber: string) => {
+    const parsed = parseFloat(editStartingBalanceValue);
     if (!isNaN(parsed) && parsed >= 0) {
-      setCustomCurryOverrides(prev => ({
+      setCustomStartingBalanceOverrides(prev => ({
         ...prev,
         [empNumber]: parsed,
       }));
@@ -349,9 +354,10 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
       }
       try {
         if (typeof window !== 'undefined') {
-          const stored = localStorage.getItem('vitas_emp_curry_forward') || '{}';
+          const stored = localStorage.getItem('vitas_emp_starting_leave_balance') || localStorage.getItem('vitas_emp_curry_forward') || '{}';
           const parsedObj = JSON.parse(stored);
           parsedObj[empNumber] = parsed;
+          localStorage.setItem('vitas_emp_starting_leave_balance', JSON.stringify(parsedObj));
           localStorage.setItem('vitas_emp_curry_forward', JSON.stringify(parsedObj));
         }
       } catch (e) {
@@ -371,7 +377,7 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
       [isAr ? 'الفرع' : 'Branch']: isAr ? row.branchAr : row.branchEn,
       [isAr ? 'الراتب الأساسي (د.ع)' : 'Basic Salary (IQD)']: row.basicSalary,
       [isAr ? 'أجر اليوم الواحد (د.ع)' : 'Daily Rate (IQD)']: row.dailyBasicSalary,
-      [isAr ? 'الرصيد المرحل (Curry Forward)' : 'Curry Forward (Days)']: row.curryForward,
+      [isAr ? 'رصيد الإجازات الافتتاحي (Starting Leave Balance)' : 'Starting Leave Balance (Days)']: row.startingLeaveBalance,
       [isAr ? 'الإجازة الاعتيادية (أيام)' : 'Annual Leave (Days)']: row.annualLeave,
       [isAr ? 'الإجازات المأخوذة (أيام)' : 'Taken Leaves (Days)']: row.takenLeaves,
       [isAr ? 'ساعات التأخير (ساعة)' : 'Late Hours (Hrs)']: row.lateHours,
@@ -409,8 +415,8 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
                 </h2>
                 <p className="text-xs md:text-sm text-slate-600 dark:text-slate-300 mt-0.5">
                   {isAr 
-                    ? 'احتساب أرصدة الإجازات المستحقة ومبالغها المالية وفق رصيد Curry Forward الفردي لكل موظف وساعات الدوام والراتب الأساسي'
-                    : 'Calculate earned leave days & financial amounts based on each employee Curry Forward, attendance hours, and basic salary'}
+                    ? 'احتساب أرصدة الإجازات المستحقة ومبالغها المالية وفق رصيد الإجازات الافتتاحي (Starting Leave Balance) وساعات الدوام والراتب الأساسي'
+                    : 'Calculate earned leave days & financial amounts based on each employee Starting Leave Balance, attendance hours, and basic salary'}
                 </p>
               </div>
             </div>
@@ -446,12 +452,12 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
               <span>{isAr ? 'معادلة عدد أيام الإجازة المستحقة' : 'Earned Leave Days Formula'}</span>
             </div>
             <div className="font-mono text-xs md:text-sm text-slate-900 dark:text-emerald-200 bg-white dark:bg-emerald-950/40 p-3 rounded-xl border border-slate-300 dark:border-emerald-500/20 leading-relaxed dir-ltr text-left shadow-inner font-bold">
-              Earned Days = Curry Forward + Annual Leave - Taken Leaves - (Late Time ÷ {workHoursPerDay} hrs)
+              Earned Days = Starting Leave Balance + Annual Leave - Taken Leaves - (Late Time ÷ {workHoursPerDay} hrs)
             </div>
             <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-2 font-medium">
               {isAr
-                ? `رصيد الموظف المدور من جدول الإجازات (Curry Forward) + الاعتيادية (${globalAnnualLeave}) - الإجازات المأخوذة - (ساعات التأخير ÷ ${workHoursPerDay} ساعات دوام)`
-                : `Employee Curry forward (from leaves table) + Annual (${globalAnnualLeave}) - Taken leaves - (Late hours ÷ ${workHoursPerDay} work hours)`}
+                ? `رصيد الإجازات الافتتاحي للموظف (Starting Leave Balance) + الاعتيادية (${globalAnnualLeave}) - الإجازات المأخوذة - (ساعات التأخير ÷ ${workHoursPerDay} ساعات دوام)`
+                : `Employee Starting Leave Balance (from leaves table) + Annual (${globalAnnualLeave}) - Taken leaves - (Late hours ÷ ${workHoursPerDay} work hours)`}
             </div>
           </div>
 
@@ -633,11 +639,11 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
               </select>
             </div>
 
-            {/* Curry Forward Source Indicator */}
+            {/* Starting Leave Balance Source Indicator */}
             <div className="flex items-center gap-2">
               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1 font-semibold">
-                <span className="material-symbols-outlined text-sm text-emerald-600 dark:text-emerald-400">history</span>
-                <span>{isAr ? 'مصدر رصيد التدوير (Curry Forward):' : 'Curry Forward Source:'}</span>
+                <span className="material-symbols-outlined text-sm text-emerald-600 dark:text-emerald-400">flag</span>
+                <span>{isAr ? 'مصدر رصيد الإجازات الافتتاحي (Starting Leave Balance):' : 'Starting Leave Balance Source:'}</span>
               </span>
               <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-medium">
                 {isAr ? 'جدول أرصدة الإجازات (مخصص لكل موظف)' : 'Leave Balances Table (Per Employee)'}
@@ -679,7 +685,7 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
                 <th className="p-4 text-center">{isAr ? 'أجر اليوم الواحد' : 'Daily Rate'}</th>
                 <th className="p-4 text-center text-emerald-700 dark:text-emerald-400">
                   <div className="flex items-center justify-center gap-1">
-                    <span>{isAr ? 'الرصيد المرحل (Curry)' : 'Curry Forward'}</span>
+                    <span>{isAr ? 'الرصيد الافتتاحي (Starting Balance)' : 'Starting Leave Balance'}</span>
                     <span className="text-[9px] px-1 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">+</span>
                   </div>
                 </th>
@@ -791,26 +797,28 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
                       {row.dailyBasicSalary.toLocaleString()}
                     </td>
 
-                    {/* Curry Forward (Editable inline) */}
+                    {/* Starting Leave Balance (Editable inline) */}
                     <td className="p-4 text-center">
                       {editingEmpId === row.employeeNumber ? (
                         <div className="flex items-center justify-center gap-1">
                           <input
                             type="number"
-                            value={editCurryValue}
-                            onChange={(e) => setEditCurryValue(e.target.value)}
+                            value={editStartingBalanceValue}
+                            onChange={(e) => setEditStartingBalanceValue(e.target.value)}
                             className="w-14 bg-white dark:bg-black/40 border-2 border-emerald-500 rounded px-1.5 py-0.5 text-center font-mono text-xs text-slate-900 dark:text-white shadow-sm"
                             autoFocus
                           />
                           <button
-                            onClick={() => handleSaveCurryOverride(row.employeeNumber)}
+                            onClick={() => handleSaveStartingBalanceOverride(row.employeeNumber)}
                             className="p-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 cursor-pointer"
+                            title={isAr ? 'حفظ رصيد البداية الافتتاحي' : 'Save Starting Balance'}
                           >
                             <span className="material-symbols-outlined text-sm">check</span>
                           </button>
                           <button
                             onClick={() => setEditingEmpId(null)}
                             className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            title={isAr ? 'إلغاء' : 'Cancel'}
                           >
                             <span className="material-symbols-outlined text-sm">close</span>
                           </button>
@@ -819,12 +827,12 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
                         <div
                           onClick={() => {
                             setEditingEmpId(row.employeeNumber);
-                            setEditCurryValue(String(row.curryForward));
+                            setEditStartingBalanceValue(String(row.startingLeaveBalance));
                           }}
                           className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-mono font-bold cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all"
-                          title={isAr ? 'انقر لتعديل الرصيد المرحل لهذا الموظف' : 'Click to adjust curry forward'}
+                          title={isAr ? 'انقر لتعديل رصيد الإجازات الافتتاحي (Starting Leave Balance) لهذا الموظف' : 'Click to adjust Starting Leave Balance'}
                         >
-                          <span>{row.curryForward}</span>
+                          <span>{row.startingLeaveBalance}</span>
                           <span className="material-symbols-outlined text-[11px] opacity-60 group-hover:opacity-100">edit</span>
                         </div>
                       )}
@@ -928,8 +936,8 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
                   <div className="p-2 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                    <div className="text-[10px] text-slate-600 dark:text-slate-400 mb-1">{isAr ? 'Curry Forward' : 'Curry Forward'}</div>
-                    <div className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-sm">+{selectedRowForModal.curryForward}</div>
+                    <div className="text-[10px] text-slate-600 dark:text-slate-400 mb-1">{isAr ? 'الرصيد الافتتاحي (Starting)' : 'Starting Balance'}</div>
+                    <div className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-sm">+{selectedRowForModal.startingLeaveBalance}</div>
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10">
                     <div className="text-[10px] text-slate-600 dark:text-slate-400 mb-1">{isAr ? 'Annual Leave' : 'Annual Leave'}</div>
@@ -946,7 +954,7 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
                 </div>
 
                 <div className="pt-2 text-xs text-slate-800 dark:text-slate-300 font-mono bg-white dark:bg-black/30 p-3 rounded-xl border border-slate-200 dark:border-white/5 dir-ltr text-left">
-                  Earned Days = {selectedRowForModal.curryForward} + {selectedRowForModal.annualLeave} - {selectedRowForModal.takenLeaves} - ({selectedRowForModal.lateHours}h ÷ {workHoursPerDay}h)
+                  Earned Days = {selectedRowForModal.startingLeaveBalance} + {selectedRowForModal.annualLeave} - {selectedRowForModal.takenLeaves} - ({selectedRowForModal.lateHours}h ÷ {workHoursPerDay}h)
                   <br />
                   <strong className="text-teal-700 dark:text-teal-300">= {selectedRowForModal.earnedLeaveDays} days</strong>
                 </div>

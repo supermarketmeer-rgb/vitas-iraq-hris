@@ -12,6 +12,7 @@ import {
   calculateCombinedPayrollTaxAndSecurity
 } from '../utils/iraqPayrollTaxEngine';
 import { CalculationTraceDetailsModal } from '../components/payroll/CalculationTraceDetailsModal';
+import { PoliciesSection } from '../components/PoliciesSection';
 
 interface EmployeeAdjustment {
   absenceDays?: number;
@@ -88,8 +89,51 @@ interface ApprovalRequestItem {
   itemsList: { description: string; qty: number; unitPrice: number; total: number }[];
 }
 
+/**
+ * Robust date parser supporting YYYY-MM-DD, YYYY/MM/DD, DD-MM-YYYY, or ISO string.
+ * Returns year, month (1-12), and day (1-31).
+ */
+function parseDateParts(dateVal: any): { year: number; month: number; day: number } | null {
+  if (!dateVal || dateVal === 'N/A') return null;
+  const str = String(dateVal).trim();
+  if (!str || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return null;
+
+  // Standard YYYY-MM-DD or YYYY/MM/DD
+  const matchIso = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (matchIso) {
+    const y = parseInt(matchIso[1], 10);
+    const m = parseInt(matchIso[2], 10);
+    const d = parseInt(matchIso[3], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d) && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return { year: y, month: m, day: d };
+    }
+  }
+
+  // DD-MM-YYYY or DD/MM/YYYY
+  const matchDmY = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+  if (matchDmY) {
+    const d = parseInt(matchDmY[1], 10);
+    const m = parseInt(matchDmY[2], 10);
+    const y = parseInt(matchDmY[3], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d) && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return { year: y, month: m, day: d };
+    }
+  }
+
+  const dt = new Date(str);
+  if (!isNaN(dt.getTime())) {
+    return {
+      year: dt.getFullYear(),
+      month: dt.getMonth() + 1,
+      day: dt.getDate()
+    };
+  }
+
+  return null;
+}
+
 export const Category5PayrollView: React.FC = () => {
-  const { activeModuleId, setActiveModuleId, employees, updateEmployee, t, currentUser, language, theme, appSettings } = useApp();
+  const { activeModuleId, setActiveModuleId, employees, updateEmployee, t, currentUser, language, theme, appSettings, updateAppSetting, updateAppSettings, refreshAllData } = useApp();
   const isDark = theme === 'dark';
 
   // Period Selection: Automatically initialized to current live system year & month
@@ -107,6 +151,7 @@ export const Category5PayrollView: React.FC = () => {
 
   // Office Email Sending Modal State
   const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
+  const [showPoliciesModal, setShowPoliciesModal] = useState<boolean>(false);
 
   // Central Iraqi Legal Settings & Tax Brackets State
   const [legalSettings, setLegalSettings] = useState<PayrollLegalSettings>(getDefaultLegalSettings());
@@ -377,6 +422,84 @@ export const Category5PayrollView: React.FC = () => {
     }
   });
 
+  // Comprehensive Salary Hold & Release Audit History Records
+  const [salaryHoldRecords, setSalaryHoldRecords] = useState<SalaryHoldRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('vitas_payroll_salary_holds_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Modal tab filter and search states
+  const [onHoldModalTab, setOnHoldModalTab] = useState<'CURRENT' | 'RELEASED' | 'ALL'>('CURRENT');
+  const [onHoldSearchQuery, setOnHoldSearchQuery] = useState<string>('');
+
+  // Fetch salary hold records from server on mount & sync
+  useEffect(() => {
+    fetch('/api/payroll/salary-holds')
+      .then(res => res.json())
+      .then((data: any) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setSalaryHoldRecords(prev => {
+            const map = new Map<string, SalaryHoldRecord>();
+            data.forEach((r: any) => map.set(String(r.id), r));
+            prev.forEach(r => {
+              if (!map.has(String(r.id))) map.set(String(r.id), r);
+            });
+            const merged = Array.from(map.values());
+            try {
+              localStorage.setItem('vitas_payroll_salary_holds_history', JSON.stringify(merged));
+            } catch (e) {}
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Save salary hold records to localStorage whenever updated
+  useEffect(() => {
+    try {
+      localStorage.setItem('vitas_payroll_salary_holds_history', JSON.stringify(salaryHoldRecords));
+    } catch (e) {
+      console.warn('Failed to persist salaryHoldRecords to localStorage', e);
+    }
+  }, [salaryHoldRecords]);
+
+  // Listen for direct navigation to a specific payroll period (e.g. from On-Hold / Release history)
+  useEffect(() => {
+    const handleNavigate = (e: any) => {
+      const detail = e.detail;
+      if (detail && detail.year && detail.month) {
+        setSelectedYear(Number(detail.year));
+        setSelectedMonth(Number(detail.month));
+        if (detail.empId) {
+          setSelectedEmpId(String(detail.empId));
+        }
+      }
+    };
+    window.addEventListener('vitas_navigate_payroll_period', handleNavigate);
+
+    try {
+      const targetStr = localStorage.getItem('vitas_payroll_target_period');
+      if (targetStr) {
+        const target = JSON.parse(targetStr);
+        if (target && target.year && target.month) {
+          setSelectedYear(Number(target.year));
+          setSelectedMonth(Number(target.month));
+          if (target.empId) setSelectedEmpId(String(target.empId));
+          localStorage.removeItem('vitas_payroll_target_period');
+        }
+      }
+    } catch (e) {}
+
+    return () => {
+      window.removeEventListener('vitas_navigate_payroll_period', handleNavigate);
+    };
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem('vitas_payroll_on_hold_overrides', JSON.stringify(onHoldOverrides));
@@ -461,8 +584,31 @@ export const Category5PayrollView: React.FC = () => {
 
       // Family allowance calculation (spouse + children under 18) -> family_allowance
       // Values are fetched directly from Policies settings in appSettings (or defaults)
-      const childAllowanceDefault = parseFloat(appSettings['child_allowance_default'] || appSettings['child_allowance'] || '25000');
-      const spouseAllowanceDefault = parseFloat(appSettings['marriage_allowance_default'] || appSettings['spouse_allowance_default'] || appSettings['marriage_allowance'] || '50000');
+      const fxRate = parseFloat(appSettings['usd_to_iqd_rate'] || '1310') || 1310;
+
+      // Determine if employee is a Loan Officer / Senior Loan Officer
+      const empPos = `${emp.position || ''} ${emp.position_en || ''} ${emp.position_ar || ''} ${emp.title || ''} ${emp.job_title || ''} ${emp.job_title_en || ''} ${emp.job_title_ar || ''}`.toLowerCase();
+      const isLoanOfficer = empPos.includes('loan officer') || 
+                            empPos.includes('senior loan officer') || 
+                            empPos.includes('مسؤول قروض') || 
+                            empPos.includes('مسؤول القروض') || 
+                            empPos.includes('ضابط قروض') ||
+                            empPos.includes('مشرف مسؤولي القروض') ||
+                            empPos.includes('مسؤول قروض أقدم');
+
+      // Loan Officer: 5 USD default, Others: 4 USD default
+      const loChildValRaw = parseFloat(appSettings['child_allowance_loan_officer_default'] || '5');
+      const loChildCurr = appSettings['child_allowance_loan_officer_currency'] || 'USD';
+      const loChildAllowance = loChildCurr === 'USD' ? Math.round(loChildValRaw * fxRate) : loChildValRaw;
+
+      const otherChildValRaw = parseFloat(appSettings['child_allowance_default'] || appSettings['child_allowance'] || '4');
+      const otherChildCurr = appSettings['child_allowance_currency'] || 'USD';
+      const otherChildAllowance = otherChildCurr === 'USD' ? Math.round(otherChildValRaw * fxRate) : otherChildValRaw;
+
+      const childAllowanceDefault = isLoanOfficer ? loChildAllowance : otherChildAllowance;
+
+      const rawSpouse = parseFloat(appSettings['marriage_allowance_default'] || appSettings['spouse_allowance_default'] || appSettings['marriage_allowance'] || '10');
+      const spouseAllowanceDefault = (appSettings['marriage_allowance_currency'] === 'USD') ? Math.round(rawSpouse * fxRate) : rawSpouse;
       
       const childAllowanceVal = emp.childAllowance && emp.childAllowance > 0 ? emp.childAllowance : childAllowanceDefault;
       const spouseAllowanceVal = emp.spouseAllowance && emp.spouseAllowance > 0 ? emp.spouseAllowance : spouseAllowanceDefault;
@@ -565,11 +711,65 @@ export const Category5PayrollView: React.FC = () => {
       const auto_social_security = isExemptFromSsTax ? 0 : combinedCalc.item_5_employee_ss_amount;
       const social_security = adj.socialSecurity !== undefined ? adj.socialSecurity : auto_social_security;
 
-      // Health and Life Insurance deduction
+      // Health and Life Insurance deduction calculation
+      // Policies setting: monthly insurance value (default: 25,000 IQD)
       const insuranceSetting = parseFloat(appSettings['insurance_deduction_default'] || '25000');
-      const auto_insurance = isExemptFromSsTax ? 0 : (!isNaN(insuranceSetting) && insuranceSetting > 0
+      const fullMonthlyInsurance = (!isNaN(insuranceSetting) && insuranceSetting > 0)
         ? insuranceSetting
-        : Math.round(basic_salary * 0.01));
+        : 25000;
+
+      // Fixed 30 days calculation regardless of the calendar month (أياً كان الشهر يحتسب دائماً 30 يوم)
+      const daysInMonth = 30;
+      const dailyInsurance = fullMonthlyInsurance / 30;
+
+      // 1. First hire date (تاريخ أول تعيين)
+      const hireDateStr = emp.originalStartDate || emp.original_start_date || emp.contract_original_start || emp.joinDate || emp.join_date || emp.hireDate || emp.hire_date || emp.contractStartDate || emp.contract_start_date || null;
+      const hireParts = parseDateParts(hireDateStr);
+
+      // 2. Exit / Resignation date (تاريخ الاستقالة / المغادرة)
+      const exitDateStr = emp.exitDate || emp.exit_date || emp.resignationDate || emp.resignation_date || null;
+      const exitParts = parseDateParts(exitDateStr);
+
+      // Determine active insurance days within this payroll month (out of 30 days)
+      let activeInsuredDays = 30;
+      let insuranceNote = '';
+
+      const isHiredAfterThisMonth = Boolean(
+        hireParts && (hireParts.year > selectedYear || (hireParts.year === selectedYear && hireParts.month > selectedMonth))
+      );
+      const isExitedBeforeThisMonth = Boolean(
+        exitParts && (exitParts.year < selectedYear || (exitParts.year === selectedYear && exitParts.month < selectedMonth))
+      );
+
+      if (isExemptFromSsTax || isHiredAfterThisMonth || isExitedBeforeThisMonth) {
+        activeInsuredDays = 0;
+        insuranceNote = isExemptFromSsTax ? 'معفى من الاستقطاعات' : 'خارج فترة الخدمة لهذا الشهر';
+      } else {
+        const isHireMonth = Boolean(hireParts && hireParts.year === selectedYear && hireParts.month === selectedMonth);
+        const isExitMonth = Boolean(exitParts && exitParts.year === selectedYear && exitParts.month === selectedMonth);
+
+        const startDay = isHireMonth ? Math.max(1, Math.min(30, hireParts!.day)) : 1;
+        const endDay = isExitMonth ? Math.max(1, Math.min(30, exitParts!.day)) : 30;
+
+        activeInsuredDays = Math.max(0, Math.min(30, endDay - startDay + 1));
+
+        if (isHireMonth && isExitMonth) {
+          insuranceNote = `تعيين واستقالة في نفس الشهر (${activeInsuredDays} يوم من أصل 30: من يوم ${startDay} إلى ${endDay})`;
+        } else if (isHireMonth) {
+          insuranceNote = `شهر أول تعيين (${activeInsuredDays} يوم عمل: من تاريخ التعيين ${startDay} إلى نهاية الشهر 30)`;
+        } else if (isExitMonth) {
+          insuranceNote = `شهر استقالة / مغادرة (${activeInsuredDays} يوم عمل: من بداية الشهر إلى تاريخ الاستقالة ${endDay})`;
+        } else {
+          insuranceNote = `تأمين شهري كامل (30 يوم)`;
+        }
+      }
+
+      const auto_insurance = isExemptFromSsTax || activeInsuredDays <= 0
+        ? 0
+        : (activeInsuredDays >= 30
+            ? fullMonthlyInsurance
+            : Math.round(dailyInsurance * activeInsuredDays));
+
       const insurance = adj.insurance !== undefined ? adj.insurance : auto_insurance;
 
       // 8. income_tax calculation (Central Engine)
@@ -655,6 +855,10 @@ export const Category5PayrollView: React.FC = () => {
         social_security,
         income_tax,
         insurance,
+        insurance_days: activeInsuredDays,
+        insurance_full: fullMonthlyInsurance,
+        insurance_note: insuranceNote,
+        is_insurance_prorated: activeInsuredDays < 30 && activeInsuredDays > 0,
         is_ss_tax_exempt: isExemptFromSsTax ? 1 : 0,
         ss_tax_exemption_reason: emp.ssTaxExemptionReason || emp.ss_tax_exemption_reason || null,
         deductions_calc,
@@ -665,21 +869,135 @@ export const Category5PayrollView: React.FC = () => {
         net_salary,
         overtime_hours: adj.overtimeHours,
 
-        // On Hold Fields
+        // On Hold & Release Audit History Fields
         on_hold: isOnHold ? 1 : 0,
         is_on_hold: isOnHold,
         on_hold_reason: onHoldReason,
         has_exit_date: hasExitDate,
         exit_date_val: exitDateVal,
-        is_manual_on_hold: manualOverride !== undefined ? manualOverride : Boolean(emp.onHold || emp.on_hold === 1)
+        is_manual_on_hold: manualOverride !== undefined ? manualOverride : Boolean(emp.onHold || emp.on_hold === 1),
+        on_hold_date: (emp as any).on_hold_date || (isOnHold ? new Date().toISOString().split('T')[0] : null),
+        on_hold_year: (emp as any).on_hold_year || selectedYear,
+        on_hold_month: (emp as any).on_hold_month || selectedMonth,
+        release_date: (emp as any).release_date || null,
+        release_year: (emp as any).release_year || null,
+        release_month: (emp as any).release_month || null,
+        release_note: (emp as any).release_note || null
       };
     });
-  }, [employees, adjustments, onHoldOverrides]);
+  }, [employees, adjustments, onHoldOverrides, selectedYear, selectedMonth, appSettings]);
 
   // On Hold employees list
   const onHoldEmployees = useMemo(() => {
     return computedPayrollRows.filter(row => row.on_hold === 1);
   }, [computedPayrollRows]);
+
+  // Aggregated Salary Hold & Release Audit Records for Modal Display & Search
+  const modalRecords = useMemo(() => {
+    const currentOnHoldEmpIds = new Set(onHoldEmployees.map(e => String(e.id)));
+    const list: Array<{
+      id: string;
+      employee_id: string;
+      badge_no: string;
+      employee_name_ar: string;
+      employee_name_en: string;
+      location_ar: string;
+      position_ar: string;
+      basic_salary: number;
+      is_on_hold: boolean;
+      status: 'ON_HOLD' | 'RELEASED';
+      hold_date: string;
+      hold_year: number;
+      hold_month: number;
+      hold_reason: string;
+      release_date?: string | null;
+      release_year?: number | null;
+      release_month?: number | null;
+      release_note?: string | null;
+      has_exit_date?: boolean;
+      exit_date_val?: string;
+    }> = [];
+
+    // 1. Add currently on-hold employees
+    onHoldEmployees.forEach(emp => {
+      const hist = salaryHoldRecords.find(r => String(r.employee_id) === String(emp.id) && r.status === 'ON_HOLD')
+        || salaryHoldRecords.find(r => String(r.employee_id) === String(emp.id));
+
+      list.push({
+        id: `curr_${emp.id}`,
+        employee_id: String(emp.id),
+        badge_no: String(emp.badge_no || emp.employee_id || ''),
+        employee_name_ar: emp.employee_name_ar || '',
+        employee_name_en: emp.employee_name_en || '',
+        location_ar: emp.location_ar || '',
+        position_ar: emp.position_ar || '',
+        basic_salary: emp.basic_salary || 0,
+        is_on_hold: true,
+        status: 'ON_HOLD',
+        hold_date: hist?.hold_date || (emp as any).on_hold_date || new Date().toISOString().split('T')[0],
+        hold_year: hist?.hold_year || (emp as any).on_hold_year || selectedYear,
+        hold_month: hist?.hold_month || (emp as any).on_hold_month || selectedMonth,
+        hold_reason: emp.on_hold_reason || hist?.hold_reason || 'إيقاف يدوي بواسطة إدارة الرواتب',
+        release_date: null,
+        release_year: null,
+        release_month: null,
+        release_note: null,
+        has_exit_date: emp.has_exit_date,
+        exit_date_val: emp.exit_date_val
+      });
+    });
+
+    // 2. Add historical hold & release records (especially released ones)
+    salaryHoldRecords.forEach(rec => {
+      if (rec.status === 'ON_HOLD' && currentOnHoldEmpIds.has(String(rec.employee_id))) {
+        return;
+      }
+
+      const empObj = employees.find(e => String(e.id) === String(rec.employee_id) || String(e.employeeId) === String(rec.employee_id));
+
+      list.push({
+        id: String(rec.id),
+        employee_id: String(rec.employee_id),
+        badge_no: String(rec.badge_no || empObj?.badgeNo || empObj?.employeeId || ''),
+        employee_name_ar: empObj?.fullName || empObj?.full_name_ar || rec.employee_name || '',
+        employee_name_en: empObj?.fullNameEn || empObj?.full_name_en || rec.employee_name || '',
+        location_ar: empObj?.branch || rec.branch || '—',
+        position_ar: empObj?.jobTitle || empObj?.position_ar || rec.position || '—',
+        basic_salary: rec.basic_salary || empObj?.salary || 0,
+        is_on_hold: rec.status === 'ON_HOLD',
+        status: rec.status,
+        hold_date: rec.hold_date,
+        hold_year: rec.hold_year,
+        hold_month: rec.hold_month,
+        hold_reason: rec.hold_reason || 'إيقاف مسجل في النظام',
+        release_date: rec.release_date,
+        release_year: rec.release_year,
+        release_month: rec.release_month,
+        release_note: rec.release_note
+      });
+    });
+
+    return list;
+  }, [onHoldEmployees, salaryHoldRecords, employees, selectedYear, selectedMonth]);
+
+  // Filtered records based on active modal tab & search query
+  const filteredModalRecords = useMemo(() => {
+    return modalRecords.filter(r => {
+      if (onHoldModalTab === 'CURRENT' && r.status !== 'ON_HOLD') return false;
+      if (onHoldModalTab === 'RELEASED' && r.status !== 'RELEASED') return false;
+
+      if (onHoldSearchQuery.trim()) {
+        const q = onHoldSearchQuery.toLowerCase().trim();
+        const matchesName = r.employee_name_ar.toLowerCase().includes(q) || r.employee_name_en.toLowerCase().includes(q);
+        const matchesBadge = r.badge_no.toLowerCase().includes(q) || r.employee_id.toLowerCase().includes(q);
+        const matchesBranch = r.location_ar.toLowerCase().includes(q);
+        const matchesReason = (r.hold_reason || '').toLowerCase().includes(q) || (r.release_note || '').toLowerCase().includes(q);
+        if (!matchesName && !matchesBadge && !matchesBranch && !matchesReason) return false;
+      }
+
+      return true;
+    });
+  }, [modalRecords, onHoldModalTab, onHoldSearchQuery]);
 
   // Filtered payroll rows for Payslip based on selected Office filter (EXCLUDING On-Hold employees)
   const payslipOfficeFilteredRows = useMemo(() => {
@@ -691,7 +1009,22 @@ export const Category5PayrollView: React.FC = () => {
     });
   }, [computedPayrollRows, selectedPayslipOffice]);
 
-  // Toggle On-Hold Action Handler with State & Storage Persistence
+  // Navigation Handler to directly switch to a specific Payroll Month & Year
+  const handleNavigateToPayrollPeriod = (year: number, month: number, empId?: string | number) => {
+    setSelectedYear(Number(year));
+    setSelectedMonth(Number(month));
+    if (empId) {
+      setSelectedEmpId(String(empId));
+    }
+    setShowOnHoldModal(false);
+    setActionMessage(t(
+      `تم الانتقال مباشرة إلى مسير رواتب شهر (${getMonthName(Number(month))} ${year})`,
+      `Navigated to payroll period (${month} / ${year})`
+    ));
+    setTimeout(() => setActionMessage(null), 3500);
+  };
+
+  // Toggle On-Hold Action Handler with Date, Month, Year & Audit History Persistence
   const handleToggleOnHold = (empId: string | number) => {
     const strId = String(empId);
     const row = computedPayrollRows.find(r => String(r.id) === strId);
@@ -699,6 +1032,7 @@ export const Category5PayrollView: React.FC = () => {
 
     const currentOnHold = row.is_on_hold;
     const nextVal = !currentOnHold;
+    const todayDate = new Date().toISOString().split('T')[0];
 
     setOnHoldOverrides(prev => {
       const updated = {
@@ -712,29 +1046,163 @@ export const Category5PayrollView: React.FC = () => {
       return updated;
     });
 
-    // Update in AppContext / employees state & localStorage
-    const empObj = employees.find(e => String(e.id) === strId);
-    if (empObj) {
-      const updatedEmp = { ...empObj, on_hold: nextVal ? 1 : 0, onHold: nextVal };
-      if (typeof updateEmployee === 'function') {
-        updateEmployee(updatedEmp as any).catch(() => {});
-      }
-    }
+    if (nextVal) {
+      // 1. Placing On Hold
+      const newHoldRec: SalaryHoldRecord = {
+        id: `HOLD_${strId}_${Date.now()}`,
+        employee_id: strId,
+        badge_no: String(row.badge_no || row.employee_id || ''),
+        employee_name: language === 'en' ? (row.employee_name_en || '') : (row.employee_name_ar || ''),
+        branch: row.location_ar || '',
+        department: row.department || '',
+        position: row.position_ar || '',
+        basic_salary: row.basic_salary || 0,
+        hold_date: todayDate,
+        hold_year: selectedYear,
+        hold_month: selectedMonth,
+        hold_reason: row.on_hold_reason || 'إيقاف يدوي بواسطة إدارة الرواتب',
+        is_manual: true,
+        status: 'ON_HOLD',
+        action_by: currentUser?.name || 'Payroll Admin'
+      };
 
-    // Sync with backend API
-    fetch(`/api/employees/${strId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ on_hold: nextVal ? 1 : 0 })
-    }).catch(() => {});
+      setSalaryHoldRecords(prev => [
+        newHoldRec,
+        ...prev.filter(r => !(String(r.employee_id) === strId && r.status === 'ON_HOLD'))
+      ]);
+
+      // Sync with DB
+      fetch('/api/payroll/salary-holds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newHoldRec)
+      }).catch(() => {});
+
+      // Update in AppContext / employees state
+      const empObj = employees.find(e => String(e.id) === strId);
+      if (empObj) {
+        const updatedEmp = {
+          ...empObj,
+          on_hold: 1,
+          onHold: true,
+          on_hold_date: todayDate,
+          on_hold_reason: newHoldRec.hold_reason,
+          on_hold_year: selectedYear,
+          on_hold_month: selectedMonth,
+          release_date: null,
+          release_year: null,
+          release_month: null,
+          release_note: null
+        };
+        if (typeof updateEmployee === 'function') {
+          updateEmployee(updatedEmp as any).catch(() => {});
+        }
+      }
+
+      fetch(`/api/employees/${strId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          on_hold: 1,
+          on_hold_date: todayDate,
+          on_hold_reason: newHoldRec.hold_reason,
+          on_hold_year: selectedYear,
+          on_hold_month: selectedMonth,
+          release_date: null
+        })
+      }).catch(() => {});
+    } else {
+      // 2. Releasing Salary (Resume Salary)
+      const releasePayload = {
+        release_date: todayDate,
+        release_year: selectedYear,
+        release_month: selectedMonth,
+        release_note: 'تم إطلاق الراتب واستئنافه بنجاح (Release)',
+        action_by: currentUser?.name || 'Payroll Admin'
+      };
+
+      setSalaryHoldRecords(prev => {
+        let found = false;
+        const updated = prev.map(r => {
+          if (String(r.employee_id) === strId && r.status === 'ON_HOLD') {
+            found = true;
+            return {
+              ...r,
+              status: 'RELEASED' as const,
+              ...releasePayload
+            };
+          }
+          return r;
+        });
+
+        if (!found) {
+          const holdDate = (row as any).on_hold_date || todayDate;
+          const syntheticRec: SalaryHoldRecord = {
+            id: `HOLD_${strId}_${Date.now()}`,
+            employee_id: strId,
+            badge_no: String(row.badge_no || row.employee_id || ''),
+            employee_name: language === 'en' ? (row.employee_name_en || '') : (row.employee_name_ar || ''),
+            branch: row.location_ar || '',
+            department: row.department || '',
+            position: row.position_ar || '',
+            basic_salary: row.basic_salary || 0,
+            hold_date: holdDate,
+            hold_year: (row as any).on_hold_year || selectedYear,
+            hold_month: (row as any).on_hold_month || selectedMonth,
+            hold_reason: row.on_hold_reason || 'إيقاف مسجل في النظام',
+            is_manual: true,
+            status: 'RELEASED',
+            ...releasePayload
+          };
+          return [syntheticRec, ...updated];
+        }
+        return updated;
+      });
+
+      // Sync with DB
+      fetch(`/api/payroll/salary-holds/${strId}/release`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(releasePayload)
+      }).catch(() => {});
+
+      // Update in AppContext / employees state
+      const empObj = employees.find(e => String(e.id) === strId);
+      if (empObj) {
+        const updatedEmp = {
+          ...empObj,
+          on_hold: 0,
+          onHold: false,
+          release_date: todayDate,
+          release_year: selectedYear,
+          release_month: selectedMonth,
+          release_note: releasePayload.release_note
+        };
+        if (typeof updateEmployee === 'function') {
+          updateEmployee(updatedEmp as any).catch(() => {});
+        }
+      }
+
+      fetch(`/api/employees/${strId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          on_hold: 0,
+          release_date: todayDate,
+          release_year: selectedYear,
+          release_month: selectedMonth,
+          release_note: releasePayload.release_note
+        })
+      }).catch(() => {});
+    }
 
     setActionMessage(t(
       nextVal
-        ? `تم إيقاف راتب الموظف (${row.employee_name_ar}) واستبعاده من كشوف وقسائم الرواتب بنجاح (On Hold)`
-        : `تم إطلاق وتفعيل راتب الموظف (${row.employee_name_ar}) وإعادته لكشوف وقسائم الرواتب بنجاح (Release)`,
+        ? `تم إيقاف راتب الموظف (${row.employee_name_ar}) بتاريخ (${todayDate}) واستبعاده من كشوف وقسائم الرواتب بنجاح (On Hold)`
+        : `تم إطلاق وتفعيل راتب الموظف (${row.employee_name_ar}) بتاريخ (${todayDate}) لمسير (${getMonthName(selectedMonth)} ${selectedYear}) وإعادته للرواتب بنجاح (Release)`,
       nextVal
-        ? `Payroll for ${row.employee_name_en} placed On Hold`
-        : `Payroll for ${row.employee_name_en} released`
+        ? `Payroll for ${row.employee_name_en} placed On Hold on ${todayDate}`
+        : `Payroll for ${row.employee_name_en} released on ${todayDate} for ${getMonthName(selectedMonth)} ${selectedYear}`
     ));
     setTimeout(() => setActionMessage(null), 3500);
   };
@@ -1076,6 +1544,14 @@ export const Category5PayrollView: React.FC = () => {
         <span>
           {prefix}{value.toLocaleString('en-US')}
         </span>
+        {fieldKey === 'insurance' && row.is_insurance_prorated && (
+          <span
+            className="ms-1 px-1 py-0.5 rounded text-[9px] bg-amber-500/20 text-amber-700 dark:text-amber-300 font-sans font-bold inline-block border border-amber-500/30"
+            title={row.insurance_note}
+          >
+            ({row.insurance_days}ي)
+          </span>
+        )}
 
         {/* Excel Note Tooltip on Hover */}
         {hasComment && (
@@ -1283,6 +1759,16 @@ export const Category5PayrollView: React.FC = () => {
             <span>{t('نظام الحوافز (Incentives)', 'Incentives Engine')}</span>
           </button>
 
+          {/* Quick Button to Open HR Policies & Rates Modal */}
+          <button
+            onClick={() => setShowPoliciesModal(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-900 font-medium text-xs border-2 border-slate-300 shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+            title={t('عرض وتعديل سياسات الرواتب، أسعار الصرف، والبدلات والإجازات', 'View and adjust payroll policies, exchange rates, allowances, and leaves')}
+          >
+            <span className="material-symbols-outlined text-sm text-teal-600">policy</span>
+            <span>{t('سياسات الرواتب واللوائح', 'Payroll Policies & Rates')}</span>
+          </button>
+
           {/* Period Status Badge & Lock/Unlock Buttons */}
           {isPeriodLocked ? (
             <div className="flex items-center gap-2">
@@ -1438,6 +1924,16 @@ export const Category5PayrollView: React.FC = () => {
                   {isImportingExcel ? 'progress_activity' : 'upload_file'}
                 </span>
                 <span>{isImportingExcel ? t('جارِ القراءة...', 'Reading...') : t('استيراد إكسل (Incentives / Bonus)', 'Import Excel')}</span>
+              </button>
+
+              {/* Button: Policies & Rates */}
+              <button
+                onClick={() => setShowPoliciesModal(true)}
+                title={t('عرض وتعديل سياسات الرواتب، أسعار الصرف، والبدلات والإجازات', 'View & edit payroll policies, exchange rates & allowances')}
+                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-900 font-medium text-xs border border-slate-300 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <span className="material-symbols-outlined text-sm text-teal-600">tune</span>
+                <span>{t('السياسات واللوائح', 'Policies & Rules')}</span>
               </button>
 
               {/* View Mode Switcher (Summary vs Detailed Breakdown) */}
@@ -2065,7 +2561,14 @@ export const Category5PayrollView: React.FC = () => {
                         )}
                       </div>
                       <div className="flex justify-between py-1 border-b border-slate-200">
-                        <span>{t('قسط التأمين الصحي:', 'Health Insurance:')}</span>
+                        <span className="flex items-center gap-1">
+                          <span>{t('قسط التأمين الصحي:', 'Health Insurance:')}</span>
+                          {pRow.is_insurance_prorated && (
+                            <span className="text-[10px] text-amber-700 bg-amber-50 px-1 rounded border border-amber-200 font-normal" title={pRow.insurance_note}>
+                              ({pRow.insurance_days} {t('يوم', 'days')})
+                            </span>
+                          )}
+                        </span>
                         {isExempt ? (
                           <span className="font-bold text-amber-700 text-[11px]">{t('معفى (0 د.ع)', 'Exempt (0 IQD)')}</span>
                         ) : (
@@ -2217,7 +2720,14 @@ export const Category5PayrollView: React.FC = () => {
                             <span className="font-mono text-rose-800">-{pRow.income_tax.toLocaleString('en-US')} IQD</span>
                           </div>
                           <div className="flex justify-between py-1 border-b border-slate-200">
-                            <span>{t('قسط التأمين الصحي:', 'Health Insurance:')}</span>
+                            <span className="flex items-center gap-1">
+                              <span>{t('قسط التأمين الصحي:', 'Health Insurance:')}</span>
+                              {pRow.is_insurance_prorated && (
+                                <span className="text-[9px] text-amber-700 font-normal">
+                                  ({pRow.insurance_days} {t('يوم', 'days')})
+                                </span>
+                              )}
+                            </span>
                             <span className="font-mono text-rose-800">-{pRow.insurance.toLocaleString('en-US')} IQD</span>
                           </div>
                           <div className="flex justify-between py-1 border-b border-slate-200">
@@ -3170,100 +3680,260 @@ export const Category5PayrollView: React.FC = () => {
 
       {/* MODAL: On Hold Employees List & Management Modal */}
       {showOnHoldModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className={`w-full max-w-4xl ${
-            isDark ? 'bg-[#111827] border-amber-500/30 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xl'
-          } rounded-3xl overflow-hidden flex flex-col max-h-[85vh]`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-6xl ${
+            isDark ? 'bg-[#0f172a] border-white/15 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xl'
+          } rounded-3xl overflow-hidden flex flex-col max-h-[90vh] border`}>
             {/* Modal Header */}
-            <div className={`p-5 ${
-              isDark ? 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/80 border-b border-amber-500/20' : 'bg-amber-500/10 border-b border-amber-200'
-            } flex items-center justify-between`}>
+            <div className={`p-4 sm:p-5 ${
+              isDark ? 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-emerald-950/80 border-b border-white/10' : 'bg-slate-100 border-b border-slate-200'
+            } flex flex-wrap items-center justify-between gap-3`}>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-xl">front_hand</span>
+                <div className="w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-500 flex items-center justify-center shadow-inner">
+                  <span className="material-symbols-outlined text-2xl">front_hand</span>
                 </div>
                 <div>
-                  <h3 className={`text-base font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    <span>{t('سجل الرواتب الموقوفة (On Hold Payroll List)', 'On Hold Payroll List')}</span>
+                  <h3 className={`text-base sm:text-lg font-black flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <span>{t('سجل الرواتب الموقوفة والمُطلقة (On Hold & Released Payroll Audit)', 'On Hold & Released Payroll Audit')}</span>
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 font-bold">
-                      {onHoldEmployees.length} {t('موظف', 'employees')}
+                      {modalRecords.filter(r => r.status === 'ON_HOLD').length} {t('موقوف حالياً', 'on hold')}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 font-bold">
+                      {modalRecords.filter(r => r.status === 'RELEASED').length} {t('تم إطلاقه', 'released')}
                     </span>
                   </h3>
-                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {t('الموظفون الموقوفة رواتبهم يدوياً أو بسبب وجود تاريخ مغادرة/استقالة (مستبعدون تلقائياً من قسائم الرواتب)', 'Employees with suspended payroll manually or due to exit date')}
+                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'} font-medium`}>
+                    {t('توثيق تاريخ وضع الراتب onhold وتاريخ الـ Release وشهر وسنة البيرول المرتبط مع إمكانية الانتقال المباشر للمسير', 'Complete audit of Hold date, Release date, and associated Payroll periods with one-click period navigation')}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowOnHoldModal(false)}
-                className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${
-                  isDark ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-colors ${
+                  isDark ? 'bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
                 }`}
               >
                 ✕
               </button>
             </div>
 
-            {/* Modal Body: Table of On Hold Employees */}
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              {onHoldEmployees.length === 0 ? (
+            {/* Filter Tabs & Search Bar Row */}
+            <div className={`p-3.5 border-b ${isDark ? 'border-white/10 bg-[#06080d]/80' : 'border-slate-200 bg-slate-50'} flex flex-wrap items-center justify-between gap-3`}>
+              {/* Tabs */}
+              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-black/10 dark:bg-white/5 border border-black/5 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setOnHoldModalTab('CURRENT')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    onHoldModalTab === 'CURRENT'
+                      ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">front_hand</span>
+                  <span>{t('الموقوفة رواتبهم حالياً', 'Currently On Hold')}</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-white/20">{modalRecords.filter(r => r.status === 'ON_HOLD').length}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setOnHoldModalTab('RELEASED')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    onHoldModalTab === 'RELEASED'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">check_circle</span>
+                  <span>{t('الرواتب المُطلقة والمستأنفة', 'Released Salaries')}</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-white/20">{modalRecords.filter(r => r.status === 'RELEASED').length}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setOnHoldModalTab('ALL')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    onHoldModalTab === 'ALL'
+                      ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
+                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">history</span>
+                  <span>{t('السجل التاريخي الشامل', 'All Audit History')}</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-white/20">{modalRecords.length}</span>
+                </button>
+              </div>
+
+              {/* Fast Real-time Search Input */}
+              <div className="relative flex-1 min-w-[240px] max-w-md">
+                <input
+                  type="text"
+                  placeholder={t('ابحث بالاسم، البادج، الفرع، أو سبب الإيقاف...', 'Search by name, badge, branch, or reason...')}
+                  value={onHoldSearchQuery}
+                  onChange={e => setOnHoldSearchQuery(e.target.value)}
+                  className={`w-full rounded-xl px-3 py-1.5 ${language === 'ar' ? 'pr-8 pl-8' : 'pl-8 pr-8'} text-xs font-bold ${
+                    isDark ? 'bg-white/5 border-white/10 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                  } border focus:outline-none focus:border-teal-500 transition-all`}
+                />
+                <span className={`material-symbols-outlined absolute ${language === 'ar' ? 'right-2.5' : 'left-2.5'} top-1.5 text-slate-400 text-sm pointer-events-none`}>
+                  search
+                </span>
+                {onHoldSearchQuery && (
+                  <button
+                    onClick={() => setOnHoldSearchQuery('')}
+                    className={`material-symbols-outlined absolute ${language === 'ar' ? 'left-2.5' : 'right-2.5'} top-1.5 text-xs text-slate-400 hover:text-rose-500`}
+                  >
+                    close
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Body: Table of On Hold & Released Employees */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+              {filteredModalRecords.length === 0 ? (
                 <div className="p-12 text-center space-y-3">
-                  <span className="material-symbols-outlined text-4xl text-amber-500/40">check_circle</span>
-                  <p className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>{t('لا يوجد موظفون موقوفة رواتبهم حالياً', 'No employees currently on hold')}</p>
-                  <p className="text-xs text-slate-500">{t('جميع كادر الرواتب نشط ومشمول بالتوليد والقسائم', 'All staff payroll is active')}</p>
+                  <span className="material-symbols-outlined text-4xl text-teal-500/40">fact_check</span>
+                  <p className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
+                    {onHoldSearchQuery
+                      ? t('لا توجد سجلات مطابقة لمعايير البحث الحالية', 'No records match search query')
+                      : t('لا توجد سجلات في هذا القسم حالياً', 'No records in this tab')}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {t('استخدم شريط البحث أو بدّل بين التبويبات لعرض السجلات التاريخية', 'Use search or switch tabs to review history')}
+                  </p>
                 </div>
               ) : (
                 <div className={`overflow-x-auto rounded-2xl border ${isDark ? 'border-white/10' : 'border-slate-300'}`}>
-                  <table className="w-full text-xs text-right">
-                    <thead className={`${isDark ? 'bg-[#0a0c10] text-slate-300 border-white/10' : 'bg-slate-100 text-slate-900 border-slate-300'} border-b font-bold`}>
-                      <tr>
-                        <th className="p-3 text-center">#</th>
-                        <th className="p-3 text-slate-900 dark:text-slate-200 font-bold">{t('اسم الموظف والبادج', 'Employee & Badge')}</th>
-                        <th className="p-3 text-slate-900 dark:text-slate-200 font-bold">{t('الفرع والموقع', 'Branch / Location')}</th>
-                        <th className="p-3 text-slate-900 dark:text-slate-200 font-bold">{t('القسم والمسمى', 'Dept & Position')}</th>
-                        <th className="p-3 text-slate-900 dark:text-slate-200 font-bold">{t('الراتب الاسمي', 'Basic Salary')}</th>
-                        <th className="p-3 text-slate-900 dark:text-slate-200 font-bold">{t('سبب الإيقاف (Reason)', 'Hold Reason')}</th>
-                        <th className="p-3 text-center text-slate-900 dark:text-slate-200 font-bold">{t('الإجراء (Action)', 'Action')}</th>
+                  <table className="w-full text-xs text-right border-collapse">
+                    <thead className="incentives-table-header">
+                      <tr className={`border-b font-bold ${isDark ? 'bg-[#0a0c10] text-slate-200 border-white/10' : 'bg-slate-200 text-slate-900 border-slate-300'}`}>
+                        <th className="p-2.5 text-center w-10">#</th>
+                        <th className="p-2.5 text-start font-bold">{t('اسم الموظف والبادج', 'Employee & Badge')}</th>
+                        <th className="p-2.5 text-start font-bold">{t('الفرع والمسمى', 'Branch & Title')}</th>
+                        <th className="p-2.5 text-center font-bold">{t('حالة الراتب', 'Salary Status')}</th>
+                        <th className="p-2.5 text-center font-bold">{t('الراتب الاسمي', 'Basic Salary')}</th>
+                        <th className="p-2.5 text-center font-bold bg-amber-500/10 text-amber-900 dark:text-amber-300">{t('تاريخ الإيقاف (Hold Date)', 'Hold Date')}</th>
+                        <th className="p-2.5 text-center font-bold bg-amber-500/10 text-amber-900 dark:text-amber-300">{t('بيرول الإيقاف (Hold Period)', 'Hold Period')}</th>
+                        <th className="p-2.5 text-center font-bold bg-emerald-500/10 text-emerald-900 dark:text-emerald-300">{t('تاريخ الإطلاق (Release Date)', 'Release Date')}</th>
+                        <th className="p-2.5 text-center font-bold bg-emerald-500/10 text-emerald-900 dark:text-emerald-300">{t('بيرول الإطلاق (Release Period)', 'Release Period')}</th>
+                        <th className="p-2.5 text-start font-bold">{t('سبب الإيقاف / الملاحظة', 'Hold Reason / Note')}</th>
+                        <th className="p-2.5 text-center font-bold">{t('الإجراء (Action)', 'Action')}</th>
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${isDark ? 'divide-white/5 text-slate-200' : 'divide-slate-200 text-slate-900 bg-white'}`}>
-                      {onHoldEmployees.map((emp, idx) => (
-                        <tr key={emp.id} className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'} transition-colors`}>
-                          <td className={`p-3 text-center font-mono font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>{idx + 1}</td>
-                          <td className="p-3">
-                            <span className={`font-bold block text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{language === 'en' ? emp.employee_name_en : emp.employee_name_ar}</span>
-                            <span className="text-[11px] font-mono text-teal-700 dark:text-teal-400 font-bold">VTS-{emp.badge_no || emp.employee_id}</span>
+                      {filteredModalRecords.map((r, idx) => (
+                        <tr key={r.id + idx} className={`transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                          <td className={`p-2.5 text-center font-mono font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>{idx + 1}</td>
+                          <td className="p-2.5">
+                            <span className={`font-black block text-xs sm:text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                              {language === 'en' ? (r.employee_name_en || r.employee_name_ar) : (r.employee_name_ar || r.employee_name_en)}
+                            </span>
+                            <span className="text-[11px] font-mono text-teal-700 dark:text-teal-400 font-bold">VTS-{r.badge_no || r.employee_id}</span>
                           </td>
-                          <td className={`p-3 font-bold ${isDark ? 'text-slate-300' : 'text-slate-900'}`}>{emp.location_ar}</td>
-                          <td className={`p-3 font-bold ${isDark ? 'text-slate-300' : 'text-slate-900'}`}>{emp.position_ar}</td>
-                          <td className={`p-3 font-mono font-bold ${isDark ? 'text-cyan-300' : 'text-teal-800 text-sm'}`}>{emp.basic_salary.toLocaleString('en-US')} IQD</td>
-                          <td className="p-3">
-                            {emp.has_exit_date ? (
-                              <span
-                                className="px-2.5 py-1 rounded-xl text-[11px] font-black border flex items-center gap-1 w-fit shadow-sm"
-                                style={{ backgroundColor: isDark ? 'rgba(244,63,94,0.2)' : '#ffe4e6', borderColor: isDark ? 'rgba(244,63,94,0.4)' : '#fda4af', color: isDark ? '#fecdd3' : '#000000' }}
-                              >
-                                <span className="material-symbols-outlined text-xs" style={{ color: isDark ? '#fb7185' : '#be123c' }}>event_busy</span>
-                                <span style={{ color: isDark ? '#fecdd3' : '#000000', fontWeight: '900' }}>{t('تلقائي: تاريخ مغادرة', 'Auto: Exit Date')} ({emp.exit_date_val || 'مستقيل'})</span>
+                          <td className="p-2.5">
+                            <span className="font-bold block">{r.location_ar}</span>
+                            <span className="text-[11px] text-slate-500">{r.position_ar}</span>
+                          </td>
+                          <td className="p-2.5 text-center">
+                            {r.status === 'ON_HOLD' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 inline-flex items-center gap-1 shadow-xs">
+                                <span className="material-symbols-outlined text-xs">front_hand</span>
+                                <span>{t('موقوف حالياً', 'On Hold')}</span>
                               </span>
                             ) : (
-                              <span
-                                className="px-2.5 py-1 rounded-xl text-[11px] font-black border flex items-center gap-1 w-fit shadow-sm"
-                                style={{ backgroundColor: isDark ? 'rgba(245,158,11,0.2)' : '#fef3c7', borderColor: isDark ? 'rgba(245,158,11,0.4)' : '#fcd34d', color: isDark ? '#fde68a' : '#000000' }}
-                              >
-                                <span className="material-symbols-outlined text-xs" style={{ color: isDark ? '#fbbf24' : '#b45309' }}>front_hand</span>
-                                <span style={{ color: isDark ? '#fde68a' : '#000000', fontWeight: '900' }}>{t('يدوي: إيقاف مؤقت', 'Manual On Hold')}</span>
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1 shadow-xs">
+                                <span className="material-symbols-outlined text-xs">check_circle</span>
+                                <span>{t('تم إطلاق الراتب', 'Released')}</span>
                               </span>
                             )}
                           </td>
-                          <td className="p-3 text-center">
+                          <td className="p-2.5 text-center font-mono font-bold text-teal-800 dark:text-teal-300">
+                            {Number(r.basic_salary).toLocaleString('en-US')} د.ع
+                          </td>
+
+                          {/* Hold Date */}
+                          <td className="p-2.5 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="material-symbols-outlined text-xs text-amber-600 dark:text-amber-400">calendar_today</span>
+                              <span>{r.hold_date || '—'}</span>
+                            </div>
+                          </td>
+
+                          {/* Hold Payroll Period (Clickable -> Jumps to that Payroll) */}
+                          <td className="p-2.5 text-center">
                             <button
-                              onClick={() => handleToggleOnHold(emp.id)}
-                              className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600/20 dark:hover:bg-emerald-600/40 dark:text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all flex items-center gap-1 mx-auto shadow-sm"
+                              type="button"
+                              onClick={() => handleNavigateToPayrollPeriod(r.hold_year, r.hold_month, r.employee_id)}
+                              className="px-2.5 py-1 rounded-xl text-xs font-mono font-black bg-amber-500/15 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 border border-amber-500/40 inline-flex items-center gap-1 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                              title={t(`انقر للانتقال مباشرة إلى مسير رواتب شهر (${r.hold_month} / ${r.hold_year})`, `Click to open payroll period ${r.hold_month} / ${r.hold_year}`)}
                             >
-                              <span className="material-symbols-outlined text-sm">play_circle</span>
-                              <span>{t('فك الإيقاف / استئناف', 'Resume Salary')}</span>
+                              <span className="material-symbols-outlined text-xs">open_in_new</span>
+                              <span>{r.hold_month} / {r.hold_year}</span>
                             </button>
+                          </td>
+
+                          {/* Release Date */}
+                          <td className="p-2.5 text-center font-mono font-bold">
+                            {r.release_date ? (
+                              <div className="flex items-center justify-center gap-1 text-emerald-700 dark:text-emerald-300">
+                                <span className="material-symbols-outlined text-xs">verified</span>
+                                <span>{r.release_date}</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 font-normal italic">{t('— قيد الإيقاف', '— Pending')}</span>
+                            )}
+                          </td>
+
+                          {/* Release Payroll Period (Clickable -> Jumps to that Payroll) */}
+                          <td className="p-2.5 text-center">
+                            {r.release_year && r.release_month ? (
+                              <button
+                                type="button"
+                                onClick={() => handleNavigateToPayrollPeriod(r.release_year!, r.release_month!, r.employee_id)}
+                                className="px-2.5 py-1 rounded-xl text-xs font-mono font-black bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-900 dark:text-emerald-200 border border-emerald-500/40 inline-flex items-center gap-1 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                                title={t(`انقر للانتقال مباشرة إلى مسير رواتب شهر (${r.release_month} / ${r.release_year})`, `Click to open release payroll period ${r.release_month} / ${r.release_year}`)}
+                              >
+                                <span className="material-symbols-outlined text-xs">open_in_new</span>
+                                <span>{r.release_month} / {r.release_year}</span>
+                              </button>
+                            ) : (
+                              <span className="text-slate-400 font-normal">—</span>
+                            )}
+                          </td>
+
+                          {/* Reason & Notes */}
+                          <td className="p-2.5 text-start max-w-[200px]">
+                            <div className="truncate text-[11px]" title={r.release_note || r.hold_reason}>
+                              <span className="font-bold text-slate-800 dark:text-slate-200 block">{r.hold_reason}</span>
+                              {r.release_note && (
+                                <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium block truncate">
+                                  ✓ {r.release_note}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Action Button */}
+                          <td className="p-2.5 text-center">
+                            {r.status === 'ON_HOLD' ? (
+                              <button
+                                onClick={() => handleToggleOnHold(r.employee_id)}
+                                className="px-2.5 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600/30 dark:hover:bg-emerald-600/50 dark:text-emerald-200 border border-emerald-500/40 text-xs font-bold transition-all flex items-center gap-1 mx-auto shadow-sm cursor-pointer hover:scale-105 active:scale-95"
+                              >
+                                <span className="material-symbols-outlined text-sm">play_circle</span>
+                                <span>{t('فك الإيقاف / Release', 'Resume Salary')}</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleToggleOnHold(r.employee_id)}
+                                className="px-2 py-1 rounded-xl bg-slate-200 hover:bg-amber-100 dark:bg-white/5 dark:hover:bg-amber-500/20 text-slate-600 hover:text-amber-800 dark:text-slate-400 dark:hover:text-amber-300 border border-slate-300 dark:border-white/10 text-[11px] font-bold transition-all flex items-center gap-1 mx-auto cursor-pointer"
+                                title={t('إعادة الإيقاف إذا لزم الأمر', 'Re-hold if necessary')}
+                              >
+                                <span className="material-symbols-outlined text-xs">restart_alt</span>
+                                <span>{t('إيقاف مجدداً', 'Re-hold')}</span>
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -3274,14 +3944,16 @@ export const Category5PayrollView: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className={`p-4 border-t ${isDark ? 'border-white/10 bg-[#0a0c10] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-700'} flex items-center justify-between text-xs`}>
-              <span className="flex items-center gap-1.5 text-amber-800 dark:text-amber-400 font-bold">
-                <span className="material-symbols-outlined text-base">info</span>
-                <span>{t('ملاحظة: الموظفون الموقوفة رواتبهم يتم استبعادهم تلقائياً من كشف وطباعة القسائم', 'Note: On Hold staff are automatically excluded from Payslips')}</span>
-              </span>
+            <div className={`p-4 border-t ${isDark ? 'border-white/10 bg-[#06080d] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-700'} flex flex-wrap items-center justify-between gap-3 text-xs`}>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 font-bold">
+                  <span className="material-symbols-outlined text-sm">info</span>
+                  <span>{t('النقر على زر أي شهر وسنة ينقلك فوراً إلى مسير الرواتب التابع له', 'Clicking any month/year badge opens its associated payroll')}</span>
+                </span>
+              </div>
               <button
                 onClick={() => setShowOnHoldModal(false)}
-                className={`px-4 py-2 rounded-xl font-bold transition-colors ${
+                className={`px-5 py-2 rounded-xl font-bold transition-colors ${
                   isDark ? 'bg-white/10 hover:bg-white/15 text-slate-200' : 'bg-slate-200 hover:bg-slate-300 text-slate-900'
                 }`}
               >
@@ -3445,6 +4117,93 @@ export const Category5PayrollView: React.FC = () => {
                 >
                   <span className="material-symbols-outlined text-sm">check_circle</span>
                   <span>{t('اعتماد وتطبيق البيانات على المسير', 'Apply & Save to Payroll')}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HR Policies & Regulations Modal */}
+      {showPoliciesModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-7xl w-full max-h-[92vh] flex flex-col shadow-2xl border-2 border-slate-900 overflow-hidden text-black animate-in zoom-in-95 duration-200" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 bg-white border-b-2 border-slate-200 flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 border-2 border-teal-600 text-teal-700 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-2xl text-teal-700">policy</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-black">
+                      {t('سياسات الرواتب واللوائح التنظيمية المعتمدة', 'Enterprise HR Policies & Payroll Regulations')}
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-normal bg-gray-100 text-black border border-gray-400">
+                      {t('تحديث حي وفوري للمسير', 'Live Payroll Sync')}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-700 font-normal mt-0.5">
+                    {t(
+                      'تعديل سعر الصرف، مخصصات الزوجية والأطفال، لائحة الإجازات، والضمان والضرائب مع انعكاس فوري على احتساب المسير',
+                      'Update exchange rate, spouse & child allowances, leave entitlements, taxes & deductions with instant payroll recalculation'
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowPoliciesModal(false);
+                    if (refreshAllData) await refreshAllData();
+                  }}
+                  className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-black border border-gray-300 flex items-center justify-center transition-all cursor-pointer font-black text-lg"
+                  title={t('إغلاق', 'Close')}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: Scrollable PoliciesSection */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 bg-white space-y-4">
+              <PoliciesSection
+                appSettings={appSettings}
+                onSettingChange={(key, value) => {
+                  if (updateAppSetting) {
+                    updateAppSetting(key, value);
+                  }
+                }}
+                onSaveAll={async () => {
+                  if (refreshAllData) await refreshAllData();
+                  setActionMessage(t('تم حفظ وتطبيق السياسات وتحديث مسير الرواتب بنجاح!', 'Policies saved and payroll recalculated successfully!'));
+                  setTimeout(() => setActionMessage(null), 4000);
+                }}
+                language={language}
+                t={t}
+                employees={employees}
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-gray-50 border-t-2 border-gray-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2 text-xs text-gray-700 font-normal">
+                <span className="material-symbols-outlined text-teal-600 text-base">sync</span>
+                <span>{t('أي تعديل على سعر الصرف أو البدلات سينعكس فوراً على جدول الرواتب الحالي', 'Any changes will immediately update the active payroll table')}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowPoliciesModal(false);
+                    if (refreshAllData) await refreshAllData();
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-black hover:bg-gray-800 text-white font-normal text-xs transition-all cursor-pointer border border-black shadow"
+                >
+                  {t('تم وإغلاق النافذة', 'Done & Close')}
                 </button>
               </div>
             </div>

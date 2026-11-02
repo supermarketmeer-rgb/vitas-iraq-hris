@@ -67,6 +67,12 @@ export const Header: React.FC = () => {
     return unsub;
   }, []);
 
+  useEffect(() => {
+    const handleOpenPwd = () => setShowChangePwdModal(true);
+    window.addEventListener('vitas:open_change_password', handleOpenPwd);
+    return () => window.removeEventListener('vitas:open_change_password', handleOpenPwd);
+  }, []);
+
   const handleManualSync = async () => {
     if (isManualSyncing) return;
     setIsManualSyncing(true);
@@ -206,16 +212,62 @@ export const Header: React.FC = () => {
     'HR Manager',
     'Recruiter',
     'Department Head',
+    'Supervisor',
     'Employee',
     'IT Admin',
     'Compliance Officer'
   ];
 
+  const getLocalizedRole = (role: string, lang: string) => {
+    const r = (role || '').trim();
+    if (r === 'HR Manager' || r === 'مدير الموارد البشرية') {
+      return lang === 'en' ? 'HR Manager' : 'مدير الموارد البشرية';
+    }
+    if (r === 'Supervisor' || r === 'مشرف' || r === 'سوبرفايزر') {
+      return lang === 'en' ? 'Supervisor' : 'مشرف';
+    }
+    if (r === 'Branch Manager' || r === 'مدير فرع' || r === 'مدير الفرع') {
+      return lang === 'en' ? 'Branch Manager' : 'مدير فرع';
+    }
+    if (r === 'Super Admin' || r === 'المدير العام') {
+      return lang === 'en' ? 'Super Admin' : 'المدير العام';
+    }
+    if (r === 'Admin' || r === 'مدير النظام') {
+      return lang === 'en' ? 'Admin' : 'مدير النظام';
+    }
+    if (r === 'Recruiter' || r === 'مسؤول التوظيف' || r === 'مسؤول توظيف') {
+      return lang === 'en' ? 'Recruiter' : 'مسؤول التوظيف';
+    }
+    if (r === 'Department Head' || r === 'رئيس قسم') {
+      return lang === 'en' ? 'Department Head' : 'رئيس قسم';
+    }
+    if (r === 'Employee' || r === 'موظف') {
+      return lang === 'en' ? 'Employee' : 'موظف';
+    }
+    if (r === 'IT Admin' || r === 'مسؤول تقنية المعلومات') {
+      return lang === 'en' ? 'IT Admin' : 'مسؤول تقنية المعلومات';
+    }
+    if (r === 'Compliance Officer' || r === 'مسؤول الامتثال') {
+      return lang === 'en' ? 'Compliance Officer' : 'مسؤول الامتثال';
+    }
+    return r;
+  };
+
+  const currentUserRoleLocalized = getLocalizedRole(currentUser.role || '', language);
+
+  const isRoleTitleName = 
+    !currentUser?.name ||
+    currentUser.name === 'مدير الموارد البشرية' || 
+    currentUser.name === 'HR Manager' ||
+    currentUser.name === currentUser.role;
+
   const currentUserName = isBranchManager
     ? (language === 'en'
         ? `${getBranchName(userBranch, undefined, 'en')} Branch Manager`
         : `مدير ${userBranch || 'المكتب'}`)
-    : (getEmployeeLocalizedName(currentUser, language) || 'User');
+    : isRoleTitleName
+    ? currentUserRoleLocalized
+    : (getEmployeeLocalizedName(currentUser, language) || (language === 'en' ? 'User' : 'المستخدم'));
 
   return (
     <>
@@ -286,8 +338,12 @@ export const Header: React.FC = () => {
 
       {/* Right / End Section - Actions, Theme, Language, Role, User Menu */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Connection Mode & Diagnostics Indicator */}
-        {!isBranchManager && <ConnectionStatusWidget />}
+        {/* Connection Mode & Diagnostics Indicator (Hidden as requested, preserved without deleting) */}
+        {!isBranchManager && (
+          <div className="hidden" aria-hidden="true">
+            <ConnectionStatusWidget />
+          </div>
+        )}
 
         {/* Manual Cloud ⇄ Local Sync Button */}
         {!isBranchManager && (
@@ -606,14 +662,14 @@ export const Header: React.FC = () => {
           )}
         </div>
 
-        {/* Current User Display Field (حقل عادي لعرض المستخدم الحالي) */}
+        {/* Current User Display Field (حقل لعرض المستخدم الحالي باللغة النشطة فقط) */}
         <div
           className={`flex items-center gap-2.5 p-1.5 px-3 rounded-xl border shadow-xs select-none ${
             isDark 
               ? 'bg-[#06080d] border-teal-500/40 text-white' 
               : 'bg-white/10 border-white/20 text-white'
           }`}
-          title={`${currentUserName} (${currentUser.role})`}
+          title={isRoleTitleName ? currentUserRoleLocalized : `${currentUserName} (${currentUserRoleLocalized})`}
         >
           <div className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm shadow-xs shrink-0 ${
             isDark ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-teal-500/30 border-teal-400/50 text-teal-200'
@@ -624,46 +680,13 @@ export const Header: React.FC = () => {
             <p className={`text-xs font-bold leading-tight ${isDark ? 'text-white' : 'text-white'}`}>
               {currentUserName}
             </p>
-            <p className={`text-[10px] font-semibold leading-tight mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-300'}`}>
-              {currentUser.role === 'Branch Manager'
-                ? (language === 'en' ? 'Branch Manager' : 'مدير فرع')
-                : currentUser.role}
-            </p>
+            {!isRoleTitleName && (
+              <p className={`text-[10px] font-semibold leading-tight mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-300'}`}>
+                {currentUserRoleLocalized}
+              </p>
+            )}
           </div>
         </div>
-
-        {/* Change Password Quick Action Button */}
-        <button
-          type="button"
-          onClick={() => setShowChangePwdModal(true)}
-          className={`p-2 rounded-xl border transition-all flex items-center justify-center cursor-pointer shadow-xs active:scale-95 ${
-            isDark
-              ? 'bg-[#06080d] hover:bg-[#0a0c10] text-teal-400 border-teal-500/40 hover:border-teal-400'
-              : 'bg-white/10 hover:bg-white/20 text-teal-300 border-white/20 hover:border-teal-400'
-          }`}
-          title={t('تغيير كلمة المرور الخاصة بي', 'Change My Password')}
-        >
-          <span className="material-symbols-outlined text-lg">key</span>
-        </button>
-
-        {/* Logout Quick Action Button */}
-        <button
-          type="button"
-          onClick={() => {
-            setCurrentUser(null);
-            setAuthenticated(false);
-            navigate('/login');
-          }}
-          className={`p-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
-            isDark
-              ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border-rose-500/30'
-              : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/30'
-          }`}
-          title={t('تسجيل الخروج', 'Logout')}
-        >
-          <span className="material-symbols-outlined text-base">logout</span>
-          <span className="hidden sm:inline">{t('خروج', 'Logout')}</span>
-        </button>
       </div>
     </header>
 

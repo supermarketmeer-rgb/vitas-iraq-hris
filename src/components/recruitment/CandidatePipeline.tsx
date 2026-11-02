@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Candidate, JobVacancy, CommitteeScore, CommitteeMember, InterviewCommittee, InterviewEvaluationRecord } from '../../types';
 import { api } from '../../api/client';
 import { SearchableComboBox } from '../SearchableComboBox';
 import { getCandidateDisplayName, transliterateEnglishNameToArabic } from '../../utils/nameHelper';
+import { PanelMemberMatrixModal, MemberEvaluationState } from './PanelMemberMatrixModal';
 
 export const CandidatePipeline: React.FC = () => {
   const { 
@@ -20,6 +21,7 @@ export const CandidatePipeline: React.FC = () => {
     addDocumentRecord,
     setActiveModuleId,
     addNotification,
+    currentUser,
     t, 
     language, 
     theme 
@@ -185,53 +187,67 @@ export const CandidatePipeline: React.FC = () => {
     return 0;
   };
 
+  // ─── Panel Member Matrix Modal State & Logic ─────────────────────────────
+  const [showMatrixModal, setShowMatrixModal] = useState<boolean>(false);
+  const [targetCandidateForMatrix, setTargetCandidateForMatrix] = useState<Candidate | null>(null);
+
   const openCommitteeScoresModal = (candidate: Candidate) => {
-    setActiveCandidateForCommitteeScores(candidate);
-    setCommitteeScoresList(Array.isArray(candidate.committeeScores) ? candidate.committeeScores : []);
-    setNewEvaluator({
-      fullName: '',
-      jobTitle: '',
-      officeName: '',
-      score: 85
-    });
+    setTargetCandidateForMatrix(candidate);
+    setShowMatrixModal(true);
   };
 
-  const handleAddEvaluator = () => {
-    if (!newEvaluator.fullName.trim()) {
-      alert('يُرجى كتابة اسم المقيم الكامل');
-      return;
+  const handleSaveMemberMatrixEvaluation = (
+    memberBadge: string,
+    memberName: string,
+    memberEvaluation: MemberEvaluationState,
+    calculatedTotalScore: number
+  ) => {
+    if (!targetCandidateForMatrix) return;
+    const candId = targetCandidateForMatrix.id;
+
+    // Existing matrix evaluations dictionary
+    const prevEvals = (targetCandidateForMatrix as any).matrixEvaluations || {};
+    const updatedEvals = {
+      ...prevEvals,
+      [memberBadge]: memberEvaluation
+    };
+
+    // Update committeeScores list for summary table & circle badge
+    const existingScores: CommitteeScore[] = Array.isArray(targetCandidateForMatrix.committeeScores) ? [...targetCandidateForMatrix.committeeScores] : [];
+    const memberIndex = existingScores.findIndex(s => s.fullName === memberName);
+    const newScoreItem: CommitteeScore = {
+      fullName: memberName,
+      officeName: targetCandidateForMatrix.officeName || 'المقر الرئيسي',
+      jobTitle: 'عضو لجنة المقابلات',
+      score: calculatedTotalScore
+    };
+    if (memberIndex >= 0) {
+      existingScores[memberIndex] = newScoreItem;
+    } else {
+      existingScores.push(newScoreItem);
     }
-    setCommitteeScoresList(prev => [...prev, { ...newEvaluator }]);
-    setNewEvaluator({
-      fullName: '',
-      jobTitle: '',
-      officeName: '',
-      score: 85
-    });
-  };
 
-  const handleRemoveEvaluator = (index: number) => {
-    setCommitteeScoresList(prev => prev.filter((_, i) => i !== index));
-  };
+    const overallAvg = Math.round(existingScores.reduce((sum, s) => sum + s.score, 0) / existingScores.length);
 
-  const handleSaveCommitteeScores = () => {
-    if (!activeCandidateForCommitteeScores) return;
-    const total = committeeScoresList.reduce((sum, item) => sum + (Number(item.score) || 0), 0);
-    const rawAvg = committeeScoresList.length > 0 ? (total / committeeScoresList.length) : 0;
-    const avgScore = Number.isInteger(rawAvg) ? rawAvg : Number(rawAvg.toFixed(1));
+    updateCandidate(candId, {
+      matrixEvaluations: updatedEvals,
+      committeeScores: existingScores,
+      finalScore: overallAvg,
+      evaluatorName: memberName
+    } as any);
 
-    updateCandidate(activeCandidateForCommitteeScores.id, {
-      committeeScores: committeeScoresList,
-      finalScore: avgScore
-    });
+    setTargetCandidateForMatrix(prev => prev ? ({
+      ...prev,
+      matrixEvaluations: updatedEvals,
+      committeeScores: existingScores,
+      finalScore: overallAvg
+    } as any) : null);
 
     addNotification({
-      title: 'تم حفظ تقييمات اللجنة',
-      message: `تم حفظ تقييمات لجنة التعيين للمرشح ${activeCandidateForCommitteeScores.fullName} بمعدل (${avgScore}/100)`,
+      title: 'تم حفظ استمارة مصفوفة المقابلة',
+      message: `تم حفظ تقييم عضو اللجنة (${memberName}) للمرشح (${targetCandidateForMatrix.fullName || targetCandidateForMatrix.fullNameAr}) بدرجة (${calculatedTotalScore}/100)`,
       type: 'success'
     });
-
-    setActiveCandidateForCommitteeScores(null);
   };
 
   // Employee Directory entry form state (strictly candidate submitted data only)
@@ -525,6 +541,7 @@ export const CandidatePipeline: React.FC = () => {
 
   // Committee Formation Modal State
   const [showCommitteeModal, setShowCommitteeModal] = useState(false);
+  const [selectedCandidateForCommittee, setSelectedCandidateForCommittee] = useState<Candidate | null>(null);
   const [committeeJobId, setCommitteeJobId] = useState<string>('');
   const [committeeInterviewDate, setCommitteeInterviewDate] = useState<string>(() => {
     const d = new Date();
@@ -536,14 +553,82 @@ export const CandidatePipeline: React.FC = () => {
   const [committeeMembersList, setCommitteeMembersList] = useState<CommitteeMember[]>([]);
   const [committeeCandidatesList, setCommitteeCandidatesList] = useState<Array<{ id: string; fullName: string; phone?: string; email?: string }>>([]);
 
-  // Member search input & auto-matched employee
+  // Committee Chair State (رئيس اللجنة: مسؤول التوظيف أو من ينوب عنه)
+  const [committeeChair, setCommitteeChair] = useState<{
+    employeeId: string;
+    badgeNo: string;
+    fullName: string;
+    jobTitle: string;
+    phone: string;
+    officeName: string;
+  }>(() => ({
+    employeeId: 'EMP-HR-001',
+    badgeNo: '001',
+    fullName: 'مسؤول التوظيف',
+    jobTitle: 'مسؤول التوظيف واللجان',
+    phone: '07801234567',
+    officeName: 'المقر الرئيسي - بغداد'
+  }));
+  const [chairBadgeSearch, setChairBadgeSearch] = useState<string>('');
+
+  // Committee Member Badge Input & Instant Auto-Fill
+  const [memberBadgeInput, setMemberBadgeInput] = useState<string>('');
   const [memberSearchQuery, setMemberSearchQuery] = useState<string>('');
   const [matchedEmployee, setMatchedEmployee] = useState<any | null>(null);
-  const [selectedMemberRole, setSelectedMemberRole] = useState<'رئيس اللجنة' | 'عضو لجنة' | 'مقرر اللجنة'>('عضو لجنة');
+  const [selectedMemberRole, setSelectedMemberRole] = useState<'عضو لجنة' | 'ممثل الموارد البشرية' | 'المشرف الفني و/أو المباشر' | 'الشخص الفني بتكنولوجيا المعلومات' | 'رئيس اللجنة'>('عضو لجنة');
   const [isSendingCommitteeInvites, setIsSendingCommitteeInvites] = useState(false);
   const [showInviteSentSuccessModal, setShowInviteSentSuccessModal] = useState(false);
   const [lastSentCommittee, setLastSentCommittee] = useState<InterviewCommittee | null>(null);
   const [copiedLinkMemberId, setCopiedLinkMemberId] = useState<string | null>(null);
+
+  // Initialize Chairman from currentUser
+  useEffect(() => {
+    if (currentUser) {
+      setCommitteeChair({
+        employeeId: currentUser.employeeId || currentUser.id || 'EMP-HR-001',
+        badgeNo: currentUser.badgeNo || '001',
+        fullName: currentUser.fullName || 'مسؤول التوظيف',
+        jobTitle: currentUser.role || 'مسؤول التوظيف والموارد البشرية',
+        phone: currentUser.phone || '07801234567',
+        officeName: currentUser.branch || 'المقر الرئيسي - بغداد'
+      });
+    }
+  }, [currentUser]);
+
+  // Match Chairman by Badge No if searched
+  useEffect(() => {
+    if (!chairBadgeSearch.trim()) return;
+    const q = chairBadgeSearch.trim().toLowerCase();
+    const found = employees.find(e => {
+      const b = String(e.badgeNo || e.badge_no || '').trim().toLowerCase();
+      const id = String(e.employeeId || e.employee_id || e.id || '').trim().toLowerCase();
+      const name = String(e.fullNameAr || e.fullName || e.full_name_ar || '').trim().toLowerCase();
+      return b === q || id === q || name.includes(q);
+    });
+    if (found) {
+      setCommitteeChair({
+        employeeId: String(found.employeeId || found.employee_id || found.id),
+        badgeNo: String(found.badgeNo || found.badge_no || '---'),
+        fullName: found.fullNameAr || found.fullName || found.full_name_ar || 'موظف',
+        jobTitle: found.jobTitle || found.position_ar || found.position || 'موظف',
+        phone: found.phone || found.mobile || found.emergencyPhone || '07800000000',
+        officeName: found.branch || found.location_ar || found.location || 'المقر الرئيسي'
+      });
+    }
+  }, [chairBadgeSearch, employees]);
+
+  // Match Committee Member instantly by Badge No
+  const matchedMemberByBadge = useMemo(() => {
+    if (!memberBadgeInput.trim()) return null;
+    const q = memberBadgeInput.trim().toLowerCase();
+    return employees.find(emp => {
+      const b = String(emp.badgeNo || emp.badge_no || '').trim().toLowerCase();
+      const id = String(emp.employeeId || emp.employee_id || emp.id || '').trim().toLowerCase();
+      const nameAr = String(emp.fullNameAr || emp.full_name_ar || '').trim().toLowerCase();
+      const nameEn = String(emp.fullName || emp.full_name_en || '').trim().toLowerCase();
+      return b === q || id === q || b.includes(q) || id.includes(q) || nameAr.includes(q) || nameEn.includes(q);
+    }) || null;
+  }, [memberBadgeInput, employees]);
 
   // Allow early access preview override for HR recruiter testing before scheduled interview date
   const [allowEarlyAccessOverride, setAllowEarlyAccessOverride] = useState<boolean>(false);
@@ -674,27 +759,35 @@ export const CandidatePipeline: React.FC = () => {
   };
 
   const handleOpenCommitteeModalForCandidate = (cand: Candidate) => {
-    if (!hasOpenJobs) {
-      alert('لا يمكن إضافة لجنة المقابلات لعدم وجود وظائف مفتوحة حالياً في النظام.');
-      return;
-    }
+    setSelectedCandidateForCommittee(cand);
     const targetJob = openVacancies.find(j => String(j.id) === String(cand.appliedJobId) || j.title === cand.jobTitle) || openVacancies[0];
-    const selJobId = targetJob ? String(targetJob.id) : '';
+    const selJobId = targetJob ? String(targetJob.id) : `cand-job-${cand.appliedJobId || cand.id}`;
     setCommitteeJobId(selJobId);
 
-    // Get all candidates applying for this same job in screening stage
-    const relatedCands = getCandidatesForJobInScreening(selJobId);
-    const candsToUse = relatedCands.length > 0 ? relatedCands : [cand];
-    setCommitteeCandidatesList(candsToUse.map(c => ({
-      id: c.id,
-      fullName: getCandidateDisplayName(c, language),
-      phone: c.phone,
-      email: c.email
-    })));
+    setCommitteeCandidatesList([{
+      id: cand.id,
+      fullName: getCandidateDisplayName(cand, language),
+      phone: cand.phone,
+      email: cand.email
+    }]);
 
-    const existing = interviewCommittees.find(comm => String(comm.jobId) === selJobId);
+    const existing = (cand as any).interviewCommittee || interviewCommittees.find(comm => String(comm.jobId) === selJobId);
     if (existing && existing.members && existing.members.length > 0) {
-      setCommitteeMembersList(existing.members);
+      // If existing has a chair, separate chair from members
+      const existingChair = existing.chair || existing.members.find((m: any) => m.role === 'رئيس اللجنة');
+      if (existingChair) {
+        setCommitteeChair({
+          employeeId: existingChair.employeeId,
+          badgeNo: existingChair.badgeNo,
+          fullName: existingChair.fullName,
+          jobTitle: existingChair.jobTitle,
+          phone: existingChair.phone || '07801234567',
+          officeName: existingChair.officeName || 'المقر الرئيسي'
+        });
+        setCommitteeMembersList(existing.members.filter((m: any) => m.role !== 'رئيس اللجنة'));
+      } else {
+        setCommitteeMembersList(existing.members);
+      }
       setCommitteeInterviewDate(existing.interviewDate || committeeInterviewDate);
       setCommitteeInterviewTime(existing.interviewTime || '10:00');
       setCommitteeInterviewLocation(existing.interviewLocation || committeeInterviewLocation);
@@ -703,42 +796,52 @@ export const CandidatePipeline: React.FC = () => {
     }
 
     setMemberSearchQuery('');
+    setMemberBadgeInput('');
     setMatchedEmployee(null);
     setShowCommitteeModal(true);
   };
 
   const handleAddMemberToCommittee = () => {
-    if (!matchedEmployee) {
-      alert('يرجى كتابة آيدي الموظف أو رقم الباج لاختيار الموظف أولاً.');
+    const emp = matchedMemberByBadge || matchedEmployee;
+    if (!emp) {
+      alert('يرجى كتابة رقم باج الموظف الصحيح أولاً لمطابقة بياناته.');
       return;
     }
 
-    const empId = matchedEmployee.employeeId || matchedEmployee.employee_id || matchedEmployee.id;
-    const badgeNo = matchedEmployee.badgeNo || matchedEmployee.badge_no || '---';
-    const fullName = matchedEmployee.fullNameAr || matchedEmployee.fullName || matchedEmployee.full_name_ar || 'موظف فيتاس';
-    const jobTitle = matchedEmployee.jobTitle || matchedEmployee.position_ar || matchedEmployee.position || 'موظف';
-    const officeName = matchedEmployee.branch || matchedEmployee.location || 'المقر الرئيسي';
+    const empId = String(emp.employeeId || emp.employee_id || emp.id);
+    const badgeNo = String(emp.badgeNo || emp.badge_no || '---');
+    const fullName = String(emp.fullNameAr || emp.fullName || emp.full_name_ar || 'عضو لجنة');
+    const jobTitle = String(emp.jobTitle || emp.position_ar || emp.position || 'موظف');
+    const officeName = String(emp.branch || emp.location_ar || emp.location || 'المقر الرئيسي');
+    const phone = String(emp.phone || emp.mobile || emp.emergencyPhone || '07800000000');
+    const email = String(emp.email || emp.work_email || '');
 
-    if (committeeMembersList.some(m => String(m.employeeId) === String(empId))) {
-      alert('هذا الموظف مضاف بالفعل في تشكيل اللجنة الحالي.');
+    if (badgeNo === committeeChair.badgeNo) {
+      alert('هذا الموظف معين كرئيس للجنة بالفعل.');
+      return;
+    }
+
+    if (committeeMembersList.some(m => m.badgeNo === badgeNo || m.employeeId === empId)) {
+      alert('هذا الموظف مضاف بالفعل في قائمة أعضاء اللجنة.');
       return;
     }
 
     const newMember: CommitteeMember = {
       id: `MEM-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      employeeId: String(empId),
-      badgeNo: String(badgeNo),
-      fullName: String(fullName),
-      jobTitle: String(jobTitle),
-      officeName: String(officeName),
-      email: matchedEmployee.email || matchedEmployee.work_email || '',
-      phone: matchedEmployee.phone || matchedEmployee.mobile || '',
-      role: selectedMemberRole,
+      employeeId: empId,
+      badgeNo: badgeNo,
+      fullName: fullName,
+      jobTitle: jobTitle,
+      officeName: officeName,
+      email: email,
+      phone: phone,
+      role: selectedMemberRole as any,
       status: 'invitation_sent',
       evaluationFormUrl: ''
     };
 
     setCommitteeMembersList(prev => [...prev, newMember]);
+    setMemberBadgeInput('');
     setMemberSearchQuery('');
     setMatchedEmployee(null);
   };
@@ -748,43 +851,54 @@ export const CandidatePipeline: React.FC = () => {
   };
 
   const handleSendCommitteeInvites = async () => {
-    if (!committeeJobId) {
-      alert('يرجى اختيار الوظيفة المعنية في مرحلة الفرز.');
-      return;
-    }
-    if (committeeMembersList.length === 0) {
-      alert('يرجى إضافة عضو واحد على الأقل في لجنة المقابلات.');
+    const targetCand = selectedCandidateForCommittee || candidates[0];
+    const targetJobTitle = targetCand ? (targetCand.jobTitle || 'وظيفة معنية') : 'وظيفة شاغرة';
+    const targetCandName = targetCand ? (targetCand.fullName || targetCand.fullNameAr || 'المرشح') : 'المرشح';
+
+    // Chair member
+    const chairMember: CommitteeMember = {
+      id: `CHAIR-${Date.now()}`,
+      employeeId: committeeChair.employeeId,
+      badgeNo: committeeChair.badgeNo,
+      fullName: committeeChair.fullName,
+      jobTitle: committeeChair.jobTitle,
+      officeName: committeeChair.officeName,
+      phone: committeeChair.phone,
+      role: 'رئيس اللجنة',
+      status: 'invitation_sent'
+    };
+
+    const finalMembersList = [
+      chairMember,
+      ...committeeMembersList.filter(m => m.badgeNo !== committeeChair.badgeNo)
+    ];
+
+    if (finalMembersList.length === 0) {
+      alert('يرجى إضافة رئيس اللجنة وعضو واحد على الأقل.');
       return;
     }
 
     setIsSendingCommitteeInvites(true);
-    const targetJob = syncedJobVacancies.find(j => String(j.id) === String(committeeJobId));
-    const targetJobTitle = targetJob ? getTitleName(targetJob.title) || targetJob.title : 'وظيفة شاغرة';
     const newCommitteeId = `COMM-${Date.now()}`;
-
-    // Generate direct evaluation link for each member (تطبيق الموظف)
-    const updatedMembers: CommitteeMember[] = committeeMembersList.map(m => {
-      const firstCandId = committeeCandidatesList[0]?.id || '';
-      const formUrl = `${window.location.origin}/?module=recruitment&view=eval&cid=${newCommitteeId}&m=${encodeURIComponent(m.employeeId)}&cand=${firstCandId}`;
-      return {
-        ...m,
-        status: 'invitation_sent',
-        evaluationFormUrl: formUrl
-      };
-    });
 
     const committeeData: InterviewCommittee = {
       id: newCommitteeId,
-      jobId: String(committeeJobId),
+      jobId: String(committeeJobId || targetCand?.appliedJobId || 'job-recruitment'),
       jobTitle: targetJobTitle,
-      department: targetJob?.department || 'إدارة العمليات والائتمان',
-      branch: targetJob?.location || 'بغداد المنصور',
+      department: targetCand?.department || 'إدارة الموارد البشرية والعمليات',
+      branch: committeeChair.officeName,
       interviewDate: committeeInterviewDate,
       interviewTime: committeeInterviewTime,
       interviewLocation: committeeInterviewLocation,
-      createdBy: 'مسؤول التوظيف',
-      members: updatedMembers,
-      candidates: committeeCandidatesList,
+      createdBy: committeeChair.fullName,
+      chair: chairMember,
+      members: finalMembersList,
+      candidates: targetCand ? [{
+        id: targetCand.id,
+        fullName: targetCandName,
+        phone: targetCand.phone,
+        email: targetCand.email
+      }] : committeeCandidatesList,
       status: 'active',
       createdAt: new Date().toISOString()
     };
@@ -793,23 +907,34 @@ export const CandidatePipeline: React.FC = () => {
       await api.notifyCommittee(committeeData).catch(() => {});
 
       setInterviewCommittees(prev => {
-        const filtered = prev.filter(c => String(c.jobId) !== String(committeeJobId));
+        const filtered = prev.filter(c => c.id !== newCommitteeId);
         return [committeeData, ...filtered];
       });
 
-      setCommitteeMembersList(updatedMembers);
+      if (targetCand) {
+        updateCandidate(targetCand.id, {
+          interviewCommittee: committeeData
+        } as any);
+      }
+
+      setCommitteeMembersList(finalMembersList);
       setLastSentCommittee(committeeData);
 
-      addNotification({
-        title: 'تم إرسال دعوات لجنة المقابلات',
-        message: `تم إرسال دعوات رسميّة عبر Outlook وتطبيق الموظفين لأعضاء اللجنة (${updatedMembers.map(m => m.fullName).join('، ')}) لمقابلة وظيفة (${targetJobTitle}).`,
-        type: 'success'
+      // In-app notifications to each committee member
+      finalMembersList.forEach(m => {
+        addNotification({
+          title: `دعوة لحضور لجنة مقابلة: ${targetCandName}`,
+          message: `تم تكليفك بعضوية لجنة مقابلات المرشح (${targetCandName}) لوظيفة (${targetJobTitle}). يرجى فتح استمارة التقييم لإدخال درجاتك وتوصياتك.`,
+          type: 'info',
+          actionUrl: `eval:${targetCand?.id}`
+        });
       });
 
+      setShowCommitteeModal(false);
       setShowInviteSentSuccessModal(true);
     } catch (err: any) {
-      console.error('Error sending committee invites:', err);
-      alert('حدث خطأ أثناء إرسال الدعوات: ' + err.message);
+      console.error('Error saving committee invites:', err);
+      alert('حدث خطأ أثناء حفظ الدعوات: ' + err.message);
     } finally {
       setIsSendingCommitteeInvites(false);
     }
@@ -1883,24 +2008,30 @@ export const CandidatePipeline: React.FC = () => {
               <div
                 key={step.id}
                 onClick={() => setActiveWorkflowFilter(isActive ? 'all' : step.id)}
-                className={`cursor-pointer p-3 rounded-xl transition-all flex flex-col justify-between select-none ${
+                className={`cursor-pointer p-3.5 rounded-2xl transition-all duration-200 flex flex-col justify-between select-none ${
                   isPressed
                     ? isDark
-                      ? 'bg-slate-900 border-2 border-teal-500 text-white shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)] translate-y-[2px] font-bold'
-                      : 'bg-slate-50 border-2 border-teal-600 text-slate-900 shadow-md translate-y-[1px] font-bold'
+                      ? 'bg-slate-900 border-2 border-[#34d399] ring-2 ring-[#10b981]/60 text-white shadow-[0_0_20px_rgba(52,211,153,0.55),inset_0_2px_8px_rgba(0,0,0,0.6)] translate-y-[1px] font-bold'
+                      : 'bg-emerald-50/90 border-2 border-[#059669] ring-2 ring-[#10b981]/50 text-slate-900 shadow-[0_0_18px_rgba(16,185,129,0.45),inset_0_1px_4px_rgba(16,185,129,0.15)] translate-y-[1px] font-bold'
                     : isDark 
-                      ? 'bg-white/5 border border-white/10 hover:bg-white/10 text-slate-200' 
-                      : 'bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-800 shadow-sm'
+                      ? 'bg-[#0f172a]/90 border-2 border-[#10b981] hover:border-[#34d399] text-slate-100 shadow-[0_0_14px_rgba(16,185,129,0.35)] hover:shadow-[0_0_20px_rgba(52,211,153,0.55)] hover:scale-[1.02]' 
+                      : 'bg-white border-2 border-[#10b981] hover:border-[#059669] text-slate-900 shadow-[0_0_12px_rgba(16,185,129,0.3),0_2px_4px_rgba(0,0,0,0.04)] hover:shadow-[0_0_18px_rgba(16,185,129,0.45)] hover:scale-[1.02]'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
-                    isPressed ? 'bg-teal-500 text-slate-950 font-black' : isDark ? 'bg-white/10 text-white' : 'bg-slate-800 text-white'
+                  <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-all ${
+                    isPressed 
+                      ? 'bg-[#10b981] text-slate-950 font-black shadow-[0_0_10px_rgba(16,185,129,0.7)]' 
+                      : isDark 
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50' 
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-500/50'
                   }`}>
                     {step.num}
                   </span>
-                  <span className={`material-symbols-outlined text-lg ${
-                    isPressed ? (isDark ? 'text-teal-400' : 'text-slate-900') : (isDark ? 'text-teal-400' : 'text-teal-600')
+                  <span className={`material-symbols-outlined text-lg transition-colors ${
+                    isPressed 
+                      ? (isDark ? 'text-emerald-300' : 'text-emerald-700') 
+                      : (isDark ? 'text-emerald-400' : 'text-emerald-600')
                   }`}>
                     {step.icon}
                   </span>
@@ -1910,7 +2041,9 @@ export const CandidatePipeline: React.FC = () => {
                     {step.title}
                   </div>
                   <div className={`text-[11px] font-bold mt-1 ${
-                    isDark ? (isPressed ? 'text-teal-300' : 'text-teal-400') : (isPressed ? 'text-slate-800' : 'text-slate-600')
+                    isDark 
+                      ? (isPressed ? 'text-emerald-300' : 'text-emerald-400') 
+                      : (isPressed ? 'text-emerald-800' : 'text-emerald-600')
                   }`}>
                     {step.count} {t('مرشح', 'candidates')}
                   </div>
@@ -2046,14 +2179,9 @@ export const CandidatePipeline: React.FC = () => {
                         {normalizedCurrentStage === 'فرز المتقدمين' && (
                           <button
                             type="button"
-                            disabled={!hasOpenJobs}
                             onClick={() => handleOpenCommitteeModalForCandidate(candidate)}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm border ${
-                              hasOpenJobs
-                                ? 'bg-purple-500/15 hover:bg-purple-500/25 text-purple-700 dark:text-purple-300 border-purple-500/40'
-                                : 'bg-slate-200 dark:bg-slate-800 text-slate-400 border-slate-300 dark:border-slate-700 cursor-not-allowed opacity-60'
-                            }`}
-                            title={hasOpenJobs ? "تشكيل أو إدارة لجنة المقابلة لهذا المتقدم" : "معطل: لا توجد وظائف مفتوحة"}
+                            className="px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm border bg-purple-500/15 hover:bg-purple-500/25 text-purple-700 dark:text-purple-300 border-purple-500/40"
+                            title="تشكيل أو إدارة لجنة المقابلة لهذا المتقدم"
                           >
                             <span className="material-symbols-outlined text-[12px] text-purple-600 dark:text-purple-400">group_add</span>
                             <span>لجنة المقابلات</span>
@@ -2062,12 +2190,11 @@ export const CandidatePipeline: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => openCommitteeScoresModal(candidate)}
-                          className="px-2.5 py-1 rounded-lg bg-amber-400/30 hover:bg-amber-400/50 border border-amber-500/60 text-[11px] font-normal flex items-center gap-1 transition-all shadow-sm"
-                          style={{ color: '#000000' }}
+                          className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 active:bg-amber-800 border border-amber-700/80 text-[11px] font-bold text-white flex items-center gap-1 transition-all shadow-sm"
                           title="انقر لإضافة وتعديل تقييمات أعضاء لجنة التعيين"
                         >
-                          <span className="material-symbols-outlined text-xs text-amber-600 dark:text-amber-400">how_to_reg</span>
-                          <span style={{ color: '#000000' }} className="font-normal">تقييم اللجنة</span>
+                          <span className="material-symbols-outlined text-xs text-white">how_to_reg</span>
+                          <span className="font-bold text-white">تقييم اللجنة</span>
                         </button>
 
                         <div 
@@ -3609,7 +3736,7 @@ export const CandidatePipeline: React.FC = () => {
       {/* ─── 1. Interview Committee Formation Modal ────────────────────── */}
       {showCommitteeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
-          <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden transition-all my-auto ${
+          <div className={`w-full max-w-5xl lg:max-w-6xl max-h-[92vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden transition-all my-auto ${
             isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
           }`}>
             {/* Modal Header */}
@@ -3763,164 +3890,238 @@ export const CandidatePipeline: React.FC = () => {
                 </div>
               </div>
 
-              {/* ── Committee Member Instant Search & 5-Fields Auto-Fill ── */}
-              <div className={`p-5 rounded-xl border space-y-4 ${
-                isDark ? 'bg-slate-900/40 border-purple-500/20' : 'bg-purple-50/40 border-purple-200'
+              {/* ── 1. Committee Chairman (رئيس اللجنة: مسؤول التوظيف أو من ينوب عنه) ── */}
+              <div className={`p-4 rounded-2xl border space-y-3 ${
+                isDark ? 'bg-purple-950/20 border-purple-500/30' : 'bg-purple-50/70 border-purple-200'
               }`}>
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold flex items-center gap-2 text-purple-700 dark:text-purple-300">
-                    <span className="material-symbols-outlined text-base">badge</span>
-                    <span>إضافة أعضاء اللجنة (يكفي كتابة آيدي الموظف أو رقم الباج)</span>
+                  <h4 className="text-xs font-bold flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                    <span className="material-symbols-outlined text-base">military_tech</span>
+                    <span>1. رئيس اللجنة (مسؤول التوظيف أو من ينوب عنه)</span>
                   </h4>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    بحث فوري في قاعدة بيانات الموظفين ({employees.length} موظف)
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold border border-purple-500/30">
+                    رئيس اللجنة (Chairperson)
                   </span>
                 </div>
 
-                {/* Live Search Input */}
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
-                    search
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 text-xs">
+                  {/* Badge No */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      🪪 رقم الباج (Badge No)
+                    </label>
+                    <input
+                      type="text"
+                      value={chairBadgeSearch || committeeChair.badgeNo}
+                      onChange={e => setChairBadgeSearch(e.target.value)}
+                      placeholder="رقم باج رئيس اللجنة..."
+                      className={`w-full px-2.5 py-1.5 rounded-lg border font-mono font-bold text-xs ${
+                        isDark ? 'bg-slate-800 border-slate-700 text-purple-300' : 'bg-white border-purple-300 text-purple-900 shadow-xs'
+                      }`}
+                    />
+                  </div>
+
+                  {/* اسم رئيس اللجنة */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      👤 اسم رئيس اللجنة
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={committeeChair.fullName}
+                      className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-bold ${
+                        isDark ? 'bg-slate-800/60 border-slate-700 text-white' : 'bg-slate-100 border-slate-200 text-slate-800'
+                      }`}
+                    />
+                  </div>
+
+                  {/* عنوانه الوظيفي */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      💼 عنوانه الوظيفي
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={committeeChair.jobTitle}
+                      className={`w-full px-2.5 py-1.5 rounded-lg border text-xs ${
+                        isDark ? 'bg-slate-800/60 border-slate-700 text-white' : 'bg-slate-100 border-slate-200 text-slate-800'
+                      }`}
+                    />
+                  </div>
+
+                  {/* الموبايل */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      📞 الموبايل
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={committeeChair.phone}
+                      className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-mono ${
+                        isDark ? 'bg-slate-800/60 border-slate-700 text-white' : 'bg-slate-100 border-slate-200 text-slate-800'
+                      }`}
+                    />
+                  </div>
+
+                  {/* المكتب */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      🏢 المكتب / الفرع
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={committeeChair.officeName}
+                      className={`w-full px-2.5 py-1.5 rounded-lg border text-xs ${
+                        isDark ? 'bg-slate-800/60 border-slate-700 text-white' : 'bg-slate-100 border-slate-200 text-slate-800'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ── 2. Add Committee Members by Badge No (بمجرد اضافة رقم باج الموظف تظهر بياناته) ── */}
+              <div className={`p-4 rounded-2xl border space-y-3 ${
+                isDark ? 'bg-teal-950/20 border-teal-500/30' : 'bg-teal-50/70 border-teal-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold flex items-center gap-2 text-teal-700 dark:text-teal-300">
+                    <span className="material-symbols-outlined text-base">group_add</span>
+                    <span>2. إضافة أعضاء اللجنة (بمجرد إدخال رقم باج الموظف تظهر بياناته في الحقول)</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                    بحث فوري في جدول الموظفين
                   </span>
-                  <input
-                    type="text"
-                    value={memberSearchQuery}
-                    onChange={e => setMemberSearchQuery(e.target.value)}
-                    placeholder="اكتب آيدي الموظف (مثال: VTS-1001) أو رقم الباج أو اسم الموظف..."
-                    className={`w-full pr-10 pl-4 py-2.5 rounded-xl text-xs font-medium border transition-all ${
-                      isDark 
-                        ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:border-purple-500' 
-                        : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-purple-600 shadow-sm'
-                    }`}
-                  />
-                  {memberSearchQuery && (
+                </div>
+
+                {/* 5 Requested Fields: Badge No, اسم عضو اللجنة، عنوانه الوظيفي، الموبايل، المكتب */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-2.5 text-xs items-end">
+                  {/* Badge No input */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                      🪪 رقم الباج (Badge No) *
+                    </label>
+                    <input
+                      type="text"
+                      value={memberBadgeInput}
+                      onChange={e => setMemberBadgeInput(e.target.value)}
+                      placeholder="أدخل رقم الباج..."
+                      className={`w-full px-2.5 py-2 rounded-xl border font-mono font-bold text-xs transition-all ${
+                        isDark 
+                          ? 'bg-slate-800 border-teal-500/50 text-teal-300 placeholder-slate-500 focus:border-teal-400' 
+                          : 'bg-white border-teal-400 text-teal-900 placeholder-slate-400 focus:border-teal-600 shadow-xs'
+                      }`}
+                    />
+                  </div>
+
+                  {/* اسم عضو اللجنة */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      👤 اسم عضو اللجنة
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={matchedMemberByBadge ? (matchedMemberByBadge.fullNameAr || matchedMemberByBadge.fullName || matchedMemberByBadge.full_name_ar) : ''}
+                      placeholder="يظهر تلقائياً..."
+                      className={`w-full px-2.5 py-2 rounded-xl border text-xs truncate ${
+                        matchedMemberByBadge 
+                          ? isDark ? 'bg-slate-800 border-teal-500/40 text-white font-bold' : 'bg-white border-teal-200 text-slate-900 font-bold'
+                          : isDark ? 'bg-slate-800/40 border-slate-700 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'
+                      }`}
+                    />
+                  </div>
+
+                  {/* عنوانه الوظيفي */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      💼 عنوانه الوظيفي
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={matchedMemberByBadge ? (matchedMemberByBadge.jobTitle || matchedMemberByBadge.position_ar || matchedMemberByBadge.position || 'موظف') : ''}
+                      placeholder="يظهر تلقائياً..."
+                      className={`w-full px-2.5 py-2 rounded-xl border text-xs truncate ${
+                        matchedMemberByBadge 
+                          ? isDark ? 'bg-slate-800 border-teal-500/40 text-white' : 'bg-white border-teal-200 text-slate-900'
+                          : isDark ? 'bg-slate-800/40 border-slate-700 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'
+                      }`}
+                    />
+                  </div>
+
+                  {/* الموبايل */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      📞 الموبايل
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={matchedMemberByBadge ? (matchedMemberByBadge.phone || matchedMemberByBadge.mobile || matchedMemberByBadge.emergencyPhone || '07800000000') : ''}
+                      placeholder="يظهر تلقائياً..."
+                      className={`w-full px-2.5 py-2 rounded-xl border text-xs font-mono truncate ${
+                        matchedMemberByBadge 
+                          ? isDark ? 'bg-slate-800 border-teal-500/40 text-white' : 'bg-white border-teal-200 text-slate-900'
+                          : isDark ? 'bg-slate-800/40 border-slate-700 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'
+                      }`}
+                    />
+                  </div>
+
+                  {/* المكتب */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      🏢 المكتب
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={matchedMemberByBadge ? (matchedMemberByBadge.branch || matchedMemberByBadge.location_ar || matchedMemberByBadge.location || 'المقر الرئيسي') : ''}
+                      placeholder="يظهر تلقائياً..."
+                      className={`w-full px-2.5 py-2 rounded-xl border text-xs truncate ${
+                        matchedMemberByBadge 
+                          ? isDark ? 'bg-slate-800 border-teal-500/40 text-white' : 'bg-white border-teal-200 text-slate-900'
+                          : isDark ? 'bg-slate-800/40 border-slate-700 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'
+                      }`}
+                    />
+                  </div>
+
+                  {/* الصفة وزر الإضافة */}
+                  <div className="space-y-1">
+                    <select
+                      value={selectedMemberRole}
+                      onChange={e => setSelectedMemberRole(e.target.value as any)}
+                      className={`w-full px-2 py-1 rounded-lg text-[11px] font-bold border ${
+                        isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                    >
+                      <option value="عضو لجنة">عضو لجنة (Member)</option>
+                      <option value="ممثل الموارد البشرية">ممثل الموارد البشرية (HR)</option>
+                      <option value="المشرف الفني و/أو المباشر">المشرف الفني المباشر (Supervisor)</option>
+                      <option value="الشخص الفني بتكنولوجيا المعلومات">الشخص الفني IT (IT Tech)</option>
+                    </select>
+
                     <button
                       type="button"
-                      onClick={() => setMemberSearchQuery('')}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      disabled={!matchedMemberByBadge}
+                      onClick={handleAddMemberToCommittee}
+                      className="w-full py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-40 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-md transition-all hover:scale-[1.02]"
                     >
-                      مسح
+                      <span className="material-symbols-outlined text-sm">person_add</span>
+                      <span>إضافة العضو</span>
                     </button>
-                  )}
+                  </div>
                 </div>
 
-                {/* Instant 5-Fields Card When Matched */}
-                {matchedEmployee ? (
-                  <div className="p-4 rounded-xl border border-teal-500/60 bg-teal-500/10 space-y-3 transition-all animate-fadeIn">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-lg">verified</span>
-                        <span className="text-xs font-bold text-teal-700 dark:text-teal-300">
-                          تم العثور على الموظف ومطابقة بياناته تلقائياً
-                        </span>
-                      </div>
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-800 dark:text-teal-200 font-mono font-bold">
-                        {matchedEmployee.employeeId || matchedEmployee.employee_id || matchedEmployee.id}
-                      </span>
-                    </div>
-
-                    {/* The EXACT 5 Requested Fields */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 text-xs">
-                      {/* 1. المكتب */}
-                      <div className={`p-2.5 rounded-xl border ${
-                        isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
-                      }`}>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs text-teal-500">apartment</span>
-                          <span>المكتب / الفرع</span>
-                        </div>
-                        <div className="font-bold text-slate-900 dark:text-white truncate">
-                          {matchedEmployee.branch || matchedEmployee.location || 'المقر الرئيسي'}
-                        </div>
-                      </div>
-
-                      {/* 2. آيدي الموظف */}
-                      <div className={`p-2.5 rounded-xl border ${
-                        isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
-                      }`}>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs text-teal-500">pin</span>
-                          <span>آيدي الموظف</span>
-                        </div>
-                        <div className="font-bold text-slate-900 dark:text-white font-mono truncate">
-                          {matchedEmployee.employeeId || matchedEmployee.employee_id || matchedEmployee.id}
-                        </div>
-                      </div>
-
-                      {/* 3. باج الموظف */}
-                      <div className={`p-2.5 rounded-xl border ${
-                        isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
-                      }`}>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs text-teal-500">badge</span>
-                          <span>باج الموظف</span>
-                        </div>
-                        <div className="font-bold text-slate-900 dark:text-white font-mono truncate">
-                          {matchedEmployee.badgeNo || matchedEmployee.badge_no || '---'}
-                        </div>
-                      </div>
-
-                      {/* 4. اسم الموظف */}
-                      <div className={`p-2.5 rounded-xl border ${
-                        isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
-                      }`}>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs text-teal-500">person</span>
-                          <span>اسم الموظف</span>
-                        </div>
-                        <div className="font-bold text-slate-900 dark:text-white truncate">
-                          {matchedEmployee.fullNameAr || matchedEmployee.fullName || matchedEmployee.full_name_ar}
-                        </div>
-                      </div>
-
-                      {/* 5. عنوانه الوظيفي */}
-                      <div className={`p-2.5 rounded-xl border ${
-                        isDark ? 'bg-[#0f172a] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
-                      }`}>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs text-teal-500">work</span>
-                          <span>عنوانه الوظيفي</span>
-                        </div>
-                        <div className="font-bold text-slate-900 dark:text-white truncate">
-                          {matchedEmployee.jobTitle || matchedEmployee.position_ar || matchedEmployee.position || 'موظف'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Member Role & Add Button */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                          دور العضو في اللجنة:
-                        </label>
-                        <select
-                          value={selectedMemberRole}
-                          onChange={e => setSelectedMemberRole(e.target.value as any)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
-                            isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                          }`}
-                        >
-                          <option value="رئيس اللجنة">رئيس اللجنة (Committee Chair)</option>
-                          <option value="عضو لجنة">عضو لجنة (Committee Member)</option>
-                          <option value="مقرر اللجنة">مقرر اللجنة (Committee Secretary)</option>
-                        </select>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleAddMemberToCommittee}
-                        className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition-all hover:scale-[1.02]"
-                      >
-                        <span className="material-symbols-outlined text-sm">person_add</span>
-                        <span>إضافة لتشكيل اللجنة</span>
-                      </button>
-                    </div>
+                {memberBadgeInput.trim() && !matchedMemberByBadge && (
+                  <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[11px] flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm">search_off</span>
+                    <span>لم يتم العثور على موظف برقم الباج المدخل ({memberBadgeInput}). تأكد من رقم الباج من دليل الموظفين.</span>
                   </div>
-                ) : memberSearchQuery.trim() ? (
-                  <div className="p-3.5 rounded-xl border border-dashed border-amber-500/40 bg-amber-500/10 text-center text-xs text-amber-600 dark:text-amber-400">
-                    لم يتم العثور على موظف يطابق الرقم أو الاسم المدخل. يرجى التأكد من صحة رقم الآيدي أو رقم الباج.
-                  </div>
-                ) : null}
+                )}
               </div>
 
               {/* ── Table / Cards of Formed Committee Members ── */}
@@ -3937,55 +4138,127 @@ export const CandidatePipeline: React.FC = () => {
                   )}
                 </div>
 
-                {committeeMembersList.length === 0 ? (
-                  <div className={`p-8 rounded-xl border border-dashed text-center space-y-2 ${
-                    isDark ? 'border-slate-800 bg-slate-900/20' : 'border-slate-300 bg-slate-50'
-                  }`}>
-                    <span className="material-symbols-outlined text-3xl text-slate-400">group_off</span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                      لم تتم إضافة أعضاء للجنة حتى الآن. استخدم حقل البحث أعلاه بكتابة آيدي أو باج الموظف.
-                    </p>
+                <div className="space-y-2">
+                  {/* رئيس اللجنة (المثبت أولاً) - بياناته على نفس السطر */}
+                  <div className={`py-2 px-3 rounded-xl border border-purple-500/40 bg-purple-500/10 transition-all shadow-xs`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+                        <div className="w-6 h-6 rounded-md bg-purple-500/30 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0">
+                          ★
+                        </div>
+                        <h5 className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                          {committeeChair.fullName}
+                        </h5>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/25 text-amber-800 dark:text-amber-300 border border-amber-500/40 whitespace-nowrap shrink-0">
+                          رئيس اللجنة (مسؤول التوظيف)
+                        </span>
+                        <span className="text-slate-400 hidden sm:inline shrink-0">•</span>
+                        <span className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1 whitespace-nowrap shrink-0">
+                          <span>💼</span>
+                          <span className="font-medium">{committeeChair.jobTitle}</span>
+                        </span>
+                        <span className="text-slate-400 hidden sm:inline shrink-0">•</span>
+                        <span className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1 whitespace-nowrap shrink-0">
+                          <span>🏢</span>
+                          <span className="font-medium">{committeeChair.officeName}</span>
+                        </span>
+                        {committeeChair.phone && (
+                          <>
+                            <span className="text-slate-400 hidden sm:inline shrink-0">•</span>
+                            <span className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1 whitespace-nowrap dir-ltr shrink-0">
+                              <span>📞</span>
+                              <span className="font-mono">{committeeChair.phone}</span>
+                            </span>
+                          </>
+                        )}
+                        <span className="text-slate-400 hidden sm:inline shrink-0">•</span>
+                        <span className="px-1.5 py-0.5 rounded bg-teal-500/15 border border-teal-500/30 font-mono text-[10px] font-bold text-teal-700 dark:text-teal-300 whitespace-nowrap shrink-0">
+                          🪪 باج: {committeeChair.badgeNo}
+                        </span>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-lg bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 font-bold shrink-0">
+                        رئيس اللجنة
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {committeeMembersList.map((member, idx) => (
+
+                  {committeeMembersList.length === 0 ? (
+                    <div className={`p-6 rounded-xl border border-dashed text-center space-y-1.5 ${
+                      isDark ? 'border-slate-800 bg-slate-900/20' : 'border-slate-300 bg-slate-50'
+                    }`}>
+                      <span className="material-symbols-outlined text-2xl text-teal-500">group_add</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        تم تعيين رئيس اللجنة أعلاه. أدخل رقم الباج في الحقل أعلاه لإضافة باقي أعضاء اللجنة.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {committeeMembersList.map((member, idx) => (
                       <div
                         key={member.id}
-                        className={`p-3.5 rounded-xl border transition-all ${
-                          isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-50 border-slate-200 shadow-sm'
+                        className={`py-2 px-3 rounded-xl border transition-all space-y-1.5 ${
+                          isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-50 border-slate-200 shadow-xs'
                         }`}
                       >
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                          {/* Member Info */}
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs shrink-0">
+                        {/* 1. Member Data on the SAME line (بيانات العضو على نفس السطر مع آيقونة الحذف بخلفية حمراء) */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+                            <div className="w-6 h-6 rounded-md bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs shrink-0">
                               {idx + 1}
                             </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <h5 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                  {member.fullName}
-                                </h5>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                                  member.role === 'رئيس اللجنة' 
-                                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
-                                    : 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30'
-                                }`}>
-                                  {member.role}
+                            <h5 className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                              {member.fullName}
+                            </h5>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0 ${
+                              member.role === 'رئيس اللجنة' 
+                                ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                                : 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30'
+                            }`}>
+                              {member.role}
+                            </span>
+                            <span className="text-slate-400 hidden sm:inline shrink-0">•</span>
+                            <span className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1 whitespace-nowrap shrink-0">
+                              <span>💼</span>
+                              <span className="font-medium">{member.jobTitle}</span>
+                            </span>
+                            <span className="text-slate-400 hidden sm:inline shrink-0">•</span>
+                            <span className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1 whitespace-nowrap shrink-0">
+                              <span>🏢</span>
+                              <span className="font-medium">{member.officeName}</span>
+                            </span>
+                            {member.phone && (
+                              <>
+                                <span className="text-slate-400 hidden sm:inline shrink-0">•</span>
+                                <span className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1 whitespace-nowrap dir-ltr shrink-0">
+                                  <span>📞</span>
+                                  <span className="font-mono">{member.phone}</span>
                                 </span>
-                              </div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
-                                <span>💼 {member.jobTitle}</span>
-                                <span>• 🏢 {member.officeName}</span>
-                                <span className="font-mono">🆔 {member.employeeId}</span>
-                                <span className="font-mono">🪪 باج: {member.badgeNo}</span>
-                              </div>
-                            </div>
+                              </>
+                            )}
+                            <span className="text-slate-400 hidden sm:inline shrink-0">•</span>
+                            <span className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px] text-slate-700 dark:text-slate-300 whitespace-nowrap shrink-0">
+                              🆔 {member.employeeId}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-teal-500/15 border border-teal-500/30 font-mono text-[10px] font-bold text-teal-700 dark:text-teal-300 whitespace-nowrap shrink-0">
+                              🪪 باج: {member.badgeNo}
+                            </span>
                           </div>
 
-                          {/* Member Status & Direct Interactive Actions */}
-                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                            {/* Status Badge */}
+                          {/* Delete button with RED background (آيقونة الحذف بخلفية حمراء بنفس السطر) */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMemberFromCommittee(idx)}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-xs transition-all shrink-0 hover:scale-105"
+                            title="حذف هذا العضو من اللجنة"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">delete</span>
+                          </button>
+                        </div>
+
+                        {/* 2. Member Status & Action Buttons UNDERNEATH (الأزرار تحت البيانات) */}
+                        <div className="pt-1.5 border-t border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-2 flex-wrap">
+                          {/* Status Indicators */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             {member.status === 'invitation_sent' && (
                               <span className="text-[10px] px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 font-bold flex items-center gap-1">
                                 <span className="material-symbols-outlined text-xs">mail</span>
@@ -4031,8 +4304,10 @@ export const CandidatePipeline: React.FC = () => {
                               }
                               return null;
                             })()}
+                          </div>
 
-                            {/* Simulation: Member confirms participation */}
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2 flex-wrap">
                             {member.status === 'invitation_sent' && (
                               <button
                                 type="button"
@@ -4045,7 +4320,6 @@ export const CandidatePipeline: React.FC = () => {
                               </button>
                             )}
 
-                            {/* Direct Form Link & Open Form in App button */}
                             {(member.status === 'confirmed' || member.status === 'invitation_sent' || member.status === 'evaluation_submitted') && (
                               <>
                                 <button
@@ -4069,16 +4343,6 @@ export const CandidatePipeline: React.FC = () => {
                                 </button>
                               </>
                             )}
-
-                            {/* Remove button */}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMemberFromCommittee(idx)}
-                              className="text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 p-1 rounded-lg transition-colors"
-                              title="إزالة العضو"
-                            >
-                              <span className="material-symbols-outlined text-base">delete</span>
-                            </button>
                           </div>
                         </div>
 
@@ -4102,6 +4366,7 @@ export const CandidatePipeline: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
             </div>
 
             {/* Modal Actions Footer */}
@@ -5080,6 +5345,76 @@ export const CandidatePipeline: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─── Official Panel Member Matrix Modal (Panel Memeber Matrix Form.xls) ─── */}
+      {showMatrixModal && targetCandidateForMatrix && (
+        <PanelMemberMatrixModal
+          isOpen={showMatrixModal}
+          onClose={() => {
+            setShowMatrixModal(false);
+            setTargetCandidateForMatrix(null);
+          }}
+          candidate={targetCandidateForMatrix}
+          committeeMembers={
+            (targetCandidateForMatrix as any).interviewCommittee?.members?.length > 0
+              ? (targetCandidateForMatrix as any).interviewCommittee.members
+              : committeeMembersList.length > 0
+                ? [
+                    {
+                      id: 'mem-chair',
+                      employeeId: committeeChair.employeeId,
+                      badgeNo: committeeChair.badgeNo,
+                      fullName: committeeChair.fullName,
+                      jobTitle: committeeChair.jobTitle,
+                      phone: committeeChair.phone,
+                      officeName: committeeChair.officeName,
+                      role: 'رئيس اللجنة',
+                      status: 'confirmed'
+                    },
+                    ...committeeMembersList.filter(m => m.badgeNo !== committeeChair.badgeNo)
+                  ]
+                : [
+                    {
+                      id: 'mem-chair',
+                      employeeId: committeeChair.employeeId,
+                      badgeNo: committeeChair.badgeNo,
+                      fullName: committeeChair.fullName,
+                      jobTitle: committeeChair.jobTitle,
+                      phone: committeeChair.phone,
+                      officeName: committeeChair.officeName,
+                      role: 'رئيس اللجنة',
+                      status: 'confirmed'
+                    },
+                    {
+                      id: 'mem-hr',
+                      employeeId: 'EMP-HR-002',
+                      badgeNo: '002',
+                      fullName: 'ممثل الموارد البشرية',
+                      jobTitle: 'أخصائي توظيف وتطوير كفاءات',
+                      phone: '07802223344',
+                      officeName: 'المقر الرئيسي - بغداد',
+                      role: 'ممثل الموارد البشرية',
+                      status: 'confirmed'
+                    },
+                    {
+                      id: 'mem-tech',
+                      employeeId: 'EMP-TECH-003',
+                      badgeNo: '003',
+                      fullName: 'المشرف الفني المباشر',
+                      jobTitle: 'مدير قسم العمليات الائتمانية',
+                      phone: '07803334455',
+                      officeName: 'فرع المنصور',
+                      role: 'المشرف الفني و/أو المباشر',
+                      status: 'confirmed'
+                    }
+                  ]
+          }
+          currentUser={currentUser}
+          onSaveMemberEvaluation={handleSaveMemberMatrixEvaluation}
+          isDark={isDark}
+          t={t}
+        />
       )}
     </div>
   );

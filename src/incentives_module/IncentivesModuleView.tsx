@@ -4,6 +4,7 @@ import { inspectAndExtractWorkbook, ALL_ROLES_SHEET_KEY } from './utils/excelExt
 import { exportExtractedDataToExcel } from './utils/excelExporter';
 import { WorkbookInspectionResult, EmployeePayoutRecord, SortField, SortDirection } from './types/excelIncentives';
 import { IncentivesModuleLegacyView } from './IncentivesModuleLegacyView';
+import { OfficesReachedTargetView } from './components/OfficesReachedTargetView';
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -31,16 +32,19 @@ import {
   History,
   ExternalLink,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  Trophy,
+  Target
 } from 'lucide-react';
 
 export const IncentivesModuleView: React.FC = () => {
-  const { theme, language, t, employees, setActiveModuleId } = useApp();
+  const { theme, language, t, employees, setActiveModuleId, appSettings } = useApp();
   const isDark = theme === 'dark';
   const isRTL = language === 'ar';
 
   // Toggle between New Modern Extraction Engine and Archived Legacy Screen
   const [showLegacyView, setShowLegacyView] = useState<boolean>(false);
+  const [showOfficesTargetView, setShowOfficesTargetView] = useState<boolean>(false);
 
   // Core Workbook State
   const [inspectionResult, setInspectionResult] = useState<WorkbookInspectionResult | null>(null);
@@ -61,6 +65,26 @@ export const IncentivesModuleView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Payroll Sync State
+  // Active FX Rate loaded from Settings > Policies
+  const activeFxRate = useMemo(() => {
+    const fromSettings = parseFloat(appSettings?.usd_to_iqd_rate || '');
+    if (!isNaN(fromSettings) && fromSettings > 0) return fromSettings;
+    try {
+      const saved = localStorage.getItem('vitas_app_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const rate = parseFloat(parsed.usd_to_iqd_rate);
+        if (!isNaN(rate) && rate > 0) return rate;
+      }
+    } catch {}
+    return 1310;
+  }, [appSettings]);
+
+  const formatUSD = (num: number | null | undefined): string => {
+    if (num === null || num === undefined) return '—';
+    return Number(num).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  };
+
   const [autoSyncToPayroll, setAutoSyncToPayroll] = useState<boolean>(true);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
@@ -155,18 +179,29 @@ export const IncentivesModuleView: React.FC = () => {
       const adjustments: Record<string, any> = savedRaw ? JSON.parse(savedRaw) : {};
 
       let syncedCount = 0;
+      let totalSyncedIQD = 0;
       recordsToSync.forEach((rec) => {
         // Resolve target employee ID: preferably the linked HRIS employee ID, or direct record ID
         const targetId = String(rec.matchedEmployeeId || rec.employeeId);
-        if (!targetId) return;
+        if (!targetId || targetId === '—') return;
+
+        // Convert USD amounts to IQD using activeFxRate from Policies
+        const incentivesIQD = rec.incentives !== null ? Math.round(rec.incentives * activeFxRate) : (adjustments[targetId]?.incentives || 0);
+        const transportationIQD = rec.transportation !== null ? Math.round(rec.transportation * activeFxRate) : (adjustments[targetId]?.transportation || 0);
+        const bonusIQD = rec.bonus !== null ? Math.round(rec.bonus * activeFxRate) : (adjustments[targetId]?.bonus || 0);
 
         adjustments[targetId] = {
           ...(adjustments[targetId] || {}),
-          incentives: rec.incentives !== null ? rec.incentives : (adjustments[targetId]?.incentives || 0),
-          transportation: rec.transportation !== null ? rec.transportation : (adjustments[targetId]?.transportation || 0),
-          bonus: rec.bonus !== null ? rec.bonus : (adjustments[targetId]?.bonus || 0),
+          incentives: incentivesIQD,
+          transportation: transportationIQD,
+          bonus: bonusIQD,
+          usdIncentivesOriginal: rec.incentives,
+          usdTransportationOriginal: rec.transportation,
+          usdBonusOriginal: rec.bonus,
+          appliedFxRate: activeFxRate,
         };
         syncedCount++;
+        totalSyncedIQD += (incentivesIQD || 0) + (transportationIQD || 0) + (bonusIQD || 0);
       });
 
       // Persist to localStorage
@@ -181,15 +216,15 @@ export const IncentivesModuleView: React.FC = () => {
       if (isManual) {
         setSyncFeedback(
           language === 'ar'
-            ? `تم ترحيل واعتماد مبالغ الحوافز والنقل والمكافآت بنجاح إلى مسير الرواتب لـ ${syncedCount} موظفاً!`
-            : `Successfully synced incentives, transport & bonus for ${syncedCount} staff to live Payroll!`
+            ? `تم تحويل مبالغ الحوافز والنقل والمكافآت من الدولار ($ USD) إلى الدينار العراقي بسعر صرف (1$ = ${activeFxRate.toLocaleString()} د.ع) وترحيلها بنجاح إلى مسير الرواتب لـ ${syncedCount} موظفاً (إجمالي: ${formatIQD(totalSyncedIQD)} د.ع)!`
+            : `Successfully converted incentives, transport & bonus from USD to IQD at rate (1$ = ${activeFxRate.toLocaleString()} IQD) and applied to Payroll for ${syncedCount} staff (Total: ${formatIQD(totalSyncedIQD)} IQD)!`
         );
-        setTimeout(() => setSyncFeedback(null), 6000);
+        setTimeout(() => setSyncFeedback(null), 7000);
       }
     } catch (err) {
       console.error('Failed to sync to payroll:', err);
     }
-  }, [language]);
+  }, [language, activeFxRate]);
 
   /**
    * Process in-memory binary spreadsheet data
@@ -316,7 +351,7 @@ export const IncentivesModuleView: React.FC = () => {
   const handleExportCleanExcel = () => {
     if (!inspectionResult || inspectionResult.records.length === 0) return;
     const cleanFileName = `Vitas_Extracted_Incentives_${(inspectionResult.selectedSheetName || 'All').replace(/\s+/g, '_')}.xlsx`;
-    exportExtractedDataToExcel(inspectionResult.records, cleanFileName);
+    exportExtractedDataToExcel(inspectionResult.records, cleanFileName, activeFxRate);
   };
 
   // Distinct offices and job titles for filters
@@ -416,6 +451,21 @@ export const IncentivesModuleView: React.FC = () => {
   };
 
   // If user explicitly toggled to view the legacy archived screen
+  if (showOfficesTargetView) {
+    return (
+      <OfficesReachedTargetView
+        extractedRecords={inspectionResult?.records || []}
+        employees={employees}
+        onBack={() => setShowOfficesTargetView(false)}
+        language={language}
+        theme={theme}
+        t={t}
+        setActiveModuleId={setActiveModuleId}
+        activeFxRate={activeFxRate}
+      />
+    );
+  }
+
   if (showLegacyView) {
     return (
       <div className="space-y-4">
@@ -476,6 +526,17 @@ export const IncentivesModuleView: React.FC = () => {
 
           {/* Top Quick Actions */}
           <div className="flex items-center gap-2 flex-wrap self-stretch lg:self-auto justify-end">
+            {/* Offices Reached Target Button */}
+            <button
+              type="button"
+              onClick={() => setShowOfficesTargetView(true)}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+              title={language === 'ar' ? 'عرض جدول المكاتب التي وصلت الهدف واحتساب علاوات الكادر الإداري' : 'Offices Reached Target'}
+            >
+              <Trophy className="w-4 h-4" />
+              <span>{language === 'ar' ? 'المكاتب المحققة للهدف (Offices Reached Target)' : 'Offices Reached Target'}</span>
+            </button>
+
             {/* Sync to Payroll Button */}
             <button
               type="button"
@@ -545,6 +606,22 @@ export const IncentivesModuleView: React.FC = () => {
         )}
       </div>
 
+      {/* Currency Exchange Rate Notice Banner */}
+      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-teal-500/10 to-amber-500/10 border border-blue-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold">
+          <span className="material-symbols-outlined text-lg text-teal-600 dark:text-teal-400">currency_exchange</span>
+          <span>
+            {language === 'ar'
+              ? 'تنبيه العملة: المبالغ المستخرجة في هذا الجدول والشاشة هي بالدولار الأمريكي ($ USD)، ويتم تحويلها آلياً إلى الدينار العراقي (IQD) عند الترحيل لمسير الرواتب وفق سعر التصريف المعتمد في السياسات.'
+              : 'Currency Notice: Amounts on this screen are in US Dollars ($ USD), and are automatically converted to Iraqi Dinars (IQD) upon syncing to live Payroll using official Policy FX Rate.'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 font-mono font-bold text-slate-900 dark:text-white px-3 py-1 rounded-xl bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 shadow-2xs">
+          <span className="text-[11px] text-slate-500">{language === 'ar' ? 'سعر الصرف المعتمد (السياسات):' : 'Active Policy Rate:'}</span>
+          <span className="text-teal-700 dark:text-teal-300 font-black">1 USD = {activeFxRate.toLocaleString()} IQD</span>
+        </div>
+      </div>
+
       {/* KPI Metrics Summary Cards */}
       {inspectionResult?.summary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
@@ -580,8 +657,13 @@ export const IncentivesModuleView: React.FC = () => {
               </span>
               <Award className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400 truncate">
-              {formatIQD(inspectionResult.summary.totalIncentives)} <span className="text-xs font-sans">د.ع</span>
+            <div className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400 truncate flex items-baseline gap-1">
+              <span className="text-sm font-sans font-bold text-slate-500 dark:text-slate-400">$</span>
+              <span>{formatUSD(inspectionResult.summary.totalIncentives)}</span>
+              <span className="text-xs font-sans text-slate-400 font-bold">USD</span>
+            </div>
+            <div className="mt-1 text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
+              ≈ {formatIQD(Math.round(inspectionResult.summary.totalIncentives * activeFxRate))} د.ع
             </div>
             <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
               {language === 'ar' ? 'معادلات الحوافز المقيمة من الإكسل' : 'Evaluated Excel formula cells'}
@@ -596,8 +678,13 @@ export const IncentivesModuleView: React.FC = () => {
               </span>
               <Car className="w-4 h-4 text-sky-600" />
             </div>
-            <div className="text-xl font-black font-mono text-sky-600 dark:text-sky-400 truncate">
-              {formatIQD(inspectionResult.summary.totalTransportation)} <span className="text-xs font-sans">د.ع</span>
+            <div className="text-xl font-black font-mono text-sky-600 dark:text-sky-400 truncate flex items-baseline gap-1">
+              <span className="text-sm font-sans font-bold text-slate-500 dark:text-slate-400">$</span>
+              <span>{formatUSD(inspectionResult.summary.totalTransportation)}</span>
+              <span className="text-xs font-sans text-slate-400 font-bold">USD</span>
+            </div>
+            <div className="mt-1 text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
+              ≈ {formatIQD(Math.round(inspectionResult.summary.totalTransportation * activeFxRate))} د.ع
             </div>
             <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
               {language === 'ar' ? 'بدل التنقل المعتمد للموظفين' : 'Approved travel allowances'}
@@ -612,8 +699,13 @@ export const IncentivesModuleView: React.FC = () => {
               </span>
               <Gift className="w-4 h-4 text-amber-600" />
             </div>
-            <div className="text-xl font-black font-mono text-amber-600 dark:text-amber-400 truncate">
-              {formatIQD(inspectionResult.summary.totalBonus)} <span className="text-xs font-sans">د.ع</span>
+            <div className="text-xl font-black font-mono text-amber-600 dark:text-amber-400 truncate flex items-baseline gap-1">
+              <span className="text-sm font-sans font-bold text-slate-500 dark:text-slate-400">$</span>
+              <span>{formatUSD(inspectionResult.summary.totalBonus)}</span>
+              <span className="text-xs font-sans text-slate-400 font-bold">USD</span>
+            </div>
+            <div className="mt-1 text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
+              ≈ {formatIQD(Math.round(inspectionResult.summary.totalBonus * activeFxRate))} د.ع
             </div>
             <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
               {language === 'ar' ? 'المكافآت التقديرية المحتسبة' : 'Calculated performance bonus'}
@@ -628,8 +720,13 @@ export const IncentivesModuleView: React.FC = () => {
               </span>
               <Wallet className="w-4 h-4 text-teal-400" />
             </div>
-            <div className="text-xl font-black font-mono text-teal-300 truncate">
-              {formatIQD(inspectionResult.summary.grandTotal)} <span className="text-xs font-sans text-slate-300">د.ع</span>
+            <div className="text-xl font-black font-mono text-teal-300 truncate flex items-baseline gap-1">
+              <span className="text-sm font-sans font-bold text-slate-400">$</span>
+              <span>{formatUSD(inspectionResult.summary.grandTotal)}</span>
+              <span className="text-xs font-sans text-teal-400 font-bold">USD</span>
+            </div>
+            <div className="mt-1 text-[11px] font-mono font-bold text-teal-200">
+              ≈ {formatIQD(Math.round(inspectionResult.summary.grandTotal * activeFxRate))} د.ع
             </div>
             <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between font-medium">
               <span>{language === 'ar' ? 'حوافز + نقل + بونص' : 'Incentives + Transport + Bonus'}</span>
@@ -833,61 +930,61 @@ export const IncentivesModuleView: React.FC = () => {
         {/* Table Content */}
         <div className="overflow-x-auto">
           <table className="w-full text-start border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300 font-black">
-                <th className="py-3 px-3 text-center w-12 cursor-pointer" onClick={() => handleSort('index')}>
-                  <div className="flex items-center justify-center gap-1">
+            <thead className="incentives-table-header">
+              <tr className="border-b border-slate-300 dark:border-white/10 bg-slate-200/90 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold">
+                <th className="py-3 px-3 text-center w-12 cursor-pointer text-slate-900 dark:text-white font-bold" onClick={() => handleSort('index')}>
+                  <div className="flex items-center justify-center gap-1 font-bold text-slate-900 dark:text-white">
                     <span>#</span>
-                    {sortField === 'index' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600" /> : <ArrowDown className="w-3 h-3 text-teal-600" />)}
+                    {sortField === 'index' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
-                <th className="py-3 px-3 text-start cursor-pointer w-32" onClick={() => handleSort('employeeId')}>
-                  <div className="flex items-center gap-1">
+                <th className="py-3 px-3 text-start cursor-pointer w-32 text-slate-900 dark:text-white font-bold" onClick={() => handleSort('employeeId')}>
+                  <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white">
                     <span>{language === 'ar' ? 'معرف الموظف (WAID)' : 'Employee ID'}</span>
-                    {sortField === 'employeeId' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600" /> : <ArrowDown className="w-3 h-3 text-teal-600" />)}
+                    {sortField === 'employeeId' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
-                <th className="py-3 px-3 text-start cursor-pointer w-36" onClick={() => handleSort('office')}>
-                  <div className="flex items-center gap-1">
+                <th className="py-3 px-3 text-start cursor-pointer w-36 text-slate-900 dark:text-white font-bold" onClick={() => handleSort('office')}>
+                  <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white">
                     <span>{language === 'ar' ? 'المكتب / الفرع' : 'Office'}</span>
-                    {sortField === 'office' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600" /> : <ArrowDown className="w-3 h-3 text-teal-600" />)}
+                    {sortField === 'office' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
-                <th className="py-3 px-3 text-start cursor-pointer min-w-[200px]" onClick={() => handleSort('employeeName')}>
-                  <div className="flex items-center gap-1">
+                <th className="py-3 px-3 text-start cursor-pointer min-w-[200px] text-slate-900 dark:text-white font-bold" onClick={() => handleSort('employeeName')}>
+                  <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white">
                     <span>{language === 'ar' ? 'اسم الموظف وسجل النظام' : 'Employee & HRIS Record'}</span>
-                    {sortField === 'employeeName' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600" /> : <ArrowDown className="w-3 h-3 text-teal-600" />)}
+                    {sortField === 'employeeName' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
-                <th className="py-3 px-3 text-start cursor-pointer w-44" onClick={() => handleSort('jobTitle')}>
-                  <div className="flex items-center gap-1">
+                <th className="py-3 px-3 text-start cursor-pointer w-44 text-slate-900 dark:text-white font-bold" onClick={() => handleSort('jobTitle')}>
+                  <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white">
                     <span>{language === 'ar' ? 'المسمى الوظيفي' : 'Job Title'}</span>
-                    {sortField === 'jobTitle' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600" /> : <ArrowDown className="w-3 h-3 text-teal-600" />)}
+                    {sortField === 'jobTitle' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
-                <th className="py-3 px-3 text-end cursor-pointer w-32 text-emerald-700 dark:text-emerald-400" onClick={() => handleSort('incentives')}>
-                  <div className="flex items-center justify-end gap-1">
-                    <span>{language === 'ar' ? 'الحافز (Incentives)' : 'Incentives'}</span>
-                    {sortField === 'incentives' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600" /> : <ArrowDown className="w-3 h-3 text-teal-600" />)}
+                <th className="py-3 px-3 text-end cursor-pointer w-32 th-incentives text-emerald-800 dark:text-emerald-400 font-bold" onClick={() => handleSort('incentives')}>
+                  <div className="flex items-center justify-end gap-1 font-bold text-emerald-800 dark:text-emerald-400">
+                    <span>{language === 'ar' ? 'الحافز ($ USD)' : 'Incentives ($ USD)'}</span>
+                    {sortField === 'incentives' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
-                <th className="py-3 px-3 text-end cursor-pointer w-32 text-sky-700 dark:text-sky-400" onClick={() => handleSort('transportation')}>
-                  <div className="flex items-center justify-end gap-1">
-                    <span>{language === 'ar' ? 'بدل النقل (Transport)' : 'Transport'}</span>
-                    {sortField === 'transportation' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600" /> : <ArrowDown className="w-3 h-3 text-teal-600" />)}
+                <th className="py-3 px-3 text-end cursor-pointer w-32 th-transport text-sky-800 dark:text-sky-400 font-bold" onClick={() => handleSort('transportation')}>
+                  <div className="flex items-center justify-end gap-1 font-bold text-sky-800 dark:text-sky-400">
+                    <span>{language === 'ar' ? 'بدل النقل ($ USD)' : 'Transport ($ USD)'}</span>
+                    {sortField === 'transportation' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
-                <th className="py-3 px-3 text-end cursor-pointer w-32 text-amber-700 dark:text-amber-400" onClick={() => handleSort('bonus')}>
-                  <div className="flex items-center justify-end gap-1">
-                    <span>{language === 'ar' ? 'المكافأة (Bonus)' : 'Bonus'}</span>
-                    {sortField === 'bonus' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600" /> : <ArrowDown className="w-3 h-3 text-teal-600" />)}
+                <th className="py-3 px-3 text-end cursor-pointer w-32 th-bonus text-amber-800 dark:text-amber-400 font-bold" onClick={() => handleSort('bonus')}>
+                  <div className="flex items-center justify-end gap-1 font-bold text-amber-800 dark:text-amber-400">
+                    <span>{language === 'ar' ? 'المكافأة ($ USD)' : 'Bonus ($ USD)'}</span>
+                    {sortField === 'bonus' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
-                <th className="py-3 px-3 text-end w-32 font-black text-slate-900 dark:text-white">
-                  <span>{language === 'ar' ? 'المجموع المستحق' : 'Total Payout'}</span>
+                <th className="py-3 px-3 text-end w-32 font-bold text-slate-900 dark:text-white">
+                  <span className="font-bold text-slate-900 dark:text-white">{language === 'ar' ? 'المجموع المستحق ($ USD)' : 'Total ($ USD)'}</span>
                 </th>
-                <th className="py-3 px-3 text-center w-28">
-                  <span>{language === 'ar' ? 'حالة البيرول' : 'Payroll Sync'}</span>
+                <th className="py-3 px-3 text-center w-28 font-bold text-slate-900 dark:text-white">
+                  <span className="font-bold text-slate-900 dark:text-white">{language === 'ar' ? 'حالة البيرول' : 'Payroll Sync'}</span>
                 </th>
               </tr>
             </thead>
@@ -937,16 +1034,28 @@ export const IncentivesModuleView: React.FC = () => {
                         {rec.jobTitle}
                       </td>
                       <td className="py-2.5 px-3 text-end font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                        {formatIQD(rec.incentives)}
+                        <div>${formatUSD(rec.incentives)}</div>
+                        {rec.incentives !== null && rec.incentives > 0 && (
+                          <div className="text-[10px] text-slate-400 font-normal">≈ {formatIQD(Math.round(rec.incentives * activeFxRate))} د.ع</div>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-end font-mono font-bold text-sky-700 dark:text-sky-400">
-                        {formatIQD(rec.transportation)}
+                        <div>${formatUSD(rec.transportation)}</div>
+                        {rec.transportation !== null && rec.transportation > 0 && (
+                          <div className="text-[10px] text-slate-400 font-normal">≈ {formatIQD(Math.round(rec.transportation * activeFxRate))} د.ع</div>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-end font-mono font-bold text-amber-700 dark:text-amber-400">
-                        {formatIQD(rec.bonus)}
+                        <div>${formatUSD(rec.bonus)}</div>
+                        {rec.bonus !== null && rec.bonus > 0 && (
+                          <div className="text-[10px] text-slate-400 font-normal">≈ {formatIQD(Math.round(rec.bonus * activeFxRate))} د.ع</div>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-end font-mono font-black text-slate-900 dark:text-white">
-                        {formatIQD(totalRow)}
+                        <div>${formatUSD(totalRow)}</div>
+                        {totalRow > 0 && (
+                          <div className="text-[10px] text-teal-600 dark:text-teal-400 font-bold">≈ {formatIQD(Math.round(totalRow * activeFxRate))} د.ع</div>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">

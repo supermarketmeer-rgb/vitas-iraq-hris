@@ -25,10 +25,12 @@ export const Category2DashboardView: React.FC = () => {
     riskRecords,
     documentRecords,
     notifications,
+    currentUser,
     isDark,
     t,
     language,
     isBranchManager,
+    isSupervisor,
     userBranch,
     scopedEmployees,
     scopedNotifications
@@ -36,27 +38,36 @@ export const Category2DashboardView: React.FC = () => {
 
   const [dashSearchQuery, setDashSearchQuery] = useState('');
 
-  // Active employees list: strictly scoped to the manager's office if logged in as Branch Manager
+  // Super Admin & HR Manager have full company-wide visibility
+  const isSuperAdminOrHR = useMemo(() => {
+    const role = currentUser?.role || '';
+    const username = String(currentUser?.username || '').toLowerCase();
+    return role === 'Super Admin' || role === 'HR Manager' || username === 'admin' || username === 'hrmanager' || currentUser?.id === 1 || currentUser?.id === '1';
+  }, [currentUser]);
+
+  // Active employees list: Super Admin/HR see all; Branch Managers, Supervisors & Employees see scopedEmployees
   const activeEmployees = useMemo(() => {
-    return isBranchManager ? scopedEmployees : employees;
-  }, [isBranchManager, scopedEmployees, employees]);
+    return isSuperAdminOrHR ? employees : scopedEmployees;
+  }, [isSuperAdminOrHR, scopedEmployees, employees]);
 
   // Active notifications list: strictly scoped to the manager's branch
   const activeNotifications = useMemo(() => {
     return isBranchManager ? scopedNotifications : notifications;
   }, [isBranchManager, scopedNotifications, notifications]);
 
-  // Active leave requests: scoped to the branch employees
+  // Active leave requests: scoped to the permitted employees
   const activeLeaveRequests = useMemo(() => {
-    if (!isBranchManager) return leaveRequests;
+    if (isSuperAdminOrHR) return leaveRequests;
     const branchKey = userBranch ? userBranch.replace(/^(مكتب|فرع)\s+/, '').trim() : '';
     const scopedEmpIds = new Set(scopedEmployees.map(e => String(e.id || e.employeeId)));
+    const scopedEmpNames = new Set(scopedEmployees.map(e => String(e.fullNameAr || e.fullName || e.name || '').trim().toLowerCase()));
     return leaveRequests.filter(r => {
       if (scopedEmpIds.has(String(r.employeeId))) return true;
-      if (r.branch && branchKey && r.branch.includes(branchKey)) return true;
+      if (r.employeeName && scopedEmpNames.has(String(r.employeeName).trim().toLowerCase())) return true;
+      if (isBranchManager && r.branch && branchKey && r.branch.includes(branchKey)) return true;
       return false;
     });
-  }, [isBranchManager, leaveRequests, userBranch, scopedEmployees]);
+  }, [isSuperAdminOrHR, isBranchManager, leaveRequests, userBranch, scopedEmployees]);
 
   // Live analytics computations derived directly from scoped employees & real DB state
   const totalEmployeesCount = activeEmployees.length;

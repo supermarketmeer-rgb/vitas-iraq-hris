@@ -32,21 +32,64 @@ import { DatabaseInspectorModal } from '../components/leaves_attendance/Database
 import { ExportReportModal } from '../components/leaves_attendance/ExportReportModal';
 
 export const Category4LeaveView: React.FC = () => {
-  const { activeModuleId, setActiveModuleId, language, employees, appSettings, currentUser: appUser, currentUserRole } = useApp();
+  const {
+    activeModuleId,
+    setActiveModuleId,
+    language,
+    employees,
+    scopedEmployees,
+    appSettings,
+    currentUser: appUser,
+    currentUserRole
+  } = useApp();
   const lang: Language = (language === 'en' ? 'en' : 'ar') as Language;
 
-  const isEmployeeRole = currentUserRole === 'Employee' || appUser?.role === 'Employee';
+  const isSuperAdminOrHR =
+    currentUserRole === 'Super Admin' ||
+    appUser?.role === 'Super Admin' ||
+    currentUserRole === 'HR Manager' ||
+    appUser?.role === 'HR Manager' ||
+    appUser?.username === 'admin' ||
+    appUser?.username === 'hrmanager' ||
+    appUser?.id === 1 ||
+    appUser?.id === '1';
+
+  const scopedEmpSet = React.useMemo(() => {
+    const list = Array.isArray(scopedEmployees) && scopedEmployees.length > 0 ? scopedEmployees : (appUser ? [appUser] : []);
+    const ids = new Set<string>();
+    const names = new Set<string>();
+    list.forEach(e => {
+      if (e.id) ids.add(String(e.id).toLowerCase());
+      if (e.employeeId) ids.add(String(e.employeeId).toLowerCase());
+      if (e.employee_id) ids.add(String(e.employee_id).toLowerCase());
+      if (e.badge_no) ids.add(String(e.badge_no).toLowerCase());
+      const nAr = String(e.fullNameAr || e.fullName || e.name || e.name_ar || '').trim().toLowerCase();
+      const nEn = String(e.fullNameEn || e.name_en || '').trim().toLowerCase();
+      if (nAr) names.add(nAr);
+      if (nEn) names.add(nEn);
+    });
+    return { ids, names };
+  }, [scopedEmployees, appUser]);
 
   const matchesCurrentEmployee = (item: any) => {
-    if (!isEmployeeRole || !appUser) return true;
-    const curEmpCode = (appUser.employeeId || appUser.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const recEmpCode = (item.employee_number || item.employee_id || item.employeeId || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
-    const curName = (appUser.name || '').toLowerCase();
-    const nameAr = (item.employee_name_ar || item.name_ar || '').toLowerCase();
-    const nameEn = (item.employee_name_en || item.name_en || '').toLowerCase();
+    if (isSuperAdminOrHR) return true;
+    if (!item) return false;
 
-    if (curEmpCode && recEmpCode && (curEmpCode === recEmpCode || curEmpCode.includes(recEmpCode) || recEmpCode.includes(curEmpCode))) return true;
-    if (curName && (nameAr.includes(curName) || nameEn.includes(curName) || curName.includes(nameAr))) return true;
+    const recEmpCode = String(item.employee_number || item.employee_id || item.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const recId = String(item.id || '').toLowerCase();
+    const nameAr = String(item.employee_name_ar || item.name_ar || item.employeeName || '').toLowerCase();
+    const nameEn = String(item.employee_name_en || item.name_en || '').toLowerCase();
+
+    for (const id of scopedEmpSet.ids) {
+      const cleanId = id.replace(/[^a-z0-9]/g, '');
+      if (cleanId && recEmpCode && (cleanId === recEmpCode || cleanId.includes(recEmpCode) || recEmpCode.includes(cleanId))) return true;
+      if (id && recId && id === recId) return true;
+    }
+
+    for (const name of scopedEmpSet.names) {
+      if (name.length > 2 && (nameAr.includes(name) || name.includes(nameAr) || nameEn.includes(name) || name.includes(nameEn))) return true;
+    }
+
     return false;
   };
 
