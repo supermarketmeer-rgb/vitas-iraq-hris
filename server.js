@@ -5626,20 +5626,28 @@ app.post('/api/reset-data', async (req, res) => {
       }
     }
 
-    // 4. Truncate / delete operational tables on Cloud DB
-    const cloudTables = await executeCloudQuery('SHOW TABLES').catch(() => []);
-    if (Array.isArray(cloudTables)) {
-      for (const ct of cloudTables) {
-        const cTable = Object.values(ct)[0];
-        if (cTable && !PRESERVED_TABLES.has(String(cTable).toLowerCase())) {
-          await executeCloudQuery(`TRUNCATE TABLE \`${cTable}\``).catch(() => executeCloudQuery(`DELETE FROM \`${cTable}\``).catch(() => {}));
-        }
-      }
-    }
-
-    // 5. Re-enable foreign key checks on both Local and Cloud
+    // 4. Re-enable local foreign key checks immediately
     await query('SET FOREIGN_KEY_CHECKS = 1');
-    await executeCloudQuery('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+
+    // 5. Truncate / delete operational tables on Cloud DB in background with parallel settling
+    (async () => {
+      try {
+        const cloudTables = await executeCloudQuery('SHOW TABLES').catch(() => []);
+        if (Array.isArray(cloudTables)) {
+          const promises = cloudTables.map(async (ct) => {
+            const cTable = Object.values(ct)[0];
+            if (cTable && !PRESERVED_TABLES.has(String(cTable).toLowerCase())) {
+              return executeCloudQuery(`TRUNCATE TABLE \`${cTable}\``).catch(() => executeCloudQuery(`DELETE FROM \`${cTable}\``).catch(() => {}));
+            }
+          });
+          await Promise.allSettled(promises);
+        }
+        await executeCloudQuery('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+        console.log('[RESET-DATA] Cloud DB operational tables cleared successfully in background');
+      } catch (err) {
+        console.warn('Background cloud reset warning:', err.message);
+      }
+    })();
 
     // 6. Broadcast real-time change event to refresh UI components
     triggerRealtimeSync(db, 'all');
