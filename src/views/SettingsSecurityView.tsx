@@ -455,14 +455,56 @@ export const SettingsSecurityView: React.FC = () => {
     if (window.confirm(confirmMessage)) {
       const tab = explicitTab || modalTargetTab.current || activeTab;
       try {
-        // Optimistically update local state immediately
+        // Optimistically update local state immediately by ID and all matching name aliases
         const idStr = String(id);
-        if (tab === 'locations') setLocations(prev => prev.filter(item => String(item.id) !== idStr));
-        if (tab === 'positions') setPositions(prev => prev.filter(item => String(item.id) !== idStr));
-        if (tab === 'departments') setDepartments(prev => prev.filter(item => String(item.id) !== idStr));
-        if (tab === 'contract-types') setContractTypes(prev => prev.filter(item => String(item.id) !== idStr));
-        if (tab === 'status-changes') setStatusChanges(prev => prev.filter(item => String(item.id) !== idStr));
-        if (tab === 'trainings') setTrainings(prev => prev.filter(item => String(item.id) !== idStr));
+        if (tab === 'locations') {
+          const item = locations.find(x => String(x.id) === idStr);
+          const aliasSet = new Set();
+          if (item) {
+            if (item.name) aliasSet.add(item.name.trim().toLowerCase());
+            if (item.name_ar) aliasSet.add(item.name_ar.trim().toLowerCase());
+            if (item.name_en) aliasSet.add(item.name_en.trim().toLowerCase());
+          }
+          setLocations(prev => prev.filter(x => {
+            if (String(x.id) === idStr) return false;
+            const k = (x.name_ar || x.name || x.name_en || '').trim().toLowerCase();
+            return !aliasSet.has(k);
+          }));
+        } else if (tab === 'positions') {
+          const item = positions.find(x => String(x.id) === idStr);
+          const aliasSet = new Set();
+          if (item) {
+            if (item.name) aliasSet.add(item.name.trim().toLowerCase());
+            if (item.name_ar) aliasSet.add(item.name_ar.trim().toLowerCase());
+            if (item.name_en) aliasSet.add(item.name_en.trim().toLowerCase());
+            if (item.title) aliasSet.add(item.title.trim().toLowerCase());
+            if (item.title_ar) aliasSet.add(item.title_ar.trim().toLowerCase());
+          }
+          setPositions(prev => prev.filter(x => {
+            if (String(x.id) === idStr) return false;
+            const k = (x.name_ar || x.name || x.name_en || x.title || x.title_ar || '').trim().toLowerCase();
+            return !aliasSet.has(k);
+          }));
+        } else if (tab === 'departments') {
+          const item = departments.find(x => String(x.id) === idStr);
+          const aliasSet = new Set();
+          if (item) {
+            if (item.name) aliasSet.add(item.name.trim().toLowerCase());
+            if (item.name_ar) aliasSet.add(item.name_ar.trim().toLowerCase());
+            if (item.name_en) aliasSet.add(item.name_en.trim().toLowerCase());
+          }
+          setDepartments(prev => prev.filter(x => {
+            if (String(x.id) === idStr) return false;
+            const k = (x.name_ar || x.name || x.name_en || '').trim().toLowerCase();
+            return !aliasSet.has(k);
+          }));
+        } else if (tab === 'contract-types') {
+          setContractTypes(prev => prev.filter(item => String(item.id) !== idStr));
+        } else if (tab === 'status-changes') {
+          setStatusChanges(prev => prev.filter(item => String(item.id) !== idStr));
+        } else if (tab === 'trainings') {
+          setTrainings(prev => prev.filter(item => String(item.id) !== idStr));
+        }
 
         switch (tab) {
           case 'locations':

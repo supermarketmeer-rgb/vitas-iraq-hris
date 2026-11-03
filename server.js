@@ -2899,28 +2899,30 @@ app.put(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id', 
   }
 });
 
-// Settings - Branches DELETE
+// Settings - Branches DELETE (Delete by ID and all alias names)
 app.delete(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id'], async (req, res) => {
   try {
     const { id } = req.params;
-    const branchRows = await query('SELECT id, name, name_ar, name_en FROM branches WHERE id = ? OR name = ? OR name_ar = ?', [id, id, id]).catch(() => []);
-    const branch = branchRows && branchRows[0];
+    const branchRows = await query('SELECT id, name, name_ar, name_en FROM branches WHERE id = ? OR name = ? OR name_ar = ? OR name_en = ?', [id, id, id, id]).catch(() => []);
+    const names = [id];
+    branchRows.forEach(b => {
+      if (b.id) names.push(String(b.id));
+      if (b.name) names.push(b.name);
+      if (b.name_ar) names.push(b.name_ar);
+      if (b.name_en) names.push(b.name_en);
+    });
+    const uniqueNames = [...new Set(names.filter(Boolean))];
+    const placeholders = uniqueNames.map(() => '?').join(',');
 
-    const sql = 'DELETE FROM branches WHERE id = ? OR name = ? OR name_ar = ?';
-    await query(sql, [id, id, id]);
-    executeCloudQuery(sql, [id, id, id]).catch(() => {});
+    await query(`DELETE FROM branches WHERE id IN (${placeholders}) OR name IN (${placeholders}) OR name_ar IN (${placeholders}) OR name_en IN (${placeholders})`,
+      [...uniqueNames, ...uniqueNames, ...uniqueNames, ...uniqueNames]);
+    executeCloudQuery(`DELETE FROM branches WHERE id IN (${placeholders}) OR name IN (${placeholders}) OR name_ar IN (${placeholders}) OR name_en IN (${placeholders})`,
+      [...uniqueNames, ...uniqueNames, ...uniqueNames, ...uniqueNames]).catch(() => {});
 
-    if (branch) {
-      const names = [branch.name, branch.name_ar, branch.name_en].filter(Boolean);
-      if (names.length > 0) {
-        await query(
-          `UPDATE employees SET branch = NULL WHERE branch IN (${names.map(() => '?').join(',')})`,
-          names
-        ).catch(() => {});
-      }
-    }
+    await query(`UPDATE employees SET branch = NULL WHERE branch IN (${placeholders}) OR branch_en IN (${placeholders})`,
+      [...uniqueNames, ...uniqueNames]).catch(() => {});
 
-    res.json({ success: true, id });
+    res.json({ success: true, id, deletedCount: uniqueNames.length });
   } catch (err) {
     console.error('Error in DELETE /api/settings/branches:', err);
     res.status(500).json({ error: err.message });
@@ -3290,25 +3292,27 @@ app.put(['/api/settings/departments/:id', '/api/departments/:id'], async (req, r
 app.delete(['/api/settings/departments/:id', '/api/departments/:id'], async (req, res) => {
   try {
     const { id } = req.params;
-    const deptRows = await query('SELECT id, name, name_ar, name_en FROM departments WHERE id = ? OR name = ? OR name_ar = ?', [id, id, id]).catch(() => []);
-    const dept = deptRows && deptRows[0];
+    const deptRows = await query('SELECT id, name, name_ar, name_en FROM departments WHERE id = ? OR name = ? OR name_ar = ? OR name_en = ?', [id, id, id, id]).catch(() => []);
+    const names = [id];
+    deptRows.forEach(d => {
+      if (d.id) names.push(String(d.id));
+      if (d.name) names.push(d.name);
+      if (d.name_ar) names.push(d.name_ar);
+      if (d.name_en) names.push(d.name_en);
+    });
+    const uniqueNames = [...new Set(names.filter(Boolean))];
+    const placeholders = uniqueNames.map(() => '?').join(',');
 
-    const deptSql = 'DELETE FROM departments WHERE id = ? OR name = ? OR name_ar = ?';
-    await query(deptSql, [id, id, id]);
-    executeCloudQuery(deptSql, [id, id, id]).catch(() => {});
+    await query(`DELETE FROM departments WHERE id IN (${placeholders}) OR name IN (${placeholders}) OR name_ar IN (${placeholders}) OR name_en IN (${placeholders})`,
+      [...uniqueNames, ...uniqueNames, ...uniqueNames, ...uniqueNames]);
+    executeCloudQuery(`DELETE FROM departments WHERE id IN (${placeholders}) OR name IN (${placeholders}) OR name_ar IN (${placeholders}) OR name_en IN (${placeholders})`,
+      [...uniqueNames, ...uniqueNames, ...uniqueNames, ...uniqueNames]).catch(() => {});
 
-    if (dept) {
-      const names = [dept.name, dept.name_ar, dept.name_en].filter(Boolean);
-      if (names.length > 0) {
-        await query(
-          `UPDATE employees SET department = NULL WHERE department IN (${names.map(() => '?').join(',')})`,
-          names
-        ).catch(() => {});
-      }
-    }
+    await query(`UPDATE employees SET department = NULL WHERE department IN (${placeholders})`, uniqueNames).catch(() => {});
 
     res.json({ success: true, id });
   } catch (err) {
+    console.error('Error in DELETE /api/settings/departments:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -3410,24 +3414,29 @@ app.delete(['/api/settings/positions/:id', '/api/positions/:id', '/api/job-posit
   try {
     const { id } = req.params;
     const posRows = await query('SELECT id, name, name_ar, name_en, title, title_ar FROM positions WHERE id = ? OR name = ? OR name_ar = ? OR title = ? OR title_ar = ?', [id, id, id, id, id]).catch(() => []);
-    const pos = posRows && posRows[0];
+    const names = [id];
+    posRows.forEach(p => {
+      if (p.id) names.push(String(p.id));
+      if (p.name) names.push(p.name);
+      if (p.name_ar) names.push(p.name_ar);
+      if (p.name_en) names.push(p.name_en);
+      if (p.title) names.push(p.title);
+      if (p.title_ar) names.push(p.title_ar);
+    });
+    const uniqueNames = [...new Set(names.filter(Boolean))];
+    const placeholders = uniqueNames.map(() => '?').join(',');
 
-    const posSql = 'DELETE FROM positions WHERE id = ? OR name = ? OR name_ar = ? OR title = ? OR title_ar = ?';
-    await query(posSql, [id, id, id, id, id]);
-    executeCloudQuery(posSql, [id, id, id, id, id]).catch(() => {});
+    await query(`DELETE FROM positions WHERE id IN (${placeholders}) OR name IN (${placeholders}) OR name_ar IN (${placeholders}) OR title IN (${placeholders}) OR title_ar IN (${placeholders})`,
+      [...uniqueNames, ...uniqueNames, ...uniqueNames, ...uniqueNames, ...uniqueNames]);
+    executeCloudQuery(`DELETE FROM positions WHERE id IN (${placeholders}) OR name IN (${placeholders}) OR name_ar IN (${placeholders}) OR title IN (${placeholders}) OR title_ar IN (${placeholders})`,
+      [...uniqueNames, ...uniqueNames, ...uniqueNames, ...uniqueNames, ...uniqueNames]).catch(() => {});
 
-    if (pos) {
-      const names = [pos.name, pos.name_ar, pos.name_en, pos.title, pos.title_ar].filter(Boolean);
-      if (names.length > 0) {
-        await query(
-          `UPDATE employees SET position = NULL, position_ar = NULL WHERE position IN (${names.map(() => '?').join(',')}) OR position_ar IN (${names.map(() => '?').join(',')})`,
-          [...names, ...names]
-        ).catch(() => {});
-      }
-    }
+    await query(`UPDATE employees SET position = NULL, position_ar = NULL WHERE position IN (${placeholders}) OR position_ar IN (${placeholders})`,
+      [...uniqueNames, ...uniqueNames]).catch(() => {});
 
     res.json({ success: true, id });
   } catch (err) {
+    console.error('Error in DELETE /api/settings/positions:', err);
     res.status(500).json({ error: err.message });
   }
 });

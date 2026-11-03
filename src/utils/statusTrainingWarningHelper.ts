@@ -155,9 +155,9 @@ export const matchesEmp = (recordEmpId: any, targetEmp: any): boolean => {
 export const getStatusChangesList = (): StatusChangeRecord[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_STATUS);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {}
   // Initialize with baseline
@@ -244,9 +244,9 @@ export const deleteStatusChangeRecord = (id: string | number): StatusChangeRecor
 export const getTrainingsList = (): TrainingRecord[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_TRAININGS);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {}
   try {
@@ -290,9 +290,9 @@ export const deleteTrainingRecord = (id: string | number): TrainingRecord[] => {
 export const getWarningsList = (): WarningRecord[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_WARNINGS);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {}
   try {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { api } from '../api/client';
 import * as XLSX from 'xlsx';
 import { exportFormattedExcelFromJson } from '../utils/excelFormatHelper';
 import {
@@ -112,9 +113,13 @@ export const TrainingTable: React.FC<TrainingTableProps> = ({
     setShowModal(false);
   };
 
-  const handleDelete = (id: string | number) => {
+  const handleDelete = async (id: string | number) => {
     if (window.confirm(isAr ? 'هل أنت متأكد من حذف هذه الدورة التدريبية؟' : 'Are you sure you want to delete this training record?')) {
       deleteTrainingRecord(id);
+      try {
+        await api.deleteTraining(String(id));
+      } catch (e) {}
+      loadData();
     }
   };
 

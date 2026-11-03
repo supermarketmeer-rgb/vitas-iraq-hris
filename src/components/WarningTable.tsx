@@ -116,6 +116,7 @@ export const WarningTable: React.FC<WarningTableProps> = ({
   const handleDelete = (id: string | number) => {
     if (window.confirm(isAr ? 'هل أنت متأكد من حذف هذا الإنذار؟' : 'Are you sure you want to delete this warning record?')) {
       deleteWarningRecord(id);
+      loadData();
     }
   };
 

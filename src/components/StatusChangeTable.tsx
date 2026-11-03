@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { api } from '../api/client';
 import * as XLSX from 'xlsx';
 import { exportFormattedExcelFromJson } from '../utils/excelFormatHelper';
 import {
@@ -119,9 +120,13 @@ export const StatusChangeTable: React.FC<StatusChangeTableProps> = ({
     setShowModal(false);
   };
 
-  const handleDelete = (id: string | number) => {
+  const handleDelete = async (id: string | number) => {
     if (window.confirm(isAr ? 'هل أنت متأكد من حذف هذا السجل من تغيير الحالة؟' : 'Are you sure you want to delete this status change record?')) {
       deleteStatusChangeRecord(id);
+      try {
+        await api.deleteStatusChange(String(id));
+      } catch (e) {}
+      loadData();
     }
   };
 
