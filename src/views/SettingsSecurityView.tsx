@@ -447,13 +447,13 @@ export const SettingsSecurityView: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number | string) => {
+  const handleDelete = async (id: number | string, explicitTab?: string) => {
     const confirmMessage = language === 'ar' 
       ? 'هل أنت متأكد من حذف هذا العنصر؟' 
       : 'Are you sure you want to delete this item?';
     
     if (window.confirm(confirmMessage)) {
-      const tab = modalTargetTab.current || activeTab;
+      const tab = explicitTab || modalTargetTab.current || activeTab;
       try {
         // Optimistically update local state immediately
         const idStr = String(id);
@@ -1717,14 +1717,14 @@ export const SettingsSecurityView: React.FC = () => {
             data={deduplicatedLocations}
             onAdd={() => { setShowAddModal(true); setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' }); }}
             onEdit={openEditModal}
-            onDelete={handleDelete}
+            onDelete={(id) => handleDelete(id, 'locations')}
             language={language}
             showExcelButtons={true}
             onGenerateTemplate={() => generateExcelTemplate('locations')}
             onExportExcel={() => handleTabExport('locations')}
             onImportExcel={(e) => handleExcelImport(e, 'locations')}
             fileInputRef={fileInputRef}
-            activeTab={activeTab}
+            activeTab="locations"
           />
         )}
         {activeTab === 'positions' && (
@@ -1734,14 +1734,14 @@ export const SettingsSecurityView: React.FC = () => {
             data={deduplicatedPositions}
             onAdd={() => { setShowAddModal(true); setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' }); }}
             onEdit={openEditModal}
-            onDelete={handleDelete}
+            onDelete={(id) => handleDelete(id, 'positions')}
             language={language}
             showExcelButtons={true}
             onGenerateTemplate={() => generateExcelTemplate('positions')}
             onExportExcel={() => handleTabExport('positions')}
             onImportExcel={(e) => handleExcelImport(e, 'positions')}
             fileInputRef={fileInputRef}
-            activeTab={activeTab}
+            activeTab="positions"
           />
         )}
         {activeTab === 'departments' && (
@@ -1751,14 +1751,14 @@ export const SettingsSecurityView: React.FC = () => {
             data={deduplicatedDepartments}
             onAdd={() => { setShowAddModal(true); setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' }); }}
             onEdit={openEditModal}
-            onDelete={handleDelete}
+            onDelete={(id) => handleDelete(id, 'departments')}
             language={language}
             showExcelButtons={true}
             onGenerateTemplate={() => generateExcelTemplate('departments')}
             onExportExcel={() => handleTabExport('departments')}
             onImportExcel={(e) => handleExcelImport(e, 'departments')}
             fileInputRef={fileInputRef}
-            activeTab={activeTab}
+            activeTab="departments"
           />
         )}
 

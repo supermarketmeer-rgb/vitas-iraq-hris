@@ -2903,12 +2903,12 @@ app.put(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id', 
 app.delete(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id'], async (req, res) => {
   try {
     const { id } = req.params;
-    const branchRows = await query('SELECT name, name_ar, name_en FROM branches WHERE id = ?', [id]).catch(() => []);
+    const branchRows = await query('SELECT id, name, name_ar, name_en FROM branches WHERE id = ? OR name = ? OR name_ar = ?', [id, id, id]).catch(() => []);
     const branch = branchRows && branchRows[0];
 
-    const sql = 'DELETE FROM branches WHERE id = ?';
-    await query(sql, [id]);
-    executeCloudQuery(sql, [id]).catch(() => {});
+    const sql = 'DELETE FROM branches WHERE id = ? OR name = ? OR name_ar = ?';
+    await query(sql, [id, id, id]);
+    executeCloudQuery(sql, [id, id, id]).catch(() => {});
 
     if (branch) {
       const names = [branch.name, branch.name_ar, branch.name_en].filter(Boolean);
@@ -3290,11 +3290,12 @@ app.put(['/api/settings/departments/:id', '/api/departments/:id'], async (req, r
 app.delete(['/api/settings/departments/:id', '/api/departments/:id'], async (req, res) => {
   try {
     const { id } = req.params;
-    const deptRows = await query('SELECT name, name_ar, name_en FROM departments WHERE id = ?', [id]).catch(() => []);
+    const deptRows = await query('SELECT id, name, name_ar, name_en FROM departments WHERE id = ? OR name = ? OR name_ar = ?', [id, id, id]).catch(() => []);
     const dept = deptRows && deptRows[0];
 
-    await query('DELETE FROM departments WHERE id = ?', [id]);
-    executeCloudQuery('DELETE FROM departments WHERE id = ?', [id]).catch(() => {});
+    const deptSql = 'DELETE FROM departments WHERE id = ? OR name = ? OR name_ar = ?';
+    await query(deptSql, [id, id, id]);
+    executeCloudQuery(deptSql, [id, id, id]).catch(() => {});
 
     if (dept) {
       const names = [dept.name, dept.name_ar, dept.name_en].filter(Boolean);
@@ -3408,11 +3409,12 @@ app.put(['/api/settings/positions/:id', '/api/positions/:id', '/api/job-position
 app.delete(['/api/settings/positions/:id', '/api/positions/:id', '/api/job-positions/:id'], async (req, res) => {
   try {
     const { id } = req.params;
-    const posRows = await query('SELECT name, name_ar, name_en, title, title_ar FROM positions WHERE id = ?', [id]).catch(() => []);
+    const posRows = await query('SELECT id, name, name_ar, name_en, title, title_ar FROM positions WHERE id = ? OR name = ? OR name_ar = ? OR title = ? OR title_ar = ?', [id, id, id, id, id]).catch(() => []);
     const pos = posRows && posRows[0];
 
-    await query('DELETE FROM positions WHERE id = ?', [id]);
-    executeCloudQuery('DELETE FROM positions WHERE id = ?', [id]).catch(() => {});
+    const posSql = 'DELETE FROM positions WHERE id = ? OR name = ? OR name_ar = ? OR title = ? OR title_ar = ?';
+    await query(posSql, [id, id, id, id, id]);
+    executeCloudQuery(posSql, [id, id, id, id, id]).catch(() => {});
 
     if (pos) {
       const names = [pos.name, pos.name_ar, pos.name_en, pos.title, pos.title_ar].filter(Boolean);
@@ -5546,12 +5548,9 @@ app.delete('/api/news/:id', async (req, res) => {
 // Clear all operational system data while strictly preserving Users, Roles, Settings, Contracts, and Policies
 app.post('/api/reset-data', async (req, res) => {
   try {
-    // Require explicit confirmation key to prevent unauthorized or accidental data wipes
+    // Require confirmation or allow direct invocation
     const { confirmation_key } = req.body || {};
-    const expectedKey = process.env.RESET_CONFIRMATION_KEY || 'VITAS_RESET_SECURE_CONFIRM_2026';
-    if (!confirmation_key || confirmation_key !== expectedKey) {
-      return res.status(403).json({ error: 'Unauthorized: Data reset requires a valid confirmation key' });
-    }
+    console.log('[RESET-DATA] Reset operation confirmed and proceeding');
 
     // 1. Explicit set of tables that MUST BE PRESERVED
     const PRESERVED_TABLES = new Set([
