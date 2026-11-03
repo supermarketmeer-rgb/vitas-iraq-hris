@@ -455,34 +455,54 @@ export const SettingsSecurityView: React.FC = () => {
     if (window.confirm(confirmMessage)) {
       const tab = modalTargetTab.current || activeTab;
       try {
+        // Optimistically update local state immediately
+        const idStr = String(id);
+        if (tab === 'locations') setLocations(prev => prev.filter(item => String(item.id) !== idStr));
+        if (tab === 'positions') setPositions(prev => prev.filter(item => String(item.id) !== idStr));
+        if (tab === 'departments') setDepartments(prev => prev.filter(item => String(item.id) !== idStr));
+        if (tab === 'contract-types') setContractTypes(prev => prev.filter(item => String(item.id) !== idStr));
+        if (tab === 'status-changes') setStatusChanges(prev => prev.filter(item => String(item.id) !== idStr));
+        if (tab === 'trainings') setTrainings(prev => prev.filter(item => String(item.id) !== idStr));
+
         switch (tab) {
           case 'locations':
-            await api.deleteBranch(id.toString());
+            await api.deleteBranch(idStr);
             break;
           case 'positions':
-            await api.deletePosition(id.toString());
+            await api.deletePosition(idStr);
             break;
           case 'departments':
-            await api.deleteDepartment(id.toString());
+            await api.deleteDepartment(idStr);
             break;
           case 'contract-types':
-            await api.deleteContractType(id.toString());
-            if (selectedContractType === id || selectedContractType === parseInt(id.toString())) {
+            await api.deleteContractType(idStr);
+            if (selectedContractType === id || selectedContractType === parseInt(idStr)) {
               setSelectedContractType(null);
             }
             break;
           case 'status-changes':
-            await api.deleteStatusChange(id.toString());
+            await api.deleteStatusChange(idStr);
             break;
           case 'trainings':
-            await api.deleteTraining(id.toString());
+            await api.deleteTraining(idStr);
+            break;
+          case 'employees':
+            if (deleteEmployee) {
+              await deleteEmployee(idStr);
+            } else {
+              await api.deleteEmployee(idStr);
+            }
             break;
         }
 
-        // Reload data from API after deleting
+        // Reload fresh data from API after deleting
         await loadData();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting item:', error);
+        alert(language === 'ar' 
+          ? `حدث خطأ أثناء الحذف: ${error?.message || 'خطأ غير معروف'}` 
+          : `Failed to delete: ${error?.message || 'Unknown error'}`);
+        await loadData();
       } finally {
         modalTargetTab.current = null;
       }

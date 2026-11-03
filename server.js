@@ -889,55 +889,48 @@ const ensureSettingsSeededAndSynced = async () => {
 
 const syncSettingsFromEmployees = async () => {
   try {
-    // 1. Sync unique Branches from employees table
-    const empLocations = await query(`
-      SELECT DISTINCT branch, branch_en FROM employees 
-      WHERE (branch IS NOT NULL AND branch != '') OR (branch_en IS NOT NULL AND branch_en != '')
-    `).catch(() => []);
-    const existingBranches = await query('SELECT * FROM branches').catch(() => []);
-    
-    if (Array.isArray(empLocations) && Array.isArray(existingBranches)) {
-      for (const loc of empLocations) {
+    // 1. Initial seeding for Branches ONLY if table is empty
+    const existingBranches = await query('SELECT id FROM branches LIMIT 1').catch(() => []);
+    if (!existingBranches || existingBranches.length === 0) {
+      const empLocations = await query(`
+        SELECT DISTINCT branch, branch_en FROM employees 
+        WHERE (branch IS NOT NULL AND branch != '') OR (branch_en IS NOT NULL AND branch_en != '')
+      `).catch(() => []);
+      let idx = 1;
+      for (const loc of (empLocations || [])) {
         const nameAr = loc.branch || loc.branch_en;
         const nameEn = loc.branch_en || loc.branch;
-        if (nameAr && !existingBranches.some(b => b.name_ar === nameAr || b.name === nameAr || b.name_en === nameEn)) {
+        if (nameAr) {
           await query(
             'INSERT INTO branches (id, name, name_ar, name_en, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-            [`BR${Date.now()}_${Math.floor(Math.random()*1000)}`, nameAr, nameAr, nameEn, 'Active', existingBranches.length + 1]
+            [`BR${Date.now()}_${Math.floor(Math.random()*1000)}`, nameAr, nameAr, nameEn, 'Active', idx++]
           ).catch(() => {});
-          existingBranches.push({ name_ar: nameAr, name_en: nameEn, name: nameAr });
         }
       }
     }
 
-    // 2. Sync unique Positions from employees table
-    const empPositions = await query(`
-      SELECT DISTINCT position, position_ar, position_en FROM employees 
-      WHERE (position_ar IS NOT NULL AND position_ar != '') OR (position_en IS NOT NULL AND position_en != '') OR (position IS NOT NULL AND position != '')
-    `).catch(() => []);
-    const existingPositions = await query('SELECT * FROM positions').catch(() => []);
-
-    if (Array.isArray(empPositions) && Array.isArray(existingPositions)) {
-      for (const pos of empPositions) {
+    // 2. Initial seeding for Positions ONLY if table is empty
+    const existingPositions = await query('SELECT id FROM positions LIMIT 1').catch(() => []);
+    if (!existingPositions || existingPositions.length === 0) {
+      const empPositions = await query(`
+        SELECT DISTINCT position, position_ar, position_en FROM employees 
+        WHERE (position_ar IS NOT NULL AND position_ar != '') OR (position_en IS NOT NULL AND position_en != '') OR (position IS NOT NULL AND position != '')
+      `).catch(() => []);
+      let idx = 1;
+      for (const pos of (empPositions || [])) {
         const nameAr = pos.position_ar || pos.position || pos.position_en;
         const nameEn = pos.position_en || pos.position || pos.position_ar;
-        if (nameAr && !existingPositions.some(p => p.name_ar === nameAr || p.name === nameAr || p.name_en === nameEn)) {
+        if (nameAr) {
           await query(
             'INSERT INTO positions (name_en, name_ar, name, status, sort_order) VALUES (?, ?, ?, ?, ?)',
-            [nameEn, nameAr, nameAr, 'Active', existingPositions.length + 1]
+            [nameEn, nameAr, nameAr, 'Active', idx++]
           ).catch(() => {});
-          existingPositions.push({ name_ar: nameAr, name_en: nameEn, name: nameAr });
         }
       }
     }
 
-    // 3. Sync unique Departments from employees table
-    const empDepts = await query(`
-      SELECT DISTINCT department FROM employees 
-      WHERE department IS NOT NULL AND department != ''
-    `).catch(() => []);
-    const existingDepts = await query('SELECT * FROM departments').catch(() => []);
-
+    // 3. Initial seeding for Departments ONLY if table is empty
+    const existingDepts = await query('SELECT id FROM departments LIMIT 1').catch(() => []);
     const DEPT_EN_MAP = {
       'إدارة التمويل الأصغر والعمليات': 'Microfinance & Operations',
       'الموارد البشرية والشؤون الإدارية': 'Human Resources & Administration',
@@ -945,40 +938,34 @@ const syncSettingsFromEmployees = async () => {
       'الموارد البشرية': 'Human Resources',
       'قسم الائتمان': 'Credit',
       'القروض والائتمان': 'Loans & Credit',
-      'تكنولوجيا المعلوماات': 'IT',
       'تكنولوجيا المعلومات': 'Information Technology',
-      'قسم تقنية المعلومات': 'Information Technology',
       'الأمن': 'Security',
       'المشتريات والتسهيلات': 'Procurement & Facilities',
       'قسم الخزينة': 'Treasury',
-      'قسم المالية والمحاسبة': 'Finance & Accounting',
       'المالية والمحاسبة': 'Finance & Accounting',
-      'الشؤون المالية والتحصيل': 'Finance & Collection',
       'الاستحصال والتحصيل': 'Collection & Recovery',
       'المخاطر والامتثال والتدقيق': 'Risk, Compliance & Audit',
-      'قسم المبيعات والتسويق': 'Sales & Marketing',
       'التسويق والمبيعات': 'Marketing & Sales',
       'العمليات': 'Operations'
     };
 
-    if (Array.isArray(empDepts) && Array.isArray(existingDepts)) {
-      for (const d of empDepts) {
+    if (!existingDepts || existingDepts.length === 0) {
+      const empDepts = await query(`
+        SELECT DISTINCT department FROM employees 
+        WHERE department IS NOT NULL AND department != ''
+      `).catch(() => []);
+      let idx = 1;
+      for (const d of (empDepts || [])) {
         const nameAr = String(d.department || '').trim();
         const nameEn = DEPT_EN_MAP[nameAr] || nameAr;
-        if (nameAr && !existingDepts.some(dep => 
-          String(dep.name_ar || '').trim() === nameAr || 
-          String(dep.name || '').trim() === nameAr ||
-          (dep.name_en && String(dep.name_en || '').trim() === nameEn)
-        )) {
+        if (nameAr) {
           await query(
             'INSERT INTO departments (name_en, name_ar, name, status, sort_order) VALUES (?, ?, ?, ?, ?)',
-            [nameEn, nameAr, nameAr, 'Active', existingDepts.length + 1]
+            [nameEn, nameAr, nameAr, 'Active', idx++]
           ).catch(() => {});
-          existingDepts.push({ name_ar: nameAr, name_en: nameEn, name: nameAr });
         }
       }
     }
-
   } catch (err) {
     console.warn('Error in syncSettingsFromEmployees:', err.message);
   }
@@ -2745,8 +2732,7 @@ app.put('/api/notifications/:id/read', async (req, res) => {
 // Branches & Offices
 app.get(['/api/branches', '/api/settings/branches', '/api/offices'], async (req, res) => {
   try {
-    await syncSettingsFromEmployees().catch(() => {});
-    const results = await query('SELECT * FROM branches ORDER BY sort_order ASC, name_ar ASC, id DESC');
+        const results = await query('SELECT * FROM branches ORDER BY sort_order ASC, name_ar ASC, id DESC');
 
     // Deduplicate branches strictly so no branch is repeated
     const seen = new Set();
@@ -2917,9 +2903,23 @@ app.put(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id', 
 app.delete(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id'], async (req, res) => {
   try {
     const { id } = req.params;
+    const branchRows = await query('SELECT name, name_ar, name_en FROM branches WHERE id = ?', [id]).catch(() => []);
+    const branch = branchRows && branchRows[0];
+
     const sql = 'DELETE FROM branches WHERE id = ?';
     await query(sql, [id]);
     executeCloudQuery(sql, [id]).catch(() => {});
+
+    if (branch) {
+      const names = [branch.name, branch.name_ar, branch.name_en].filter(Boolean);
+      if (names.length > 0) {
+        await query(
+          `UPDATE employees SET branch = NULL WHERE branch IN (${names.map(() => '?').join(',')})`,
+          names
+        ).catch(() => {});
+      }
+    }
+
     res.json({ success: true, id });
   } catch (err) {
     console.error('Error in DELETE /api/settings/branches:', err);
@@ -3131,8 +3131,7 @@ app.patch('/api/departments/:id/manager-location', async (req, res) => {
 // Settings - Departments CRUD
 app.get(['/api/settings/departments', '/api/departments'], async (req, res) => {
   try {
-    await syncSettingsFromEmployees().catch(() => {});
-    const results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
+        const results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
     const employees = await query('SELECT id, department, branch, status FROM employees').catch(() => []);
     const branches = await query('SELECT id, name, name_ar, name_en, status FROM branches').catch(() => []);
     const positions = await query('SELECT id, department_id, department FROM positions').catch(() => []);
@@ -3291,7 +3290,22 @@ app.put(['/api/settings/departments/:id', '/api/departments/:id'], async (req, r
 app.delete(['/api/settings/departments/:id', '/api/departments/:id'], async (req, res) => {
   try {
     const { id } = req.params;
+    const deptRows = await query('SELECT name, name_ar, name_en FROM departments WHERE id = ?', [id]).catch(() => []);
+    const dept = deptRows && deptRows[0];
+
     await query('DELETE FROM departments WHERE id = ?', [id]);
+    executeCloudQuery('DELETE FROM departments WHERE id = ?', [id]).catch(() => {});
+
+    if (dept) {
+      const names = [dept.name, dept.name_ar, dept.name_en].filter(Boolean);
+      if (names.length > 0) {
+        await query(
+          `UPDATE employees SET department = NULL WHERE department IN (${names.map(() => '?').join(',')})`,
+          names
+        ).catch(() => {});
+      }
+    }
+
     res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -3301,8 +3315,7 @@ app.delete(['/api/settings/departments/:id', '/api/departments/:id'], async (req
 // Settings - Positions & Job Positions CRUD
 app.get(['/api/settings/positions', '/api/positions', '/api/job-positions'], async (req, res) => {
   try {
-    await syncSettingsFromEmployees().catch(() => {});
-    const results = await query(`
+        const results = await query(`
       SELECT p.*,
         COALESCE(p.title, p.name_en, p.name) as title,
         COALESCE(p.title_ar, p.name_ar, p.name) as title_ar,
@@ -3395,7 +3408,22 @@ app.put(['/api/settings/positions/:id', '/api/positions/:id', '/api/job-position
 app.delete(['/api/settings/positions/:id', '/api/positions/:id', '/api/job-positions/:id'], async (req, res) => {
   try {
     const { id } = req.params;
+    const posRows = await query('SELECT name, name_ar, name_en, title, title_ar FROM positions WHERE id = ?', [id]).catch(() => []);
+    const pos = posRows && posRows[0];
+
     await query('DELETE FROM positions WHERE id = ?', [id]);
+    executeCloudQuery('DELETE FROM positions WHERE id = ?', [id]).catch(() => {});
+
+    if (pos) {
+      const names = [pos.name, pos.name_ar, pos.name_en, pos.title, pos.title_ar].filter(Boolean);
+      if (names.length > 0) {
+        await query(
+          `UPDATE employees SET position = NULL, position_ar = NULL WHERE position IN (${names.map(() => '?').join(',')}) OR position_ar IN (${names.map(() => '?').join(',')})`,
+          [...names, ...names]
+        ).catch(() => {});
+      }
+    }
+
     res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -3600,6 +3628,60 @@ app.post('/api/settings/trainings', async (req, res) => {
     await query(sql, params);
     const result = await query('SELECT * FROM trainings ORDER BY id DESC LIMIT 1');
     res.json(result[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Settings - Status Changes PUT & DELETE
+app.put('/api/settings/status-changes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name_en, name_ar, sort_order, status } = req.body;
+    await query(
+      'UPDATE status_changes SET name_en = COALESCE(?, name_en), name_ar = COALESCE(?, name_ar), sort_order = COALESCE(?, sort_order), status = COALESCE(?, status) WHERE id = ?',
+      [name_en || null, name_ar || null, sort_order !== undefined ? sort_order : null, status || null, id]
+    );
+    const result = await query('SELECT * FROM status_changes WHERE id = ?', [id]);
+    res.json(result[0] || { success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/settings/status-changes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM status_changes WHERE id = ?', [id]);
+    executeCloudQuery('DELETE FROM status_changes WHERE id = ?', [id]).catch(() => {});
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Settings - Trainings PUT & DELETE
+app.put('/api/settings/trainings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name_en, name_ar, sort_order, status } = req.body;
+    await query(
+      'UPDATE trainings SET name_en = COALESCE(?, name_en), name_ar = COALESCE(?, name_ar), sort_order = COALESCE(?, sort_order), status = COALESCE(?, status) WHERE id = ?',
+      [name_en || null, name_ar || null, sort_order !== undefined ? sort_order : null, status || null, id]
+    );
+    const result = await query('SELECT * FROM trainings WHERE id = ?', [id]);
+    res.json(result[0] || { success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/settings/trainings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM trainings WHERE id = ?', [id]);
+    executeCloudQuery('DELETE FROM trainings WHERE id = ?', [id]).catch(() => {});
+    res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
