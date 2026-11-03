@@ -24,7 +24,10 @@ const TABLE_BUSINESS_KEYS = {
   roles: 'role_name',
   shift_types: 'name',
   contract_types: 'name_ar',
-  contract_clauses: 'id'
+  contract_clauses: 'id',
+  direct_supervisors: 'badge_no',
+  attendance_exceptions: 'badge_no',
+  department_heads: 'badge_no'
 };
 
 const IMMUTABLE_LOG_TABLES = new Set([

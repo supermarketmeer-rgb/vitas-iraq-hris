@@ -124,6 +124,13 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         description: 'إدارة فروع المؤسسة ومواقع العمل الجغرافية في العراق'
       },
       {
+        id: 'emp-management-tables',
+        title: 'المشرفون والاستثناءات والـ HODs',
+        titleEn: 'Supervisors, Exceptions & HODs',
+        icon: 'supervised_user_circle',
+        description: 'إدارة جداول المشرفين المباشرين، استثناءات الدوام والتايمشيت، ورؤساء الأقسام (HODs)'
+      },
+      {
         id: 'emp-regional-lebanon',
         title: 'المكتب الإقليمي (لبنان - بيروت)',
         titleEn: 'Regional Office (Lebanon - Beirut)',

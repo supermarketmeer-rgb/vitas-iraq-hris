@@ -86,6 +86,17 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
   const [cyclePeriod, setCyclePeriod] = useState<string>('21-09-2026 To 20-10-2026');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [attendanceExceptions, setAttendanceExceptions] = useState<any[]>([]);
+
+  // Load attendance exceptions from API
+  useEffect(() => {
+    fetch('/api/attendance-exceptions')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setAttendanceExceptions(data);
+      })
+      .catch(() => {});
+  }, []);
 
   // Helper formatting for hh:mm
   const formatHHMM = (val: number) => {
@@ -151,6 +162,26 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
   }, [employees, selectedBranch, filterText]);
 
   // Selected Employee Data
+  const activeException = useMemo(() => {
+    if (!currentEmployee || !attendanceExceptions.length) return null;
+    const c = (currentEmployee.code || '').toLowerCase().trim();
+    const n = (currentEmployee.name || '').toLowerCase().trim();
+    return attendanceExceptions.find((exc: any) => {
+      const empCode = (exc.employee_code || '').toLowerCase().trim();
+      const badge = (exc.badge_no || '').toLowerCase().trim();
+      const sysId = (exc.system_id || '').toLowerCase().trim();
+      const nameAr = (exc.loan_officer_name || '').toLowerCase().trim();
+      const nameEn = (exc.name_en || '').toLowerCase().trim();
+      return (
+        (empCode && (c === empCode || c.includes(empCode) || empCode.includes(c))) ||
+        (badge && (c === badge || c.includes(badge) || badge.includes(c))) ||
+        (sysId && (c === sysId || c.includes(sysId) || sysId.includes(c))) ||
+        (nameAr && (n === nameAr || n.includes(nameAr) || nameAr.includes(n))) ||
+        (nameEn && (n === nameEn || n.includes(nameEn) || nameEn.includes(n)))
+      );
+    });
+  }, [currentEmployee, attendanceExceptions]);
+
   const currentEmployee = useMemo(() => {
     return employees.find(e => e.code === selectedEmpCode) || employees[0] || null;
   }, [employees, selectedEmpCode]);
@@ -869,7 +900,32 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
       {/* ON-SCREEN PREVIEW CONTAINER: EXACT REPLICA OF IMAGE 1 (GRAY BORDERS)     */}
       {/* ========================================================================= */}
       {viewMode === 'form' && currentEmployee && (
-        <div className="flex justify-center overflow-x-auto pb-8">
+        <div className="flex flex-col items-center overflow-x-auto pb-8">
+          {activeException && (
+            <div className="w-[1100px] min-w-[1100px] mb-3 p-3.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-amber-500 text-2xl">verified_user</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs sm:text-sm">يخضع هذا الموظف لاستثناء رسمي معتمد في نظام التايمشيت:</span>
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-[10px] font-mono font-bold">
+                      Badge: {activeException.badge_no}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                    <span className="font-semibold">القاعدة لنظام تايم شيت:</span> {activeException.timesheet_rule || 'خاضع لسياسة الاستثناء'}
+                    {activeException.reason && <span className="opacity-80"> | السبب: {activeException.reason}</span>}
+                  </p>
+                </div>
+              </div>
+              {activeException.arrival_time && (
+                <div className="text-left rtl:text-right">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block">وقت الحضور المقرر:</span>
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{activeException.arrival_time}</span>
+                </div>
+              )}
+            </div>
+          )}
           <div 
             ref={printableSheetRef}
             className="w-[1100px] min-w-[1100px] bg-white text-black p-4 rounded-none shadow-2xl box-border"

@@ -18,6 +18,8 @@ import { getDepartmentName, getJobTitleName, DICT_EN, isArabicText } from '../ut
 import { transliterateArabicNameToEnglish } from '../utils/nameHelper';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
 import { DynamicHrisModule } from '../components/OrgModule/DynamicHrisModule';
+import { EmployeeManagementTables } from '../components/employee_tables/EmployeeManagementTables';
+import { SupervisorCombobox } from '../components/employee_tables/SupervisorCombobox';
 
 export const Category3EmployeeView: React.FC = () => {
   const {
@@ -1857,6 +1859,7 @@ export const Category3EmployeeView: React.FC = () => {
   return (
     <div className={`${(activeModuleId === 'emp-profile' || activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'space-y-1.5' : 'space-y-6'} animate-in fade-in duration-300`}>
       {/* Page Header */}
+      {activeModuleId !== 'emp-management-tables' && (
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5">
           <h1 className={`${(activeModuleId === 'emp-profile' || activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') ? 'text-base sm:text-lg' : 'text-2xl'} font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -1873,6 +1876,7 @@ export const Category3EmployeeView: React.FC = () => {
             {activeModuleId === 'emp-company-profile' && t('إعدادات ملف مؤسسة فيتاس العراق', 'VITAS Iraq Institution Profile Settings')}
             {activeModuleId === 'emp-calendar' && t('تقويم الفعاليات والعطل الرسمية', 'Events & Official Holidays Calendar')}
             {activeModuleId === 'emp-news' && t('مركز الأخبار والتنويهات الداخلية', 'Internal News & Announcements Center')}
+              {activeModuleId === 'emp-management-tables' && t('جداول المشرفين المباشرين، الاستثناءات، ورؤساء الأقسام (HODs)', 'Direct Supervisors, Exceptions & HODs Management')}
           </h1>
 
           {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
@@ -1906,6 +1910,7 @@ export const Category3EmployeeView: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Directory View */}
       {(activeModuleId === 'emp-directory' || activeModuleId === 'emp-hr-directory') && (
@@ -1965,6 +1970,23 @@ export const Category3EmployeeView: React.FC = () => {
                     </span>
                   </span>
                 )}
+              </button>
+
+              {/* Supervisors, Exceptions & HODs Tables */}
+              <button
+                type="button"
+                onClick={() => setActiveModuleId('emp-management-tables')}
+                className={`h-10 px-3 py-1.5 rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                  activeModuleId === 'emp-management-tables'
+                    ? 'bg-teal-500 text-white shadow-teal-500/25 ring-2 ring-teal-400'
+                    : isDark
+                    ? 'bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/30'
+                    : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200'
+                }`}
+                title={t('جداول المشرفين المباشرين، الاستثناءات، ورؤساء الأقسام (HODs)', 'Direct Supervisors, Exceptions & HODs')}
+              >
+                <span className="material-symbols-outlined text-base">supervised_user_circle</span>
+                <span>{t('المشرفون والاستثناءات والـ HODs', 'Supervisors & Exceptions')}</span>
               </button>
 
               {canWrite() && (
@@ -3208,28 +3230,16 @@ export const Category3EmployeeView: React.FC = () => {
 
                   <div className="sm:col-span-1 lg:col-span-2">
                     <label className="block text-black font-semibold text-[11px] mb-1">
-                      {t('اسم المشرف المباشر (يمكن اختيار مشرف من العراق أو من مكتب لبنان)', 'Direct Supervisor (Iraq or Lebanon Office)')}
+                      {t('اسم المشرف المباشر (مرتبط بجدول المشرفين المباشرين)', 'Direct Supervisor (Linked to Direct Supervisors Table)')}
                     </label>
-                    <input
-                      type="text"
-                      list="supervisors-suggestions-list"
-                      placeholder={t('اسم المدير المباشر (أو اختر من المشرفين المتاحين)', 'Direct Manager Name (or pick from suggestions)')}
+                    <SupervisorCombobox
                       value={supervisorName}
-                      onChange={e => setSupervisorName(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
+                      onChange={(val) => setSupervisorName(val)}
+                      placeholder={t('اختر أو ابحث عن المشرف المباشر من جدول المشرفين...', 'Select or search supervisor from Direct Supervisors Table...')}
+                      isDark={isDark}
+                      language={language}
+                      employeesList={employees}
                     />
-                    <datalist id="supervisors-suggestions-list">
-                      {lebanonSupervisors.map((s: any) => (
-                        <option key={s.id} value={`${s.name} [🇱🇧 مشرف إقليمي - بيروت]`}>
-                          {s.job_title} - {s.department} (لبنان)
-                        </option>
-                      ))}
-                      {employees.filter(e => e.jobTitle?.includes('مدير') || e.job_title?.includes('مدير') || e.jobTitle?.includes('Manager')).map((m: any) => (
-                        <option key={m.id} value={m.name || m.full_name}>
-                          {m.jobTitle || m.job_title} [🇮🇶 العراق]
-                        </option>
-                      ))}
-                    </datalist>
                   </div>
 
                   <div className="sm:col-span-1 lg:col-span-2">
@@ -5310,6 +5320,13 @@ export const Category3EmployeeView: React.FC = () => {
 
       {activeModuleId === 'emp-news' && (
         <CompanyNews language={language} />
+      )}
+
+      {activeModuleId === 'emp-management-tables' && (
+        <EmployeeManagementTables
+          employees={employees}
+          onBackToDirectory={() => setActiveModuleId('emp-hr-directory')}
+        />
       )}
 
       {/* Delete Confirmation Modal */}

@@ -118,6 +118,65 @@ export async function initDatabase(pool, force = false) {
             console.log('[DATABASE INIT] Seeded default Company Profile for VITAS Iraq.');
           }
 
+          // Ensure Direct Supervisors, Attendance Exceptions, and HODs tables exist
+          await query(`
+            CREATE TABLE IF NOT EXISTS direct_supervisors (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              badge_no VARCHAR(50) NOT NULL,
+              employee_code VARCHAR(100) NULL,
+              supervisor_name VARCHAR(255) NOT NULL,
+              supervisor_position VARCHAR(255) NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_ds_badge (badge_no)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          `);
+
+          await query(`
+            CREATE TABLE IF NOT EXISTS attendance_exceptions (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              badge_no VARCHAR(50) NOT NULL,
+              office_name VARCHAR(255) NULL,
+              job_title VARCHAR(255) NULL,
+              loan_officer_name VARCHAR(255) NULL,
+              arrival_time VARCHAR(255) NULL,
+              reason TEXT NULL,
+              timesheet_rule TEXT NULL,
+              name_en VARCHAR(255) NULL,
+              job_title_en VARCHAR(255) NULL,
+              system_id VARCHAR(100) NULL,
+              notes TEXT NULL,
+              is_active TINYINT(1) DEFAULT 1,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_exc_badge (badge_no),
+              INDEX idx_exc_system (system_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          `);
+
+          // Ensure employee_code column exists in attendance_exceptions
+          try {
+            const [hasEmpCode] = await query("SHOW COLUMNS FROM attendance_exceptions LIKE 'employee_code'");
+            if (!hasEmpCode || hasEmpCode.length === 0) {
+              await query("ALTER TABLE attendance_exceptions ADD COLUMN employee_code VARCHAR(100) NULL AFTER badge_no");
+            }
+          } catch (e) {
+            // column check fallback
+          }
+
+          await query(`
+            CREATE TABLE IF NOT EXISTS department_heads (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              badge_no VARCHAR(50) NOT NULL,
+              office_name VARCHAR(255) NOT NULL,
+              hod_name VARCHAR(255) NOT NULL,
+              hod_position VARCHAR(255) NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_hod_badge (badge_no)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          `);
+
           // Ensure Microsoft 365 tables & settings exist
           await runM365Migration(query);
 

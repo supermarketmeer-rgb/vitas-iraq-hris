@@ -771,16 +771,15 @@ html.light button.bg-teal-800 *,
 html.light button[class*="from-teal"] *,
 /* html.light button[class*="bg-teal"] *, */
 html.light button[class*="to-teal"] *,
-html.light .bg-gradient-to-br[class*="teal"] *,
-html.light .bg-gradient-to-r[class*="teal"] *,
+html.light .bg-gradient-to-br[class*="from-teal-600"] *,
+html.light .bg-gradient-to-r[class*="from-teal-600"] *,
 html:not(.dark) button.bg-teal-600 *,
 html:not(.dark) button.bg-teal-700 *,
 html:not(.dark) button.bg-teal-800 *,
-html:not(.dark) button[class*="from-teal"] *,
-/* html:not(.dark) button[class*="bg-teal"] *, */
-html:not(.dark) button[class*="to-teal"] *,
-html:not(.dark) .bg-gradient-to-br[class*="teal"] *,
-html:not(.dark) .bg-gradient-to-r[class*="teal"] * {
+html:not(.dark) button[class*="from-teal-600"] *,
+html:not(.dark) button[class*="to-teal-600"] *,
+html:not(.dark) .bg-gradient-to-br[class*="from-teal-600"] *,
+html:not(.dark) .bg-gradient-to-r[class*="from-teal-600"] * {
   color: #ffffff !important;
 }
 

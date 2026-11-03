@@ -6305,6 +6305,198 @@ app.post('/api/routing/run-acceptance-tests', async (req, res) => {
   }
 });
 
+
+// ─── Direct Supervisors, Attendance Exceptions, and HODs APIs ───────────────────
+
+// 1. Direct Supervisors
+app.get('/api/direct-supervisors', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM direct_supervisors ORDER BY supervisor_name ASC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/direct-supervisors', async (req, res) => {
+  try {
+    const { badge_no, supervisor_name, supervisor_position } = req.body;
+    if (!badge_no || !supervisor_name) {
+      return res.status(400).json({ error: 'Badge number and supervisor name are required' });
+    }
+    const result = await query(
+      'INSERT INTO direct_supervisors (badge_no, supervisor_name, supervisor_position) VALUES (?, ?, ?)',
+      [badge_no.trim(), supervisor_name.trim(), (supervisor_position || '').trim()]
+    );
+    res.status(201).json({ success: true, id: result.insertId, message: 'Direct supervisor added successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/direct-supervisors/:id', async (req, res) => {
+  try {
+    const { badge_no, supervisor_name, supervisor_position } = req.body;
+    await query(
+      'UPDATE direct_supervisors SET badge_no = ?, supervisor_name = ?, supervisor_position = ? WHERE id = ?',
+      [badge_no?.trim(), supervisor_name?.trim(), (supervisor_position || '').trim(), req.params.id]
+    );
+    res.json({ success: true, message: 'Direct supervisor updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/direct-supervisors/:id', async (req, res) => {
+  try {
+    await query('DELETE FROM direct_supervisors WHERE id = ?', [req.params.id]);
+    res.json({ success: true, message: 'Direct supervisor deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Attendance Exceptions
+app.get('/api/attendance-exceptions', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM attendance_exceptions ORDER BY id DESC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/attendance-exceptions', async (req, res) => {
+  try {
+    const {
+      badge_no, employee_code, office_name, job_title, loan_officer_name,
+      arrival_time, reason, timesheet_rule, name_en,
+      job_title_en, system_id, notes, is_active = 1
+    } = req.body;
+
+    if (!badge_no) {
+      return res.status(400).json({ error: 'Badge number is required' });
+    }
+
+    const result = await query(
+      `INSERT INTO attendance_exceptions 
+       (badge_no, employee_code, office_name, job_title, loan_officer_name, arrival_time, reason, timesheet_rule, name_en, job_title_en, system_id, notes, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        badge_no.trim(),
+        employee_code ? employee_code.trim() : null,
+        office_name || null,
+        job_title || null,
+        loan_officer_name || null,
+        arrival_time || null,
+        reason || null,
+        timesheet_rule || null,
+        name_en || null,
+        job_title_en || null,
+        system_id || null,
+        notes || null,
+        is_active ? 1 : 0
+      ]
+    );
+    res.status(201).json({ success: true, id: result.insertId, message: 'Attendance exception added successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/attendance-exceptions/:id', async (req, res) => {
+  try {
+    const {
+      badge_no, employee_code, office_name, job_title, loan_officer_name,
+      arrival_time, reason, timesheet_rule, name_en,
+      job_title_en, system_id, notes, is_active
+    } = req.body;
+
+    await query(
+      `UPDATE attendance_exceptions 
+       SET badge_no = ?, employee_code = ?, office_name = ?, job_title = ?, loan_officer_name = ?, arrival_time = ?,
+           reason = ?, timesheet_rule = ?, name_en = ?, job_title_en = ?, system_id = ?, notes = ?, is_active = ?
+       WHERE id = ?`,
+      [
+        badge_no?.trim(),
+        employee_code !== undefined ? (employee_code ? employee_code.trim() : null) : null,
+        office_name || null,
+        job_title || null,
+        loan_officer_name || null,
+        arrival_time || null,
+        reason || null,
+        timesheet_rule || null,
+        name_en || null,
+        job_title_en || null,
+        system_id || null,
+        notes || null,
+        is_active !== undefined ? (is_active ? 1 : 0) : 1,
+        req.params.id
+      ]
+    );
+    res.json({ success: true, message: 'Attendance exception updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/attendance-exceptions/:id', async (req, res) => {
+  try {
+    await query('DELETE FROM attendance_exceptions WHERE id = ?', [req.params.id]);
+    res.json({ success: true, message: 'Attendance exception deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Department Heads (HODs)
+app.get(['/api/department-heads', '/api/hods'], async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM department_heads ORDER BY hod_name ASC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post(['/api/department-heads', '/api/hods'], async (req, res) => {
+  try {
+    const { badge_no, office_name, hod_name, hod_position } = req.body;
+    if (!badge_no || !hod_name) {
+      return res.status(400).json({ error: 'Badge number and HOD name are required' });
+    }
+    const result = await query(
+      'INSERT INTO department_heads (badge_no, office_name, hod_name, hod_position) VALUES (?, ?, ?, ?)',
+      [badge_no.trim(), (office_name || '').trim(), hod_name.trim(), (hod_position || '').trim()]
+    );
+    res.status(201).json({ success: true, id: result.insertId, message: 'Department head added successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put(['/api/department-heads/:id', '/api/hods/:id'], async (req, res) => {
+  try {
+    const { badge_no, office_name, hod_name, hod_position } = req.body;
+    await query(
+      'UPDATE department_heads SET badge_no = ?, office_name = ?, hod_name = ?, hod_position = ? WHERE id = ?',
+      [badge_no?.trim(), (office_name || '').trim(), hod_name?.trim(), (hod_position || '').trim(), req.params.id]
+    );
+    res.json({ success: true, message: 'Department head updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete(['/api/department-heads/:id', '/api/hods/:id'], async (req, res) => {
+  try {
+    await query('DELETE FROM department_heads WHERE id = ?', [req.params.id]);
+    res.json({ success: true, message: 'Department head deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 16. Local Server Setup & Installation Wizard Routes
 registerLocalServerSetupRoutes(app, db, query);
 

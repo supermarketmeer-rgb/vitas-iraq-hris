@@ -288,6 +288,28 @@ export function isModuleAuthorized(
     return true;
   }
 
+  // Category 3: Supervisors, Exceptions & HODs Management
+  if (moduleId === 'emp-management-tables') {
+    if (
+      perms.isSuperAdmin ||
+      currentRole === 'Admin' ||
+      currentRole === 'Super Admin' ||
+      currentRole.includes('HR') ||
+      currentRole.includes('Manager') ||
+      !perms.hasExplicitPerms ||
+      (perms.rawModules && (
+        perms.rawModules['emp-management-tables'] ||
+        perms.rawModules['emp-hr-directory'] ||
+        perms.rawModules['emp-profile'] ||
+        perms.rawModules['emp-branches'] ||
+        perms.rawModules['cat-3-emp'] ||
+        perms.rawModules['employees']
+      ))
+    ) {
+      return true;
+    }
+  }
+
   // Branch Manager Scope Rules
   const isBranchManagerRole = 
     currentRole === 'Branch Manager' || 
@@ -553,6 +575,7 @@ export const MODULE_CATEGORY_MAP: Record<string, { catId: string; alias: string 
   'emp-company-profile': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-calendar': { catId: 'cat-3-emp', alias: 'employees' },
   'emp-news': { catId: 'cat-3-emp', alias: 'employees' },
+  'emp-management-tables': { catId: 'cat-3-emp', alias: 'employees' },
 
   // Category 4: leaves / attendance
   'leave-attendance': { catId: 'cat-4-leave', alias: 'attendance' },

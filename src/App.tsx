@@ -125,6 +125,7 @@ function AppContent() {
       case 'emp-company-profile':
       case 'emp-calendar':
       case 'emp-news':
+      case 'emp-management-tables':
         return <Category3EmployeeView />;
 
       case 'emp-regional-lebanon':
