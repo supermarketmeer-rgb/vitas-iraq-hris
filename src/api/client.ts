@@ -312,7 +312,8 @@ export const api = {
     apiClient.post<{ success: boolean; translatedText: string; originalText: string }>('/translate', { text, from, to }),
 
   // Reset / Clear Data
-  resetData: () => apiClient.post('/reset-data', {}, 60000),
+  resetData: (confirmation_key: string = 'VITAS_RESET_SECURE_CONFIRM_2026') =>
+    apiClient.post('/reset-data', { confirmation_key }, 60000),
 
   // Attendance System
   getAttendance: (params?: { employee_id?: string; start_date?: string; end_date?: string; status?: string }) => {
