@@ -1,3 +1,4 @@
+import { api } from '../api/client';
 // Helper and data management for Status Changes, Trainings, and Warnings
 // Provides unified persistence, reactivity, and Excel import/export helpers
 
@@ -40,6 +41,15 @@ export interface WarningRecord {
 const STORAGE_KEY_STATUS = 'vitas_status_changes_list';
 const STORAGE_KEY_TRAININGS = 'vitas_trainings_list';
 const STORAGE_KEY_WARNINGS = 'vitas_warnings_list';
+
+const persistToServer = (key: string, data: any) => {
+  try {
+    api.updateAppSetting(key, JSON.stringify(data)).catch((err) => {
+      console.warn('[AutoSync] Notice persisting ' + key + ' to server:', err?.message);
+    });
+  } catch (e) {}
+};
+
 
 // Default baseline seeds
 const defaultStatusChanges: StatusChangeRecord[] = [
@@ -227,6 +237,7 @@ export const saveStatusChangeRecord = (record: StatusChangeRecord): StatusChange
     updated = [record, ...list];
   }
   localStorage.setItem(STORAGE_KEY_STATUS, JSON.stringify(updated));
+  persistToServer(STORAGE_KEY_STATUS, updated);
   window.dispatchEvent(new CustomEvent('vitas_status_changes_updated', { detail: updated }));
   return updated;
 };
@@ -235,6 +246,7 @@ export const deleteStatusChangeRecord = (id: string | number): StatusChangeRecor
   const list = getStatusChangesList();
   const updated = list.filter(r => String(r.id) !== String(id));
   localStorage.setItem(STORAGE_KEY_STATUS, JSON.stringify(updated));
+  persistToServer(STORAGE_KEY_STATUS, updated);
   window.dispatchEvent(new CustomEvent('vitas_status_changes_updated', { detail: updated }));
   return updated;
 };
@@ -273,6 +285,7 @@ export const saveTrainingRecord = (record: TrainingRecord): TrainingRecord[] => 
     updated = [record, ...list];
   }
   localStorage.setItem(STORAGE_KEY_TRAININGS, JSON.stringify(updated));
+  persistToServer(STORAGE_KEY_TRAININGS, updated);
   window.dispatchEvent(new CustomEvent('vitas_trainings_updated', { detail: updated }));
   return updated;
 };
@@ -281,6 +294,7 @@ export const deleteTrainingRecord = (id: string | number): TrainingRecord[] => {
   const list = getTrainingsList();
   const updated = list.filter(r => String(r.id) !== String(id));
   localStorage.setItem(STORAGE_KEY_TRAININGS, JSON.stringify(updated));
+  persistToServer(STORAGE_KEY_TRAININGS, updated);
   window.dispatchEvent(new CustomEvent('vitas_trainings_updated', { detail: updated }));
   return updated;
 };
@@ -319,6 +333,7 @@ export const saveWarningRecord = (record: WarningRecord): WarningRecord[] => {
     updated = [record, ...list];
   }
   localStorage.setItem(STORAGE_KEY_WARNINGS, JSON.stringify(updated));
+  persistToServer(STORAGE_KEY_WARNINGS, updated);
   window.dispatchEvent(new CustomEvent('vitas_warnings_updated', { detail: updated }));
   return updated;
 };
@@ -327,6 +342,7 @@ export const deleteWarningRecord = (id: string | number): WarningRecord[] => {
   const list = getWarningsList();
   const updated = list.filter(r => String(r.id) !== String(id));
   localStorage.setItem(STORAGE_KEY_WARNINGS, JSON.stringify(updated));
+  persistToServer(STORAGE_KEY_WARNINGS, updated);
   window.dispatchEvent(new CustomEvent('vitas_warnings_updated', { detail: updated }));
   return updated;
 };

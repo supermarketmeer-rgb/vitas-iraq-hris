@@ -495,6 +495,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (settingsObj.vitas_custom_users) {
               localStorage.setItem('vitas_custom_users', settingsObj.vitas_custom_users);
             }
+            if (settingsObj.vitas_status_changes_list) {
+              localStorage.setItem('vitas_status_changes_list', settingsObj.vitas_status_changes_list);
+              window.dispatchEvent(new CustomEvent('vitas_status_changes_updated'));
+            }
+            if (settingsObj.vitas_trainings_list) {
+              localStorage.setItem('vitas_trainings_list', settingsObj.vitas_trainings_list);
+              window.dispatchEvent(new CustomEvent('vitas_trainings_updated'));
+            }
+            if (settingsObj.vitas_warnings_list) {
+              localStorage.setItem('vitas_warnings_list', settingsObj.vitas_warnings_list);
+              window.dispatchEvent(new CustomEvent('vitas_warnings_updated'));
+            }
             if (settingsObj.vitas_hris_sync_schedule) {
               syncEngine.setSchedule(settingsObj.vitas_hris_sync_schedule as any);
             }

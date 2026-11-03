@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { api } from '../api/client';
 import * as XLSX from 'xlsx';
 import { exportFormattedExcelFromJson } from '../utils/excelFormatHelper';
 import {
@@ -113,9 +114,12 @@ export const WarningTable: React.FC<WarningTableProps> = ({
     setShowModal(false);
   };
 
-  const handleDelete = (id: string | number) => {
+  const handleDelete = async (id: string | number) => {
     if (window.confirm(isAr ? 'هل أنت متأكد من حذف هذا الإنذار؟' : 'Are you sure you want to delete this warning record?')) {
       deleteWarningRecord(id);
+      try {
+        await api.deleteWarning(String(id));
+      } catch (e) {}
       loadData();
     }
   };

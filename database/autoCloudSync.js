@@ -27,7 +27,14 @@ const TABLE_BUSINESS_KEYS = {
   contract_clauses: 'id',
   direct_supervisors: 'badge_no',
   attendance_exceptions: 'badge_no',
-  department_heads: 'badge_no'
+  department_heads: 'badge_no',
+  status_changes: 'name_ar',
+  trainings: 'name_ar',
+  employee_status_changes: 'id',
+  employee_trainings: 'id',
+  employee_warnings: 'id',
+  settings_status_changes: 'name_ar',
+  settings_trainings: 'name_ar'
 };
 
 const IMMUTABLE_LOG_TABLES = new Set([

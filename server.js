@@ -3663,8 +3663,38 @@ app.put('/api/settings/status-changes/:id', async (req, res) => {
 app.delete('/api/settings/status-changes/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await query('DELETE FROM status_changes WHERE id = ?', [id]);
-    executeCloudQuery('DELETE FROM status_changes WHERE id = ?', [id]).catch(() => {});
+    const isNum = /^[0-9]+$/.test(id);
+    
+    // 1. Delete from status_changes table
+    if (isNum) {
+      await query('DELETE FROM status_changes WHERE id = ?', [id]).catch(() => {});
+      executeCloudQuery('DELETE FROM status_changes WHERE id = ?', [id]).catch(() => {});
+    } else {
+      await query('DELETE FROM status_changes WHERE name_ar = ? OR name_en = ?', [id, id]).catch(() => {});
+      executeCloudQuery('DELETE FROM status_changes WHERE name_ar = ? OR name_en = ?', [id, id]).catch(() => {});
+    }
+
+    // 2. Also delete from employee_status_changes if matching
+    if (isNum) {
+      await query('DELETE FROM employee_status_changes WHERE id = ?', [id]).catch(() => {});
+      executeCloudQuery('DELETE FROM employee_status_changes WHERE id = ?', [id]).catch(() => {});
+    }
+
+    // 3. Record deletion tombstones for bidirectional sync
+    await query('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW())',
+      ['status_changes', id, 'local']).catch(() => {});
+    executeCloudQuery('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW())',
+      ['status_changes', id, 'local']).catch(() => {});
+    
+    if (isNum) {
+      await query('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW())',
+        ['employee_status_changes', id, 'local']).catch(() => {});
+      executeCloudQuery('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW())',
+        ['employee_status_changes', id, 'local']).catch(() => {});
+    }
+
+    // 4. Trigger immediate sync & SSE broadcast
+    triggerRealtimeSync(db, 'status_changes');
     res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -3681,6 +3711,7 @@ app.put('/api/settings/trainings/:id', async (req, res) => {
       [name_en || null, name_ar || null, sort_order !== undefined ? sort_order : null, status || null, id]
     );
     const result = await query('SELECT * FROM trainings WHERE id = ?', [id]);
+    triggerRealtimeSync(db, 'trainings');
     res.json(result[0] || { success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -3690,8 +3721,100 @@ app.put('/api/settings/trainings/:id', async (req, res) => {
 app.delete('/api/settings/trainings/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await query('DELETE FROM trainings WHERE id = ?', [id]);
-    executeCloudQuery('DELETE FROM trainings WHERE id = ?', [id]).catch(() => {});
+    const isNum = /^[0-9]+$/.test(id);
+    
+    // 1. Delete from trainings table
+    if (isNum) {
+      await query('DELETE FROM trainings WHERE id = ?', [id]).catch(() => {});
+      executeCloudQuery('DELETE FROM trainings WHERE id = ?', [id]).catch(() => {});
+    } else {
+      await query('DELETE FROM trainings WHERE name_ar = ? OR name_en = ?', [id, id]).catch(() => {});
+      executeCloudQuery('DELETE FROM trainings WHERE name_ar = ? OR name_en = ?', [id, id]).catch(() => {});
+    }
+
+    // 2. Also delete from employee_trainings if matching
+    if (isNum) {
+      await query('DELETE FROM employee_trainings WHERE id = ?', [id]).catch(() => {});
+      executeCloudQuery('DELETE FROM employee_trainings WHERE id = ?', [id]).catch(() => {});
+    }
+
+    // 3. Record deletion tombstones for bidirectional sync
+    await query('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW())',
+      ['trainings', id, 'local']).catch(() => {});
+    executeCloudQuery('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW())',
+      ['trainings', id, 'local']).catch(() => {});
+    
+    if (isNum) {
+      await query('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW())',
+        ['employee_trainings', id, 'local']).catch(() => {});
+      executeCloudQuery('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW())',
+        ['employee_trainings', id, 'local']).catch(() => {});
+    }
+
+    // 4. Trigger immediate sync & SSE broadcast
+    triggerRealtimeSync(db, 'trainings');
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Settings - Warnings Endpoints
+app.get('/api/settings/warnings', async (req, res) => {
+  try {
+    const results = await query('SELECT * FROM employee_warnings ORDER BY id DESC').catch(() => []);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/settings/warnings', async (req, res) => {
+  try {
+    const { employee_id, warning_type, warning_date, notes } = req.body;
+    const sql = 'INSERT INTO employee_warnings (employee_id, warning_type, warning_date, notes) VALUES (?, ?, ?, ?)';
+    const params = [employee_id || null, warning_type || 'first', warning_date || null, notes || ''];
+    await query(sql, params).catch(() => {});
+    executeCloudQuery(sql, params).catch(() => {});
+    triggerRealtimeSync(db, 'employee_warnings');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/settings/warnings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { warning_type, warning_date, notes } = req.body;
+    const sql = 'UPDATE employee_warnings SET warning_type = COALESCE(?, warning_type), warning_date = COALESCE(?, warning_date), notes = COALESCE(?, notes) WHERE id = ?';
+    const params = [warning_type || null, warning_date || null, notes || null, id];
+    await query(sql, params).catch(() => {});
+    executeCloudQuery(sql, params).catch(() => {});
+    triggerRealtimeSync(db, 'employee_warnings');
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/settings/warnings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isNum = /^[0-9]+$/.test(id);
+
+    if (isNum) {
+      await query('DELETE FROM employee_warnings WHERE id = ?', [id]).catch(() => {});
+      executeCloudQuery('DELETE FROM employee_warnings WHERE id = ?', [id]).catch(() => {});
+    }
+
+    // Insert tombstone into sync_deleted_records
+    await query('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW())',
+      ['employee_warnings', id, 'local']).catch(() => {});
+    executeCloudQuery('INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW())',
+      ['employee_warnings', id, 'local']).catch(() => {});
+
+    triggerRealtimeSync(db, 'employee_warnings');
     res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -4526,18 +4649,20 @@ app.put('/api/settings/app/:key', async (req, res) => {
   try {
     const { setting_value } = req.body;
     const key = req.params.key;
+    const strVal = String(setting_value ?? '');
     
     // Check if setting exists
     const existing = await query('SELECT * FROM app_settings WHERE setting_key = ?', [key]);
     
     if (existing.length === 0) {
-      // Insert new setting
-      await query('INSERT INTO app_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW())', [key, setting_value]);
+      await query('INSERT INTO app_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW())', [key, strVal]);
+      executeCloudQuery('INSERT INTO app_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()', [key, strVal, strVal]).catch(() => {});
     } else {
-      // Update existing setting
-      await query('UPDATE app_settings SET setting_value = ?, updated_at = NOW() WHERE setting_key = ?', [setting_value, key]);
+      await query('UPDATE app_settings SET setting_value = ?, updated_at = NOW() WHERE setting_key = ?', [strVal, key]);
+      executeCloudQuery('UPDATE app_settings SET setting_value = ?, updated_at = NOW() WHERE setting_key = ?', [strVal, key]).catch(() => {});
     }
     
+    triggerRealtimeSync(db, 'app_settings');
     syncLocalToCloud(db).catch(() => {});
     res.json({ success: true });
   } catch (err) {

@@ -223,6 +223,12 @@ export const api = {
   updateTraining: (id: string, training: any) => apiClient.put(`/settings/trainings/${id}`, training),
   deleteTraining: (id: string) => apiClient.delete(`/settings/trainings/${id}`),
 
+  // Settings - Warnings
+  getWarnings: () => apiClient.get('/settings/warnings'),
+  addWarning: (warning: any) => apiClient.post('/settings/warnings', warning),
+  updateWarning: (id: string, warning: any) => apiClient.put(`/settings/warnings/${id}`, warning),
+  deleteWarning: (id: string) => apiClient.delete(`/settings/warnings/${id}`),
+
   // App Settings
   getAppSettings: () => apiClient.get('/settings/app'),
   updateAppSetting: (key: string, value: string) => apiClient.put(`/settings/app/${key}`, { setting_value: value }),
