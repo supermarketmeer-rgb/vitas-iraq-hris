@@ -34,7 +34,9 @@ const TABLE_BUSINESS_KEYS = {
   employee_trainings: 'id',
   employee_warnings: 'id',
   settings_status_changes: 'name_ar',
-  settings_trainings: 'name_ar'
+  settings_trainings: 'name_ar',
+  payroll_legal_settings: 'id',
+  tax_brackets: 'id'
 };
 
 const IMMUTABLE_LOG_TABLES = new Set([
@@ -288,37 +290,38 @@ function areBusinessRowsEqual(lRow, cRow, commonCols) {
     }
 
     // Dates normalization
-    if (lVal instanceof Date || cVal instanceof Date) {
+    if (lVal instanceof Date || cVal instanceof Date || (typeof lVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(lVal)) || (typeof cVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(cVal))) {
       const lTime = lVal ? new Date(lVal).getTime() : 0;
       const cTime = cVal ? new Date(cVal).getTime() : 0;
-      if (Math.abs(lTime - cTime) < 1500) continue;
+      if (lTime && cTime && Math.abs(lTime - cTime) < 1500) continue;
 
-      // Handle date-only (YYYY-MM-DD)
       const lDateStr = lVal ? (lVal instanceof Date ? lVal.toISOString().slice(0, 10) : String(lVal).slice(0, 10)) : '';
       const cDateStr = cVal ? (cVal instanceof Date ? cVal.toISOString().slice(0, 10) : String(cVal).slice(0, 10)) : '';
       if (lDateStr && lDateStr === cDateStr) continue;
 
-      // If difference is an integer number of hours (+/- 5 seconds, up to 14 hours), it represents a timezone/DST offset
-      const diff = Math.abs(lTime - cTime);
-      const hoursDiff = diff / (3600 * 1000);
-      const remainder = Math.abs(hoursDiff - Math.round(hoursDiff)) * 3600 * 1000;
-      if (remainder < 5000 && Math.round(hoursDiff) <= 14) continue;
-
-      return false;
+      if (lTime && cTime) {
+        const diff = Math.abs(lTime - cTime);
+        const hoursDiff = diff / (3600 * 1000);
+        const remainder = Math.abs(hoursDiff - Math.round(hoursDiff)) * 3600 * 1000;
+        if (remainder < 5000 && Math.round(hoursDiff) <= 14) continue;
+      }
     }
 
-    // Numeric comparison
-    if (typeof lVal === 'number' || typeof cVal === 'number') {
-      if (Number(lVal) === Number(cVal)) continue;
+    // Numeric comparison (handles numbers, DECIMAL strings like '5.00' vs '5')
+    const lNum = Number(lVal);
+    const cNum = Number(cVal);
+    if (!isNaN(lNum) && !isNaN(cNum) && lVal !== null && cVal !== null && lVal !== '' && cVal !== '') {
+      if (Math.abs(lNum - cNum) < 0.00001) continue;
       return false;
     }
 
     // Object or JSON comparison
-    if ((typeof lVal === 'object' && lVal !== null) || (typeof cVal === 'object' && cVal !== null)) {
+    if ((typeof lVal === 'object' && lVal !== null) || (typeof cVal === 'object' && cVal !== null) || (typeof lVal === 'string' && (lVal.startsWith('[') || lVal.startsWith('{'))) || (typeof cVal === 'string' && (cVal.startsWith('[') || cVal.startsWith('{')))) {
       try {
-        const lStr = typeof lVal === 'object' ? JSON.stringify(lVal) : JSON.stringify(JSON.parse(lVal));
-        const cStr = typeof cVal === 'object' ? JSON.stringify(cVal) : JSON.stringify(JSON.parse(cVal));
-        if (lStr === cStr) continue;
+        const parse = (v) => (typeof v === 'object' ? v : JSON.parse(v));
+        const lObj = parse(lVal);
+        const cObj = parse(cVal);
+        if (JSON.stringify(lObj) === JSON.stringify(cObj)) continue;
       } catch (e) {}
       return false;
     }

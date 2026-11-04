@@ -191,17 +191,7 @@ export async function ensureLegalTables(query) {
       console.log('✅ Synchronized tax_branch_jurisdictions with branches');
     }
 
-    // Update payroll_legal_settings default values if needed
-    await query(`
-      UPDATE payroll_legal_settings SET
-        ss_maximum_insured_salary = 1750000.00,
-        tax_personal_allowance = 5000000.00,
-        tax_spouse_allowance = 4000000.00,
-        tax_child_allowance = 400000.00
-      WHERE version_code = 'v2026.1' AND ss_maximum_insured_salary > 1750000
-    `).catch(() => {});
-
-  } catch (err) {
+    } catch (err) {
     console.error('Error in ensureLegalTables:', err);
   }
 }

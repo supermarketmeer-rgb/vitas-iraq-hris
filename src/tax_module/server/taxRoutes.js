@@ -1193,6 +1193,12 @@ export function registerTaxModuleRoutes(app, query) {
 
       await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "SS_EMPLOYEE_RATE"', [b.ss_employee_rate]).catch(() => {});
       await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "SS_EMPLOYER_RATE"', [b.ss_employer_rate]).catch(() => {});
+      if (b.ss_minimum_insured_salary !== undefined && b.ss_minimum_insured_salary !== null) {
+        await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "SS_MIN_BASE"', [b.ss_minimum_insured_salary]).catch(() => {});
+      }
+      if (b.ss_maximum_insured_salary !== undefined && b.ss_maximum_insured_salary !== null) {
+        await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "SS_MAX_BASE"', [b.ss_maximum_insured_salary]).catch(() => {});
+      }
       await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "TAX_PERSONAL_EXEMPTION"', [b.tax_personal_allowance]).catch(() => {});
       await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "TAX_SPOUSE_EXEMPTION"', [b.tax_spouse_allowance]).catch(() => {});
       await query('UPDATE tax_calculation_parameters SET value = ? WHERE code = "TAX_DEPENDENT_EXEMPTION"', [b.tax_child_allowance]).catch(() => {});

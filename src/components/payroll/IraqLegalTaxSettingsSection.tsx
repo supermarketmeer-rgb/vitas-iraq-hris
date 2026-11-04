@@ -124,8 +124,20 @@ export const IraqLegalTaxSettingsSection: React.FC<IraqLegalTaxSettingsSectionPr
   const [activeTab, setActiveTab] = useState<LegalSubTab>('social_security');
 
   // State
-  const [settings, setSettings] = useState<PayrollLegalSettings>(getDefaultLegalSettings());
-  const [brackets, setBrackets] = useState<TaxBracketConfig[]>(getDefaultTaxBrackets());
+  const [settings, setSettings] = useState<PayrollLegalSettings>(() => {
+    try {
+      const saved = localStorage.getItem('vitas_payroll_legal_settings');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return getDefaultLegalSettings();
+  });
+  const [brackets, setBrackets] = useState<TaxBracketConfig[]>(() => {
+    try {
+      const saved = localStorage.getItem('vitas_tax_brackets');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return getDefaultTaxBrackets();
+  });
   const [allVersions, setAllVersions] = useState<PayrollLegalSettings[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -187,19 +199,26 @@ export const IraqLegalTaxSettingsSection: React.FC<IraqLegalTaxSettingsSectionPr
 
       if (settingsRes?.active) {
         setSettings(settingsRes.active);
+        try {
+          localStorage.setItem('vitas_payroll_legal_settings', JSON.stringify(settingsRes.active));
+        } catch (e) {}
       }
       if (Array.isArray(settingsRes?.all_versions)) {
         setAllVersions(settingsRes.all_versions);
       }
       if (Array.isArray(bracketsRes) && bracketsRes.length > 0) {
-        setBrackets(bracketsRes.map(b => ({
+        const parsedBrackets = bracketsRes.map(b => ({
           ...b,
           min_income: Number(b.min_income),
           max_income: b.max_income !== null && b.max_income !== undefined ? Number(b.max_income) : null,
           tax_rate: Number(b.tax_rate),
           fixed_tax: Number(b.fixed_tax || 0),
           bracket_order: Number(b.bracket_order)
-        })));
+        }));
+        setBrackets(parsedBrackets);
+        try {
+          localStorage.setItem('vitas_tax_brackets', JSON.stringify(parsedBrackets));
+        } catch (e) {}
       }
       if (Array.isArray(logsRes)) {
         setAuditLogs(logsRes);
@@ -230,10 +249,22 @@ export const IraqLegalTaxSettingsSection: React.FC<IraqLegalTaxSettingsSectionPr
     setIsSaving(true);
     try {
       const targetId = settings.id || 'legal_set_2026_01';
+      const cleanEffectiveFrom = settings.effective_from
+        ? String(settings.effective_from).slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+      const payload = {
+        ...settings,
+        effective_from: cleanEffectiveFrom
+      };
+
+      try {
+        localStorage.setItem('vitas_payroll_legal_settings', JSON.stringify(payload));
+      } catch (e) {}
+
       const res = await fetch(`/api/tax-module/legal-settings/${targetId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
