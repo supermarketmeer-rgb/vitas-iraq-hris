@@ -1497,7 +1497,9 @@ export const SettingsSecurityView: React.FC = () => {
         let currentDepartments = [...departments];
         let currentPositions = [...positions];
 
+        let rowIdx = 0;
         for (const row of rawRows) {
+          rowIdx++;
           try {
             // Process children data (up to 6 children)
             const childrenList: any[] = [];
@@ -1562,11 +1564,13 @@ export const SettingsSecurityView: React.FC = () => {
             if (!fullName) fullName = fullNameEn;
             if (!fullName) continue;
             if (!fullNameEn) fullNameEn = fullName;
-            let empCode = getVal(row, ['Employee Code', 'Employee ID', 'empCode', 'employeeId', 'employee_id', 'رمز الموظف', 'كود الموظف', 'رقم الموظف', 'الرمز الوظيفي', 'Code', 'ID', 'ت', 'م', 'الرقم', 'رقم']);
+            // Only accept explicit Employee Code/ID (excluding sequence numbers 'ت', 'م', 'الرقم')
+            let empCode = getVal(row, ['Employee Code', 'Employee ID', 'empCode', 'employeeId', 'employee_id', 'رمز الموظف', 'كود الموظف', 'الرمز الوظيفي']);
             if (!empCode) {
-              empCode = `VTS-${1000 + importedEmployees.length + 1}`;
+              empCode = `VTS-${1000 + rowIdx}`;
             }
-            const badgeNo = getVal(row, ['Badge No', 'Badge Number', 'badgeNo', 'badge_no', 'رقم البادج', 'البادج', 'رقم الهوية', 'Badge']);
+            const rawBadge = getVal(row, ['Badge No', 'Badge Number', 'badgeNo', 'badge_no', 'رقم البادج', 'البادج', 'Badge']);
+            const badgeNo = rawBadge || `B-${1000 + rowIdx}`;
             const waid = getVal(row, ['WAID', 'waid', 'wa_id', 'معرف الحوافز', 'كود الحوافز', 'معرف الحوافز (WAID)', 'Incentives ID', 'Incentives WAID']);
             const dob = parseExcelDate(getVal(row, ['Date of Birth', 'dob', 'تاريخ الميلاد', 'تاريخ ولادة', 'DOB', 'Birth Date']));
             const email = getVal(row, ['Email', 'email', 'البريد الإلكتروني المؤسسي', 'البريد الإلكتروني', 'البريد الالكتروني', 'الإيميل', 'الايميل', 'البريد المؤسسي']);

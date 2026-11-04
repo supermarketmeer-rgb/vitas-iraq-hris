@@ -1347,12 +1347,19 @@ app.post('/api/employees', async (req, res) => {
     await loadEmployeeColumns();
 
     const employeeDbId = String(data.id || `EMP-${Date.now()}`);
-    const employeeId = data.employeeId || data.employee_id || data.empCode || `VTS-${Math.floor(1000 + Math.random() * 9000)}`;
-    const badgeNo = data.badgeNo || data.badge_no || `B-${Math.floor(100 + Math.random() * 900)}`;
+    const rawInputEmpId = (data.employeeId || data.employee_id || data.empCode || '').trim();
+    const employeeId = rawInputEmpId || `VTS-${Date.now().toString().slice(-4)}${Math.floor(100 + Math.random() * 900)}`;
+
+    const rawInputBadge = (data.badgeNo || data.badge_no || '').trim();
+    const badgeNo = rawInputBadge || `B-${employeeId.replace(/[^\d]/g, '') || Math.floor(1000 + Math.random() * 9000)}`;
+
+    const rawInputWaid = (data.waid || data.wa_id || '').trim();
+    const rawInputEmail = (data.email && typeof data.email === 'string' ? data.email.trim() : '');
+
     const fullNameAr = data.fullName || data.full_name_ar || 'غير محدد';
     const fullNameEn = data.fullNameEn || data.full_name_en || fullNameAr || 'N/A';
-    let email = data.email && typeof data.email === 'string' ? data.email.trim() : '';
-    if (!email || email === 'N/A' || email === 'غير محدد') {
+    let email = rawInputEmail;
+    if (!email || email === 'N/A' || email === 'غير محدد' || email === 'n/a') {
       const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
       email = `no-email-${employeeId}-${uniqueSuffix}@vitasiraq.local`;
     }
@@ -1528,46 +1535,42 @@ app.post('/api/employees', async (req, res) => {
     let targetDbId = null;
     let existing = [];
 
-    // 1. Match by primary key id if provided as a valid number
+    // 1. Match by primary key id ONLY if provided as a valid number
     if (data.id && !isNaN(Number(data.id)) && Number(data.id) > 0 && Number(data.id) < 2147483647) {
       targetDbId = Number(data.id);
       existing = await query('SELECT id FROM employees WHERE id = ?', [targetDbId]);
     }
 
-    // 2. Match by exact employee_id if id match yielded no result
-    const cleanEmpCode = typeof employeeId === 'string' ? employeeId.trim() : '';
-    if ((!existing || existing.length === 0) && cleanEmpCode !== '' && cleanEmpCode !== 'N/A') {
-      const existingByEmpId = await query('SELECT id FROM employees WHERE employee_id = ?', [cleanEmpCode]);
+    // 2. Match by exact employee_id ONLY if explicitly provided by the user/import
+    if ((!existing || existing.length === 0) && rawInputEmpId !== '' && rawInputEmpId !== 'N/A') {
+      const existingByEmpId = await query('SELECT id FROM employees WHERE employee_id = ?', [rawInputEmpId]);
       if (existingByEmpId && existingByEmpId.length > 0) {
         existing = existingByEmpId;
         targetDbId = existingByEmpId[0].id;
       }
     }
 
-    // 3. Match by exact badge_no if still no match and badge_no is valid
-    const cleanBadge = typeof badgeNo === 'string' ? badgeNo.trim() : '';
-    if ((!existing || existing.length === 0) && cleanBadge !== '' && cleanBadge !== 'N/A') {
-      const existingByBadge = await query('SELECT id FROM employees WHERE badge_no = ?', [cleanBadge]);
+    // 3. Match by exact badge_no ONLY if explicitly provided (NEVER on auto-generated fallback badges!)
+    if ((!existing || existing.length === 0) && rawInputBadge !== '' && rawInputBadge !== 'N/A') {
+      const existingByBadge = await query('SELECT id FROM employees WHERE badge_no = ?', [rawInputBadge]);
       if (existingByBadge && existingByBadge.length > 0) {
         existing = existingByBadge;
         targetDbId = existingByBadge[0].id;
       }
     }
 
-    // 3.5. Match by exact waid if provided
-    const cleanWaid = typeof data.waid === 'string' ? data.waid.trim() : (typeof data.wa_id === 'string' ? data.wa_id.trim() : '');
-    if ((!existing || existing.length === 0) && cleanWaid !== '' && cleanWaid !== 'N/A') {
-      const existingByWaid = await query('SELECT id FROM employees WHERE waid = ?', [cleanWaid]);
+    // 3.5. Match by exact waid ONLY if explicitly provided
+    if ((!existing || existing.length === 0) && rawInputWaid !== '' && rawInputWaid !== 'N/A') {
+      const existingByWaid = await query('SELECT id FROM employees WHERE waid = ?', [rawInputWaid]);
       if (existingByWaid && existingByWaid.length > 0) {
         existing = existingByWaid;
         targetDbId = existingByWaid[0].id;
       }
     }
 
-    // 4. Match by email to prevent ER_DUP_ENTRY crash
-    const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
-    if ((!existing || existing.length === 0) && cleanEmail !== '' && !cleanEmail.includes('no-email-')) {
-      const existingByEmail = await query('SELECT id FROM employees WHERE LOWER(email) = ?', [cleanEmail]);
+    // 4. Match by email ONLY if explicitly provided and not a generated placeholder
+    if ((!existing || existing.length === 0) && rawInputEmail !== '' && !rawInputEmail.includes('no-email-') && rawInputEmail.includes('@') && !rawInputEmail.endsWith('@vitasiraq.local')) {
+      const existingByEmail = await query('SELECT id FROM employees WHERE LOWER(email) = ?', [rawInputEmail]);
       if (existingByEmail && existingByEmail.length > 0) {
         existing = existingByEmail;
         targetDbId = existingByEmail[0].id;
@@ -1601,19 +1604,13 @@ app.post('/api/employees', async (req, res) => {
         }
       } else {
         console.log('Inserting new employee...');
-        const generatedId = candidateData.id || `EMP-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-        candidateData.id = generatedId;
-
-        let insertCols = validColumns;
-        if (!insertCols.includes('id')) {
-          insertCols = ['id', ...insertCols];
-        }
+        let insertCols = validColumns.filter(col => col !== 'id');
         const insertVals = insertCols.map(col => candidateData[col]);
         const placeholders = insertCols.map(() => '?').join(', ');
 
-        await query(`INSERT INTO employees (${insertCols.join(', ')}) VALUES (${placeholders})`, insertVals);
-        finalEmpDbId = generatedId;
-        console.log('Employee inserted successfully with ID:', finalEmpDbId);
+        const insertResult = await query(`INSERT INTO employees (${insertCols.join(', ')}) VALUES (${placeholders})`, insertVals);
+        finalEmpDbId = insertResult.insertId;
+        console.log('Employee inserted successfully with auto-increment ID:', finalEmpDbId);
       }
 
       if (finalEmpDbId && Array.isArray(processedChildrenList)) {
