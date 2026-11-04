@@ -760,9 +760,24 @@ export const Category3EmployeeView: React.FC = () => {
   const [newChildRelation, setNewChildRelation] = useState<'ولد' | 'بنت'>('ولد');
   const [editingChildId, setEditingChildId] = useState<string | null>(null);
 
+  const normalizeChildDob = (dob?: string): string => {
+    if (!dob || dob === 'N/A') return '';
+    const birth = new Date(dob);
+    if (isNaN(birth.getTime())) return dob;
+    let y = birth.getFullYear();
+    if (y >= 1900 && y <= 1945) {
+      y += 100;
+      const m = String(birth.getMonth() + 1).padStart(2, '0');
+      const d = String(birth.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    return dob;
+  };
+
   const calcAge = (dob?: string): number => {
     if (!dob || dob === 'N/A') return 0;
-    const birth = new Date(dob);
+    const cleanDob = normalizeChildDob(dob);
+    const birth = new Date(cleanDob);
     if (isNaN(birth.getTime())) return 0;
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
@@ -772,6 +787,15 @@ export const Category3EmployeeView: React.FC = () => {
     }
     return age < 0 ? 0 : age;
   };
+
+  // Auto-sync writtenBasicSalaryAr with basicSalary
+  useEffect(() => {
+    if (basicSalary > 0) {
+      setWrittenBasicSalaryAr(numberToArabicWords(basicSalary));
+    } else if (basicSalary === 0) {
+      setWrittenBasicSalaryAr('');
+    }
+  }, [basicSalary]);
 
   // Auto-update spouse & child allowances from appSettings policy settings dynamically
   useEffect(() => {
@@ -1210,7 +1234,7 @@ export const Category3EmployeeView: React.FC = () => {
 
     const salaryVal = Number(emp.basicSalary || emp.basic_salary || emp.salary || 0);
     setBasicSalary(salaryVal);
-    setWrittenBasicSalaryAr(clean(emp.writtenBasicSalaryAr || emp.written_basic_salary_ar) || (salaryVal > 0 ? numberToArabicWords(salaryVal) : ''));
+    setWrittenBasicSalaryAr(salaryVal > 0 ? numberToArabicWords(salaryVal) : (clean(emp.writtenBasicSalaryAr || emp.written_basic_salary_ar) || ''));
     setBankName(clean(emp.bankName || emp.bank_name));
     setIban(clean(emp.iban));
 
@@ -3394,7 +3418,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
                       {t('بدل النقل الثابت', 'Fixed Transportation Allowance')}
-                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('من الإعدادات', 'From Settings')}</span>
+                      
                     </label>
                     <input
                       type="text"
@@ -3409,7 +3433,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
                       {t('المكافأة الثابتة', 'Fixed Bonus')}
-                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('من الإعدادات', 'From Settings')}</span>
+                      
                     </label>
                     <input
                       type="text"
@@ -3424,7 +3448,7 @@ export const Category3EmployeeView: React.FC = () => {
                   <div>
                     <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
                       {t('مخصصات الهاتف', 'Phone Allowance')}
-                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">{t('من الإعدادات', 'From Settings')}</span>
+                      
                     </label>
                     <input
                       type="text"

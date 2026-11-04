@@ -13,6 +13,7 @@ import { StatusChangeTable } from '../components/StatusChangeTable';
 import { TrainingTable } from '../components/TrainingTable';
 import { WarningTable } from '../components/WarningTable';
 import { Microsoft365Settings } from '../components/m365/Microsoft365Settings';
+import { numberToArabicWords } from '../utils/numberToArabicWords';
 
 interface TabConfig {
   id: string;
@@ -1132,7 +1133,7 @@ export const SettingsSecurityView: React.FC = () => {
           'اسم الطفل 2': sanitizeCellText(kids[1]?.name || ''),
           'صلة الطفل 2 (ولد/بنت)': sanitizeCellText(kids[1]?.relation || ''),
           'تاريخ ميلاد الطفل 2': sanitizeCellText(kids[1]?.dob || ''),
-          'اسم الطفل 3': sanitizeCellText(kids[3]?.name || ''),
+          'اسم الطفل 3': sanitizeCellText(kids[2]?.name || ''),
           'صلة الطفل 3 (ولد/بنت)': sanitizeCellText(kids[2]?.relation || ''),
           'تاريخ ميلاد الطفل 3': sanitizeCellText(kids[2]?.dob || ''),
           'اسم الطفل 4': sanitizeCellText(kids[3]?.name || ''),
@@ -1394,56 +1395,90 @@ export const SettingsSecurityView: React.FC = () => {
         };
 
         // Helper to convert Excel dates cleanly to YYYY-MM-DD
-        const parseExcelDate = (val: any): string => {
-          if (val === undefined || val === null || String(val).trim() === '') return '';
+        const parseExcelDate = (val: any, isChild: boolean = false): string => {
+          if (val === undefined || val === null) return '';
+          const strVal = String(val).trim();
+          if (!strVal || strVal === 'N/A' || strVal === '-' || strVal === 'null' || strVal === 'undefined') return '';
+
+          const currentYear = new Date().getFullYear(); // e.g. 2026
+          let y = 0, m = 0, d = 0;
+
           if (val instanceof Date) {
             if (isNaN(val.getTime())) return '';
-            const year = val.getFullYear();
-            const month = String(val.getMonth() + 1).padStart(2, '0');
-            const day = String(val.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-          }
-          const str = String(val).trim();
-          const num = Number(str);
-          if (!isNaN(num) && num > 20000 && num < 80000) {
-            const utc_days = Math.floor(num - 25569);
-            const utc_value = utc_days * 86400;
-            const date_info = new Date(utc_value * 1000);
-            const year = date_info.getUTCFullYear();
-            const month = String(date_info.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(date_info.getUTCDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-          }
-          if (str.includes('/') || str.includes('-')) {
-            const parts = str.split(/[/-]/);
-            if (parts.length === 3) {
-              let y = parseInt(parts[0], 10);
-              let m = parseInt(parts[1], 10);
-              let d = parseInt(parts[2], 10);
-              if (parts[0].length === 1 || parts[0].length === 2) {
-                if (parseInt(parts[2], 10) > 1900) {
-                  y = parseInt(parts[2], 10);
-                  m = parseInt(parts[1], 10);
-                  d = parseInt(parts[0], 10);
+            y = val.getFullYear();
+            m = val.getMonth() + 1;
+            d = val.getDate();
+          } else {
+            const num = Number(strVal);
+            // Excel serial date format (e.g. 42156)
+            if (!isNaN(num) && num > 10000 && num < 80000) {
+              const utc_days = Math.floor(num - 25569);
+              const utc_value = utc_days * 86400;
+              const date_info = new Date(utc_value * 1000);
+              y = date_info.getUTCFullYear();
+              m = date_info.getUTCMonth() + 1;
+              d = date_info.getUTCDate();
+            } else if (strVal.includes('/') || strVal.includes('-') || strVal.includes('.')) {
+              const parts = strVal.split(/[/.-]/).map(p => p.trim());
+              if (parts.length === 3) {
+                const p0 = parseInt(parts[0], 10);
+                const p1 = parseInt(parts[1], 10);
+                const p2 = parseInt(parts[2], 10);
+
+                if (p0 > 1000) {
+                  // YYYY-MM-DD
+                  y = p0; m = p1; d = p2;
+                } else if (p2 > 1000) {
+                  // DD-MM-YYYY or MM-DD-YYYY
+                  y = p2;
+                  if (p1 > 12) { m = p0; d = p1; }
+                  else { m = p1; d = p0; }
+                } else {
+                  // 2-digit year format (e.g. DD/MM/YY)
+                  if (p2 >= 0 && p2 <= 99) {
+                    d = p0; m = p1;
+                    y = p2 <= (currentYear % 100) ? 2000 + p2 : (isChild ? 2000 + p2 : 1900 + p2);
+                  } else {
+                    y = p0 <= (currentYear % 100) ? 2000 + p0 : (isChild ? 2000 + p0 : 1900 + p0);
+                    m = p1; d = p2;
+                  }
                 }
               }
-              if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-                return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            } else {
+              const dateObj = new Date(strVal);
+              if (!isNaN(dateObj.getTime())) {
+                y = dateObj.getFullYear();
+                m = dateObj.getMonth() + 1;
+                d = dateObj.getDate();
               }
             }
           }
-          const dateObj = new Date(str);
-          if (!isNaN(dateObj.getTime())) {
-            const year = dateObj.getFullYear();
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
+
+          if (y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+            // Fix 2-digit year misinterpretations:
+            // Excel or JS often parses '15' or '20' as 1915 or 1920
+            if (isChild) {
+              // A child in HRIS must have a reasonable birth year (born after 1995)
+              // If parsed as 1900-1945, shift by +100 to 2000-2045 (e.g. 1915 -> 2015, 1920 -> 2020)
+              if (y >= 1900 && y <= 1945) {
+                y += 100;
+              }
+              if (y > currentYear && (y - 100) >= 1990) {
+                y -= 100;
+              }
+            } else {
+              // Adult employee: anyone born 1900-1935 was likely 2000-2035 (e.g. 2001)
+              if (y >= 1900 && y <= 1935) {
+                y += 100;
+              }
+            }
+            return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
           }
-          return str;
+          return '';
         };
 
         const calcAge = (dobStr: string) => {
-          const cleanDob = parseExcelDate(dobStr);
+          const cleanDob = parseExcelDate(dobStr, true);
           if (!cleanDob) return 0;
           const dobDate = new Date(cleanDob);
           if (isNaN(dobDate.getTime())) return 0;
@@ -1476,7 +1511,7 @@ export const SettingsSecurityView: React.FC = () => {
               const rawChildDob = getVal(row, [
                 `Child ${i} Date of Birth`, `child${i}Dob`, `تاريخ ميلاد الطفل ${i}`, `تاريخ ميلاد الطفل${i}`, `تاريخ الطفل ${i}`, `تاريخ الطفل${i}`
               ]);
-              const childDob = parseExcelDate(rawChildDob);
+              const childDob = parseExcelDate(rawChildDob, true);
               
               const isValidName = childName && typeof childName === 'string' && childName.trim() !== '' && !childName.startsWith('طفل ') && childName !== 'الطفل';
               const isValidDob = childDob && typeof childDob === 'string' && childDob.trim() !== '' && childDob !== 'N/A';
@@ -1564,14 +1599,31 @@ export const SettingsSecurityView: React.FC = () => {
             const supervisorName = getVal(row, ['Supervisor Name', 'supervisorName', 'supervisor_name', 'اسم المشرف المباشر', 'اسم المشرف', 'المشرف', 'المدير المباشر']);
             const workScope = getVal(row, ['Work Scope', 'workScope', 'نطاق العمل']) || 'ميداني ومكتبي';
 
-            const basicSalary = Number(getVal(row, ['Basic Salary', 'basicSalary', 'basic_salary', 'الراتب الاسمي', 'الراتب الأساسي', 'الراتب'])) || 1200000;
-            const writtenBasicSalaryAr = getVal(row, ['Written Basic Salary (Arabic)', 'writtenBasicSalaryAr', 'الراتب الاسمي كتابة']) || 'مليون ومائتا ألف دينار عراقي';
-            const transportationFixed = Number(getVal(row, ['Transportation Fixed', 'transportationFixed', 'بدل النقل الثابت', 'بدل النقل'])) || 150000;
-            const fixedBonus = Number(getVal(row, ['Fixed Bonus', 'fixedBonus', 'المكافأة الثابتة', 'مكافأة ثابتة'])) || 100000;
-            const phoneAllowance = Number(getVal(row, ['Phone Allowance', 'phoneAllowance', 'بدل الهاتف', 'مخصصات الهاتف'])) || 50000;
-            const certificateAllowance = Number(getVal(row, ['Certificate Allowance', 'certificateAllowance', 'بدل الشهادة', 'مخصصات الشهادة'])) || 100000;
-            const bankName = getVal(row, ['Bank Name', 'bankName', 'bank_name', 'اسم المصرف', 'المصرف', 'البنك']) || 'مصرف بغداد';
-            const iban = getVal(row, ['IBAN', 'iban', 'رقم IBAN', 'رقم الحساب', 'الآيبان', 'حساب المصرف']) || 'IQ98 BAKI 0000 1234 5678 9012';
+            const parseValToNum = (v: any): number => {
+              if (v === undefined || v === null) return 0;
+              const str = String(v).replace(/,/g, '').trim();
+              if (str === '') return 0;
+              const num = Number(str);
+              return isNaN(num) ? 0 : num;
+            };
+
+            const rawBasicSalary = getVal(row, ['Basic Salary', 'basicSalary', 'basic_salary', 'الراتب الاسمي', 'الراتب الأساسي', 'الراتب', 'الراتب الاسمي (دينار)', 'الراتب الاسمي د.ع']);
+            const basicSalary = parseValToNum(rawBasicSalary);
+            // Basic salary in words automatically calculated to match basic salary amount:
+            const rawWrittenSalary = getVal(row, ['Written Basic Salary (Arabic)', 'writtenBasicSalaryAr', 'الراتب الاسمي كتابة', 'الراتب كتابة']);
+            const writtenBasicSalaryAr = (basicSalary > 0 ? numberToArabicWords(basicSalary) : '') || rawWrittenSalary || '';
+
+            // Allowances default to 0 for empty cells:
+            const transportationFixed = parseValToNum(getVal(row, ['Transportation Fixed', 'transportationFixed', 'بدل النقل الثابت', 'بدل النقل', 'مخصصات النقل']));
+            const fixedBonus = parseValToNum(getVal(row, ['Fixed Bonus', 'fixedBonus', 'المكافأة الثابتة', 'مكافأة ثابتة', 'المكافاة الثابتة']));
+            const phoneAllowance = parseValToNum(getVal(row, ['Phone Allowance', 'phoneAllowance', 'بدل الهاتف', 'مخصصات الهاتف']));
+            const certificateAllowance = parseValToNum(getVal(row, ['Certificate Allowance', 'certificateAllowance', 'بدل الشهادة', 'مخصصات الشهادة']));
+            const bankName = getVal(row, ['Bank Name', 'bankName', 'bank_name', 'اسم المصرف', 'المصرف', 'البنك']) || '';
+            const iban = getVal(row, ['IBAN', 'iban', 'رقم IBAN', 'رقم الحساب', 'الآيبان', 'حساب المصرف']) || '';
+
+            const rawExempt = getVal(row, ['SS Tax Exempt', 'isSsTaxExempt', 'is_ss_tax_exempt', 'غير خاضع للضمان', 'غير خاضع للضمان والضريبة', 'معفى من الضمان', 'متقاعد']);
+            const isSsTaxExempt = (rawExempt.toLowerCase() === 'true' || rawExempt.toLowerCase() === 'yes' || rawExempt.includes('نعم') || rawExempt === '1' || rawExempt.includes('متقاعد') || rawExempt.includes('معفى'));
+            const ssTaxExemptionReason = getVal(row, ['Exemption Reason', 'ssTaxExemptionReason', 'ss_tax_exemption_reason', 'سبب الإعفاء', 'سبب الاعفاء']) || (isSsTaxExempt ? 'متقاعد / غير خاضع للضمان الاجتماعي' : '');
 
             const nationalId = getVal(row, ['National ID', 'nationalId', 'national_id', 'البطاقة الوطنية', 'الرقم الوطني', 'رقم الهوية الوطنية']);
             const passportNo = getVal(row, ['Passport Number', 'Passport No', 'passportNo', 'passport_no', 'رقم جواز السفر', 'رقم الجواز', 'جواز السفر']);
@@ -1667,6 +1719,8 @@ export const SettingsSecurityView: React.FC = () => {
               certificateAllowance,
               bankName,
               iban,
+              isSsTaxExempt,
+              ssTaxExemptionReason,
               nationalId,
               passportNo,
               passportExpiry,

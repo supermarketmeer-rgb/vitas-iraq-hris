@@ -873,8 +873,8 @@ export const Category5PayrollView: React.FC = () => {
         position_ar: emp.jobTitle || emp.position_ar || emp.position,
         position_en: emp.jobTitleEn || emp.position_en || emp.jobTitle || emp.position,
         department: emp.department || 'قسم الائتمان',
-        bank_name: emp.bankName || emp.bank_name || 'مصرف بغداد',
-        iban: emp.iban || 'IQ98 BAKI 0000 1234 5678 9012',
+        bank_name: emp.bankName || emp.bank_name || '',
+        iban: emp.iban || '',
         original_start_date: emp.joinDate || emp.original_start_date || '2023-01-01',
 
         // XAMPP DB Financial Fields matching `payroll_finalized_rows` table in `vitasiraq_hris_db`

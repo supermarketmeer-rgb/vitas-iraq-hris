@@ -632,14 +632,14 @@ export function registerTaxModuleRoutes(app, query) {
         const isMarried = (e.marital_status === 'married' || e.marital_status === 'متأهل');
 
         const housing = Number(e.housing_allowance) || housingAllowanceDefault;
-        const transport = Number(e.transportation_allowance) || transportAllowanceDefault;
+        const transport = Number(e.transportation_allowance || e.transportation_fixed) || 0;
         const living = Number(e.phone_allowance) || 0;
         const spouseAllowance = isMarried ? marriageAllowanceDefault : 0;
         const childAllowance = dependentsCount * childAllowanceDefault;
         const other = Number(e.other_allowances) || 0;
 
         const totalAllowances = housing + transport + living + spouseAllowance + childAllowance + other;
-        const basicSalary = Number(e.basic_salary) || 1200000;
+        const basicSalary = Number(e.basic_salary || e.salary) || 0;
 
         return {
           id: String(e.id),
