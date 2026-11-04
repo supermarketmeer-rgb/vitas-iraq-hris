@@ -577,6 +577,9 @@ export const Category5PayrollView: React.FC = () => {
 
   // Compute live payroll rows for all employees (Matching XAMPP/vitasiraq_hris_db & hrms_pro_db `payroll_finalized_rows` schema 100%)
   const computedPayrollRows = useMemo(() => {
+    // Exchange rate for payroll calculations and policy allowances
+    const fxRate = parseFloat(appSettings['usd_to_iqd_rate'] || '1310') || 1310;
+
     // Remove duplicates based on employee ID to prevent duplicate payroll entries
     const uniqueEmployees = employees.filter((emp, index, self) =>
       index === self.findIndex(e => String(e.id) === String(emp.id))
@@ -636,7 +639,6 @@ export const Category5PayrollView: React.FC = () => {
 
       // Family allowance calculation (spouse + children under 18) -> family_allowance
       // Values are fetched directly from Policies settings in appSettings (or defaults)
-      const fxRate = parseFloat(appSettings['usd_to_iqd_rate'] || '1310') || 1310;
 
       // Determine if employee is a Loan Officer (Loan Officer, Senior Loan Officer, SE Loan Officer - excluding supervisors & managers)
       const empPos = `${emp.position || ''} ${emp.position_en || ''} ${emp.position_ar || ''} ${emp.title || ''} ${emp.job_title || ''} ${emp.job_title_en || ''} ${emp.job_title_ar || ''}`.toLowerCase();
