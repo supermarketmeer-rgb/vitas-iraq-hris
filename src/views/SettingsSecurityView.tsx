@@ -1399,6 +1399,7 @@ export const SettingsSecurityView: React.FC = () => {
           if (val === undefined || val === null) return '';
           const strVal = String(val).trim();
           if (!strVal || strVal === '0' || strVal === '0.0' || strVal === 'N/A' || strVal === '-' || strVal === 'null' || strVal === 'undefined') return '';
+          if (strVal.startsWith('1899') || strVal.startsWith('1900') || strVal.includes('1899-12-30') || strVal.includes('1900-01-00')) return '';
           if (!isNaN(Number(strVal)) && Number(strVal) <= 0) return '';
 
           const currentYear = new Date().getFullYear(); // e.g. 2026
@@ -1455,6 +1456,8 @@ export const SettingsSecurityView: React.FC = () => {
             }
           }
 
+          if (y <= 1900 || y === 1899) return '';
+
           if (y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
             // Fix 2-digit year misinterpretations:
             // Excel or JS often parses '15' or '20' as 1915 or 1920
@@ -1466,6 +1469,10 @@ export const SettingsSecurityView: React.FC = () => {
               }
               if (y > currentYear && (y - 100) >= 1990) {
                 y -= 100;
+              }
+              // Children cannot be born before 1995 (under ~30 years old)
+              if (y < 1995 || (currentYear - y) > 30) {
+                return '';
               }
             } else {
               // Adult employee: anyone born 1900-1935 was likely 2000-2035 (e.g. 2001)
@@ -1517,15 +1524,17 @@ export const SettingsSecurityView: React.FC = () => {
               const childDob = parseExcelDate(rawChildDob, true);
               
               const isValidName = childName && typeof childName === 'string' && childName.trim() !== '' && !childName.startsWith('طفل ') && childName !== 'الطفل';
-              const isValidDob = childDob && typeof childDob === 'string' && childDob.trim() !== '' && childDob !== 'N/A';
+              const isValidDob = childDob && typeof childDob === 'string' && childDob.trim() !== '' && childDob !== 'N/A' && !childDob.startsWith('1899') && !childDob.startsWith('1900');
+              const childAge = isValidDob ? calcAge(childDob) : 0;
               
-              if (isValidName || isValidDob) {
+              // Only add if there is a real name or a valid date under 30 years old
+              if (isValidName || (isValidDob && childAge < 30)) {
                 childrenList.push({
                   id: Date.now().toString() + i + Math.random().toString().slice(2, 6),
                   name: isValidName ? childName.trim() : `طفل ${i}`,
                   dob: isValidDob ? childDob : '',
                   relation: (childRelation === 'بنت' || childRelation === 'Daughter' || childRelation === 'female') ? 'بنت' : 'ولد',
-                  age: calcAge(childDob)
+                  age: childAge
                 });
               }
             }

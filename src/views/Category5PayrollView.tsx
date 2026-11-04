@@ -703,11 +703,15 @@ export const Category5PayrollView: React.FC = () => {
       const getChildAge = (child: any): number => {
         if (!child) return 99;
         const dobStr = String(child.dob || '').trim();
-        // Ignore ghost dates generated from blank/0 Excel cells (e.g. 2000-01-01 or 2000-01-02)
-        if (dobStr && dobStr !== 'N/A' && dobStr !== '0' && dobStr !== '2000-01-01' && dobStr !== '2000-01-02') {
+        // Ignore ghost dates generated from blank/0 Excel cells (e.g. 1899-12-30, 2000-01-01 or 2000-01-02)
+        if (dobStr.startsWith('1899') || dobStr.startsWith('1900') || dobStr.includes('1899-12-30') || dobStr === '2000-01-01' || dobStr === '2000-01-02' || dobStr === '2000-01-03') {
+          return 99;
+        }
+        if (dobStr && dobStr !== 'N/A' && dobStr !== '0') {
           const birth = new Date(dobStr);
           if (!isNaN(birth.getTime())) {
             let y = birth.getFullYear();
+            if (y <= 1900 || y === 1899) return 99;
             // 2-digit year correction: e.g. 1911 -> 2011, 1915 -> 2015, 1920 -> 2020
             if (y >= 1900 && y <= 1945) {
               y += 100;
@@ -718,13 +722,14 @@ export const Category5PayrollView: React.FC = () => {
             if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
               age--;
             }
+            if (age > 40) return 99;
             return age < 0 ? 0 : age;
           }
         }
         if (child.age !== undefined && child.age !== null && child.age !== '') {
           const parsed = Number(child.age);
           if (!isNaN(parsed)) {
-            if (parsed > 100) return parsed - 100;
+            if (parsed > 100) return 99; // ghost child age (e.g. 126)
             return parsed;
           }
         }

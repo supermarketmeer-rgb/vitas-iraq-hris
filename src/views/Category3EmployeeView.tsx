@@ -763,21 +763,26 @@ export const Category3EmployeeView: React.FC = () => {
 
   const normalizeChildDob = (dob?: string): string => {
     if (!dob || dob === 'N/A') return '';
-    const birth = new Date(dob);
+    const s = String(dob).trim();
+    if (s.startsWith('1899') || s.startsWith('1900') || s.includes('1899-12-30')) return '';
+    const birth = new Date(s);
     if (isNaN(birth.getTime())) return dob;
     let y = birth.getFullYear();
+    if (y <= 1900 || y === 1899) return '';
     if (y >= 1900 && y <= 1945) {
       y += 100;
       const m = String(birth.getMonth() + 1).padStart(2, '0');
       const d = String(birth.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
     }
+    if (y < 1995) return '';
     return dob;
   };
 
   const calcAge = (dob?: string): number => {
     if (!dob || dob === 'N/A') return 0;
     const cleanDob = normalizeChildDob(dob);
+    if (!cleanDob) return 0;
     const birth = new Date(cleanDob);
     if (isNaN(birth.getTime())) return 0;
     const today = new Date();
@@ -786,7 +791,8 @@ export const Category3EmployeeView: React.FC = () => {
     if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
       age--;
     }
-    return age < 0 ? 0 : age;
+    if (age < 0 || age > 50) return 0;
+    return age;
   };
 
   // Auto-sync writtenBasicSalaryAr with basicSalary
@@ -1186,8 +1192,18 @@ export const Category3EmployeeView: React.FC = () => {
     } else if (typeof emp.childrenDetails === 'string' && emp.childrenDetails.startsWith('[')) {
       try { parsedChildren = JSON.parse(emp.childrenDetails); } catch (e) {}
     }
-    setChildrenList(parsedChildren);
-    setChildrenDetails(parsedChildren.length > 0 ? JSON.stringify(parsedChildren) : '');
+    // Filter out any ghost children (e.g. 1899-12-30, age > 40, or invalid records)
+    const validChildren = (parsedChildren || []).filter((c: any) => {
+      if (!c) return false;
+      const dob = String(c.dob || '').trim();
+      if (dob.startsWith('1899') || dob.startsWith('1900') || dob.includes('1899-12-30')) return false;
+      const age = calcAge(dob);
+      if (age > 40) return false;
+      if ((!dob || dob === 'N/A') && (!c.name || c.name.startsWith('طفل ') || c.name === 'الطفل')) return false;
+      return true;
+    });
+    setChildrenList(validChildren);
+    setChildrenDetails(validChildren.length > 0 ? JSON.stringify(validChildren) : '');
     setNewChildName('');
     setNewChildDob('');
     setEditingChildId(null);
