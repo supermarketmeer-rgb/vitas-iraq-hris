@@ -274,11 +274,14 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee: prop
     fullEmployee?.spouse_employed_here === true || 
     String(fullEmployee?.spouse_employed_here) === '1';
 
-  const isMarried = fullEmployee?.maritalStatus === 'متأهل' || 
-    fullEmployee?.maritalStatus === 'متزوج' || 
-    fullEmployee?.maritalStatus === 'married' || 
-    fullEmployee?.marital_status === 'married' || 
-    Boolean(fullEmployee?.spouseName && fullEmployee?.spouseName !== 'N/A' && String(fullEmployee?.spouseName).trim() !== '');
+  const mStatus = String(fullEmployee?.maritalStatus || fullEmployee?.marital_status || '').toLowerCase().trim();
+  const isExplicitlySingle = mStatus === 'single' || mStatus === 'أعزب' || mStatus === 'مطلق' || mStatus === 'divorced' || mStatus === 'أرمل' || mStatus === 'widow';
+  const cleanSpouseName = (fullEmployee?.spouseName && fullEmployee?.spouseName !== 'غير محدد' && fullEmployee?.spouseName !== 'N/A') ? String(fullEmployee?.spouseName).trim() : '';
+  const hasValidSpouseName = Boolean(cleanSpouseName);
+
+  const isMarried = !isExplicitlySingle && (
+    mStatus === 'متأهل' || mStatus === 'متزوج' || mStatus === 'married' || hasValidSpouseName
+  );
 
   let spouseAllow = 0;
   if (isMarried && !spouseWorksHere) {

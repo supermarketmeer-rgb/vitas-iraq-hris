@@ -682,7 +682,14 @@ export const Category5PayrollView: React.FC = () => {
       const spouseWorksHere = emp.spouseEmployedHere === true || emp.spouse_employed_here === true || String(emp.spouse_employed_here) === '1' || String(emp.spouseEmployedHere) === '1';
       
       // Determine if employee is married
-      const isMarried = emp.maritalStatus === 'متأهل' || emp.maritalStatus === 'متزوج' || emp.maritalStatus === 'married' || emp.marital_status === 'married' || Boolean(emp.spouseName && emp.spouseName !== 'N/A' && emp.spouseName.trim() !== '');
+      const mStatus = String(emp.maritalStatus || emp.marital_status || '').toLowerCase().trim();
+      const isExplicitlySingle = mStatus === 'single' || mStatus === 'أعزب' || mStatus === 'مطلق' || mStatus === 'divorced' || mStatus === 'أرمل' || mStatus === 'widow';
+      const cleanSpouseName = (emp.spouseName && emp.spouseName !== 'غير محدد' && emp.spouseName !== 'N/A') ? String(emp.spouseName).trim() : '';
+      const hasValidSpouseName = Boolean(cleanSpouseName);
+
+      const isMarried = !isExplicitlySingle && (
+        mStatus === 'متأهل' || mStatus === 'متزوج' || mStatus === 'married' || hasValidSpouseName
+      );
 
       let spouseAllow = 0;
       if (isMarried && !spouseWorksHere) {
@@ -926,6 +933,7 @@ export const Category5PayrollView: React.FC = () => {
         original_start_date: emp.joinDate || emp.original_start_date || '2023-01-01',
 
         // XAMPP DB Financial Fields matching `payroll_finalized_rows` table in `vitasiraq_hris_db`
+        marital_status: isMarried ? 'married' : 'single',
         basic_salary,
         current_month_basic,
         phone_allowance,

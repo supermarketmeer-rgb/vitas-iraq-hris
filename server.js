@@ -1204,7 +1204,7 @@ const formatEmployeeRow = (row) => {
     photo_url: resolvedPhoto,
     avatar: resolvedPhoto,
     photo: resolvedPhoto,
-    spouseName: row.spouse_name || 'غير محدد',
+    spouseName: (row.spouse_name && row.spouse_name !== 'غير محدد' && row.spouse_name !== 'N/A') ? row.spouse_name : '',
     spouseEmployedHere: Boolean(row.spouse_employed_here),
     childrenList: Array.isArray(childrenList) ? childrenList : [],
     childrenDetails: row.children_details || row.children_json || '',
