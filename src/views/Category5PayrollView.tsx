@@ -604,7 +604,27 @@ export const Category5PayrollView: React.FC = () => {
 
       // XAMPP Allowances Fields (supporting camelCase & snake_case)
       const phone_allowance = adj.phoneAllowance !== undefined ? adj.phoneAllowance : Number(emp.phoneAllowance ?? emp.phone_allowance ?? 0);
-      const cert_allowance = adj.certAllowance !== undefined ? adj.certAllowance : Number(emp.certificateAllowance ?? emp.certificate_allowance ?? 0);
+      // Dynamic certificate allowance from graduation degree policy if not individually overridden
+      const deg = emp.graduationDegree || emp.graduation_degree || '';
+      let policyCertVal = 0;
+      if (deg === 'Diplome') {
+        const raw = parseFloat(appSettings['certificate_allowance_diplome'] || '50000');
+        policyCertVal = appSettings['certificate_allowance_currency'] === 'USD' ? Math.round(raw * fxRate) : raw;
+      } else if (deg === 'Bachelar') {
+        const raw = parseFloat(appSettings['certificate_allowance_bachelar'] || '100000');
+        policyCertVal = appSettings['certificate_allowance_currency'] === 'USD' ? Math.round(raw * fxRate) : raw;
+      } else if (deg === 'Master') {
+        const raw = parseFloat(appSettings['certificate_allowance_master'] || '150000');
+        policyCertVal = appSettings['certificate_allowance_currency'] === 'USD' ? Math.round(raw * fxRate) : raw;
+      }
+
+      const cert_allowance = adj.certAllowance !== undefined 
+        ? adj.certAllowance 
+        : (emp.certificateAllowance && Number(emp.certificateAllowance) > 0 
+            ? Number(emp.certificateAllowance) 
+            : (emp.certificate_allowance && Number(emp.certificate_allowance) > 0 
+                ? Number(emp.certificate_allowance) 
+                : policyCertVal));
       // 2. transportation
       const transportation = adj.transportation !== undefined ? adj.transportation : Number(emp.transportationFixed ?? emp.transportation_fixed ?? 0);
       // 3. bonus

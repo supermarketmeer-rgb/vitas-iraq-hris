@@ -694,6 +694,7 @@ export const Category3EmployeeView: React.FC = () => {
   const [gender, setGender] = useState<'ذكر' | 'أنثى'>('ذكر');
   const [maritalStatus, setMaritalStatus] = useState<'أعزب' | 'متأهل' | 'مطلق' | 'أرمل'>('أعزب');
   const [nationality, setNationality] = useState(language === 'en' ? 'Iraqi' : 'عراقي');
+  const [graduationDegree, setGraduationDegree] = useState<'Diplome' | 'Bachelar' | 'Master' | ''>('');
 
   // Tab 2: Contracts & Service
   const [contractStartDate, setContractStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -1219,6 +1220,7 @@ export const Category3EmployeeView: React.FC = () => {
       emp.maritalStatus === 'أرمل' || emp.marital_status === 'widow' ? 'أرمل' : 'أعزب'
     );
     setNationality(clean(emp.nationality) || 'عراقي');
+    setGraduationDegree(clean(emp.graduationDegree || emp.graduation_degree) as any || '');
 
     const rawDept = clean(emp.department || emp.department_name || emp.department_ar);
     const rawDeptEn = clean(emp.departmentEn || emp.department_en);
@@ -1319,6 +1321,7 @@ export const Category3EmployeeView: React.FC = () => {
     setWarningsRecord('');
     setExitDate('');
     setNationality(language === 'en' ? 'Iraqi' : 'عراقي');
+    setGraduationDegree('');
     setPositionStartDate(new Date().toISOString().split('T')[0]);
     setJobTitle('');
     setJobTitleEn('');
@@ -1704,6 +1707,7 @@ export const Category3EmployeeView: React.FC = () => {
       fixed_bonus: fixedBonus,
       phone_allowance: phoneAllowance,
       certificate_allowance: certificateAllowance,
+      graduation_degree: graduationDegree || null,
       nationality,
       supervisor_name: supervisorName,
       work_scope: workScope,
@@ -1759,6 +1763,8 @@ export const Category3EmployeeView: React.FC = () => {
       fixedBonus: Number(fixedBonus),
       phoneAllowance: Number(phoneAllowance),
       certificateAllowance: Number(certificateAllowance),
+      graduationDegree: graduationDegree || undefined,
+      graduation_degree: graduationDegree || undefined,
       writtenBasicSalaryAr,
       bankName,
       bank_name: bankName,
@@ -2884,6 +2890,42 @@ export const Category3EmployeeView: React.FC = () => {
                       placeholder={t('عراقي', 'Iraqi')}
                       className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-xs text-teal-600">school</span>
+                      {t('الدرجة العلمية / المؤهل (Graduation Degree)', 'Graduation Degree (Diplome, Bachelar, Master)')}
+                    </label>
+                    <select
+                      value={graduationDegree}
+                      onChange={e => {
+                        const deg = e.target.value as any;
+                        setGraduationDegree(deg);
+                        if (deg) {
+                          const fx = parseFloat(appSettings['usd_to_iqd_rate'] || '1520') || 1520;
+                          const curr = appSettings['certificate_allowance_currency'] || 'IQD';
+                          let rawVal = 0;
+                          if (deg === 'Diplome') {
+                            rawVal = parseFloat(appSettings['certificate_allowance_diplome'] || '50000');
+                          } else if (deg === 'Bachelar') {
+                            rawVal = parseFloat(appSettings['certificate_allowance_bachelar'] || '100000');
+                          } else if (deg === 'Master') {
+                            rawVal = parseFloat(appSettings['certificate_allowance_master'] || '150000');
+                          }
+                          const finalVal = curr === 'USD' ? Math.round(rawVal * fx) : rawVal;
+                          setCertificateAllowance(finalVal);
+                        } else {
+                          setCertificateAllowance(0);
+                        }
+                      }}
+                      className="w-full bg-[#0a0c10] border border-teal-500/30 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-teal-300 font-semibold focus:outline-none focus:border-teal-400"
+                    >
+                      <option value="">{t('-- غير محدد / اختر الدرجة العلمية --', '-- Select Graduation Degree --')}</option>
+                      <option value="Diplome">Diplome (دبلوم)</option>
+                      <option value="Bachelar">Bachelar (بكالوريوس)</option>
+                      <option value="Master">Master (ماجستير)</option>
+                    </select>
                   </div>
 
                   {/* Row 4: Compact Employee Photo bar spanning all 4 columns */}

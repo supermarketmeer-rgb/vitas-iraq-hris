@@ -1192,6 +1192,8 @@ const formatEmployeeRow = (row) => {
     fixedBonus: Number(row.fixed_bonus || 0),
     phoneAllowance: Number(row.phone_allowance || 0),
     certificateAllowance: Number(row.certificate_allowance || 0),
+    graduationDegree: row.graduation_degree || '',
+    graduation_degree: row.graduation_degree || '',
     writtenBasicSalaryAr: row.written_basic_salary_ar || '',
     bankName: row.bank_name || 'غير محدد',
     iban: row.iban || 'N/A',
@@ -1394,6 +1396,7 @@ app.post('/api/employees', async (req, res) => {
     const fixedBonus = parseNum(data.fixedBonus || data.fixed_bonus);
     const phoneAllowance = parseNum(data.phoneAllowance || data.phone_allowance);
     const certificateAllowance = parseNum(data.certificateAllowance || data.certificate_allowance);
+    const graduationDegree = data.graduationDegree || data.graduation_degree || null;
     const writtenBasicSalaryAr = data.writtenBasicSalaryAr || data.written_basic_salary_ar || null;
 
     const bankName = data.bankName || data.bank_name || null;
@@ -1507,6 +1510,7 @@ app.post('/api/employees', async (req, res) => {
       fixed_bonus: fixedBonus,
       phone_allowance: phoneAllowance,
       certificate_allowance: certificateAllowance,
+      graduation_degree: graduationDegree,
       written_basic_salary_ar: writtenBasicSalaryAr,
       bank_name: bankName,
       iban: iban,

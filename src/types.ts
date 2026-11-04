@@ -105,6 +105,8 @@ export interface Employee {
   fixedBonus?: number;
   phoneAllowance?: number;
   certificateAllowance?: number;
+  graduationDegree?: 'Diplome' | 'Bachelar' | 'Master' | string;
+  graduation_degree?: string;
   writtenBasicSalaryAr?: string;
   bankName?: string;
   bank_name?: string;

@@ -1103,6 +1103,128 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                 appSettings.transportation_allowance_currency || 'IQD'
               )}
             </div>
+            {/* Certificate Allowance by Graduation Degree (Diplome, Bachelar, Master) */}
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 p-4 sm:p-5 rounded-2xl bg-white border-2 border-gray-300 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b-2 border-gray-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
+                    <span className="material-symbols-outlined text-xl">school</span>
+                  </div>
+                  <div>
+                    <h5 className="text-xs sm:text-sm font-bold text-black flex items-center gap-1.5">
+                      {t('مخصص الشهادة حسب الدرجة العلمية (Graduation Degree)', 'Graduation Degree Certificate Allowances')}
+                      <span className="px-2 py-0.2 rounded-full text-[10px] font-normal bg-teal-50 text-teal-800 border border-teal-200">
+                        {t('ديناميكي وقابل للتعديل', 'Dynamic & Configurable')}
+                      </span>
+                    </h5>
+                    <p className="text-[11px] text-gray-600 font-normal">
+                      {t('تحديد المبالغ المعتمدة للشهادات العلمية (دبلوم، بكالوريوس، ماجستير) مع الانعكاس المباشر على المسير وبطاقات الموظفين', 'Configure dynamic allowance amounts for Diplome, Bachelar, and Master degrees')}
+                    </p>
+                  </div>
+                </div>
+                <div className="inline-flex rounded-lg bg-gray-100 p-0.5 border border-gray-300 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => handleSettingChange('certificate_allowance_currency', 'IQD')}
+                    className={`px-2.5 py-0.5 rounded-md text-[10px] font-normal transition-all cursor-pointer ${
+                      (appSettings.certificate_allowance_currency || 'IQD') === 'IQD'
+                        ? 'bg-black text-white shadow-sm'
+                        : 'text-black hover:bg-gray-200'
+                    }`}
+                  >
+                    {t('د.ع IQD', 'IQD')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSettingChange('certificate_allowance_currency', 'USD')}
+                    className={`px-2.5 py-0.5 rounded-md text-[10px] font-normal transition-all cursor-pointer ${
+                      appSettings.certificate_allowance_currency === 'USD'
+                        ? 'bg-black text-white shadow-sm'
+                        : 'text-black hover:bg-gray-200'
+                    }`}
+                  >
+                    $ USD
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {/* 1. Diplome */}
+                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-300 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-black font-semibold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-teal-600">workspace_premium</span>
+                      <span>{t('شهادة دبلوم (Diplome)', 'Diplome Degree')}</span>
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="1000"
+                      value={appSettings.certificate_allowance_diplome || '50000'}
+                      onChange={(e) => handleSettingChange('certificate_allowance_diplome', e.target.value)}
+                      className="w-full bg-white border-2 border-gray-300 rounded-xl px-3.5 py-2 text-xs text-black font-mono font-normal focus:outline-none focus:border-black"
+                    />
+                    <span className="absolute inset-y-0 end-0 pe-3 flex items-center pointer-events-none text-black font-normal text-xs">
+                      {appSettings.certificate_allowance_currency === 'USD' ? '$' : t('د.ع', 'IQD')}
+                    </span>
+                  </div>
+                  {renderCurrencyConversionHint(
+                    appSettings.certificate_allowance_diplome || '50000',
+                    appSettings.certificate_allowance_currency || 'IQD'
+                  )}
+                </div>
+                {/* 2. Bachelar */}
+                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-300 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-black font-semibold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-teal-600">school</span>
+                      <span>{t('شهادة بكالوريوس (Bachelar)', 'Bachelar Degree')}</span>
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="1000"
+                      value={appSettings.certificate_allowance_bachelar || '100000'}
+                      onChange={(e) => handleSettingChange('certificate_allowance_bachelar', e.target.value)}
+                      className="w-full bg-white border-2 border-gray-300 rounded-xl px-3.5 py-2 text-xs text-black font-mono font-normal focus:outline-none focus:border-black"
+                    />
+                    <span className="absolute inset-y-0 end-0 pe-3 flex items-center pointer-events-none text-black font-normal text-xs">
+                      {appSettings.certificate_allowance_currency === 'USD' ? '$' : t('د.ع', 'IQD')}
+                    </span>
+                  </div>
+                  {renderCurrencyConversionHint(
+                    appSettings.certificate_allowance_bachelar || '100000',
+                    appSettings.certificate_allowance_currency || 'IQD'
+                  )}
+                </div>
+                {/* 3. Master */}
+                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-300 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-black font-semibold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-teal-600">psychology</span>
+                      <span>{t('شهادة ماجستير (Master)', 'Master Degree')}</span>
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="1000"
+                      value={appSettings.certificate_allowance_master || '150000'}
+                      onChange={(e) => handleSettingChange('certificate_allowance_master', e.target.value)}
+                      className="w-full bg-white border-2 border-gray-300 rounded-xl px-3.5 py-2 text-xs text-black font-mono font-normal focus:outline-none focus:border-black"
+                    />
+                    <span className="absolute inset-y-0 end-0 pe-3 flex items-center pointer-events-none text-black font-normal text-xs">
+                      {appSettings.certificate_allowance_currency === 'USD' ? '$' : t('د.ع', 'IQD')}
+                    </span>
+                  </div>
+                  {renderCurrencyConversionHint(
+                    appSettings.certificate_allowance_master || '150000',
+                    appSettings.certificate_allowance_currency || 'IQD'
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

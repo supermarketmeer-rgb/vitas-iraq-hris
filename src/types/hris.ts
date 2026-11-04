@@ -78,6 +78,8 @@ export interface Employee {
   position?: string;
   position_ar?: string;
   position_en?: string;
+  graduation_degree?: string;
+  graduationDegree?: string;
   position_title?: string;
   raw_job_title?: string;
   supervisor_employee_id?: number | null;
