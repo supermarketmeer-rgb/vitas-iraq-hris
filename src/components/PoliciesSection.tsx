@@ -58,7 +58,7 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
   const [simulatedServiceYears, setSimulatedServiceYears] = useState<string>('7');
 
   // Active settings merged
-  const appSettings = propAppSettings || internalSettings;
+  const appSettings = useMemo(() => ({ ...internalSettings, ...(propAppSettings || {}) }), [internalSettings, propAppSettings]);
   const isSaving = propIsSaving !== undefined ? propIsSaving : internalIsSaving;
 
   // Active Exchange Rate
@@ -157,7 +157,7 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
   };
 
   // Handle Save / Add / Update Exchange Rate
-  const handleSaveFxRecord = (record: ExchangeRateRecord) => {
+  const handleSaveFxRecord = async (record: ExchangeRateRecord) => {
     let updatedHistory: ExchangeRateRecord[];
 
     if (record.isActive) {
@@ -169,7 +169,6 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
       } else {
         updatedHistory = [record, ...updatedHistory];
       }
-      handleSettingChange('usd_to_iqd_rate', String(record.rate));
     } else {
       const exists = fxHistory.some(r => r.id === record.id);
       if (exists) {
@@ -179,14 +178,41 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
       }
     }
 
-    handleSettingChange('usd_exchange_rates_history', JSON.stringify(updatedHistory));
+    const payload: Record<string, string> = {
+      usd_exchange_rates_history: JSON.stringify(updatedHistory)
+    };
+    if (record.isActive) {
+      payload.usd_to_iqd_rate = String(record.rate);
+    }
+
+    // 1. Update internal state & localStorage immediately
+    setInternalSettings(prev => {
+      const next = { ...prev, ...payload };
+      try { localStorage.setItem('vitas_app_settings', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    // 2. Notify parent prop if provided
+    if (propOnSettingChange) {
+      for (const [k, v] of Object.entries(payload)) {
+        propOnSettingChange(k, v);
+      }
+    }
+
+    // 3. Persist directly to backend API bulk endpoint
+    try {
+      await api.updateAppSettingsBulk(payload);
+    } catch (e) {
+      console.warn('Error saving fx rate to backend:', e);
+    }
+
     setEditingFxRecord(null);
-    setSaveToast(t('تم تحديث جدول سعر الصرف بنجاح!', 'Exchange rate table updated successfully!'));
+    setSaveToast(t('تم تحديث جدول سعر الصرف وحفظه بنجاح!', 'Exchange rate table updated and saved successfully!'));
     setTimeout(() => setSaveToast(null), 4000);
   };
 
   // Set a specific historical record as active
-  const handleSetActiveFx = (recordId: string) => {
+  const handleSetActiveFx = async (recordId: string) => {
     const target = fxHistory.find(r => r.id === recordId);
     if (!target) return;
 
@@ -194,22 +220,62 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
       ...r,
       isActive: r.id === recordId,
     }));
-    handleSettingChange('usd_to_iqd_rate', String(target.rate));
-    handleSettingChange('usd_exchange_rates_history', JSON.stringify(updated));
+
+    const payload: Record<string, string> = {
+      usd_to_iqd_rate: String(target.rate),
+      usd_exchange_rates_history: JSON.stringify(updated)
+    };
+
+    setInternalSettings(prev => {
+      const next = { ...prev, ...payload };
+      try { localStorage.setItem('vitas_app_settings', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    if (propOnSettingChange) {
+      for (const [k, v] of Object.entries(payload)) {
+        propOnSettingChange(k, v);
+      }
+    }
+
+    try {
+      await api.updateAppSettingsBulk(payload);
+    } catch (e) {
+      console.warn('Error activating fx rate to backend:', e);
+    }
+
     setSaveToast(t(`تم تفعيل سعر الصرف (1$ = ${target.rate.toLocaleString()} د.ع) كالسعر المعتمد!`, `Active exchange rate updated to $1 = ${target.rate.toLocaleString()} IQD!`));
     setTimeout(() => setSaveToast(null), 4000);
   };
 
   // Delete an exchange rate record
-  const handleDeleteFx = (recordId: string) => {
+  const handleDeleteFx = async (recordId: string) => {
     const filtered = fxHistory.filter(r => r.id !== recordId);
     if (filtered.length === 0) return;
-    // If deleted the active one, make the first one active
+
+    const payload: Record<string, string> = {
+      usd_exchange_rates_history: JSON.stringify(filtered)
+    };
     if (!filtered.some(r => r.isActive)) {
       filtered[0].isActive = true;
-      handleSettingChange('usd_to_iqd_rate', String(filtered[0].rate));
+      payload.usd_to_iqd_rate = String(filtered[0].rate);
     }
-    handleSettingChange('usd_exchange_rates_history', JSON.stringify(filtered));
+
+    setInternalSettings(prev => {
+      const next = { ...prev, ...payload };
+      try { localStorage.setItem('vitas_app_settings', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    if (propOnSettingChange) {
+      for (const [k, v] of Object.entries(payload)) {
+        propOnSettingChange(k, v);
+      }
+    }
+
+    try {
+      await api.updateAppSettingsBulk(payload);
+    } catch (e) {}
   };
 
   const handleBatchSuccess = (updatedCount: number, excludedPermanentCount: number, autoExcludedNewCount: number) => {

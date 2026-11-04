@@ -1,3 +1,20 @@
+const normalizeSettingsMap = (data: any): Record<string, string> => {
+  if (!data) return {};
+  if (Array.isArray(data)) {
+    const map: Record<string, string> = {};
+    data.forEach((setting: any) => {
+      if (setting && setting.setting_key) {
+        map[setting.setting_key] = String(setting.setting_value ?? '');
+      }
+    });
+    return map;
+  }
+  if (typeof data === 'object') {
+    return { ...data };
+  }
+  return {};
+};
+
 import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import {
   ThemeMode,
@@ -513,7 +530,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           api.getLeaveRequests().then(d => { if (Array.isArray(d)) setLeaveRequests(d); }).catch(() => {});
         }
         if (tableName === 'app_settings' || tableName === 'users') {
-          api.getAppSettings().then(d => { if (d && typeof d === 'object') setAppSettings(d); }).catch(() => {});
+          api.getAppSettings().then(d => {
+            const normalized = normalizeSettingsMap(d);
+            if (Object.keys(normalized).length > 0) {
+              setAppSettings(normalized);
+              try { localStorage.setItem('vitas_app_settings', JSON.stringify(normalized)); } catch (e) {}
+            }
+          }).catch(() => {});
           syncEngine.loadScheduleFromBackend().catch(() => {});
         }
         if (tableName === 'system_notifications' || tableName === 'notifications') {
@@ -573,14 +596,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return leaveData;
           });
         }
-        if (setsData && typeof setsData === 'object') {
-          setAppSettings(prev => {
-            if (prev && Object.keys(prev).length === Object.keys(setsData).length) return prev;
-            if ((setsData as any).vitas_hris_sync_schedule) {
-              syncEngine.loadScheduleFromBackend().catch(() => {});
-            }
-            return setsData;
-          });
+        if (setsData) {
+          const normalized = normalizeSettingsMap(setsData);
+          if (Object.keys(normalized).length > 0) {
+            setAppSettings(prev => {
+              if (prev && JSON.stringify(prev) === JSON.stringify(normalized)) return prev;
+              if (normalized.vitas_hris_sync_schedule) {
+                syncEngine.loadScheduleFromBackend().catch(() => {});
+              }
+              try { localStorage.setItem('vitas_app_settings', JSON.stringify(normalized)); } catch (e) {}
+              return normalized;
+            });
+          }
         }
       } catch (e) {}
     }, 30000);
