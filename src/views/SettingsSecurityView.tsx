@@ -1398,7 +1398,8 @@ export const SettingsSecurityView: React.FC = () => {
         const parseExcelDate = (val: any, isChild: boolean = false): string => {
           if (val === undefined || val === null) return '';
           const strVal = String(val).trim();
-          if (!strVal || strVal === 'N/A' || strVal === '-' || strVal === 'null' || strVal === 'undefined') return '';
+          if (!strVal || strVal === '0' || strVal === '0.0' || strVal === 'N/A' || strVal === '-' || strVal === 'null' || strVal === 'undefined') return '';
+          if (!isNaN(Number(strVal)) && Number(strVal) <= 0) return '';
 
           const currentYear = new Date().getFullYear(); // e.g. 2026
           let y = 0, m = 0, d = 0;

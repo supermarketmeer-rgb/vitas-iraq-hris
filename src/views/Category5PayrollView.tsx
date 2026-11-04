@@ -668,14 +668,21 @@ export const Category5PayrollView: React.FC = () => {
         try { rawChildren = JSON.parse(emp.children_json); } catch (e) {}
       }
 
-      // Calculate child age accurately
+      // Calculate child age accurately (with 2-digit year correction & ghost date filtering)
       const getChildAge = (child: any): number => {
         if (!child) return 99;
-        if (child.dob && child.dob !== 'N/A') {
-          const birth = new Date(child.dob);
+        const dobStr = String(child.dob || '').trim();
+        // Ignore ghost dates generated from blank/0 Excel cells (e.g. 2000-01-01 or 2000-01-02)
+        if (dobStr && dobStr !== 'N/A' && dobStr !== '0' && dobStr !== '2000-01-01' && dobStr !== '2000-01-02') {
+          const birth = new Date(dobStr);
           if (!isNaN(birth.getTime())) {
+            let y = birth.getFullYear();
+            // 2-digit year correction: e.g. 1911 -> 2011, 1915 -> 2015, 1920 -> 2020
+            if (y >= 1900 && y <= 1945) {
+              y += 100;
+            }
             const today = new Date();
-            let age = today.getFullYear() - birth.getFullYear();
+            let age = today.getFullYear() - y;
             const m = today.getMonth() - birth.getMonth();
             if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
               age--;
@@ -685,7 +692,10 @@ export const Category5PayrollView: React.FC = () => {
         }
         if (child.age !== undefined && child.age !== null && child.age !== '') {
           const parsed = Number(child.age);
-          return !isNaN(parsed) ? parsed : 99;
+          if (!isNaN(parsed)) {
+            if (parsed > 100) return parsed - 100;
+            return parsed;
+          }
         }
         return 99;
       };
