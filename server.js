@@ -1882,6 +1882,18 @@ app.post('/api/leave-requests', async (req, res) => {
   }
 });
 
+app.delete(['/api/leave-requests', '/api/leave-requests/all', '/api/leaves/requests'], async (req, res) => {
+  try {
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    await query('TRUNCATE TABLE leave_requests').catch(() => query('DELETE FROM leave_requests'));
+    if (!isRailway) executeCloudQuery('TRUNCATE TABLE leave_requests').catch(() => executeCloudQuery('DELETE FROM leave_requests')).catch(() => {});
+    triggerRealtimeSync(db, 'leave_requests');
+    res.json({ success: true, message: 'All leave requests cleared successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Job Vacancies (also available as job-openings for candidate portal)
 app.get('/api/job-vacancies', async (req, res) => {
   try {

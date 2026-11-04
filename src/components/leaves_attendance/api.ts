@@ -30,8 +30,8 @@ import {
 let mockUsers = [...userProfiles];
 let mockActiveUser = mockUsers[1]; // Default to Manager
 let mockAttendance = [...initialAttendanceRecords];
-let mockBalances = [...initialLeaveBalances];
-let mockLeaves = [...initialLeaveRequests];
+let mockBalances: LeaveBalance[] = [];
+let mockLeaves: LeaveRequest[] = [];
 let mockCorrections = [...initialCorrectionRequests];
 let mockSettings = { ...initialBiometricSettings };
 let mockRawLogs = [...initialRawLogs];
@@ -270,29 +270,19 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
   }
 
   mappedEmps.forEach((emp) => {
-    const usedAnn = emp.id % 6;
-    const usedSick = emp.id % 3;
-    const usedEmg = emp.id % 2;
-
-    // Check individual employee Starting Leave Balance (carried_forward_days) from:
-    // 1. LocalStorage saved override for this employee
-    // 2. Existing balance in mockBalances
-    // 3. Initial balances in mockHrisDb
-    // 4. Default variance (0 to 6 days) based on past usage history
-    const existingBal = mockBalances.find(b => (b.employee_id === emp.id || b.employee_number === emp.employee_number) && b.leave_type_code === 'ANNUAL');
-    const initialBal = initialLeaveBalances.find(b => (b.employee_id === emp.id || b.employee_number === emp.employee_number) && b.leave_type_code === 'ANNUAL');
+    // Clean slate for new leaves: 0 used days and 0 default carry forward unless explicitly configured
+    const usedAnn = 0;
+    const usedSick = 0;
+    const usedEmg = 0;
 
     let empCarryForward = 0;
     if (savedStartingBalanceOverrides[emp.employee_number] !== undefined) {
       empCarryForward = Number(savedStartingBalanceOverrides[emp.employee_number]);
-    } else if (existingBal && existingBal.carried_forward_days !== undefined) {
-      empCarryForward = existingBal.carried_forward_days;
-    } else if (initialBal && initialBal.carried_forward_days !== undefined) {
-      empCarryForward = initialBal.carried_forward_days;
     } else {
-      // Historical starting balance varies per employee (e.g. 4, 6, 2, 0, 1, 3, 5...)
-      const variance = [4, 6, 2, 0, 1, 3, 5, 2, 0, 4, 1, 3];
-      empCarryForward = variance[(emp.id - 1) % variance.length];
+      const existingBal = mockBalances.find(b => (b.employee_id === emp.id || b.employee_number === emp.employee_number) && b.leave_type_code === 'ANNUAL');
+      if (existingBal && existingBal.carried_forward_days !== undefined) {
+        empCarryForward = existingBal.carried_forward_days;
+      }
     }
 
     generatedBalances.push(
@@ -996,6 +986,19 @@ export const leavesApi = {
   getRawAttendanceLogs: async () => {
     const res = await api.getRawLogs();
     return { data: res.raw_logs };
+  },
+  clearAllLeaveData: async () => {
+    mockBalances = [];
+    mockLeaves = [];
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('vitas_leave_requests');
+      localStorage.removeItem('vitas_emp_starting_leave_balance');
+      localStorage.removeItem('vitas_emp_curry_forward');
+    }
+    try {
+      await fetch('/api/leave-requests', { method: 'DELETE' });
+    } catch (e) {}
+    return { success: true };
   },
   triggerBiometricSync: async () => {
     return await api.syncBiometricNow();
