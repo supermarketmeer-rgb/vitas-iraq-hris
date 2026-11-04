@@ -162,6 +162,7 @@ export interface EmployeeInputForCalculation {
   full_name_en?: string;
   basic_salary: number;
   marital_status: 'single' | 'married' | 'divorced' | 'widowed' | string;
+  gender?: 'male' | 'female' | string;
   children_count?: number;
   spouse_has_income?: boolean; // false = non-working spouse (eligible for allowance)
   is_ss_tax_exempt?: boolean;
@@ -495,6 +496,9 @@ export function normalizeEmployeeInput(
   const location = emp.location || emp.location_ar || emp.location_en || emp.city || '';
   const region: TaxRegion = resolveEmployeeTaxRegion(emp, branchJurisdictionsMap);
 
+  const rawGender = String(emp.gender || emp.gender_ar || '').toLowerCase().trim();
+  const gender = (rawGender === 'female' || rawGender === 'أنثى' || rawGender === 'انثى') ? 'female' : 'male';
+
   return {
     id: emp.id ?? emp.employee_id ?? 'emp_001',
     employee_id: emp.employee_id ?? emp.id ?? 'emp_001',
@@ -502,6 +506,7 @@ export function normalizeEmployeeInput(
     full_name_en: emp.full_name_en ?? emp.fullNameEn ?? '',
     basic_salary: basicSalary,
     marital_status: maritalStatus,
+    gender,
     children_count: childrenCount,
     spouse_has_income: spouseHasIncome,
     is_ss_tax_exempt: Boolean(emp.is_ss_tax_exempt ?? emp.isSsTaxExempt ?? false),
@@ -817,8 +822,14 @@ export function calculateIncomeTax(
   // Personal Allowance (Default: 416,667 IQD/month, or settings / 12)
   const monthlyPersonalAllowance = Math.round((settings.tax_personal_allowance || 5000000) / 12);
 
+  // In Iraqi Income Tax Law (Article 12):
+  // A married female employee receives only her personal statutory allowance (416,667 IQD/month).
+  // Spouse and child tax reliefs are granted to the husband (head of household) in his tax calculation,
+  // unless the female employee is unmarried or the sole legal provider supporting dependent children.
+  const isFemale = employee.gender === 'female';
+
   // Spouse Allowance (Default: 333,333 IQD/month, or settings / 12)
-  const isMarried = employee.marital_status === 'married' || employee.marital_status === 'متزوج' || employee.marital_status === 'متأهل';
+  const isMarried = !isFemale && (employee.marital_status === 'married' || employee.marital_status === 'متزوج' || employee.marital_status === 'متأهل');
   let monthlySpouseAllowance = 0;
   let spouseReason = '';
   if (isMarried) {
@@ -828,12 +839,16 @@ export function calculateIncomeTax(
     } else {
       spouseReason = 'الزوجة موظفة/لديها دخل مستقل؛ يُحجب السماح';
     }
+  } else if (isFemale && (employee.marital_status === 'married' || employee.marital_status === 'متزوج' || employee.marital_status === 'متأهل')) {
+    spouseReason = 'المكلفة أنثى متزوجة؛ يُحجب سماح الزوج بموجب المادة 12 من قانون ضريبة الدخل (يتمتع به الزوج)';
   } else {
     spouseReason = 'الموظف غير متزوج';
   }
 
   // Children Allowance (Default: 33,333 IQD/month per child, max 4)
-  const actualChildren = Math.max(0, Number(employee.children_count) || 0);
+  // Under Iraqi Tax Law: married female employees do not receive child tax relief unless unmarried/sole provider
+  const canClaimChildrenTaxExemption = !isFemale || (employee.marital_status !== 'married' && employee.marital_status !== 'متزوج' && employee.marital_status !== 'متأهل');
+  const actualChildren = canClaimChildrenTaxExemption ? Math.max(0, Number(employee.children_count) || 0) : 0;
   const maxEligibleChildren = Number(settings.tax_eligible_children_limit) || 4;
   const eligibleChildren = Math.min(actualChildren, maxEligibleChildren);
   const monthlyChildAllowanceRate = Math.round((settings.tax_child_allowance || 400000) / 12);

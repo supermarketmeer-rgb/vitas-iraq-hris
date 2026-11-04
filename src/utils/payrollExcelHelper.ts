@@ -813,19 +813,23 @@ export async function generateIncomeTaxTemplateExcel(
     // Personal Allowance: 416,667 IQD/month
     const personalRelief = 416667;
 
-    // Spouse Allowance: 333,333 IQD/month (if married & spouse has no income)
-    const isMarried =
+    // Spouse Allowance: 333,333 IQD/month (if married male & spouse has no income)
+    // In Iraqi Law: married female employees do not receive spouse or children tax relief
+    const isFemale = String(emp.gender || '').toLowerCase().includes('female') || String(emp.gender || '').includes('أنثى');
+    const isMarried = !isFemale && (
       emp.marital_status === 'married' ||
       emp.marital_status === 'MARRIED' ||
       emp.marital_status === 'MARRIED_WITH_DEPENDENTS' ||
-      emp.marital_status === 'متزوج';
+      emp.marital_status === 'متزوج'
+    );
     const spouseRelief = isMarried ? 333333 : 0;
 
     // Children Allowance: 33,333 IQD/month per child (max 4)
-    const childrenCount = Math.min(
+    const canClaimKids = !isFemale || (!isMarried && emp.marital_status !== 'married');
+    const childrenCount = canClaimKids ? Math.min(
       Math.max(0, Number(emp.children_count ?? emp.dependents_count ?? 0)),
       4
-    );
+    ) : 0;
     const childrenRelief = childrenCount * 33333;
 
     const totalRelief = personalRelief + spouseRelief + childrenRelief;

@@ -207,6 +207,7 @@ export const Category5PayrollView: React.FC = () => {
       full_name_ar: row.name_ar || row.name,
       basic_salary: Number(row.basic_salary) || 0,
       marital_status: isMarried ? 'married' : 'single',
+      gender: row.gender,
       children_count: row.children_count || 0,
       spouse_has_income: false,
       is_ss_tax_exempt: Number(row.is_ss_tax_exempt) === 1,
@@ -779,6 +780,7 @@ export const Category5PayrollView: React.FC = () => {
           id: emp.id,
           basic_salary: current_month_basic,
           marital_status: isMarried ? 'married' : 'single',
+          gender: emp.gender,
           children_count: childCount,
           spouse_has_income: false,
           is_ss_tax_exempt: isExemptFromSsTax,
@@ -934,6 +936,7 @@ export const Category5PayrollView: React.FC = () => {
 
         // XAMPP DB Financial Fields matching `payroll_finalized_rows` table in `vitasiraq_hris_db`
         marital_status: isMarried ? 'married' : 'single',
+        gender: emp.gender,
         basic_salary,
         current_month_basic,
         phone_allowance,
