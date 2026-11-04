@@ -9,7 +9,8 @@ import {
   EmployeeInputForCalculation,
   getDefaultLegalSettings,
   getDefaultTaxBrackets,
-  calculateCombinedPayrollTaxAndSecurity
+  calculateCombinedPayrollTaxAndSecurity,
+  isKurdistanLocation
 } from '../utils/iraqPayrollTaxEngine';
 import { CalculationTraceDetailsModal } from '../components/payroll/CalculationTraceDetailsModal';
 import { PoliciesSection } from '../components/PoliciesSection';
