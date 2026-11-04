@@ -288,7 +288,7 @@ export function getDefaultLegalSettings(): PayrollLegalSettings {
     ss_insured_salary_rate: 100.0,
     ss_minimum_insured_salary: 350000,
     ss_maximum_insured_salary: 1750000,
-    ss_eligible_components: ['basic_salary', 'housing', 'transport', 'living', 'food', 'other_allowance'],
+    ss_eligible_components: ['basic_salary'],
     tax_personal_allowance: 5000000,
     tax_spouse_allowance: 4000000,
     tax_child_allowance: 400000,
@@ -313,10 +313,10 @@ export function getDefaultTaxBrackets(): TaxBracketConfig[] {
     {
       id: 'brk_1',
       bracket_order: 1,
-      name_ar: 'الشريحة الأولى (حتى 250,000 د.ع)',
-      name_en: 'First Tier (0 - 250k IQD)',
+      name_ar: 'الشريحة الأولى (حتى 500,000 د.ع)',
+      name_en: 'First Tier (0 - 500k IQD)',
       min_income: 0,
-      max_income: 250000,
+      max_income: 500000,
       tax_rate: 3.0,
       fixed_tax: 0,
       calculation_method: 'PROGRESSIVE_TIER',
@@ -326,10 +326,10 @@ export function getDefaultTaxBrackets(): TaxBracketConfig[] {
     {
       id: 'brk_2',
       bracket_order: 2,
-      name_ar: 'الشريحة الثانية (250,001 - 500,000 د.ع)',
-      name_en: 'Second Tier (250k - 500k IQD)',
-      min_income: 250000,
-      max_income: 500000,
+      name_ar: 'الشريحة الثانية (500,001 - 1,000,000 د.ع)',
+      name_en: 'Second Tier (500k - 1M IQD)',
+      min_income: 500000,
+      max_income: 1000000,
       tax_rate: 5.0,
       fixed_tax: 0,
       calculation_method: 'PROGRESSIVE_TIER',
@@ -339,10 +339,10 @@ export function getDefaultTaxBrackets(): TaxBracketConfig[] {
     {
       id: 'brk_3',
       bracket_order: 3,
-      name_ar: 'الشريحة الثالثة (500,001 - 1,000,000 د.ع)',
-      name_en: 'Third Tier (500k - 1M IQD)',
-      min_income: 500000,
-      max_income: 1000000,
+      name_ar: 'الشريحة الثالثة (1,000,001 - 2,000,000 د.ع)',
+      name_en: 'Third Tier (1M - 2M IQD)',
+      min_income: 1000000,
+      max_income: 2000000,
       tax_rate: 10.0,
       fixed_tax: 0,
       calculation_method: 'PROGRESSIVE_TIER',
@@ -352,9 +352,9 @@ export function getDefaultTaxBrackets(): TaxBracketConfig[] {
     {
       id: 'brk_4',
       bracket_order: 4,
-      name_ar: 'الشريحة الرابعة (ما زاد عن 1,000,000 د.ع)',
-      name_en: 'Fourth Tier (Above 1M IQD)',
-      min_income: 1000000,
+      name_ar: 'الشريحة الرابعة (ما زاد عن 2,000,000 د.ع)',
+      name_en: 'Fourth Tier (Above 2M IQD)',
+      min_income: 2000000,
       max_income: null,
       tax_rate: 15.0,
       fixed_tax: 0,
@@ -847,84 +847,54 @@ export function calculateIncomeTax(
   trace.push(`[ضريبة العراق الاتحادي] السماحات الشهرية: مكلف ${monthlyPersonalAllowance.toLocaleString()} + زوجة ${monthlySpouseAllowance.toLocaleString()} + أطفال (${eligibleChildren}) ${monthlyChildrenAllowanceTotal.toLocaleString()} = ${totalMonthlyAllowances.toLocaleString()} د.ع.`);
   trace.push(`[ضريبة العراق الاتحادي] الوعاء الشهري الخاضع للضريبة = ${monthlyTaxableBase.toLocaleString()} د.ع.`);
 
-  // Calculate 4 progressive monthly tiers
-  let tier1Tax = 0, tier2Tax = 0, tier3Tax = 0, tier4Tax = 0;
-  if (monthlyTaxableBase > 0) {
-    // Tier 1: 0 - 500,000 @ 3%
-    tier1Tax = Math.min(monthlyTaxableBase, 500000) * 0.03;
+  // Calculate progressive monthly tiers dynamically from active tax brackets
+  const activeBrackets: TaxBracketConfig[] = (Array.isArray(brackets) && brackets.length > 0)
+    ? brackets.filter(b => (b.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => a.bracket_order - b.bracket_order)
+    : getDefaultTaxBrackets();
 
-    // Tier 2: 500,000 - 1,000,000 @ 5%
-    if (monthlyTaxableBase > 500000) {
-      tier2Tax = Math.min(monthlyTaxableBase - 500000, 500000) * 0.05;
+  const breakdown: BracketCalculationDetail[] = [];
+  let totalMonthlyTax = 0;
+
+  for (const b of activeBrackets) {
+    const min = Number(b.min_income || 0);
+    const max = (b.max_income !== null && b.max_income !== undefined && b.max_income !== '') ? Number(b.max_income) : null;
+    const rate = Number(b.tax_rate || 0) / 100;
+
+    let bracketIncome = 0;
+    if (monthlyTaxableBase > min) {
+      if (max !== null) {
+        bracketIncome = Math.min(monthlyTaxableBase - min, max - min);
+      } else {
+        bracketIncome = monthlyTaxableBase - min;
+      }
     }
 
-    // Tier 3: 1,000,000 - 2,000,000 @ 10%
-    if (monthlyTaxableBase > 1000000) {
-      tier3Tax = Math.min(monthlyTaxableBase - 1000000, 1000000) * 0.10;
-    }
+    const bracketTax = bracketIncome * rate;
+    totalMonthlyTax += bracketTax;
 
-    // Tier 4: > 2,000,000 @ 15%
-    if (monthlyTaxableBase > 2000000) {
-      tier4Tax = (monthlyTaxableBase - 2000000) * 0.15;
+    breakdown.push({
+      bracket_order: b.bracket_order,
+      name_ar: b.name_ar,
+      name_en: b.name_en,
+      min_income: min,
+      max_income: max,
+      tax_rate: Number(b.tax_rate || 0),
+      bracket_income: bracketIncome,
+      bracket_tax: Math.round(bracketTax),
+      formula_note: max !== null 
+        ? `${b.tax_rate}% على الشريحة من ${min.toLocaleString()} إلى ${max.toLocaleString()} د.ع`
+        : `${b.tax_rate}% على ما زاد عن ${min.toLocaleString()} د.ع`
+    });
+
+    if (bracketIncome > 0) {
+      trace.push(`الشريحة ${b.bracket_order} (${b.name_ar}): ${bracketIncome.toLocaleString()} × ${b.tax_rate}% = ${Math.round(bracketTax).toLocaleString()} د.ع.`);
     }
   }
 
-  const monthlyTaxRaw = tier1Tax + tier2Tax + tier3Tax + tier4Tax;
+  const monthlyTaxRaw = totalMonthlyTax;
   const monthlyTax = Math.round(monthlyTaxRaw);
   const annualTax = monthlyTax * periods;
-
-  trace.push(`الضريبة لأول 500,000 دينار (3%) = ${Math.round(tier1Tax).toLocaleString()} د.ع.`);
-  trace.push(`الضريبة لثاني 500,000 دينار (5%) = ${Math.round(tier2Tax).toLocaleString()} د.ع.`);
-  trace.push(`الضريبة لثالث شريحة حتى 2,000,000 دينار (10%) = ${Math.round(tier3Tax).toLocaleString()} د.ع.`);
-  trace.push(`الضريبة لما فوق 2,000,000 دينار (15%) = ${Math.round(tier4Tax).toLocaleString()} د.ع.`);
   trace.push(`مجموع استقطاع الضريبة الشهري = ${monthlyTax.toLocaleString()} د.ع.`);
-
-  const breakdown: BracketCalculationDetail[] = [
-    {
-      bracket_order: 1,
-      name_ar: 'الضريبة لأول 500,000 د.ع (3%)',
-      name_en: 'First Tier (0 - 500k IQD @ 3%)',
-      min_income: 0,
-      max_income: 500000,
-      tax_rate: 3.0,
-      bracket_income: Math.min(monthlyTaxableBase, 500000),
-      bracket_tax: Math.round(tier1Tax),
-      formula_note: `3% بحد أقصى 15,000 د.ع`
-    },
-    {
-      bracket_order: 2,
-      name_ar: 'الضريبة لثاني 500,000 د.ع (5%)',
-      name_en: 'Second Tier (500k - 1M IQD @ 5%)',
-      min_income: 500000,
-      max_income: 1000000,
-      tax_rate: 5.0,
-      bracket_income: monthlyTaxableBase > 500000 ? Math.min(monthlyTaxableBase - 500000, 500000) : 0,
-      bracket_tax: Math.round(tier2Tax),
-      formula_note: `5% بحد أقصى 25,000 د.ع`
-    },
-    {
-      bracket_order: 3,
-      name_ar: 'الضريبة لما فوق 1,000,000 حتى 2,000,000 د.ع (10%)',
-      name_en: 'Third Tier (1M - 2M IQD @ 10%)',
-      min_income: 1000000,
-      max_income: 2000000,
-      tax_rate: 10.0,
-      bracket_income: monthlyTaxableBase > 1000000 ? Math.min(monthlyTaxableBase - 1000000, 1000000) : 0,
-      bracket_tax: Math.round(tier3Tax),
-      formula_note: `10% بحد أقصى 100,000 د.ع`
-    },
-    {
-      bracket_order: 4,
-      name_ar: 'الضريبة لما فوق 2,000,000 د.ع (15%)',
-      name_en: 'Fourth Tier (> 2M IQD @ 15%)',
-      min_income: 2000000,
-      max_income: null,
-      tax_rate: 15.0,
-      bracket_income: monthlyTaxableBase > 2000000 ? (monthlyTaxableBase - 2000000) : 0,
-      bracket_tax: Math.round(tier4Tax),
-      formula_note: `15% على ما زاد عن 2,000,000 د.ع`
-    }
-  ];
 
   return {
     region: 'IRAQ',

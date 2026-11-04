@@ -161,18 +161,46 @@ export const Category5PayrollView: React.FC = () => {
   const [isTraceModalOpen, setIsTraceModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
+    try {
+      const cachedSettings = localStorage.getItem('iraq_payroll_legal_settings');
+      if (cachedSettings) {
+        const parsed = JSON.parse(cachedSettings);
+        if (parsed && typeof parsed === 'object') setLegalSettings(parsed);
+      }
+      const cachedBrackets = localStorage.getItem('iraq_tax_brackets');
+      if (cachedBrackets) {
+        const parsedB = JSON.parse(cachedBrackets);
+        if (Array.isArray(parsedB) && parsedB.length > 0) setTaxBrackets(parsedB);
+      }
+    } catch (e) {
+      console.warn('Error reading cached legal tax settings:', e);
+    }
+
     fetch('/api/tax-module/legal-settings')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.active) setLegalSettings(d.active); })
+      .then(d => {
+        if (d?.active) {
+          setLegalSettings(d.active);
+          try { localStorage.setItem('iraq_payroll_legal_settings', JSON.stringify(d.active)); } catch (e) {}
+        }
+      })
       .catch(() => {});
     fetch('/api/tax-module/tax-brackets')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (Array.isArray(d) && d.length > 0) setTaxBrackets(d); })
+      .then(d => {
+        if (Array.isArray(d) && d.length > 0) {
+          setTaxBrackets(d);
+          try { localStorage.setItem('iraq_tax_brackets', JSON.stringify(d)); } catch (e) {}
+        }
+      })
       .catch(() => {});
   }, []);
 
   const handleOpenTraceModal = (row: any) => {
     const isMarried = row.marital_status === 'married' || row.marital_status === 'متزوج' || row.marital_status === 'متأهل';
+    const branchName = row.branch || row.branch_ar || row.branch_en || row.office || '';
+    const locationName = row.location || row.city || row.location_ar || row.location_en || '';
+    const isKurd = isKurdistanLocation(locationName, branchName);
     const empInput: EmployeeInputForCalculation = {
       id: row.id,
       full_name_ar: row.name_ar || row.name,
@@ -182,6 +210,9 @@ export const Category5PayrollView: React.FC = () => {
       spouse_has_income: false,
       is_ss_tax_exempt: Number(row.is_ss_tax_exempt) === 1,
       exemption_reason: row.ss_tax_exemption_reason,
+      branch: branchName,
+      location: locationName,
+      region: isKurd ? 'KURDISTAN' : 'IRAQ',
       allowances: {
         housing: Number(row.housing_allowance) || 0,
         transport: Number(row.transportation) || 0,
@@ -684,6 +715,9 @@ export const Category5PayrollView: React.FC = () => {
 
       // Deductions Fields: social_security, income_tax, insurance
       // Central Iraqi Social Security & Income Tax Calculation
+      const empBranch = emp.branch || emp.branch_en || emp.branch_ar || emp.office || '';
+      const empLocation = emp.location || emp.location_en || emp.location_ar || emp.city || '';
+      const isKurdistan = isKurdistanLocation(empLocation, empBranch);
       const combinedCalc = calculateCombinedPayrollTaxAndSecurity(
         {
           id: emp.id,
@@ -693,6 +727,9 @@ export const Category5PayrollView: React.FC = () => {
           spouse_has_income: false,
           is_ss_tax_exempt: isExemptFromSsTax,
           exemption_reason: emp.ss_tax_exemption_reason,
+          branch: empBranch,
+          location: empLocation,
+          region: isKurdistan ? 'KURDISTAN' : 'IRAQ',
           allowances: {
             housing: Number(emp.housingAllowance ?? emp.housing_allowance ?? 0),
             transport: transportation,

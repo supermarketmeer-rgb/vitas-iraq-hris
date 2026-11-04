@@ -1095,7 +1095,7 @@ export function registerTaxModuleRoutes(app, query) {
         ss_insured_salary_rate: Number(r.ss_insured_salary_rate),
         ss_minimum_insured_salary: r.ss_minimum_insured_salary !== null ? Number(r.ss_minimum_insured_salary) : null,
         ss_maximum_insured_salary: r.ss_maximum_insured_salary !== null ? Number(r.ss_maximum_insured_salary) : null,
-        ss_eligible_components: parseJsonSafely(r.ss_eligible_components, ['basic_salary', 'housing', 'transport', 'living']),
+        ss_eligible_components: parseJsonSafely(r.ss_eligible_components, ['basic_salary']),
         tax_personal_allowance: Number(r.tax_personal_allowance),
         tax_spouse_allowance: Number(r.tax_spouse_allowance),
         tax_child_allowance: Number(r.tax_child_allowance),

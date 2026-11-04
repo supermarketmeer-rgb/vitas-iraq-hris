@@ -87,7 +87,7 @@ export async function ensureLegalTables(query) {
     // 4. Seed initial active legal settings record if table is empty
     const [existingCount] = await query('SELECT COUNT(*) as cnt FROM payroll_legal_settings').catch(() => [{ cnt: 0 }]);
     if (!existingCount || existingCount.cnt === 0) {
-      const defaultEligibleSS = JSON.stringify(['basic_salary', 'housing', 'transport', 'living', 'food', 'other_allowance']);
+      const defaultEligibleSS = JSON.stringify(['basic_salary']);
       const defaultEligibleTax = JSON.stringify(['basic_salary', 'housing', 'transport', 'living', 'food', 'overtime', 'bonus', 'other_allowance']);
 
       await query(`
@@ -104,8 +104,8 @@ export async function ensureLegalTables(query) {
         ) VALUES (
           'legal_set_2026_01', 'v2026.1', 'الإصدار التشريعي المعتمد لعام 2026 (قانون 18 وقانون 113)', 'ACTIVE', '2026-01-01', NULL,
           5.00, 12.00, 100.00,
-          350000.00, 5000000.00, ?,
-          2500000.00, 2000000.00, 200000.00,
+          350000.00, 1750000.00, ?,
+          5000000.00, 4000000.00, 400000.00,
           4, 1,
           1, 0.00,
           'ANNUAL_STANDARD', 12,
@@ -124,10 +124,10 @@ export async function ensureLegalTables(query) {
     if (!bracketCount || bracketCount.cnt === 0) {
       await query(`
         INSERT INTO tax_brackets (id, rule_version_id, bracket_order, name_ar, name_en, min_income, max_income, tax_rate, fixed_tax, calculation_method, legal_reference, effective_from, status) VALUES
-        ('brk_1', 'ver_tax_1', 1, 'الشريحة الأولى (حتى 250,000 د.ع)', 'First Tier (0 - 250k IQD)', 0.00, 250000.00, 3.00, 0.00, 'PROGRESSIVE_TIER', 'المادة 13 من قانون ضريبة الدخل رقم 113', '2023-10-03', 'ACTIVE'),
-        ('brk_2', 'ver_tax_1', 2, 'الشريحة الثانية (250,001 - 500,000 د.ع)', 'Second Tier (250k - 500k IQD)', 250000.00, 500000.00, 5.00, 0.00, 'PROGRESSIVE_TIER', 'المادة 13 من قانون ضريبة الدخل رقم 113', '2023-10-03', 'ACTIVE'),
-        ('brk_3', 'ver_tax_1', 3, 'الشريحة الثالثة (500,001 - 1,000,000 د.ع)', 'Third Tier (500k - 1M IQD)', 500000.00, 1000000.00, 10.00, 0.00, 'PROGRESSIVE_TIER', 'المادة 13 من قانون ضريبة الدخل رقم 113', '2023-10-03', 'ACTIVE'),
-        ('brk_4', 'ver_tax_1', 4, 'الشريحة الرابعة (ما زاد عن 1,000,000 د.ع)', 'Fourth Tier (Above 1M IQD)', 1000000.00, NULL, 15.00, 0.00, 'PROGRESSIVE_TIER', 'المادة 13 من قانون ضريبة الدخل رقم 113', '2023-10-03', 'ACTIVE')
+        ('brk_1', 'ver_tax_1', 1, 'الشريحة الأولى (حتى 500,000 د.ع)', 'First Tier (0 - 500k IQD)', 0.00, 500000.00, 3.00, 0.00, 'PROGRESSIVE_TIER', 'المادة 13 من قانون ضريبة الدخل رقم 113', '2023-10-03', 'ACTIVE'),
+        ('brk_2', 'ver_tax_1', 2, 'الشريحة الثانية (500,001 - 1,000,000 د.ع)', 'Second Tier (500k - 1M IQD)', 500000.00, 1000000.00, 5.00, 0.00, 'PROGRESSIVE_TIER', 'المادة 13 من قانون ضريبة الدخل رقم 113', '2023-10-03', 'ACTIVE'),
+        ('brk_3', 'ver_tax_1', 3, 'الشريحة الثالثة (1,000,001 - 2,000,000 د.ع)', 'Third Tier (1M - 2M IQD)', 1000000.00, 2000000.00, 10.00, 0.00, 'PROGRESSIVE_TIER', 'المادة 13 من قانون ضريبة الدخل رقم 113', '2023-10-03', 'ACTIVE'),
+        ('brk_4', 'ver_tax_1', 4, 'الشريحة الرابعة (ما زاد عن 2,000,000 د.ع)', 'Fourth Tier (Above 2M IQD)', 2000000.00, NULL, 15.00, 0.00, 'PROGRESSIVE_TIER', 'المادة 13 من قانون ضريبة الدخل رقم 113', '2023-10-03', 'ACTIVE')
       `);
       console.log('✅ Seeded default progressive tax brackets');
     }
