@@ -56,26 +56,54 @@ interface ContractClause {
 }
 
 export const SettingsSecurityView: React.FC = () => {
-  const { language, t, theme, setEmployees, refreshEmployees, employees, deleteEmployee, resetToZeroData } = useApp();
+  const { language, t, theme, setEmployees, refreshEmployees, employees, deleteEmployee, resetToZeroData, deleteAllEmployees } = useApp();
   const [activeTab, setActiveTab] = useState<string>('locations');
 
   const handleClearAllData = async () => {
     const confirmMsg = language === 'ar'
-      ? 'هل أنت متأكد من تفريغ البيانات التشغيلية للنظام؟\n\nسيتم حذف جميع سجلات الموظفين، الحضور والانصراف، الإجازات، الرواتب، والطلبات.\n\n✅ سيتم الحفاظ بالكامل على:\n- بيانات جدول المستخدمين (Users) وحسابات الدخول\n- الصلاحيات والأدوار (Roles & Permissions)\n- قوالب وبنود العقود في الإعدادات (Contracts)\n- السياسات واللوائح والضرائب (Policies)\n- إعدادات الفروع والأقسام والمسميات (Settings)'
-      : 'Are you sure you want to clear operational system data?\n\nAll employee records, attendance, leaves, payroll, and requests will be deleted.\n\n✅ WILL BE PRESERVED:\n- Users table and login credentials\n- Roles & Permissions\n- Contract Templates & Clauses\n- System Policies & Rules\n- Settings (Branches, Departments, Positions)';
+      ? 'هل أنت متأكد من تفريغ البيانات التشغيلية للنظام؟\n\nسيتم حذف جميع سجلات الموظفين، الحضور والانصراف، الإجازات، الرواتب، والطلبات، بالإضافة لتفريغ بيانات (الفروع Locations، المسميات Positions، الأقسام Departments).\n\n✅ سيتم الحفاظ بالكامل على:\n- بيانات جدول المستخدمين (Users) وحسابات الدخول\n- الصلاحيات والأدوار (Roles & Permissions)\n- قوالب وبنود العقود في الإعدادات (Contracts)\n- السياسات واللوائح والضرائب (Policies)'
+      : 'Are you sure you want to clear operational system data?\n\nAll employee records, attendance, leaves, payroll, requests, and (Locations, Positions, Departments) will be cleared.\n\n✅ WILL BE PRESERVED:\n- Users table and login credentials\n- Roles & Permissions\n- Contract Templates & Clauses\n- System Policies & Rules';
 
     if (window.confirm(confirmMsg)) {
       try {
         await resetToZeroData();
+        setLocations([]);
+        setPositions([]);
+        setDepartments([]);
         await loadData();
         alert(language === 'ar' 
-          ? 'تم تفريغ البيانات التشغيلية بنجاح مع الحفاظ الكامل على المستخدمين، الصلاحيات، العقود، والسياسات.' 
-          : 'Operational data cleared successfully while preserving Users, Roles, Settings, Contracts, and Policies.');
+          ? 'تم تفريغ البيانات التشغيلية وتفريغ الفروع والمسميات والأقسام بنجاح مع الحفاظ الكامل على المستخدمين، الصلاحيات، العقود، والسياسات.' 
+          : 'Operational data and (Locations, Positions, Departments) cleared successfully while preserving Users, Roles, Contracts, and Policies.');
       } catch (error: any) {
         console.error('Error clearing system data:', error);
         alert(language === 'ar' 
           ? `حدث خطأ أثناء مسح البيانات: ${error?.message || 'تأكد من تشغيل خادم النظام node server.js'}` 
           : `Error clearing data: ${error?.message || 'Ensure node server.js is running'}`);
+      }
+    }
+  };
+
+  const handleDeleteAllEmployees = async () => {
+    const confirmMsg = language === 'ar'
+      ? 'هل أنت متأكد من حذف جدول الموظفين بالكامل؟\n\n⚠️ سيتم تفريغ وحذف البيانات من الشاشات التالية تلقائياً:\n- الفروع والمواقع (Locations)\n- المسميات الوظيفية (Positions)\n- الأقسام (Departments)\n\n✅ مع الحفاظ التام على حسابات المستخدمين (Users)، الصلاحيات، العقود، والسياسات وباقي إعدادات النظام.'
+      : 'Are you sure you want to delete the entire employees table?\n\n⚠️ Data will also be cleared from:\n- Locations\n- Positions\n- Departments\n\n✅ Users, Roles & Permissions, Contracts, Policies, and system settings will be preserved.';
+    if (window.confirm(confirmMsg)) {
+      try {
+        if (deleteAllEmployees) {
+          await deleteAllEmployees();
+        } else {
+          await api.deleteAllEmployees();
+        }
+        setLocations([]);
+        setPositions([]);
+        setDepartments([]);
+        if (setEmployees) setEmployees([]);
+        await loadData();
+        alert(language === 'ar' 
+          ? 'تم حذف جدول الموظفين وتفريغ الفروع والمسميات والأقسام بنجاح.' 
+          : 'Employees table deleted and Locations, Positions, Departments cleared successfully.');
+      } catch (err: any) {
+        alert(language === 'ar' ? `حدث خطأ: ${err?.message || 'فشل الحذف'}` : `Error: ${err?.message || 'Delete failed'}`);
       }
     }
   };
@@ -1928,6 +1956,7 @@ export const SettingsSecurityView: React.FC = () => {
                 await refreshEmployees();
               }
             }}
+            onDeleteAll={handleDeleteAllEmployees}
             language={language}
             showExcelButtons={true}
             showOnlyTemplateAndImport={false}
@@ -2024,6 +2053,7 @@ interface DataTableProps {
   onImportExcel?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   fileInputRef?: React.RefObject<HTMLInputElement>;
   activeTab?: string;
+  onDeleteAll?: () => void;
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -2040,7 +2070,8 @@ const DataTable: React.FC<DataTableProps> = ({
   onExportExcel,
   onImportExcel,
   fileInputRef,
-  activeTab = ''
+  activeTab = '',
+  onDeleteAll
 }) => {
   const isRTL = language === 'ar';
   const { theme } = useApp();
@@ -2103,6 +2134,21 @@ const DataTable: React.FC<DataTableProps> = ({
                 >
                   <span className="material-symbols-outlined text-xs">download</span>
                   <span className="hidden sm:inline">{language === 'ar' ? 'تصدير' : 'Export'}</span>
+                </button>
+              )}
+              {onDeleteAll && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDeleteAll();
+                  }}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-bold flex items-center gap-1.5 transition-all pointer-events-auto cursor-pointer shadow-sm hover:shadow-rose-600/30"
+                  title={language === 'ar' ? 'حذف جدول الموظفين بالكامل وتفريغ الفروع والمسميات والأقسام' : 'Delete Entire Employees Table'}
+                >
+                  <span className="material-symbols-outlined text-xs">delete_forever</span>
+                  <span className="hidden sm:inline">{language === 'ar' ? 'حذف جدول الموظفين بالكامل' : 'Delete All Employees'}</span>
                 </button>
               )}
               <button

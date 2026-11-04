@@ -1743,6 +1743,121 @@ app.delete('/api/employees/:id', async (req, res) => {
   }
 });
 
+// Delete Entire Employees Table and clear Locations (branches), Positions, and Departments
+app.delete(['/api/employees', '/api/employees/all', '/api/settings/employees/all'], async (req, res) => {
+  try {
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    console.log('[DELETE-ALL-EMPLOYEES] Deleting all employees and clearing branches, positions, departments...');
+
+    await query('SET FOREIGN_KEY_CHECKS = 0');
+    if (!isRailway) executeCloudQuery('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+
+    // 1. Clear employees
+    await query('TRUNCATE TABLE employees').catch(() => query('DELETE FROM employees'));
+    if (!isRailway) executeCloudQuery('TRUNCATE TABLE employees').catch(() => executeCloudQuery('DELETE FROM employees')).catch(() => {});
+
+    // 2. Clear Locations (branches, settings_offices, drv_offices)
+    await query('TRUNCATE TABLE branches').catch(() => query('DELETE FROM branches'));
+    await query('TRUNCATE TABLE settings_offices').catch(() => query('DELETE FROM settings_offices'));
+    if (!isRailway) {
+      executeCloudQuery('TRUNCATE TABLE branches').catch(() => executeCloudQuery('DELETE FROM branches')).catch(() => {});
+      executeCloudQuery('TRUNCATE TABLE settings_offices').catch(() => executeCloudQuery('DELETE FROM settings_offices')).catch(() => {});
+    }
+
+    // 3. Clear Positions (positions, settings_positions)
+    await query('TRUNCATE TABLE positions').catch(() => query('DELETE FROM positions'));
+    await query('TRUNCATE TABLE settings_positions').catch(() => query('DELETE FROM settings_positions'));
+    if (!isRailway) {
+      executeCloudQuery('TRUNCATE TABLE positions').catch(() => executeCloudQuery('DELETE FROM positions')).catch(() => {});
+      executeCloudQuery('TRUNCATE TABLE settings_positions').catch(() => executeCloudQuery('DELETE FROM settings_positions')).catch(() => {});
+    }
+
+    // 4. Clear Departments (departments)
+    await query('TRUNCATE TABLE departments').catch(() => query('DELETE FROM departments'));
+    if (!isRailway) {
+      executeCloudQuery('TRUNCATE TABLE departments').catch(() => executeCloudQuery('DELETE FROM departments')).catch(() => {});
+    }
+
+    // 5. Clear related employee-specific tables
+    const employeeRelatedTables = [
+      'attendance_exceptions',
+      'direct_supervisors',
+      'department_heads',
+      'employee_status_changes',
+      'employee_trainings',
+      'employee_warnings',
+      'employee_contracts',
+      'biometric_user_cache'
+    ];
+    for (const tbl of employeeRelatedTables) {
+      await query(`TRUNCATE TABLE \`${tbl}\``).catch(() => query(`DELETE FROM \`${tbl}\``)).catch(() => {});
+      if (!isRailway) {
+        executeCloudQuery(`TRUNCATE TABLE \`${tbl}\``).catch(() => executeCloudQuery(`DELETE FROM \`${tbl}\``)).catch(() => {});
+      }
+    }
+
+    await query('SET FOREIGN_KEY_CHECKS = 1');
+    if (!isRailway) executeCloudQuery('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+
+    // Clear deletion tombstones for these tables so autoCloudSync doesn't resurrect them
+    const allCleared = ['employees', 'branches', 'positions', 'departments', 'settings_offices', 'settings_positions', ...employeeRelatedTables];
+    await query('DELETE FROM sync_deleted_records WHERE table_name IN (?)', [allCleared]).catch(() => {});
+    if (!isRailway) {
+      executeCloudQuery('DELETE FROM sync_deleted_records WHERE table_name IN (?)', [allCleared]).catch(() => {});
+    }
+
+    // Trigger realtime sync
+    triggerRealtimeSync(db, 'employees');
+    triggerRealtimeSync(db, 'branches');
+    triggerRealtimeSync(db, 'positions');
+    triggerRealtimeSync(db, 'departments');
+
+    res.json({ 
+      success: true, 
+      message: 'تم حذف جدول الموظفين وتفريغ الفروع والمسميات والأقسام بنجاح' 
+    });
+  } catch (err) {
+    console.error('Error in DELETE /api/employees:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post(['/api/employees/delete-all', '/api/settings/employees/delete-all'], async (req, res) => {
+  try {
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    await query('SET FOREIGN_KEY_CHECKS = 0');
+    if (!isRailway) executeCloudQuery('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+
+    await query('TRUNCATE TABLE employees').catch(() => query('DELETE FROM employees'));
+    await query('TRUNCATE TABLE branches').catch(() => query('DELETE FROM branches'));
+    await query('TRUNCATE TABLE positions').catch(() => query('DELETE FROM positions'));
+    await query('TRUNCATE TABLE departments').catch(() => query('DELETE FROM departments'));
+    await query('TRUNCATE TABLE settings_offices').catch(() => query('DELETE FROM settings_offices'));
+    await query('TRUNCATE TABLE settings_positions').catch(() => query('DELETE FROM settings_positions'));
+
+    if (!isRailway) {
+      executeCloudQuery('TRUNCATE TABLE employees').catch(() => executeCloudQuery('DELETE FROM employees')).catch(() => {});
+      executeCloudQuery('TRUNCATE TABLE branches').catch(() => executeCloudQuery('DELETE FROM branches')).catch(() => {});
+      executeCloudQuery('TRUNCATE TABLE positions').catch(() => executeCloudQuery('DELETE FROM positions')).catch(() => {});
+      executeCloudQuery('TRUNCATE TABLE departments').catch(() => executeCloudQuery('DELETE FROM departments')).catch(() => {});
+      executeCloudQuery('TRUNCATE TABLE settings_offices').catch(() => executeCloudQuery('DELETE FROM settings_offices')).catch(() => {});
+      executeCloudQuery('TRUNCATE TABLE settings_positions').catch(() => executeCloudQuery('DELETE FROM settings_positions')).catch(() => {});
+    }
+
+    await query('SET FOREIGN_KEY_CHECKS = 1');
+    if (!isRailway) executeCloudQuery('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+
+    triggerRealtimeSync(db, 'employees');
+    triggerRealtimeSync(db, 'branches');
+    triggerRealtimeSync(db, 'positions');
+    triggerRealtimeSync(db, 'departments');
+
+    res.json({ success: true, message: 'Cleared successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Leave Requests
 app.get('/api/leave-requests', async (req, res) => {
   try {
@@ -5709,13 +5824,7 @@ app.post('/api/reset-data', async (req, res) => {
       'contract_custom_variables',
       'settings_contract_types',
 
-      // Org Structure & Catalogs in Settings
-      'branches',
-      'settings_offices',
-      'drv_offices',
-      'departments',
-      'positions',
-      'settings_positions',
+      // Org Structure & Catalogs in Settings (branches, positions, departments are now cleared with operational employees)
       'status_changes',
       'settings_status_changes',
       'trainings',

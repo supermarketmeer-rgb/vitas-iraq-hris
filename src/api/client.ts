@@ -112,6 +112,7 @@ export const api = {
   },
   getEmployeePhoto: (id: string) => `${getApiBaseUrl()}/employees/${id}/photo`,
   deleteEmployeePhoto: (id: string) => apiClient.delete(`/employees/${id}/photo`),
+  deleteAllEmployees: () => apiClient.delete('/employees/all'),
 
   // Leave Requests
   getLeaveRequests: () => apiClient.get('/leave-requests'),

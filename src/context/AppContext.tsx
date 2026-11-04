@@ -111,6 +111,7 @@ interface AppContextType {
   // General App Actions
   refreshAllData: () => Promise<void>;
   resetToZeroData: () => Promise<void>;
+  deleteAllEmployees: () => Promise<void>;
 }
 
 const DEFAULT_USER: UserProfile = {
@@ -1338,9 +1339,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDocumentRecords([]);
     setNotifications([]);
 
-    // Clear operational domain caches without wiping user session, contract templates, clauses, or settings
+    // Clear operational domain caches and cleared settings
     const operationalKeys = [
       'vitas_employees',
+      'vitas_branches',
+      'vitas_positions',
+      'vitas_departments',
+      'vitas_offices',
       'vitas_candidates',
       'vitas_leave_requests',
       'vitas_job_vacancies',
@@ -1356,8 +1361,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       'vitas_compensations'
     ];
     for (const key of operationalKeys) {
-      localStorage.setItem(key, JSON.stringify([]));
+      localStorage.removeItem(key);
     }
+  };
+
+  const deleteAllEmployees = async () => {
+    try {
+      await api.deleteAllEmployees();
+    } catch (e: any) {
+      console.error('Could not delete all employees via API:', e);
+      throw e;
+    }
+    setEmployees([]);
+    setLeaveRequests([]);
+    setJobVacancies([]);
+    setCandidates([]);
+    setAssetRecords([]);
+    setNotifications([]);
+
+    const operationalKeys = [
+      'vitas_employees',
+      'vitas_branches',
+      'vitas_positions',
+      'vitas_departments',
+      'vitas_offices',
+      'vitas_candidates',
+      'vitas_leave_requests',
+      'vitas_job_vacancies',
+      'vitas_assets',
+      'vitas_risks',
+      'vitas_documents',
+      'vitas_notifications',
+      'vitas_attendance',
+      'vitas_payroll',
+      'vitas_employee_contracts',
+      'vitas_evaluations',
+      'vitas_warnings',
+      'vitas_compensations'
+    ];
+    for (const key of operationalKeys) {
+      localStorage.removeItem(key);
+    }
+    window.dispatchEvent(new CustomEvent('vitas_employees_updated', { detail: [] }));
+    window.dispatchEvent(new CustomEvent('vitas:data_refreshed', { detail: { table: 'all' } }));
   };
 
   // Branch Manager Scope & Segregation
@@ -1469,7 +1515,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         scopedEmployees,
         scopedNotifications,
         refreshAllData: loadData,
-        resetToZeroData
+        resetToZeroData,
+        deleteAllEmployees
       }}
     >
       {children}
