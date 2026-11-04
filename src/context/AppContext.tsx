@@ -238,7 +238,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         try {
           const savedLeaves = localStorage.getItem('vitas_leave_requests');
-          if (savedLeaves) localLeaves = JSON.parse(savedLeaves);
+          if (savedLeaves) {
+            const parsed = JSON.parse(savedLeaves);
+            localLeaves = Array.isArray(parsed) ? parsed.filter((r: any) => !String(r.id || '').startsWith('LV-2026-00')) : [];
+          }
         } catch (e) {}
         
         try {
@@ -378,62 +381,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           try { localStorage.setItem('vitas_employees', JSON.stringify(finalEmpData)); } catch (e) {}
         }
 
-        let finalLeaves = leaveData || localLeaves || [];
-        if (!Array.isArray(finalLeaves) || finalLeaves.length === 0) {
-          finalLeaves = [
-            {
-              id: 'LV-2026-001',
-              employeeId: '5425',
-              employeeName: 'حسن وليد رسن',
-              leaveType: 'إجازة سنوية',
-              startDate: '2026-08-10',
-              endDate: '2026-08-14',
-              days: 5,
-              reason: 'إجازة اعتيادية سنوية لمتابعة شؤون عائلية',
-              status: 'قيد الانتظار',
-              appliedDate: '2026-08-01'
-            },
-            {
-              id: 'LV-2026-002',
-              employeeId: '8488',
-              employeeName: 'حسين رسول ابراهيم',
-              leaveType: 'إجازة مرضية',
-              startDate: '2026-08-05',
-              endDate: '2026-08-07',
-              days: 3,
-              reason: 'إجازة مرضية بناءً على تقرير طبي معتمد',
-              status: 'قيد الانتظار',
-              appliedDate: '2026-08-04'
-            },
-            {
-              id: 'LV-2026-003',
-              employeeId: '8298',
-              employeeName: 'حسين سعيد صالح',
-              leaveType: 'إجازة طارئة',
-              startDate: '2026-08-02',
-              endDate: '2026-08-03',
-              days: 2,
-              reason: 'ظرف عائلي طارئ',
-              status: 'مقبولة',
-              appliedDate: '2026-08-02'
-            },
-            {
-              id: 'LV-2026-004',
-              employeeId: '5344',
-              employeeName: 'حسين زامل مشرف',
-              leaveType: 'إجازة سنوية',
-              startDate: '2026-07-20',
-              endDate: '2026-07-25',
-              days: 6,
-              reason: 'إجازة سنوية خطة الصيف',
-              status: 'مقبولة',
-              appliedDate: '2026-07-15'
-            }
-          ];
-          try {
-            localStorage.setItem('vitas_leave_requests', JSON.stringify(finalLeaves));
-          } catch (e) {}
-        }
+        let finalLeaves = Array.isArray(leaveData) ? leaveData : (Array.isArray(localLeaves) ? localLeaves : []);
+        finalLeaves = finalLeaves.filter((r: any) => !String(r.id || '').startsWith('LV-2026-00'));
+        try {
+          localStorage.setItem('vitas_leave_requests', JSON.stringify(finalLeaves));
+        } catch (e) {}
         setLeaveRequests(finalLeaves);
 
         // Merge Job Vacancies

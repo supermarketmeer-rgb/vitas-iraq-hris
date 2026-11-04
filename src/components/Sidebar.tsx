@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CATEGORY_GROUPS } from '../data/categories';
 import { useApp } from '../context/AppContext';
 import { getUserEffectivePermissions, isModuleAuthorized } from '../utils/permissionHelper';
+import { leavesApi } from './leaves_attendance/api';
 
 export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
@@ -39,6 +40,32 @@ export const Sidebar: React.FC = () => {
   // Collapsed by default as requested
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [sidebarFilter, setSidebarFilter] = useState('');
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
+  const [pendingLeavesCount, setPendingLeavesCount] = useState<number>(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchApprovalCounts = async () => {
+      try {
+        const [leavesRes, corrRes] = await Promise.all([
+          leavesApi.getPendingLeaves().catch(() => ({ data: [] })),
+          leavesApi.getPendingCorrections().catch(() => ({ data: [] }))
+        ]);
+        if (!isMounted) return;
+        const leaves = Array.isArray(leavesRes.data) ? leavesRes.data.length : 0;
+        const corrs = Array.isArray(corrRes.data) ? corrRes.data.length : 0;
+        setPendingLeavesCount(leaves);
+        setPendingApprovalsCount(leaves + corrs);
+      } catch (e) {}
+    };
+
+    fetchApprovalCounts();
+    const interval = setInterval(fetchApprovalCounts, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [leaveRequests]);
 
 
   // Ref to the aside element — dynamically aligns with theme (#eef2f6 in light mode, #06080d in dark mode)
@@ -227,16 +254,9 @@ export const Sidebar: React.FC = () => {
       case 'emp-hr-directory':
         return isBranchManager ? scopedEmployees.length : employees.length;
       case 'leave-directory':
-      case 'leave-approvals': {
-        const activeLeaves = isBranchManager
-          ? leaveRequests.filter(r => {
-              const bKey = userBranch ? userBranch.replace(/^(مكتب|فرع)\s+/, '').trim() : '';
-              const scopedEmpIds = new Set(scopedEmployees.map(e => String(e.id || e.employeeId)));
-              return scopedEmpIds.has(String(r.employeeId)) || (r.branch && bKey && r.branch.includes(bKey));
-            })
-          : leaveRequests;
-        return activeLeaves.filter(r => r.status === 'قيد الانتظار').length;
-      }
+        return pendingLeavesCount > 0 ? pendingLeavesCount : null;
+      case 'leave-approvals':
+        return pendingApprovalsCount > 0 ? pendingApprovalsCount : null;
       case 'recruit-dash':
         return jobVacancies.filter(j => j.status === 'مفتوحة' || j.status === 'Open').length;
       case 'recruit-ats':
