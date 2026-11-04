@@ -618,15 +618,26 @@ export const Category5PayrollView: React.FC = () => {
       // Values are fetched directly from Policies settings in appSettings (or defaults)
       const fxRate = parseFloat(appSettings['usd_to_iqd_rate'] || '1310') || 1310;
 
-      // Determine if employee is a Loan Officer / Senior Loan Officer
+      // Determine if employee is a Loan Officer (Loan Officer, Senior Loan Officer, SE Loan Officer - excluding supervisors & managers)
       const empPos = `${emp.position || ''} ${emp.position_en || ''} ${emp.position_ar || ''} ${emp.title || ''} ${emp.job_title || ''} ${emp.job_title_en || ''} ${emp.job_title_ar || ''}`.toLowerCase();
-      const isLoanOfficer = empPos.includes('loan officer') || 
-                            empPos.includes('senior loan officer') || 
-                            empPos.includes('مسؤول قروض') || 
-                            empPos.includes('مسؤول القروض') || 
-                            empPos.includes('ضابط قروض') ||
-                            empPos.includes('مشرف مسؤولي القروض') ||
-                            empPos.includes('مسؤول قروض أقدم');
+      const isLoanOfficer = ((): boolean => {
+        if (!empPos) return false;
+        if (
+          empPos.includes('supervisor') || empPos.includes('مشرف') || 
+          empPos.includes('manager') || empPos.includes('مدير') || 
+          empPos.includes('coordinator') || empPos.includes('منسق') || 
+          empPos.includes('assistant') || empPos.includes('مساعد') ||
+          empPos.includes('head') || empPos.includes('رئيس')
+        ) {
+          return false;
+        }
+        return empPos.includes('se loan officer') || 
+               empPos.includes('senior loan officer') || 
+               empPos.includes('loan officer') || 
+               empPos.includes('مسؤول قروض') || 
+               empPos.includes('مسؤول القروض') || 
+               empPos.includes('ضابط قروض');
+      })();
 
       // Loan Officer: 5 USD default, Others: 4 USD default
       const loChildValRaw = parseFloat(appSettings['child_allowance_loan_officer_default'] || '5');

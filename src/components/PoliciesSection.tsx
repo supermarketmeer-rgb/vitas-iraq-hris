@@ -840,10 +840,10 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                 <div>
                   <label className="text-xs text-black font-normal flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-sm text-black">badge</span>
-                    <span>{t('مخصص الطفل (Loan Officer / Senior Loan Officer)', 'Child Allowance (Loan Officer / Senior)')}</span>
+                    <span>{t('مخصص الطفل (Loan Officer, Senior Loan Officer, SE Loan Officer)', 'Child Allowance (Loan Officer, Senior Loan Officer, SE Loan Officer)')}</span>
                   </label>
                   <span className="inline-block mt-0.5 px-2 py-0.2 text-[9px] font-normal bg-gray-100 text-black rounded border border-gray-400">
-                    {t('مسؤولو القروض فقط (5$)', 'Loan Officers Only (5$)')}
+                    {t('مسؤولو القروض: Loan Officer, Senior Loan Officer, SE Loan Officer (5$)', 'Loan Officers: Loan Officer, Senior Loan Officer, SE Loan Officer (5$)')}
                   </span>
                 </div>
                 {/* Currency Selector Pill */}

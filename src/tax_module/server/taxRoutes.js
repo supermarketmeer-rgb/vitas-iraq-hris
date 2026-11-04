@@ -618,8 +618,19 @@ export function registerTaxModuleRoutes(app, query) {
       const appSettingsMap = {};
       (Array.isArray(appSettingsRows) ? appSettingsRows : []).forEach(s => { appSettingsMap[s.setting_key] = s.setting_value; });
 
-      const marriageAllowanceDefault = Number(appSettingsMap['marriage_allowance_default']) || 15000;
-      const childAllowanceDefault = Number(appSettingsMap['child_allowance_default']) || 7500;
+      const fxRate = Number(appSettingsMap['usd_to_iqd_rate']) || 1520;
+      const marriageAllowanceDefault = appSettingsMap['marriage_allowance_currency'] === 'USD'
+        ? Math.round((Number(appSettingsMap['marriage_allowance_default']) || 10) * fxRate)
+        : (Number(appSettingsMap['marriage_allowance_default']) || 15200);
+
+      const loChildAllowance = appSettingsMap['child_allowance_loan_officer_currency'] === 'USD'
+        ? Math.round((Number(appSettingsMap['child_allowance_loan_officer_default']) || 5) * fxRate)
+        : (Number(appSettingsMap['child_allowance_loan_officer_default']) || 7600);
+
+      const otherChildAllowance = appSettingsMap['child_allowance_currency'] === 'USD'
+        ? Math.round((Number(appSettingsMap['child_allowance_default']) || 4) * fxRate)
+        : (Number(appSettingsMap['child_allowance_default']) || 6080);
+
       const housingAllowanceDefault = Number(appSettingsMap['housing_allowance_default']) || 0;
       const transportAllowanceDefault = Number(appSettingsMap['transportation_allowance_default']) || 100000;
 
@@ -631,11 +642,32 @@ export function registerTaxModuleRoutes(app, query) {
         const dependentsCount = Array.isArray(childrenList) ? childrenList.length : 0;
         const isMarried = (e.marital_status === 'married' || e.marital_status === 'متأهل');
 
+        const empPos = `${e.position || ''} ${e.position_en || ''} ${e.position_ar || ''}`.toLowerCase();
+        const isLoanOfficer = (() => {
+          if (!empPos) return false;
+          if (
+            empPos.includes('supervisor') || empPos.includes('مشرف') || 
+            empPos.includes('manager') || empPos.includes('مدير') || 
+            empPos.includes('coordinator') || empPos.includes('منسق') || 
+            empPos.includes('assistant') || empPos.includes('مساعد') ||
+            empPos.includes('head') || empPos.includes('رئيس')
+          ) {
+            return false;
+          }
+          return empPos.includes('se loan officer') || 
+                 empPos.includes('senior loan officer') || 
+                 empPos.includes('loan officer') || 
+                 empPos.includes('مسؤول قروض') || 
+                 empPos.includes('مسؤول القروض') || 
+                 empPos.includes('ضابط قروض');
+        })();
+
+        const currentChildAllowanceRate = isLoanOfficer ? loChildAllowance : otherChildAllowance;
         const housing = Number(e.housing_allowance) || housingAllowanceDefault;
         const transport = Number(e.transportation_allowance || e.transportation_fixed) || 0;
         const living = Number(e.phone_allowance) || 0;
         const spouseAllowance = isMarried ? marriageAllowanceDefault : 0;
-        const childAllowance = dependentsCount * childAllowanceDefault;
+        const childAllowance = dependentsCount * currentChildAllowanceRate;
         const other = Number(e.other_allowances) || 0;
 
         const totalAllowances = housing + transport + living + spouseAllowance + childAllowance + other;
