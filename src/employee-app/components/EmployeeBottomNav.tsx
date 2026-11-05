@@ -7,7 +7,8 @@ import {
   CreditCard, 
   Calendar, 
   Award, 
-  Bell 
+  Bell,
+  HelpCircle 
 } from 'lucide-react';
 
 export const EmployeeBottomNav: React.FC = () => {
@@ -22,7 +23,7 @@ export const EmployeeBottomNav: React.FC = () => {
     { path: '/employee-app/attendance', label: isEn ? 'Attendance' : 'الدوام', icon: Clock },
     { path: '/employee-app/payroll', label: isEn ? 'Payroll' : 'الرواتب', icon: CreditCard },
     { path: '/employee-app/leave', label: isEn ? 'Leave' : 'الإجازات', icon: Calendar },
-    { path: '/employee-app/evaluation', label: isEn ? 'Evaluation' : 'التقييم', icon: Award },
+    { path: '/employee-app/support', label: isEn ? 'Support' : 'الشكاوى', icon: HelpCircle },
     { path: '/employee-app/notifications', label: isEn ? 'Alerts' : 'التنبيهات', icon: Bell, badge: unreadNotifications },
   ];
 

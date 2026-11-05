@@ -10,6 +10,7 @@ import { EmployeeProfile } from './components/EmployeeProfile';
 import { EmployeeNews } from './components/EmployeeNews';
 import { EmployeePayroll } from './components/EmployeePayroll';
 import { EmployeeEvaluation } from './components/EmployeeEvaluation';
+import { EmployeeSupport } from './components/EmployeeSupport';
 import { EmployeeTopTabBar } from './components/EmployeeTopTabBar';
 import { EmployeeContextProvider, useEmployeeContext } from './context/EmployeeContext';
 
@@ -148,6 +149,12 @@ function EmployeeAppMain() {
               } />
               <Route path="/news" element={
                 <EmployeeNews 
+                  employee={currentEmployee} 
+                  onLogout={handleLogout}
+                />
+              } />
+              <Route path="/support" element={
+                <EmployeeSupport 
                   employee={currentEmployee} 
                   onLogout={handleLogout}
                 />

@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   FileText,
   Newspaper,
+  HelpCircle,
   ArrowRight,
   Sparkles
 } from 'lucide-react';
@@ -459,6 +460,18 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee: 
               <Newspaper className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
             <span className="text-[11px] font-black">{isEn ? 'Company News' : 'أخبار المؤسسة'}</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/employee-app/support')}
+            className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center transition-all active:scale-95 cursor-pointer col-span-3 sm:col-span-1 ${
+              isDark ? 'bg-gradient-to-r from-teal-950/40 to-[#131b2e] border-teal-500/30 text-white hover:border-teal-500/60' : 'bg-gradient-to-r from-teal-50 to-white border-teal-300 text-slate-900 shadow-xs hover:border-teal-600'
+            }`}
+          >
+            <div className="w-9 h-9 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-1.5 mx-auto">
+              <HelpCircle className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+            </div>
+            <span className="text-[11px] font-black">{isEn ? 'Support & Grievances' : 'تقديم طلب أو شكوى (الدعم)'}</span>
           </button>
         </div>
       </div>

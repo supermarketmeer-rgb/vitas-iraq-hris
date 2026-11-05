@@ -9,6 +9,7 @@ import {
   Calendar, 
   Award, 
   Bell,
+  HelpCircle,
   Sun,
   Moon,
   Globe,
@@ -46,6 +47,7 @@ export const EmployeeTopTabBar: React.FC<EmployeeTopTabBarProps> = ({ onLogout }
     { id: 'payroll', path: '/employee-app/payroll', label: isEn ? 'Payroll' : 'الرواتب', icon: CreditCard },
     { id: 'leave', path: '/employee-app/leave', label: isEn ? 'Leave' : 'الإجازات', icon: Calendar },
     { id: 'evaluation', path: '/employee-app/evaluation', label: isEn ? 'Evaluation' : 'التقييم', icon: Award },
+    { id: 'support', path: '/employee-app/support', label: isEn ? 'Support' : 'الشكاوى', icon: HelpCircle },
     { id: 'notifications', path: '/employee-app/notifications', label: isEn ? 'Alerts' : 'التنبيهات', icon: Bell, badge: unreadNotifications },
   ];
 
@@ -127,8 +129,8 @@ export const EmployeeTopTabBar: React.FC<EmployeeTopTabBarProps> = ({ onLogout }
         </div>
       </div>
 
-      {/* 6 Attached Navigation Tabs (Moved to Top as requested by User) */}
-      <div className="w-full max-w-md mx-auto px-1.5 py-1.5 flex items-center justify-between gap-1">
+      {/* Attached Navigation Tabs */}
+      <div className="w-full max-w-md mx-auto px-1 py-1.5 flex items-center justify-between gap-0.5 overflow-x-auto no-scrollbar">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || 
             (item.path !== '/employee-app/' && location.pathname.startsWith(item.path));

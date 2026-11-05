@@ -2857,6 +2857,174 @@ app.put('/api/notifications/:id/read', async (req, res) => {
 });
 
 
+// =========================================================================
+// SUPPORT TICKETS & EMPLOYEE GRIEVANCES / REQUESTS API
+// =========================================================================
+app.get('/api/support-tickets', async (req, res) => {
+  try {
+    const { employee_id, status } = req.query;
+    let sql = `
+      SELECT t.*, 
+             e.full_name_ar, e.full_name_en, e.employee_id AS emp_code, 
+             e.department, e.branch, e.position
+      FROM support_tickets t
+      LEFT JOIN employees e ON t.employee_id = e.id
+    `;
+    const params = [];
+    const conditions = [];
+
+    if (employee_id) {
+      if (isNaN(employee_id)) {
+        conditions.push(`(e.employee_id = ? OR t.employee_id = ?)`);
+        params.push(employee_id, employee_id);
+      } else {
+        conditions.push(`(t.employee_id = ? OR e.employee_id = ?)`);
+        params.push(employee_id, employee_id);
+      }
+    }
+
+    if (status && status !== 'all') {
+      conditions.push(`t.status = ?`);
+      params.push(status);
+    }
+
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    sql += ' ORDER BY t.created_at DESC';
+
+    const rows = await query(sql, params);
+    res.json(rows || []);
+  } catch (err) {
+    console.error('Error fetching support tickets:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/support-tickets', async (req, res) => {
+  try {
+    const {
+      employee_id,
+      subject,
+      category = 'HR Query',
+      description,
+      ticket_type = 'طلب',
+      priority = 'متوسطة'
+    } = req.body;
+
+    if (!subject || !description) {
+      return res.status(400).json({ error: 'Subject and description are required' });
+    }
+
+    let numericEmpId = employee_id;
+    let empName = 'الموظف';
+    let empCode = employee_id;
+
+    if (employee_id) {
+      const emps = await query('SELECT id, full_name_ar, full_name_en, employee_id FROM employees WHERE id = ? OR employee_id = ? LIMIT 1', [employee_id, employee_id]);
+      if (emps && emps[0]) {
+        numericEmpId = emps[0].id;
+        empName = emps[0].full_name_ar || emps[0].full_name_en || 'الموظف';
+        empCode = emps[0].employee_id || employee_id;
+      }
+    }
+
+    if (!numericEmpId) {
+      const firstEmp = await query('SELECT id, full_name_ar FROM employees LIMIT 1');
+      numericEmpId = firstEmp?.[0]?.id || 1;
+    }
+
+    const validCategory = ['IT Support', 'HR Query', 'Facilities', 'Other'].includes(category) ? category : 'HR Query';
+    const validStatus = 'Open';
+
+    const sql = `
+      INSERT INTO support_tickets 
+      (employee_id, subject, category, description, status, ticket_type, priority, created_at, updated_at) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+    `;
+    const params = [numericEmpId, subject, validCategory, description, validStatus, ticket_type, priority];
+    const result = await query(sql, params);
+    const newTicketId = result.insertId;
+
+    // Send instant system notification for HR Managers and Admins
+    const notifTitle = `تذكرة ${ticket_type} جديدة: ${subject.slice(0, 40)}`;
+    const notifMsg = `قام الموظف ${empName} (${empCode}) بتقديم ${ticket_type} جديد بعنوان "${subject}"`;
+    const notifId = `NTF-TK-${Date.now()}`;
+
+    await query(
+      `INSERT INTO system_notifications (id, title, message, type, is_read, created_at, updated_at) VALUES (?, ?, ?, 'info', 0, NOW(), NOW())`,
+      [notifId, notifTitle, notifMsg]
+    ).catch(() => {});
+
+    await query(
+      `INSERT INTO notifications (title, message, is_read, created_at) VALUES (?, ?, 0, NOW())`,
+      [notifTitle, notifMsg]
+    ).catch(() => {});
+
+    triggerRealtimeSync(db, 'support_tickets');
+    triggerRealtimeSync(db, 'system_notifications');
+
+    res.json({
+      success: true,
+      ticket: {
+        id: newTicketId,
+        employee_id: numericEmpId,
+        subject,
+        category: validCategory,
+        description,
+        status: validStatus,
+        ticket_type,
+        priority,
+        created_at: new Date().toISOString()
+      }
+    });
+  } catch (err) {
+    console.error('Error creating support ticket:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/support-tickets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, hr_response, resolved_by } = req.body;
+
+    const updates = [];
+    const params = [];
+
+    if (status) {
+      updates.push('status = ?');
+      params.push(status);
+      if (status === 'Resolved' || status === 'Closed') {
+        updates.push('resolved_at = NOW()');
+      }
+    }
+
+    if (hr_response !== undefined) {
+      updates.push('hr_response = ?');
+      params.push(hr_response);
+    }
+
+    if (resolved_by) {
+      updates.push('resolved_by = ?');
+      params.push(resolved_by);
+    }
+
+    updates.push('updated_at = NOW()');
+    params.push(id);
+
+    const sql = `UPDATE support_tickets SET ${updates.join(', ')} WHERE id = ?`;
+    await query(sql, params);
+
+    triggerRealtimeSync(db, 'support_tickets');
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error('Error updating support ticket:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Branches & Offices
 app.get(['/api/branches', '/api/settings/branches', '/api/offices'], async (req, res) => {
   try {

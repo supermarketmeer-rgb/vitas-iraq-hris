@@ -38,6 +38,41 @@ export const Category11SupportHelpView: React.FC = () => {
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketMsg, setTicketMsg] = useState('');
   const [ticketSent, setTicketSent] = useState(false);
+  const [adminTickets, setAdminTickets] = useState<any[]>([]);
+  const [replyTicketId, setReplyTicketId] = useState<number | string | null>(null);
+  const [replyText, setReplyText] = useState('');
+
+  const loadAdminTickets = async () => {
+    try {
+      const res = await fetch('/api/support-tickets');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setAdminTickets(data);
+      }
+    } catch (e) {}
+  };
+
+  React.useEffect(() => {
+    loadAdminTickets();
+  }, [activeModuleId]);
+
+  const handleReplyTicket = async (ticketId: number | string) => {
+    if (!replyText.trim()) return;
+    try {
+      await fetch(`/api/support-tickets/${ticketId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'Resolved',
+          hr_response: replyText.trim(),
+          resolved_by: currentUser?.name || 'إدارة الموارد البشرية'
+        })
+      });
+      setReplyText('');
+      setReplyTicketId(null);
+      loadAdminTickets();
+    } catch (e) {}
+  };
 
   // --- Live Chat State ---
   const [chatInput, setChatInput] = useState('');
@@ -97,9 +132,24 @@ export const Category11SupportHelpView: React.FC = () => {
   const [newDocDescription, setNewDocDescription] = useState('');
   const [newDocFile, setNewDocFile] = useState<File | null>(null);
 
-  const handleSendTicket = (e: React.FormEvent) => {
+  const handleSendTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticketSubject) return;
+    try {
+      await fetch('/api/support-tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: currentUser?.id || (currentUser as any)?.employeeId || 1,
+          subject: ticketSubject.trim(),
+          category: 'HR Query',
+          description: ticketMsg.trim(),
+          ticket_type: 'طلب',
+          priority: 'متوسطة'
+        })
+      });
+      loadAdminTickets();
+    } catch (e) {}
     setTicketSent(true);
     setTicketSubject('');
     setTicketMsg('');
@@ -504,19 +554,19 @@ export const Category11SupportHelpView: React.FC = () => {
       )}
 
       {/* =========================================================================
-          MODULE 2: Employee Support Tickets (supp-emp-portal)
+          MODULE 2: Employee Support Tickets (supp-emp-portal / supp-agent-desk)
           ========================================================================= */}
-      {activeModuleId === 'supp-emp-portal' && (
+      {(activeModuleId === 'supp-emp-portal' || activeModuleId === 'supp-agent-desk' || activeModuleId === 'sup-tickets') && (
         <div className={`max-w-2xl mx-auto p-6 rounded-3xl border shadow-xl space-y-4 text-xs ${
           isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
         }`}>
           <h2 className="text-sm font-bold border-b border-slate-200 dark:border-white/10 pb-2" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-            {t('تقديم تذكرة دعم جديدة', 'Submit New Support Ticket')}
+            {t('تقديم تذكرة دعم واستفسار جديدة', 'Submit New Support Ticket')}
           </h2>
 
           {ticketSent && (
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold">
-              {t(`تم إرسال تذكرتك بنجاح برقم #TK-${Math.floor(1000 + Math.random() * 9000)} وسيتواصل معك فريق الدعم قريباً.`, `Your ticket #TK-${Math.floor(1000 + Math.random() * 9000)} was submitted successfully.`)}
+              {t(`تم إرسال تذكرتك بنجاح برقم #TK-${Math.floor(1000 + Math.random() * 9000)} وسيتواصل معك فريق الدعم قريباً.`, `Your ticket was submitted successfully.`)}
             </div>
           )}
 
@@ -557,11 +607,129 @@ export const Category11SupportHelpView: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 transition-all text-xs"
+              className="w-full py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/25 transition-all text-xs cursor-pointer"
             >
               {t('إرسال التذكرة لفريق الموارد البشرية والدعم', 'Submit Ticket')}
             </button>
           </form>
+
+          {/* Live Incoming Support Tickets & Grievances */}
+          <div className="pt-4 border-t border-slate-200 dark:border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                {t(`سجل وتذاكر الموظفين والشكاوى (${adminTickets.length})`, `Employee Tickets & Complaints (${adminTickets.length})`)}
+              </h3>
+              <button
+                type="button"
+                onClick={loadAdminTickets}
+                className="text-[11px] text-teal-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xs">refresh</span>
+                {t('تحديث القائمة', 'Refresh')}
+              </button>
+            </div>
+
+            {adminTickets.length === 0 ? (
+              <p className="text-slate-400 text-center py-4 text-xs">
+                {t('لا توجد تذاكر حالية.', 'No tickets currently.')}
+              </p>
+            ) : (
+              <div className="space-y-2.5 max-h-96 overflow-y-auto pe-1">
+                {adminTickets.map(ticket => {
+                  const isResolved = ticket.status === 'Resolved' || ticket.status === 'Closed';
+                  return (
+                    <div
+                      key={ticket.id}
+                      className={`p-3 rounded-2xl border space-y-2 ${
+                        isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-lg border border-teal-500/20">
+                            #TK-{ticket.id}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-teal-500/15 text-teal-700 dark:text-teal-300">
+                            {ticket.ticket_type || 'طلب'}
+                          </span>
+                          <span className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                            {ticket.full_name_ar || ticket.full_name_en || ticket.emp_code || 'موظف'}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isResolved ? 'bg-emerald-500/15 text-emerald-600' : 'bg-amber-500/15 text-amber-600'
+                        }`}>
+                          {isResolved ? t('تم الرد والحل', 'Resolved') : t('قيد المراجعة', 'Open')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <h4 className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                          {ticket.subject}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                          {ticket.description}
+                        </p>
+                      </div>
+
+                      {ticket.hr_response && (
+                        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[11px] font-medium">
+                          <span className="font-bold">{t('رد الـ HR:', 'HR Response:')} </span>
+                          {ticket.hr_response}
+                        </div>
+                      )}
+
+                      {!isResolved && (
+                        <div>
+                          {replyTicketId === ticket.id ? (
+                            <div className="space-y-2 pt-1">
+                              <textarea
+                                rows={2}
+                                value={replyText}
+                                onChange={e => setReplyText(e.target.value)}
+                                placeholder={t('اكتب رد الموارد البشرية على الموظف...', 'Type HR response...')}
+                                className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                                  isDark ? 'bg-black border-slate-700 text-white' : 'bg-white border-slate-300'
+                                }`}
+                              />
+                              <div className="flex items-center gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => setReplyTicketId(null)}
+                                  className="px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold cursor-pointer"
+                                >
+                                  {t('إلغاء', 'Cancel')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleReplyTicket(ticket.id)}
+                                  className="px-3 py-1 rounded-lg bg-teal-600 text-white text-xs font-bold shadow-xs hover:bg-teal-500 cursor-pointer"
+                                >
+                                  {t('إرسال الرد وحل التذكرة', 'Send Reply & Resolve')}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReplyTicketId(ticket.id);
+                                setReplyText('');
+                              }}
+                              className="text-[11px] text-teal-600 dark:text-teal-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-xs">reply</span>
+                              {t('كتابة رد على هذا الموظف', 'Reply to Employee')}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
