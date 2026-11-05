@@ -261,9 +261,8 @@ export function getUserEffectivePermissions(
       ? Boolean(isAnyActive(['settings', 'cat-10-sys']) || Object.entries(perms).some(([k, v]) => k.startsWith('sys-') && k !== 'sys-dynamic-reports' && (v === 'write' || v === 'read' || v === true))) 
       : (hasCanManageFlags ? Boolean(currentUser?.can_manage_settings) : isITAdminRole),
     
-    support: hasExplicitPerms 
-      ? Boolean(isAnyActive(['support', 'cat-11-support', 'cat-12-support']) || hasActivePrefix('supp-') || hasActivePrefix('support-')) 
-      : (isHRManagerRole || isAdminRole || isITAdminRole)
+    // Support & Help Desk is universally enabled for all employees by default without requiring explicit manual assignment
+    support: perms['cat-11-support'] !== 'none' && perms['support'] !== 'none' && perms['cat-11-support'] !== false && perms['support'] !== false
   };
 }
 
@@ -392,6 +391,16 @@ export function isModuleAuthorized(
 
   // Resolve category and aliases for this module
   const { resolvedCatId, aliases } = resolveCategoryAndAlias(moduleId, catId);
+
+  // Category 11: Support & Help Desk is universally authorized for all employees by default without relying on adding it in permissions
+  if (resolvedCatId === 'cat-11-support' || resolvedCatId === 'cat-12-support' || moduleId.startsWith('supp-') || moduleId.startsWith('support-') || moduleId.startsWith('sup-')) {
+    if (perms.rawModules) {
+      if (perms.rawModules[moduleId] === 'none' || perms.rawModules[moduleId] === false) return false;
+      if (perms.rawModules['cat-11-support'] === 'none' || perms.rawModules['cat-11-support'] === false) return false;
+      if (perms.rawModules['support'] === 'none' || perms.rawModules['support'] === false) return false;
+    }
+    return true;
+  }
 
   // 1. FIRST: Direct sub-module check (most specific — overrides category denial)
   if (perms.rawModules && moduleId in perms.rawModules) {
@@ -658,9 +667,22 @@ export const MODULE_CATEGORY_MAP: Record<string, { catId: string; alias: string 
   'support-guides': { catId: 'cat-11-support', alias: 'support' },
   'supp-knowledge-base': { catId: 'cat-11-support', alias: 'support' },
   'supp-emp-portal': { catId: 'cat-11-support', alias: 'support' },
-  'supp-internal-chat': { catId: 'cat-11-support', alias: 'support' },
+  'supp-agent-desk': { catId: 'cat-11-support', alias: 'support' },
+  'supp-guide-center': { catId: 'cat-11-support', alias: 'support' },
+  'supp-emp-handbook': { catId: 'cat-11-support', alias: 'support' },
+  'supp-news-admin': { catId: 'cat-11-support', alias: 'support' },
+  'supp-notif-settings': { catId: 'cat-11-support', alias: 'support' },
   'supp-notif-center': { catId: 'cat-11-support', alias: 'support' },
+  'supp-profile-settings': { catId: 'cat-11-support', alias: 'support' },
+  'supp-internal-chat': { catId: 'cat-11-support', alias: 'support' },
   'supp-mobile-app': { catId: 'cat-11-support', alias: 'support' },
+  'supp-enterprise-nexus': { catId: 'cat-11-support', alias: 'support' },
+  'supp-nexus-mobile': { catId: 'cat-11-support', alias: 'support' },
+  'sup-faq': { catId: 'cat-11-support', alias: 'support' },
+  'sup-tickets': { catId: 'cat-11-support', alias: 'support' },
+  'sup-training': { catId: 'cat-11-support', alias: 'support' },
+  'sup-guides': { catId: 'cat-11-support', alias: 'support' },
+  'sup-contact': { catId: 'cat-11-support', alias: 'support' },
 
   // Category 12: archive
   'archive-digital': { catId: 'cat-12-archive', alias: 'archive' },
@@ -773,6 +795,14 @@ export function getModuleAccessLevel(
   // 4. Authorization check
   const authorized = isModuleAuthorized(resolvedCatId, moduleId, perms, currentRole);
   if (!authorized) return 'none';
+
+  // Support & Help Desk is universally granted by default (write/read) without relying on manual addition
+  if (resolvedCatId === 'cat-11-support' || resolvedCatId === 'cat-12-support' || moduleId.startsWith('supp-') || moduleId.startsWith('support-') || moduleId.startsWith('sup-')) {
+    if (perms.rawModules && (perms.rawModules[moduleId] === 'read' || perms.rawModules['cat-11-support'] === 'read' || perms.rawModules['support'] === 'read')) {
+      return 'read';
+    }
+    return 'write';
+  }
 
   // 5. If explicit permissions are configured for the user:
   if (perms.hasExplicitPerms && perms.rawModules) {

@@ -634,7 +634,9 @@ export const Category9RiskComplianceView: React.FC = () => {
     modules: {
       'emp-list': 'write',
       'emp-add': 'write',
-      'emp-directory': 'write'
+      'emp-directory': 'write',
+      'cat-11-support': 'write',
+      support: 'write'
     } as Record<string, 'write' | 'read' | 'none' | boolean>,
     level: 'full' as 'full' | 'read',
     canManageUsers: false,
@@ -845,6 +847,11 @@ export const Category9RiskComplianceView: React.FC = () => {
     const val = (newUserForm.modules as any)?.[modId];
     if (val === 'write' || val === true) return 'write';
     if (val === 'read') return 'read';
+    if (val === 'none' || val === false) return 'none';
+    // Support & Help Desk is active and accessible by default without requiring manual assignment
+    if (modId.startsWith('supp-') || modId.startsWith('support-') || modId.startsWith('sup-') || modId === 'cat-11-support' || modId === 'support') {
+      return 'write';
+    }
     return 'none';
   };
 
@@ -852,7 +859,12 @@ export const Category9RiskComplianceView: React.FC = () => {
     setNewUserForm(prev => {
       const nextModules = { ...prev.modules };
       if (level === 'none') {
-        delete nextModules[modId];
+        // If it's a support module, mark as explicit 'none' so the default doesn't revive it
+        if (modId.startsWith('supp-') || modId.startsWith('support-') || modId.startsWith('sup-') || modId === 'cat-11-support' || modId === 'support') {
+          nextModules[modId] = 'none';
+        } else {
+          delete nextModules[modId];
+        }
       } else {
         nextModules[modId] = level;
       }
@@ -1619,7 +1631,15 @@ export const Category9RiskComplianceView: React.FC = () => {
         reports: { catId: 'cat-2-dash', subIds: ['sys-dynamic-reports', 'dash-overview', 'dash-exec-1', 'dash-exec-2', 'dash-ess', 'dash-search'] },
         risk: { catId: 'cat-9-risk', subIds: ['risk-matrix', 'risk-audit-logs', 'risk-policies', 'risk-incidents', 'risk-compliance-checklist', 'sec-roles', 'risk-assessment', 'sec-roles-permissions', 'sec-general-settings', 'sec-audit-logs', 'sec-api-keys'] },
         settings: { catId: 'cat-10-sys', subIds: ['sys-code-view', 'sys-schema', 'sys-api-logs', 'sys-deploy-status', 'sys-sql-console', 'sys-env', 'auth-secure', 'auth-sso', 'auth-biometric'] },
-        support: { catId: 'cat-11-support', subIds: ['support-tickets', 'support-faq', 'support-contact', 'support-guides', 'supp-knowledge-base', 'supp-emp-portal', 'supp-internal-chat', 'supp-notif-center', 'supp-mobile-app'] },
+        support: { 
+          catId: 'cat-11-support', 
+          subIds: [
+            'supp-emp-portal', 'supp-agent-desk', 'supp-knowledge-base', 'supp-guide-center', 
+            'supp-emp-handbook', 'supp-news-admin', 'supp-notif-settings', 'supp-notif-center', 
+            'supp-profile-settings', 'supp-internal-chat', 'supp-mobile-app', 'supp-enterprise-nexus',
+            'support-tickets', 'support-faq', 'support-contact', 'support-guides'
+          ] 
+        },
         drivers: { catId: 'cat-drivers', subIds: ['drivers-list', 'drivers-assignments', 'drivers-trips', 'drivers-maintenance', 'drivers-fuel', 'drivers-kpi'] },
         performance: { catId: 'cat-7-perf', subIds: ['perf-appraisals', 'perf-goals', 'perf-kpi', 'perf-training-plans', 'perf-courses'] },
         assets: { catId: 'cat-8-assets', subIds: ['asset-inventory', 'asset-assign', 'asset-custody', 'asset-maintenance', 'asset-my-requests', 'doc-company', 'doc-templates', 'doc-my-docs'] },
@@ -1627,6 +1647,20 @@ export const Category9RiskComplianceView: React.FC = () => {
       };
 
       Object.entries(categoryRollupKeys).forEach(([catKey, info]) => {
+        if (catKey === 'support') {
+          const isExplicitlyDisabled = fullModules['support'] === 'none' || fullModules['cat-11-support'] === 'none';
+          if (!isExplicitlyDisabled) {
+            fullModules['support'] = fullModules['support'] || 'write';
+            fullModules['cat-11-support'] = fullModules['cat-11-support'] || 'write';
+            info.subIds.forEach(id => {
+              if (fullModules[id] !== 'none' && fullModules[id] !== false) {
+                fullModules[id] = fullModules[id] || 'write';
+              }
+            });
+            return;
+          }
+        }
+
         const hasWrite = info.subIds.some(id => fullModules[id] === 'write' || fullModules[id] === true) || fullModules[info.catId] === 'write';
         const hasRead = info.subIds.some(id => fullModules[id] === 'read') || fullModules[info.catId] === 'read';
         const catLevelGranted = fullModules[catKey] === 'write' || fullModules[catKey] === true;
@@ -3342,7 +3376,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                       settings: Boolean(u.can_manage_settings),
                       attendance: false,
                       reports: false,
-                      risk: false
+                      risk: false,
+                      'cat-11-support': 'write'
                     };
 
                     if (u.allowed_screens) {
@@ -3350,8 +3385,14 @@ export const Category9RiskComplianceView: React.FC = () => {
                         const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
                         if (s && typeof s === 'object') {
                           parsedModules = { ...s };
+                          // Support & Help Desk is always shown as permitted without relying on explicit manual addition
+                          if (parsedModules['cat-11-support'] !== 'none' && parsedModules['support'] !== 'none' && parsedModules['cat-11-support'] !== false && parsedModules['support'] !== false) {
+                            parsedModules['cat-11-support'] = parsedModules['cat-11-support'] || parsedModules['support'] || 'write';
+                          }
                         }
                       } catch (e) {}
+                    } else {
+                      parsedModules['cat-11-support'] = 'write';
                     }
 
                     const activeModEntries = Object.entries(parsedModules).filter(([_, v]) => v && v !== 'none' && v !== false);
@@ -4638,6 +4679,12 @@ export const Category9RiskComplianceView: React.FC = () => {
                                 <h5 className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
                                   {language === 'ar' ? cat.title : cat.titleEn}
                                 </h5>
+                                {cat.id === 'cat-11-support' && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-500/30 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[12px]">verified</span>
+                                    {t('متاح تلقائياً لجميع المستخدمين (افتراضي)', 'Always available to all users by default')}
+                                  </span>
+                                )}
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                   enabledCount === catModules.length && enabledCount > 0
                                     ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
