@@ -111,6 +111,7 @@ export const Category3EmployeeView: React.FC = () => {
   const [profileViewTab, setProfileViewTab] = useState<'overview' | 'personal' | 'job' | 'contracts' | 'financial' | 'identity' | 'family' | 'status-change' | 'trainings' | 'warnings'>('overview');
   const [profileSearchQuery, setProfileSearchQuery] = useState('');
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
+  const [searchHighlightIndex, setSearchHighlightIndex] = useState<number>(0);
   const [avatarImgError, setAvatarImgError] = useState(false);
 
   // References to guarantee stable profile search and prevent unintended input wipes during background polling
@@ -308,106 +309,102 @@ export const Category3EmployeeView: React.FC = () => {
   // Search state for employee directory
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter employees based on search query (البادج، الاسم، المكتب، العنوان الوظيفي، القسم)
-  const filteredEmployees = activeEmployees.filter(emp => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase().trim();
-    return (
-      // البادج و WAID
-      (emp.employeeId && String(emp.employeeId).toLowerCase().includes(query)) ||
-      (emp.employee_id && String(emp.employee_id).toLowerCase().includes(query)) ||
-      (emp.badgeNo && String(emp.badgeNo).toLowerCase().includes(query)) ||
-      (emp.badge_no && String(emp.badge_no).toLowerCase().includes(query)) ||
-      (emp.waid && String(emp.waid).toLowerCase().includes(query)) ||
-      (emp.wa_id && String(emp.wa_id).toLowerCase().includes(query)) ||
-      // الاسم
-      (emp.fullName && emp.fullName.toLowerCase().includes(query)) ||
-      (emp.fullNameEn && emp.fullNameEn.toLowerCase().includes(query)) ||
-      (emp.full_name && String(emp.full_name).toLowerCase().includes(query)) ||
-      (emp.full_name_ar && String(emp.full_name_ar).toLowerCase().includes(query)) ||
-      (emp.full_name_en && String(emp.full_name_en).toLowerCase().includes(query)) ||
-      (emp.name_ar && String(emp.name_ar).toLowerCase().includes(query)) ||
-      (emp.name_en && String(emp.name_en).toLowerCase().includes(query)) ||
-      // المكتب / الفرع
-      (emp.branch && emp.branch.toLowerCase().includes(query)) ||
-      (emp.branchEn && emp.branchEn.toLowerCase().includes(query)) ||
-      (emp.branch_ar && String(emp.branch_ar).toLowerCase().includes(query)) ||
-      (emp.branch_en && String(emp.branch_en).toLowerCase().includes(query)) ||
-      (emp.location_ar && String(emp.location_ar).toLowerCase().includes(query)) ||
-      (emp.location_en && String(emp.location_en).toLowerCase().includes(query)) ||
-      (emp.office && String(emp.office).toLowerCase().includes(query)) ||
-      (emp.office_ar && String(emp.office_ar).toLowerCase().includes(query)) ||
-      (emp.office_en && String(emp.office_en).toLowerCase().includes(query)) ||
-      // العنوان الوظيفي
-      (emp.jobTitle && emp.jobTitle.toLowerCase().includes(query)) ||
-      (emp.jobTitleEn && emp.jobTitleEn.toLowerCase().includes(query)) ||
-      (emp.job_title && String(emp.job_title).toLowerCase().includes(query)) ||
-      (emp.job_title_ar && String(emp.job_title_ar).toLowerCase().includes(query)) ||
-      (emp.job_title_en && String(emp.job_title_en).toLowerCase().includes(query)) ||
-      (emp.position && String(emp.position).toLowerCase().includes(query)) ||
-      (emp.position_ar && String(emp.position_ar).toLowerCase().includes(query)) ||
-      (emp.position_en && String(emp.position_en).toLowerCase().includes(query)) ||
-      // القسم
-      (emp.department && emp.department.toLowerCase().includes(query)) ||
-      (emp.departmentEn && emp.departmentEn.toLowerCase().includes(query)) ||
-      (emp.department_ar && String(emp.department_ar).toLowerCase().includes(query)) ||
-      (emp.department_en && String(emp.department_en).toLowerCase().includes(query))
-    );
-  });
+  // Search text normalizer supporting full Arabic diacritics, letters & English
+  const normalizeSearchText = (str: any) => {
+    if (str == null) return '';
+    return String(str)
+      .toLowerCase()
+      .replace(/[أإآء]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/[ىي]/g, 'ي')
+      .replace(/[\u064B-\u065F]/g, '') // remove Arabic tashkeel / vowels
+      .replace(/[-_.,/\\#()]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
 
-  // Filter employees for profile search box with full Arabic/English search support
+  const getEmpSearchHaystack = (emp: any) => {
+    if (!emp) return '';
+    return [
+      emp.id,
+      emp.employeeId,
+      emp.employee_id,
+      emp.badgeNo,
+      emp.badge_no,
+      emp.waid,
+      emp.wa_id,
+      emp.system_id,
+      emp.systemId,
+      emp.fullName,
+      emp.fullNameEn,
+      emp.full_name,
+      emp.full_name_ar,
+      emp.full_name_en,
+      emp.name,
+      emp.name_ar,
+      emp.name_en,
+      emp.branch,
+      emp.branchEn,
+      emp.branch_ar,
+      emp.branch_en,
+      emp.location_ar,
+      emp.location_en,
+      emp.office,
+      emp.office_ar,
+      emp.office_en,
+      emp.jobTitle,
+      emp.jobTitleEn,
+      emp.job_title,
+      emp.job_title_ar,
+      emp.job_title_en,
+      emp.position,
+      emp.position_ar,
+      emp.position_en,
+      emp.department,
+      emp.departmentEn,
+      emp.department_ar,
+      emp.department_en,
+      emp.email,
+      emp.personal_email,
+      emp.phone,
+      emp.primary_contact_phone,
+      emp.emergency_phone,
+      emp.national_id,
+    ].filter(Boolean).join(' ');
+  };
+
+  const matchSearchTokens = (haystack: string, query: string) => {
+    const normQuery = normalizeSearchText(query);
+    if (!normQuery) return true;
+    const tokens = normQuery.split(' ').filter(Boolean);
+    const normHaystack = normalizeSearchText(haystack);
+    return tokens.every(token => normHaystack.includes(token));
+  };
+
+  // Filter employees based on search query (البادج، الاسم، المكتب، العنوان الوظيفي، القسم)
+  const filteredEmployees = useMemo(() => {
+    if (!searchQuery.trim()) return activeEmployees;
+    return activeEmployees.filter(emp => {
+      const haystack = getEmpSearchHaystack(emp);
+      return matchSearchTokens(haystack, searchQuery);
+    });
+  }, [activeEmployees, searchQuery]);
+
+  // Filter employees for profile search box with full Arabic/English search support & multi-token matching
   const matchingProfileEmployees = useMemo(() => {
     const rawQuery = (profileSearchQuery || '').trim();
     if (!rawQuery) return activeEmployees;
 
-    const normalize = (str: string) => {
-      return str
-        .toLowerCase()
-        .replace(/[أإآ]/g, 'ا')
-        .replace(/ة/g, 'ه')
-        .replace(/ى/g, 'ي')
-        .replace(/[\u064B-\u065F]/g, '')
-        .trim();
-    };
-
-    const query = normalize(rawQuery);
-
     return activeEmployees.filter(emp => {
-      const candidates = [
-        emp.fullName,
-        emp.fullNameEn,
-        emp.full_name,
-        emp.full_name_ar,
-        emp.full_name_en,
-        emp.name_ar,
-        emp.name_en,
-        emp.employeeId,
-        emp.employee_id,
-        emp.badgeNo,
-        emp.badge_no,
-        emp.waid,
-        emp.wa_id,
-        emp.email,
-        emp.jobTitle,
-        emp.job_title,
-        emp.job_title_ar,
-        emp.jobTitleEn,
-        emp.job_title_en,
-        emp.department,
-        emp.department_ar,
-        emp.departmentEn,
-        emp.department_en,
-        emp.branch,
-        emp.branch_ar,
-        emp.branchEn,
-        emp.branch_en,
-        emp.location_ar,
-        emp.location_en,
-      ];
-
-      return candidates.some(c => c && normalize(String(c)).includes(query));
+      const haystack = getEmpSearchHaystack(emp);
+      return matchSearchTokens(haystack, rawQuery);
     });
   }, [activeEmployees, profileSearchQuery]);
+
+  // Keep search dropdown highlight index within bounds
+  useEffect(() => {
+    setSearchHighlightIndex(0);
+  }, [profileSearchQuery]);
 
   // Theme-based styling helpers for profile view
   const isDark = theme === 'dark';
@@ -667,15 +664,29 @@ export const Category3EmployeeView: React.FC = () => {
       if (profileSearchContainerRef.current && !profileSearchContainerRef.current.contains(event.target as Node)) {
         setIsSearchDropdownOpen(false);
         isProfileSearchFocusedRef.current = false;
+
+        const typed = (profileSearchQuery || '').trim();
+        const currentFullName = selectedEmployee ? getEmpFullName(selectedEmployee) : '';
+
+        // If user typed a search term different from the current employee's name
+        if (typed && typed.toLowerCase() !== currentFullName.toLowerCase()) {
+          // If there are matching employees, pick the first match!
+          if (matchingProfileEmployees.length > 0) {
+            handleSelectProfileEmployee(matchingProfileEmployees[0]);
+            return;
+          }
+        }
+
+        // Otherwise restore current employee's full name
         if (selectedEmployee) {
-          setProfileSearchQuery(getEmpFullName(selectedEmployee));
+          setProfileSearchQuery(currentFullName);
         }
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [selectedEmployee, language]);
+  }, [selectedEmployee, language, matchingProfileEmployees, profileSearchQuery]);
 
   // 7 Tabs Form State
   const [activeTab, setActiveTab] = useState<number>(1);
@@ -2226,9 +2237,18 @@ export const Category3EmployeeView: React.FC = () => {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <div className={`font-bold text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'} truncate`}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleSelectProfileEmployee(emp);
+                                  setActiveModuleId('emp-profile');
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                                className={`font-bold text-xs sm:text-sm text-start hover:text-teal-600 dark:hover:text-teal-400 hover:underline transition-colors cursor-pointer ${theme === 'dark' ? 'text-white' : 'text-slate-900'} truncate block`}
+                                title={t('انقر لفتح ملف الموظف', 'Click to open employee profile')}
+                              >
                                 {getEmpFullName(emp)}
-                              </div>
+                              </button>
                               <div className="text-[11px] text-slate-400 md:hidden font-mono">
                                 {emp.employeeId || '-'}
                               </div>
@@ -2300,6 +2320,22 @@ export const Category3EmployeeView: React.FC = () => {
                         {/* Actions */}
                         <td className="py-3 px-4 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
+                            {/* View Profile Icon (Dark Background, Teal Icon) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleSelectProfileEmployee(emp);
+                                setActiveModuleId('emp-profile');
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 hover:text-teal-300 shadow-sm border border-slate-700/60 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                              title={t('عرض ملف الموظف الكامل', 'View Full Employee Profile')}
+                            >
+                              <span className="material-symbols-outlined text-lg">account_box</span>
+                            </button>
+
                             {/* Edit Icon (Dark Background, Green Icon) */}
                             <button
                               type="button"
@@ -2380,9 +2416,18 @@ export const Category3EmployeeView: React.FC = () => {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSelectProfileEmployee(emp);
+                              setActiveModuleId('emp-profile');
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className={`font-bold text-sm text-start hover:text-teal-600 dark:hover:text-teal-400 hover:underline transition-colors cursor-pointer ${theme === 'dark' ? 'text-white' : 'text-slate-900'} truncate`}
+                            title={t('انقر لفتح ملف الموظف', 'Click to open employee profile')}
+                          >
                             {getEmpFullName(emp)}
-                          </h3>
+                          </button>
                           <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
                             theme === 'dark'
                               ? 'bg-[#06080d] text-teal-400 border-teal-500/30'
@@ -2431,6 +2476,21 @@ export const Category3EmployeeView: React.FC = () => {
 
                     {/* Right: Actions */}
                     <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleSelectProfileEmployee(emp);
+                          setActiveModuleId('emp-profile');
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 hover:text-teal-300 shadow-sm border border-slate-700/60 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                        title={t('عرض ملف الموظف الكامل', 'View Full Employee Profile')}
+                      >
+                        <span className="material-symbols-outlined text-lg">account_box</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={(e) => {
@@ -2503,7 +2563,18 @@ export const Category3EmployeeView: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <h3 className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{getEmpFullName(emp)}</h3>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSelectProfileEmployee(emp);
+                              setActiveModuleId('emp-profile');
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className={`font-bold text-sm text-start hover:text-teal-600 dark:hover:text-teal-400 hover:underline transition-colors cursor-pointer ${theme === 'dark' ? 'text-white' : 'text-slate-900'} block truncate`}
+                            title={t('انقر لفتح ملف الموظف', 'Click to open employee profile')}
+                          >
+                            {getEmpFullName(emp)}
+                          </button>
                           <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{getEmpJobTitle(emp)}</p>
                         </div>
                       </div>
@@ -2549,6 +2620,23 @@ export const Category3EmployeeView: React.FC = () => {
                       const empTargetId = emp.id || emp.employeeId || emp.employee_id;
                       return (
                         <div className="flex items-center justify-between w-full px-1">
+                          {/* View Profile Icon */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleSelectProfileEmployee(emp);
+                              setActiveModuleId('emp-profile');
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-400 hover:text-teal-300 shadow-sm border border-slate-700/60 transition-all duration-150 hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                            style={{ order: 0 }}
+                            title={t('عرض ملف الموظف الكامل', 'View Full Employee Profile')}
+                          >
+                            <span className="material-symbols-outlined text-lg">account_box</span>
+                          </button>
+
                           {/* Right Side: Delete Icon (Dark Background) */}
                           <button
                             type="button"
@@ -4212,10 +4300,29 @@ export const Category3EmployeeView: React.FC = () => {
                       }, 200);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (!isSearchDropdownOpen) {
+                          setIsSearchDropdownOpen(true);
+                        } else if (matchingProfileEmployees.length > 0) {
+                          setSearchHighlightIndex(prev =>
+                            prev < matchingProfileEmployees.length - 1 ? prev + 1 : 0
+                          );
+                        }
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        if (isSearchDropdownOpen && matchingProfileEmployees.length > 0) {
+                          setSearchHighlightIndex(prev =>
+                            prev > 0 ? prev - 1 : matchingProfileEmployees.length - 1
+                          );
+                        }
+                      } else if (e.key === 'Enter') {
                         e.preventDefault();
                         if (matchingProfileEmployees.length > 0) {
-                          handleSelectProfileEmployee(matchingProfileEmployees[0]);
+                          const targetIdx = searchHighlightIndex >= 0 && searchHighlightIndex < matchingProfileEmployees.length
+                            ? searchHighlightIndex
+                            : 0;
+                          handleSelectProfileEmployee(matchingProfileEmployees[targetIdx]);
                           profileSearchInputRef.current?.blur();
                         }
                       } else if (e.key === 'Escape') {
@@ -4250,41 +4357,70 @@ export const Category3EmployeeView: React.FC = () => {
 
                 {/* Instant Results Dropdown */}
                 {isSearchDropdownOpen && (
-                  <div className={`absolute right-0 left-0 top-full mt-1.5 ${profileColors.dropdownBg} border ${profileColors.dropdownBorder} rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto ${profileColors.divider}`}>
+                  <div className={`absolute right-0 left-0 top-full mt-1.5 ${profileColors.dropdownBg} border ${profileColors.dropdownBorder} rounded-xl shadow-2xl z-50 max-h-72 overflow-y-auto ${profileColors.divider}`}>
                     {matchingProfileEmployees.length > 0 ? (
-                      matchingProfileEmployees.slice(0, 30).map(emp => (
-                        <button
-                          key={emp.id}
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            handleSelectProfileEmployee(emp);
-                          }}
-                          onClick={() => {
-                            handleSelectProfileEmployee(emp);
-                          }}
-                          className={`w-full text-right p-2.5 ${profileColors.dropdownHover} flex items-center justify-between transition-colors group cursor-pointer`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 rounded-full ${profileColors.badgeBg} ${profileColors.badgeText} font-black text-xs flex items-center justify-center overflow-hidden shrink-0`}>
-                              {emp.photoUrl ? (
-                                <img src={emp.photoUrl} alt={getEmpFullName(emp)} className="w-full h-full object-contain p-0.5" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                              ) : (
-                                <span className={`material-symbols-outlined text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>person</span>
+                      matchingProfileEmployees.slice(0, 50).map((emp, idx) => {
+                        const isHighlighted = idx === searchHighlightIndex;
+                        const isCurrent = selectedEmployee && (
+                          (emp.id != null && emp.id === selectedEmployee.id) ||
+                          (emp.employeeId && emp.employeeId === selectedEmployee.employeeId)
+                        );
+                        return (
+                          <button
+                            key={emp.id || emp.employeeId || idx}
+                            type="button"
+                            onMouseEnter={() => setSearchHighlightIndex(idx)}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectProfileEmployee(emp);
+                            }}
+                            onClick={() => {
+                              handleSelectProfileEmployee(emp);
+                            }}
+                            className={`w-full ${language === 'ar' ? 'text-right' : 'text-left'} p-2.5 flex items-center justify-between transition-colors group cursor-pointer ${
+                              isHighlighted
+                                ? (isDark ? 'bg-teal-600/30 text-white' : 'bg-teal-50 text-teal-900 font-bold')
+                                : profileColors.dropdownHover
+                            } ${isCurrent ? (isDark ? 'border-r-4 border-r-teal-400' : 'border-r-4 border-r-teal-600') : ''}`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`w-8 h-8 rounded-full ${profileColors.badgeBg} ${profileColors.badgeText} font-black text-xs flex items-center justify-center overflow-hidden shrink-0`}>
+                                {emp.photoUrl ? (
+                                  <img src={emp.photoUrl} alt={getEmpFullName(emp)} className="w-full h-full object-contain p-0.5" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                ) : (
+                                  <span className={`material-symbols-outlined text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>person</span>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <span className={`block text-xs font-bold truncate ${isHighlighted ? (isDark ? 'text-teal-300' : 'text-teal-800') : profileColors.text}`}>
+                                  {getEmpFullName(emp)}
+                                </span>
+                                <span className={`block text-[10px] truncate ${profileColors.textSecondary}`}>
+                                  {getEmpJobTitle(emp)} • {getEmpBranch(emp)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0 ms-2">
+                              {(emp.waid || emp.wa_id) && (
+                                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                                  isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                }`} title="WAID">
+                                  W:{emp.waid || emp.wa_id}
+                                </span>
+                              )}
+                              <span className={`text-[11px] font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'} font-bold ${isDark ? 'bg-teal-600/20' : 'bg-blue-50'} group-hover:${isDark ? 'bg-teal-600/30' : 'bg-blue-100'} px-2 py-0.5 rounded-full border ${profileColors.badgeBorder}`}>
+                                {emp.employeeId || emp.badgeNo || 'EMP'}
+                              </span>
+                              {isCurrent && (
+                                <span className="material-symbols-outlined text-sm text-teal-500 shrink-0">check_circle</span>
                               )}
                             </div>
-                            <div>
-                              <span className={`block text-xs font-bold ${profileColors.text} group-hover:${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{getEmpFullName(emp)}</span>
-                              <span className={`block text-[10px] ${profileColors.textSecondary}`}>{getEmpJobTitle(emp)} • {getEmpBranch(emp)}</span>
-                            </div>
-                          </div>
-                          <span className={`text-[11px] font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'} font-bold ${isDark ? 'bg-teal-600/20' : 'bg-blue-50'} group-hover:${isDark ? 'bg-teal-600/30' : 'bg-blue-100'} px-2 py-0.5 rounded-full border ${profileColors.badgeBorder}`}>
-                            {emp.employeeId || 'EMP'}
-                          </span>
-                        </button>
-                      ))
+                          </button>
+                        );
+                      })
                     ) : (
-                      <div className={`p-3 text-center text-xs ${profileColors.textSecondary}`}>
+                      <div className={`p-4 text-center text-xs ${profileColors.textSecondary}`}>
+                        <span className="material-symbols-outlined text-lg mb-1 block text-slate-400">person_off</span>
                         {t('لا توجد نتائج مطابقة لـ', 'No matching results for')} "{profileSearchQuery}"
                       </div>
                     )}
@@ -4322,9 +4458,21 @@ export const Category3EmployeeView: React.FC = () => {
                 </select>
               </div>
 
-              {/* Total Employees Count Badge */}
-              <span className={`text-[11px] font-mono ${profileColors.textSecondary} font-bold ${isDark ? 'bg-white/5' : 'bg-slate-100'} px-2.5 py-1 rounded-xl border ${profileColors.border} shrink-0 whitespace-nowrap`}>
-                {t('إجمالي الموظفين:', 'Total Employees:')} {activeEmployees.length}
+              {/* Total / Filtered Employees Count Badge */}
+              <span className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded-xl border shrink-0 whitespace-nowrap transition-colors ${
+                (profileSearchQuery || '').trim()
+                  ? (matchingProfileEmployees.length > 0
+                      ? (isDark ? 'text-teal-300 bg-teal-500/10 border-teal-500/30' : 'text-teal-700 bg-teal-50 border-teal-200')
+                      : (isDark ? 'text-rose-400 bg-rose-500/10 border-rose-500/30' : 'text-rose-600 bg-rose-50 border-rose-200'))
+                  : `${profileColors.textSecondary} ${isDark ? 'bg-white/5' : 'bg-slate-100'} ${profileColors.border}`
+              }`}>
+                {(profileSearchQuery || '').trim()
+                  ? (language === 'ar'
+                      ? `النتائج: ${matchingProfileEmployees.length} من ${activeEmployees.length}`
+                      : `Results: ${matchingProfileEmployees.length} of ${activeEmployees.length}`)
+                  : (language === 'ar'
+                      ? `إجمالي الموظفين: ${activeEmployees.length}`
+                      : `Total Employees: ${activeEmployees.length}`)}
               </span>
             </div>
           </div>
