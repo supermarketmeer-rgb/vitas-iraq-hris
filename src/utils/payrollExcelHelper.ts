@@ -264,31 +264,25 @@ export async function parsePayrollExcel(
           const cleanBadge = String(rawBadge).trim();
           const cleanName = String(rawName).trim();
 
-          // Skip empty rows or subtotal/header rows
-          if (!cleanBadge && !cleanName) return;
+          // STRICT ID RULE: If no SystemID/WAID is present on this Excel row, SKIP IT completely!
+          // As instructed: "في الاكسل شيت يوجد 5 موظفين لديهم SystemID ولكن في التطبيق يوجد اكثر من ذلك... الاسماء ليست متطابقة بين الاكسل والتطبيق. يجب ان يظهر حوافز الموظفين الذين لديهم آي دي اما من ليس لديه آيدي يجب ان تظهر صفر"
+          if (!cleanBadge || cleanBadge === '—' || cleanBadge === '-' || cleanBadge === '0' || cleanBadge === 'null' || cleanBadge === 'undefined') {
+            return;
+          }
           if (/^total|^grand\s*total|^sum|^المجموع/i.test(cleanName)) return;
 
-          // Match with existing employees
+          // Match with existing employees STRICTLY by ID (waid / SystemID / badge / employee_id)
+          // NO FUZZY NAME MATCHING as names in Excel differ from App!
           const matchedEmp = existingEmployees.find((emp) => {
             const empWaid = String(emp.waid || emp.wa_id || '').trim();
-            const empBadge = String(emp.badge_no || emp.badgeNo || emp.employeeId || emp.id || '').trim();
-            const empNameAr = String(emp.name_ar || emp.name || emp.employee_name || emp.fullName || '').trim();
-            const empNameEn = String(emp.name_en || emp.fullNameEn || '').trim();
-            const empId = String(emp.id).trim();
+            const empBadge = String(emp.badge_no || emp.badgeNo || '').trim();
+            const empId = String(emp.id || emp.employeeId || emp.employee_id || '').trim();
 
-            if (cleanBadge) {
-              if (empWaid && (empWaid.toLowerCase() === cleanBadge.toLowerCase())) return true;
-              if (empBadge && (empBadge.toLowerCase() === cleanBadge.toLowerCase())) return true;
-              if (empId && (empId.toLowerCase() === cleanBadge.toLowerCase())) return true;
-              if (empBadge.replace(/\s+/g, '') === cleanBadge.replace(/\s+/g, '')) return true;
-              const cleanDigits = cleanBadge.replace(/\D/g, '');
-              if (cleanDigits && (empWaid.replace(/\D/g, '') === cleanDigits || empBadge.replace(/\D/g, '') === cleanDigits)) return true;
-            }
-            if (cleanName) {
-              const cLower = cleanName.toLowerCase();
-              if (empNameAr && (empNameAr.includes(cleanName) || cleanName.includes(empNameAr))) return true;
-              if (empNameEn && (empNameEn.toLowerCase().includes(cLower) || cLower.includes(empNameEn.toLowerCase()))) return true;
-            }
+            if (empWaid && (empWaid.toLowerCase() === cleanBadge.toLowerCase())) return true;
+            if (empWaid && cleanBadge.replace(/\D/g, '') && empWaid.replace(/\D/g, '') === cleanBadge.replace(/\D/g, '')) return true;
+            if (empBadge && (empBadge.toLowerCase() === cleanBadge.toLowerCase())) return true;
+            if (empBadge && cleanBadge.replace(/\D/g, '') && empBadge.replace(/\D/g, '') === cleanBadge.replace(/\D/g, '')) return true;
+            if (empId && (empId.toLowerCase() === cleanBadge.toLowerCase())) return true;
             return false;
           });
 
@@ -417,6 +411,18 @@ export async function parsePayrollExcel(
           totalOtherDeductions += isNaN(otherDeductions) ? 0 : otherDeductions;
 
           matchedCount++;
+        });
+
+        // Reset incentives to 0 for all existing employees who do NOT have a WAID or were not matched in Excel
+        existingEmployees.forEach((emp) => {
+          const empWaid = String(emp.waid || emp.wa_id || '').trim();
+          if (!empWaid) {
+            if (!parsedAdjustments[emp.id]) {
+              parsedAdjustments[emp.id] = { incentives: 0 };
+            } else {
+              parsedAdjustments[emp.id].incentives = 0;
+            }
+          }
         });
 
         resolve({

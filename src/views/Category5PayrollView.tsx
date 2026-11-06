@@ -633,8 +633,10 @@ export const Category5PayrollView: React.FC = () => {
       const transportation = adj.transportation !== undefined ? adj.transportation : Number(emp.transportationFixed ?? emp.transportation_fixed ?? 0);
       // 3. bonus
       const bonus = adj.bonus !== undefined ? adj.bonus : (Number(emp.fixedBonus ?? emp.fixed_bonus ?? 0) + (adj.bonusExtra || 0));
-      // 4. incentives
-      const incentives = adj.incentives !== undefined ? adj.incentives : Number(emp.incentives ?? 0);
+      // 4. incentives: Strictly restricted to employees with an ID (SystemID / WAID). Non-ID staff MUST be 0!
+      const hasWaid = Boolean(String(emp.waid || emp.wa_id || '').trim());
+      const rawIncentives = adj.incentives !== undefined ? adj.incentives : Number(emp.incentives ?? 0);
+      const incentives = hasWaid ? rawIncentives : 0;
       // 5. earned_leave
       const earned_leave = adj.earnedLeave !== undefined ? adj.earnedLeave : Number(emp.earnedLeave ?? emp.earned_leave ?? 0);
 
@@ -4158,7 +4160,17 @@ export const Category5PayrollView: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${isDark ? 'divide-white/5' : 'divide-slate-200'}`}>
-                      {Object.entries(payrollImportModalData.parsedAdjustments).map(([empId, adj]: [string, any], idx) => {
+                      {Object.entries(payrollImportModalData.parsedAdjustments)
+                        .filter(([_, adj]: [string, any]) => (
+                          (adj.incentives || 0) > 0 ||
+                          (adj.transportation || 0) > 0 ||
+                          (adj.bonus || 0) > 0 ||
+                          (adj.overtimeAmount || adj.overtime || 0) > 0 ||
+                          (adj.earnedLeave || 0) > 0 ||
+                          (adj.loanPayment || 0) > 0 ||
+                          (adj.otherDeductions || 0) > 0
+                        ))
+                        .map(([empId, adj]: [string, any], idx) => {
                         const emp = employees.find(e => String(e.id) === String(empId));
                         return (
                           <tr key={empId} className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>

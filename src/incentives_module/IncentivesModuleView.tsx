@@ -118,7 +118,16 @@ export const IncentivesModuleView: React.FC = () => {
       const recDigits = recIdClean.replace(/\D/g, '');
       const recNameClean = normalize(record.employeeName);
 
-      // Search matching employee in HRIS active database
+      // STRICT ID MATCHING: Only match if the Excel record has a valid SystemID / WAID.
+      // Names in Excel differ from the application, so NEVER fall back to fuzzy name matching!
+      if (!recIdClean || recIdClean === '—' || recIdClean === '-' || recIdClean === '0') {
+        return {
+          ...record,
+          isMatched: false,
+        };
+      }
+
+      // Search matching employee in HRIS active database strictly by ID (waid / badge / employee_id)
       const match = employees.find((emp) => {
         const empWaid = String(emp.waid || emp.wa_id || '').trim();
         const empWaidDigits = empWaid.replace(/\D/g, '');
@@ -126,26 +135,17 @@ export const IncentivesModuleView: React.FC = () => {
         const empBadgeDigits = empBadge.replace(/\D/g, '');
         const empId = String(emp.id || emp.employeeId || emp.employee_id || '').trim();
         const empIdDigits = empId.replace(/\D/g, '');
-        const empNameAr = normalize(emp.fullName || emp.name_ar || emp.name);
-        const empNameEn = normalize(emp.fullNameEn || emp.name_en);
 
         // 1. Direct SystemID to Incentives WAID (For Incentives) match - TOP PRIORITY
-        if (recIdClean && recIdClean !== '—') {
-          if (empWaid && (empWaid.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empWaidDigits && recDigits === empWaidDigits))) {
-            return true;
-          }
-          // 2. Direct Badge No match
-          if (empBadge && (empBadge.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empBadgeDigits && recDigits === empBadgeDigits))) {
-            return true;
-          }
-          // 3. Employee ID match (e.g. VTS-1074 matches 1074 or VTS-1074)
-          if (empId && (empId.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empIdDigits && recDigits === empIdDigits))) {
-            return true;
-          }
+        if (empWaid && (empWaid.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empWaidDigits && recDigits === empWaidDigits))) {
+          return true;
         }
-
-        // 4. Name match (Arabic or English)
-        if (recNameClean && (empNameAr.includes(recNameClean) || recNameClean.includes(empNameAr) || empNameEn.includes(recNameClean) || recNameClean.includes(empNameEn))) {
+        // 2. Direct Badge No match
+        if (empBadge && (empBadge.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empBadgeDigits && recDigits === empBadgeDigits))) {
+          return true;
+        }
+        // 3. Employee ID match (e.g. VTS-1074 matches 1074 or VTS-1074)
+        if (empId && (empId.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empIdDigits && recDigits === empIdDigits))) {
           return true;
         }
 
@@ -202,6 +202,17 @@ export const IncentivesModuleView: React.FC = () => {
         };
         syncedCount++;
         totalSyncedIQD += (incentivesIQD || 0) + (transportationIQD || 0) + (bonusIQD || 0);
+      });
+
+      // Reset incentives to 0 for all employees who have no WAID
+      employees.forEach((emp) => {
+        const hasWaid = Boolean(String(emp.waid || emp.wa_id || '').trim());
+        if (!hasWaid) {
+          adjustments[emp.id] = {
+            ...(adjustments[emp.id] || {}),
+            incentives: 0
+          };
+        }
       });
 
       // Persist to localStorage
