@@ -1058,10 +1058,11 @@ export function extractConsolidatedAllRoles(
   if (wsLO) {
     const rowsLO = XLSX.utils.sheet_to_json(wsLO, { header: 1, defval: '' }) as any[][];
     let colSystemIdLO = -1;
-    let colBranchLO = -1;
     let colNameLO = -1;
-    let colIncLO = -1;
+    let colBranchLO = -1;
     let colTransLO = -1;
+    let colIncLO = -1;
+    let colPropIncLO = -1;
     let colBonusLO = -1;
     let headerRowLO = -1;
 
@@ -1069,25 +1070,29 @@ export function extractConsolidatedAllRoles(
       const hRow = rowsLO[hr];
       if (!Array.isArray(hRow)) continue;
       hRow.forEach((c: any, colIdx: number) => {
-        const s = String(c || '').trim().toLowerCase();
+        const s = String(c || '').trim();
         if (/system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز|كود[\s_-]*الحوافز/i.test(s)) colSystemIdLO = colIdx;
-        if (colBranchLO < 0 && /branch|office|المكتب|الفرع/i.test(s)) colBranchLO = colIdx;
-        if (colNameLO < 0 && /name|اسم|الموظف/i.test(s)) colNameLO = colIdx;
-        if (colIncLO < 0 && /^incentives?$|^حوافز$|^الحوافز$/i.test(s)) colIncLO = colIdx;
-        if (colTransLO < 0 && /^transportation$|^نقل$|^بدل.*نقل$/i.test(s)) colTransLO = colIdx;
-        if (colBonusLO < 0 && /^bonus$|^مكاف|^علاو/i.test(s)) colBonusLO = colIdx;
+        if (/loan[\s_-]*officer(?:\s*\(active\))?|emp.*name|اسم/i.test(s) && !/supervisor/i.test(s)) colNameLO = colIdx;
+        if (/^branch$|الفرع|المكتب/i.test(s)) colBranchLO = colIdx;
+        if (/^transportation$|نقل/i.test(s)) colTransLO = colIdx;
+        if (/proposal[\s_-]*incentive/i.test(s)) colPropIncLO = colIdx;
       });
-      if (colIncLO >= 0 || colTransLO >= 0) {
+      if (colTransLO >= 0) {
         headerRowLO = hr;
         break;
       }
     }
 
-    if (colNameLO < 0) colNameLO = 0;
-    if (colBranchLO < 0) colBranchLO = 3;
-    if (colIncLO < 0) colIncLO = 50;
-    if (colTransLO < 0) colTransLO = 51;
-    if (colBonusLO < 0) colBonusLO = 52;
+    if (colTransLO >= 0) {
+      colIncLO = colTransLO - 1; // Real final Incentives column is adjacent to Transportation
+      colBonusLO = colTransLO + 1; // Real final Bonus column is adjacent to Transportation
+    }
+
+    if (colNameLO < 0) colNameLO = colSystemIdLO === 0 ? 1 : 0;
+    if (colBranchLO < 0) colBranchLO = colSystemIdLO === 0 ? 4 : 3;
+    if (colIncLO < 0) colIncLO = colSystemIdLO === 0 ? 51 : 50;
+    if (colTransLO < 0) colTransLO = colSystemIdLO === 0 ? 52 : 51;
+    if (colBonusLO < 0) colBonusLO = colSystemIdLO === 0 ? 53 : 52;
     const startRowLO = headerRowLO >= 0 ? headerRowLO + 1 : 6;
 
     for (let r = startRowLO; r < rowsLO.length; r++) {
@@ -1096,9 +1101,11 @@ export function extractConsolidatedAllRoles(
       const rawName = String(row[colNameLO] || '').trim();
       if (!rawName || /^total/i.test(rawName)) continue;
       const office = String(row[colBranchLO] || 'Unspecified').trim();
-      const inc = parseFloat(String(row[colIncLO] || '0')) || 0;
-      const trans = parseFloat(String(row[colTransLO] || '0')) || 0;
-      const bonus = parseFloat(String(row[colBonusLO] || '0')) || 0;
+      const rawInc = colIncLO >= 0 ? (parseFloat(String(row[colIncLO] || '0').replace(/[$,\s]/g, '')) || 0) : 0;
+      const propInc = colPropIncLO >= 0 ? (parseFloat(String(row[colPropIncLO] || '0').replace(/[$,\s]/g, '')) || 0) : 0;
+      const inc = rawInc > 0 ? rawInc : propInc;
+      const trans = colTransLO >= 0 ? (parseFloat(String(row[colTransLO] || '0').replace(/[$,\s]/g, '')) || 0) : 0;
+      const bonus = colBonusLO >= 0 ? (parseFloat(String(row[colBonusLO] || '0').replace(/[$,\s]/g, '')) || 0) : 0;
       const empId = colSystemIdLO >= 0 && row[colSystemIdLO] ? String(row[colSystemIdLO]).trim() : '—';
       const key = normalizeEmployeeName(rawName);
 
