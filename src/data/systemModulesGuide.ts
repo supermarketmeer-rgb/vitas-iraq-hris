@@ -2258,7 +2258,7 @@ export const ENGLISH_SYSTEM_GUIDE: GuideCategory[] = [
       {
         id: 'supp-enterprise-nexus',
         number: '12.12',
-        title: 'Enterprise Nexus Unified Integration Hub',
+        title: 'Enterprise Unified Integration Hub',
         summary: 'Strategic integration center synchronizing all digital services across the enterprise.',
         functions: [
           'Centralized integration pipeline orchestrating data flow between all operational modules.',
@@ -2270,7 +2270,7 @@ export const ENGLISH_SYSTEM_GUIDE: GuideCategory[] = [
       {
         id: 'supp-nexus-mobile',
         number: '12.13',
-        title: 'Nexus Mobile Companion & Instant Action Utility',
+        title: 'Mobile Companion & Instant Action Utility',
         summary: 'Rapid-action mobile companion for immediate executive approvals and urgent alerts.',
         functions: [
           'Priority reception of urgent broadcasts with instant interactive acknowledgment actions.',

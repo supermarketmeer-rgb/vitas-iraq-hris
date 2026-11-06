@@ -436,7 +436,7 @@ export const Category11SupportHelpView: React.FC = () => {
               {activeModuleId === 'supp-profile-settings' && t('إعدادات الملف والتفضيلات الشخصية والأمان', 'Profile & Preference Settings')}
               {activeModuleId === 'supp-internal-chat' && t('المحادثات المباشرة والتواصل الداخلي (Live Chat)', 'Internal Staff Messaging')}
               {(activeModuleId === 'supp-mobile-app' || activeModuleId === 'supp-nexus-mobile') && t('تحميل ومزامنة تطبيقات الهاتف المحمول', 'Mobile Application Download & Telemetry')}
-              {activeModuleId === 'supp-enterprise-nexus' && t('نظام Enterprise Nexus Hub وتكامل الخدمات', 'Enterprise Nexus Hub & Service Integration')}
+              {activeModuleId === 'supp-enterprise-nexus' && t('مركز تكامل الخدمات المؤسسية والسحابية', 'Enterprise Hub & Service Integration')}
               {(!activeModuleId || activeModuleId === 'cat-11-support') && t('مركز الدعم والمساعدة الموحد', 'Unified Support & Help Desk')}
             </span>
           </h1>
@@ -460,7 +460,7 @@ export const Category11SupportHelpView: React.FC = () => {
             { id: 'supp-profile-settings', label: t('الملف والأمان', 'Profile'), icon: 'settings_suggest' },
             { id: 'supp-internal-chat', label: t('المحادثات', 'Chat'), icon: 'forum' },
             { id: 'supp-mobile-app', label: t('تطبيقات الموبايل', 'Mobile Apps'), icon: 'smartphone' },
-            { id: 'supp-enterprise-nexus', label: t('نظام Nexus', 'Nexus Hub'), icon: 'cloud_sync' },
+            { id: 'supp-enterprise-nexus', label: t('تكامل الخدمات', 'Enterprise Hub'), icon: 'cloud_sync' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -2011,7 +2011,7 @@ export const Category11SupportHelpView: React.FC = () => {
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span className="material-symbols-outlined text-teal-600">cloud_sync</span>
-                {t('نظام Enterprise Nexus Hub وتكامل الخدمات السحابية', 'Enterprise Nexus Integration & Telemetry Hub')}
+                {t('مركز تكامل الخدمات المؤسسية والسحابية', 'Enterprise Integration & Telemetry Hub')}
               </h2>
               <p className="text-slate-500 text-xs mt-0.5">
                 {t('مركز مراقبة تكامل الخوادم، مزامنة البصمة اللحظية، مايكروسوفت 365، وسلامة قاعدة البيانات', 'System-wide health telemetry and service connectivity matrix')}

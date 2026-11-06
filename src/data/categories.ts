@@ -804,15 +804,15 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
       },
       {
         id: 'supp-enterprise-nexus',
-        title: 'نظام Enterprise Nexus',
-        titleEn: 'Enterprise Nexus Hub',
+        title: 'مركز تكامل الخدمات المؤسسية',
+        titleEn: 'Enterprise Hub',
         icon: 'cloud_sync',
         description: 'مركز الربط للخدمات والأنظمة المتكاملة'
       },
       {
         id: 'supp-nexus-mobile',
-        title: 'نظام Nexus Mobile',
-        titleEn: 'Nexus Mobile Companion',
+        title: 'مرافق الهاتف المحمول',
+        titleEn: 'Mobile Companion',
         icon: 'install_mobile',
         description: 'مرافق الهاتف المحمول لإشعار الموظفين الفوري'
       }
