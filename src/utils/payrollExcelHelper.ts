@@ -143,9 +143,52 @@ export async function parsePayrollExcel(
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const rawRows = XLSX.utils.sheet_to_json(worksheet) as any[];
+        
+        // Dynamically select the sheet that contains payroll/incentives data
+        let targetSheetName = workbook.SheetNames[0];
+        for (const sName of workbook.SheetNames) {
+          const wsTest = workbook.Sheets[sName];
+          if (!wsTest) continue;
+          const grid = XLSX.utils.sheet_to_json(wsTest, { header: 1, defval: '' }) as any[][];
+          let matched = false;
+          for (let r = 0; r <= 8 && r < grid.length; r++) {
+            const rowStr = (grid[r] || []).map((c: any) => String(c || '').trim().toLowerCase()).join(' | ');
+            if (
+              (/system[\s_-]*id|waid|badge|loan[\s_-]*officer|اسم[\s_-]*الموظف|employee|الرقم[\s_-]*الوظيفي/i.test(rowStr)) &&
+              (/incentive|حوافز|transport|نقل|salary|راتب|bonus|مكاف/i.test(rowStr))
+            ) {
+              targetSheetName = sName;
+              matched = true;
+              break;
+            }
+          }
+          if (matched && (sName === 'LO' || sName.includes('Final') || sName.includes('Payroll'))) {
+            break;
+          }
+        }
+
+        const worksheet = workbook.Sheets[targetSheetName];
+        if (!worksheet) {
+          throw new Error('تعذر العثور على ورقة بيانات صالحة في الملف');
+        }
+
+        // Dynamically detect the header row index (scanning rows 0 to 12)
+        const rawGrid = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+        let headerRowIdx = 0;
+        for (let r = 0; r <= 12 && r < rawGrid.length; r++) {
+          const row = rawGrid[r];
+          if (!Array.isArray(row)) continue;
+          const rowStr = row.map((c: any) => String(c || '').trim().toLowerCase()).join(' | ');
+          if (
+            (/system[\s_-]*id|waid|badge|loan[\s_-]*officer|اسم[\s_-]*الموظف|employee|الرقم[\s_-]*الوظيفي/i.test(rowStr)) &&
+            (/incentive|حوافز|transport|نقل|salary|راتب|bonus|مكاف/i.test(rowStr))
+          ) {
+            headerRowIdx = r;
+            break;
+          }
+        }
+
+        const rawRows = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIdx }) as any[];
 
         if (!rawRows || rawRows.length === 0) {
           resolve({
@@ -205,9 +248,15 @@ export async function parsePayrollExcel(
             '';
 
           const rawName =
+            row['Loan Officer (Active)'] ??
+            row['Loan Officer'] ??
+            row['Loan Officer Supervisor'] ??
+            row['Credit Coordinator'] ??
             row['اسم الموظف / Employee Name'] ??
             row['اسم الموظف'] ??
             row['الاسم'] ??
+            row['Name'] ??
+            row['Employee Name'] ??
             row['employee_name'] ??
             row['name'] ??
             '';
@@ -215,12 +264,16 @@ export async function parsePayrollExcel(
           const cleanBadge = String(rawBadge).trim();
           const cleanName = String(rawName).trim();
 
+          // Skip empty rows or subtotal/header rows
+          if (!cleanBadge && !cleanName) return;
+          if (/^total|^grand\s*total|^sum|^المجموع/i.test(cleanName)) return;
+
           // Match with existing employees
           const matchedEmp = existingEmployees.find((emp) => {
             const empWaid = String(emp.waid || emp.wa_id || '').trim();
             const empBadge = String(emp.badge_no || emp.badgeNo || emp.employeeId || emp.id || '').trim();
-            const empNameAr = String(emp.name_ar || emp.name || emp.employee_name || '').trim();
-            const empNameEn = String(emp.name_en || '').trim();
+            const empNameAr = String(emp.name_ar || emp.name || emp.employee_name || emp.fullName || '').trim();
+            const empNameEn = String(emp.name_en || emp.fullNameEn || '').trim();
             const empId = String(emp.id).trim();
 
             if (cleanBadge) {
@@ -231,7 +284,11 @@ export async function parsePayrollExcel(
               const cleanDigits = cleanBadge.replace(/\D/g, '');
               if (cleanDigits && (empWaid.replace(/\D/g, '') === cleanDigits || empBadge.replace(/\D/g, '') === cleanDigits)) return true;
             }
-            if (cleanName && (empNameAr === cleanName || empNameEn.toLowerCase() === cleanName.toLowerCase())) return true;
+            if (cleanName) {
+              const cLower = cleanName.toLowerCase();
+              if (empNameAr && (empNameAr.includes(cleanName) || cleanName.includes(empNameAr))) return true;
+              if (empNameEn && (empNameEn.toLowerCase().includes(cLower) || cLower.includes(empNameEn.toLowerCase()))) return true;
+            }
             return false;
           });
 
@@ -240,34 +297,43 @@ export async function parsePayrollExcel(
             return;
           }
 
-          // Extract amounts
-          const incentives = Number(
-            row['الحوافز / Incentives'] ??
-            row['الحوافز'] ??
-            row['حوافز'] ??
-            row['incentives'] ??
-            row['incentive'] ??
-            0
-          );
+          // Extract amounts (handling Incentives, Incentives_1, Proposal Incentive, Transportation, Bonus)
+          const rawInc1 = row['Incentives_1'] !== undefined ? parseFloat(String(row['Incentives_1']).replace(/[$,\s]/g, '')) : NaN;
+          const rawInc0 = row['Incentives'] !== undefined ? parseFloat(String(row['Incentives']).replace(/[$,\s]/g, '')) : NaN;
+          const rawProp = row['Proposal Incentive'] !== undefined ? parseFloat(String(row['Proposal Incentive']).replace(/[$,\s]/g, '')) : NaN;
+          const rawStdInc = row['الحوافز / Incentives'] ?? row['الحوافز'] ?? row['حوافز'] ?? row['incentives'] ?? row['incentive'];
+          const rawStdNum = rawStdInc !== undefined ? parseFloat(String(rawStdInc).replace(/[$,\s]/g, '')) : NaN;
+
+          let incentives = 0;
+          if (!isNaN(rawInc1) && rawInc1 > 0) incentives = rawInc1;
+          else if (!isNaN(rawInc0) && rawInc0 > 0) incentives = rawInc0;
+          else if (!isNaN(rawProp) && rawProp > 0) incentives = rawProp;
+          else if (!isNaN(rawStdNum) && rawStdNum > 0) incentives = rawStdNum;
 
           const transportation = Number(
-            row['بدل النقل / Transportation'] ??
-            row['بدل النقل'] ??
-            row['النقل'] ??
-            row['المواصلات'] ??
-            row['transportation'] ??
-            row['transport'] ??
-            0
+            parseFloat(String(
+              row['Transportation'] ??
+              row['بدل النقل / Transportation'] ??
+              row['بدل النقل'] ??
+              row['النقل'] ??
+              row['المواصلات'] ??
+              row['transportation'] ??
+              row['transport'] ??
+              0
+            ).replace(/[$,\s]/g, '')) || 0
           );
 
           const bonus = Number(
-            row['المكافآت / Bonus'] ??
-            row['المكافآت'] ??
-            row['مكافأة'] ??
-            row['مكافآت'] ??
-            row['bonus'] ??
-            row['bonuses'] ??
-            0
+            parseFloat(String(
+              row['Bonus'] ??
+              row['المكافآت / Bonus'] ??
+              row['المكافآت'] ??
+              row['مكافأة'] ??
+              row['مكافآت'] ??
+              row['bonus'] ??
+              row['bonuses'] ??
+              0
+            ).replace(/[$,\s]/g, '')) || 0
           );
 
           const overtimeHours = Number(
@@ -688,6 +754,10 @@ export async function parseSocialSecurityExcel(
 
           const cleanBadge = String(rawBadge).trim();
           const cleanName = String(rawName).trim();
+
+          // Skip empty rows or subtotal/header rows
+          if (!cleanBadge && !cleanName) return;
+          if (/^total|^grand\s*total|^sum|^المجموع/i.test(cleanName)) return;
 
           const matchedEmp = existingEmployees.find((emp) => {
             const empBadge = String(
@@ -1116,6 +1186,10 @@ export async function parseIncomeTaxExcel(
 
           const cleanBadge = String(rawBadge).trim();
           const cleanName = String(rawName).trim();
+
+          // Skip empty rows or subtotal/header rows
+          if (!cleanBadge && !cleanName) return;
+          if (/^total|^grand\s*total|^sum|^المجموع/i.test(cleanName)) return;
 
           const matchedEmp = existingEmployees.find((emp) => {
             const empBadge = String(
