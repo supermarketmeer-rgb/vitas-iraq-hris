@@ -120,25 +120,28 @@ export const IncentivesModuleView: React.FC = () => {
 
       // Search matching employee in HRIS active database
       const match = employees.find((emp) => {
-        const empWaid = String(emp.waid || '').trim();
+        const empWaid = String(emp.waid || emp.wa_id || '').trim();
+        const empWaidDigits = empWaid.replace(/\D/g, '');
         const empBadge = String(emp.badgeNo || emp.badge_no || '').trim();
+        const empBadgeDigits = empBadge.replace(/\D/g, '');
         const empId = String(emp.id || emp.employeeId || emp.employee_id || '').trim();
+        const empIdDigits = empId.replace(/\D/g, '');
         const empNameAr = normalize(emp.fullName || emp.name_ar || emp.name);
         const empNameEn = normalize(emp.fullNameEn || emp.name_en);
 
-        // 1. Direct WAID match (Specialized Incentives ID)
-        if (empWaid && (empWaid === recIdClean || (recDigits && empWaid.replace(/\D/g, '') === recDigits))) {
-          return true;
-        }
-
-        // 2. Direct Badge No match
-        if (empBadge && (empBadge === recIdClean || (recDigits && empBadge.replace(/\D/g, '') === recDigits))) {
-          return true;
-        }
-
-        // 3. Employee ID match
-        if (empId && (empId === recIdClean || (recDigits && empId.replace(/\D/g, '') === recDigits))) {
-          return true;
+        // 1. Direct SystemID to Incentives WAID (For Incentives) match - TOP PRIORITY
+        if (recIdClean && recIdClean !== '—') {
+          if (empWaid && (empWaid.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empWaidDigits && recDigits === empWaidDigits))) {
+            return true;
+          }
+          // 2. Direct Badge No match
+          if (empBadge && (empBadge.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empBadgeDigits && recDigits === empBadgeDigits))) {
+            return true;
+          }
+          // 3. Employee ID match (e.g. VTS-1074 matches 1074 or VTS-1074)
+          if (empId && (empId.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empIdDigits && recDigits === empIdDigits))) {
+            return true;
+          }
         }
 
         // 4. Name match (Arabic or English)
@@ -155,8 +158,8 @@ export const IncentivesModuleView: React.FC = () => {
           isMatched: true,
           matchedEmployeeId: match.id,
           matchedEmployeeName: match.fullName || match.name_ar || match.name || record.employeeName,
-          matchedBadgeNo: match.badgeNo || match.badge_no || match.waid || record.employeeId,
-          matchedWaid: match.waid || record.employeeId,
+          matchedBadgeNo: match.badgeNo || match.badge_no || match.employeeId || record.employeeId,
+          matchedWaid: match.waid || match.wa_id || record.employeeId,
           matchedDepartment: match.department || match.department_ar || '',
           matchedBranch: match.branch || match.location_ar || record.office,
         };
@@ -185,20 +188,17 @@ export const IncentivesModuleView: React.FC = () => {
         const targetId = String(rec.matchedEmployeeId || rec.employeeId);
         if (!targetId || targetId === '—') return;
 
-        // Convert USD amounts to IQD using activeFxRate from Policies
-        const incentivesIQD = rec.incentives !== null ? Math.round(rec.incentives * activeFxRate) : (adjustments[targetId]?.incentives || 0);
-        const transportationIQD = rec.transportation !== null ? Math.round(rec.transportation * activeFxRate) : (adjustments[targetId]?.transportation || 0);
-        const bonusIQD = rec.bonus !== null ? Math.round(rec.bonus * activeFxRate) : (adjustments[targetId]?.bonus || 0);
+        // Directly use amounts in Iraqi Dinar (IQD) as-is without requiring exchange rate conversion
+        const incentivesIQD = rec.incentives !== null ? Math.round(rec.incentives) : (adjustments[targetId]?.incentives || 0);
+        const transportationIQD = rec.transportation !== null ? Math.round(rec.transportation) : (adjustments[targetId]?.transportation || 0);
+        const bonusIQD = rec.bonus !== null ? Math.round(rec.bonus) : (adjustments[targetId]?.bonus || 0);
 
         adjustments[targetId] = {
           ...(adjustments[targetId] || {}),
           incentives: incentivesIQD,
           transportation: transportationIQD,
           bonus: bonusIQD,
-          usdIncentivesOriginal: rec.incentives,
-          usdTransportationOriginal: rec.transportation,
-          usdBonusOriginal: rec.bonus,
-          appliedFxRate: activeFxRate,
+          currency: 'IQD',
         };
         syncedCount++;
         totalSyncedIQD += (incentivesIQD || 0) + (transportationIQD || 0) + (bonusIQD || 0);
@@ -216,15 +216,15 @@ export const IncentivesModuleView: React.FC = () => {
       if (isManual) {
         setSyncFeedback(
           language === 'ar'
-            ? `تم تحويل مبالغ الحوافز والنقل والمكافآت من الدولار ($ USD) إلى الدينار العراقي بسعر صرف (1$ = ${activeFxRate.toLocaleString()} د.ع) وترحيلها بنجاح إلى مسير الرواتب لـ ${syncedCount} موظفاً (إجمالي: ${formatIQD(totalSyncedIQD)} د.ع)!`
-            : `Successfully converted incentives, transport & bonus from USD to IQD at rate (1$ = ${activeFxRate.toLocaleString()} IQD) and applied to Payroll for ${syncedCount} staff (Total: ${formatIQD(totalSyncedIQD)} IQD)!`
+            ? `تم ترحيل مبالغ الحوافز والنقل والمكافآت بالدينار العراقي (IQD) مباشرة إلى مسير الرواتب لـ ${syncedCount} موظفاً (إجمالي: ${formatIQD(totalSyncedIQD)} د.ع)!`
+            : `Successfully synced incentives, transport & bonus in Iraqi Dinar directly to Payroll for ${syncedCount} staff (Total: ${formatIQD(totalSyncedIQD)} IQD)!`
         );
         setTimeout(() => setSyncFeedback(null), 7000);
       }
     } catch (err) {
       console.error('Failed to sync to payroll:', err);
     }
-  }, [language, activeFxRate]);
+  }, [language]);
 
   /**
    * Process in-memory binary spreadsheet data
@@ -606,19 +606,19 @@ export const IncentivesModuleView: React.FC = () => {
         )}
       </div>
 
-      {/* Currency Exchange Rate Notice Banner */}
-      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-teal-500/10 to-amber-500/10 border border-blue-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+      {/* Currency Notice Banner: Direct IQD Currency */}
+      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold">
-          <span className="material-symbols-outlined text-lg text-teal-600 dark:text-teal-400">currency_exchange</span>
+          <span className="material-symbols-outlined text-lg text-emerald-600 dark:text-emerald-400">payments</span>
           <span>
             {language === 'ar'
-              ? 'تنبيه العملة: المبالغ المستخرجة في هذا الجدول والشاشة هي بالدولار الأمريكي ($ USD)، ويتم تحويلها آلياً إلى الدينار العراقي (IQD) عند الترحيل لمسير الرواتب وفق سعر التصريف المعتمد في السياسات.'
-              : 'Currency Notice: Amounts on this screen are in US Dollars ($ USD), and are automatically converted to Iraqi Dinars (IQD) upon syncing to live Payroll using official Policy FX Rate.'}
+              ? 'العملة المعتمدة: يتم استيراد واحتساب جميع مبالغ الحوافز وبدل النقل والمكافآت بالدينار العراقي (IQD) مباشرة وبدون الحاجة إلى سعر تصريف.'
+              : 'Direct Currency: All incentives, transportation, and bonus amounts are imported and calculated directly in Iraqi Dinar (IQD) without exchange rate conversion.'}
           </span>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 font-mono font-bold text-slate-900 dark:text-white px-3 py-1 rounded-xl bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 shadow-2xs">
-          <span className="text-[11px] text-slate-500">{language === 'ar' ? 'سعر الصرف المعتمد (السياسات):' : 'Active Policy Rate:'}</span>
-          <span className="text-teal-700 dark:text-teal-300 font-black">1 USD = {activeFxRate.toLocaleString()} IQD</span>
+          <span className="text-[11px] text-slate-500">{language === 'ar' ? 'العملة:' : 'Currency:'}</span>
+          <span className="text-emerald-700 dark:text-emerald-400 font-black">IQD (د.ع)</span>
         </div>
       </div>
 
@@ -658,15 +658,11 @@ export const IncentivesModuleView: React.FC = () => {
               <Award className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400 truncate flex items-baseline gap-1">
-              <span className="text-sm font-sans font-bold text-slate-500 dark:text-slate-400">$</span>
-              <span>{formatUSD(inspectionResult.summary.totalIncentives)}</span>
-              <span className="text-xs font-sans text-slate-400 font-bold">USD</span>
-            </div>
-            <div className="mt-1 text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
-              ≈ {formatIQD(Math.round(inspectionResult.summary.totalIncentives * activeFxRate))} د.ع
+              <span>{formatIQD(inspectionResult.summary.totalIncentives)}</span>
+              <span className="text-xs font-sans text-slate-500 dark:text-slate-400 font-bold">{language === 'ar' ? 'د.ع' : 'IQD'}</span>
             </div>
             <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              {language === 'ar' ? 'معادلات الحوافز المقيمة من الإكسل' : 'Evaluated Excel formula cells'}
+              {language === 'ar' ? 'معادلات الحوافز المقيمة بالدينار العراقي' : 'Evaluated Excel incentives in IQD'}
             </div>
           </div>
 
@@ -679,15 +675,11 @@ export const IncentivesModuleView: React.FC = () => {
               <Car className="w-4 h-4 text-sky-600" />
             </div>
             <div className="text-xl font-black font-mono text-sky-600 dark:text-sky-400 truncate flex items-baseline gap-1">
-              <span className="text-sm font-sans font-bold text-slate-500 dark:text-slate-400">$</span>
-              <span>{formatUSD(inspectionResult.summary.totalTransportation)}</span>
-              <span className="text-xs font-sans text-slate-400 font-bold">USD</span>
-            </div>
-            <div className="mt-1 text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
-              ≈ {formatIQD(Math.round(inspectionResult.summary.totalTransportation * activeFxRate))} د.ع
+              <span>{formatIQD(inspectionResult.summary.totalTransportation)}</span>
+              <span className="text-xs font-sans text-slate-500 dark:text-slate-400 font-bold">{language === 'ar' ? 'د.ع' : 'IQD'}</span>
             </div>
             <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              {language === 'ar' ? 'بدل التنقل المعتمد للموظفين' : 'Approved travel allowances'}
+              {language === 'ar' ? 'بدل التنقل المعتمد بالدينار العراقي' : 'Approved travel allowances in IQD'}
             </div>
           </div>
 
@@ -700,15 +692,11 @@ export const IncentivesModuleView: React.FC = () => {
               <Gift className="w-4 h-4 text-amber-600" />
             </div>
             <div className="text-xl font-black font-mono text-amber-600 dark:text-amber-400 truncate flex items-baseline gap-1">
-              <span className="text-sm font-sans font-bold text-slate-500 dark:text-slate-400">$</span>
-              <span>{formatUSD(inspectionResult.summary.totalBonus)}</span>
-              <span className="text-xs font-sans text-slate-400 font-bold">USD</span>
-            </div>
-            <div className="mt-1 text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
-              ≈ {formatIQD(Math.round(inspectionResult.summary.totalBonus * activeFxRate))} د.ع
+              <span>{formatIQD(inspectionResult.summary.totalBonus)}</span>
+              <span className="text-xs font-sans text-slate-500 dark:text-slate-400 font-bold">{language === 'ar' ? 'د.ع' : 'IQD'}</span>
             </div>
             <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              {language === 'ar' ? 'المكافآت التقديرية المحتسبة' : 'Calculated performance bonus'}
+              {language === 'ar' ? 'المكافآت التقديرية بالدينار العراقي' : 'Calculated bonus in IQD'}
             </div>
           </div>
 
@@ -721,12 +709,8 @@ export const IncentivesModuleView: React.FC = () => {
               <Wallet className="w-4 h-4 text-teal-400" />
             </div>
             <div className="text-xl font-black font-mono text-teal-300 truncate flex items-baseline gap-1">
-              <span className="text-sm font-sans font-bold text-slate-400">$</span>
-              <span>{formatUSD(inspectionResult.summary.grandTotal)}</span>
-              <span className="text-xs font-sans text-teal-400 font-bold">USD</span>
-            </div>
-            <div className="mt-1 text-[11px] font-mono font-bold text-teal-200">
-              ≈ {formatIQD(Math.round(inspectionResult.summary.grandTotal * activeFxRate))} د.ع
+              <span>{formatIQD(inspectionResult.summary.grandTotal)}</span>
+              <span className="text-xs font-sans text-teal-300 font-bold">{language === 'ar' ? 'د.ع' : 'IQD'}</span>
             </div>
             <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between font-medium">
               <span>{language === 'ar' ? 'حوافز + نقل + بونص' : 'Incentives + Transport + Bonus'}</span>
@@ -938,9 +922,9 @@ export const IncentivesModuleView: React.FC = () => {
                     {sortField === 'index' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
-                <th className="py-3 px-3 text-start cursor-pointer w-32 text-slate-900 dark:text-white font-bold" onClick={() => handleSort('employeeId')}>
+                <th className="py-3 px-3 text-start cursor-pointer w-36 text-slate-900 dark:text-white font-bold" onClick={() => handleSort('employeeId')}>
                   <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white">
-                    <span>{language === 'ar' ? 'معرف الموظف (WAID)' : 'Employee ID'}</span>
+                    <span>{language === 'ar' ? 'SystemID / معرف الحوافز' : 'SystemID / WAID'}</span>
                     {sortField === 'employeeId' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
@@ -964,24 +948,24 @@ export const IncentivesModuleView: React.FC = () => {
                 </th>
                 <th className="py-3 px-3 text-end cursor-pointer w-32 th-incentives text-emerald-800 dark:text-emerald-400 font-bold" onClick={() => handleSort('incentives')}>
                   <div className="flex items-center justify-end gap-1 font-bold text-emerald-800 dark:text-emerald-400">
-                    <span>{language === 'ar' ? 'الحافز ($ USD)' : 'Incentives ($ USD)'}</span>
+                    <span>{language === 'ar' ? 'الحافز (د.ع)' : 'Incentives (IQD)'}</span>
                     {sortField === 'incentives' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
                 <th className="py-3 px-3 text-end cursor-pointer w-32 th-transport text-sky-800 dark:text-sky-400 font-bold" onClick={() => handleSort('transportation')}>
                   <div className="flex items-center justify-end gap-1 font-bold text-sky-800 dark:text-sky-400">
-                    <span>{language === 'ar' ? 'بدل النقل ($ USD)' : 'Transport ($ USD)'}</span>
+                    <span>{language === 'ar' ? 'بدل النقل (د.ع)' : 'Transport (IQD)'}</span>
                     {sortField === 'transportation' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
                 <th className="py-3 px-3 text-end cursor-pointer w-32 th-bonus text-amber-800 dark:text-amber-400 font-bold" onClick={() => handleSort('bonus')}>
                   <div className="flex items-center justify-end gap-1 font-bold text-amber-800 dark:text-amber-400">
-                    <span>{language === 'ar' ? 'المكافأة ($ USD)' : 'Bonus ($ USD)'}</span>
+                    <span>{language === 'ar' ? 'المكافأة (د.ع)' : 'Bonus (IQD)'}</span>
                     {sortField === 'bonus' && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3 h-3 text-teal-600 dark:text-teal-400" />)}
                   </div>
                 </th>
                 <th className="py-3 px-3 text-end w-32 font-bold text-slate-900 dark:text-white">
-                  <span className="font-bold text-slate-900 dark:text-white">{language === 'ar' ? 'المجموع المستحق ($ USD)' : 'Total ($ USD)'}</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{language === 'ar' ? 'المجموع المستحق (د.ع)' : 'Total (IQD)'}</span>
                 </th>
                 <th className="py-3 px-3 text-center w-28 font-bold text-slate-900 dark:text-white">
                   <span className="font-bold text-slate-900 dark:text-white">{language === 'ar' ? 'حالة البيرول' : 'Payroll Sync'}</span>
@@ -1004,7 +988,7 @@ export const IncentivesModuleView: React.FC = () => {
                         {rec.index}
                       </td>
                       <td className="py-2.5 px-3 font-mono font-bold text-slate-800 dark:text-slate-200">
-                        <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                        <span className="px-2 py-0.5 rounded font-bold bg-teal-500/10 text-teal-800 dark:text-teal-300 border border-teal-500/30">
                           {rec.employeeId}
                         </span>
                       </td>
@@ -1020,7 +1004,7 @@ export const IncentivesModuleView: React.FC = () => {
                             <span className="text-[10px] text-teal-700 dark:text-teal-400 font-bold flex items-center gap-1 mt-0.5">
                               <BadgeCheck className="w-3 h-3 text-teal-600 shrink-0" />
                               <span>
-                                {rec.matchedEmployeeName} ({rec.matchedBadgeNo})
+                                {rec.matchedEmployeeName} {rec.matchedWaid && rec.matchedWaid !== rec.employeeId ? `(WAID: ${rec.matchedWaid})` : `(${rec.matchedBadgeNo})`}
                               </span>
                             </span>
                           ) : (
@@ -1034,28 +1018,16 @@ export const IncentivesModuleView: React.FC = () => {
                         {rec.jobTitle}
                       </td>
                       <td className="py-2.5 px-3 text-end font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                        <div>${formatUSD(rec.incentives)}</div>
-                        {rec.incentives !== null && rec.incentives > 0 && (
-                          <div className="text-[10px] text-slate-400 font-normal">≈ {formatIQD(Math.round(rec.incentives * activeFxRate))} د.ع</div>
-                        )}
+                        <div>{formatIQD(rec.incentives)} <span className="text-[10px] font-sans font-medium text-slate-500">د.ع</span></div>
                       </td>
                       <td className="py-2.5 px-3 text-end font-mono font-bold text-sky-700 dark:text-sky-400">
-                        <div>${formatUSD(rec.transportation)}</div>
-                        {rec.transportation !== null && rec.transportation > 0 && (
-                          <div className="text-[10px] text-slate-400 font-normal">≈ {formatIQD(Math.round(rec.transportation * activeFxRate))} د.ع</div>
-                        )}
+                        <div>{formatIQD(rec.transportation)} <span className="text-[10px] font-sans font-medium text-slate-500">د.ع</span></div>
                       </td>
                       <td className="py-2.5 px-3 text-end font-mono font-bold text-amber-700 dark:text-amber-400">
-                        <div>${formatUSD(rec.bonus)}</div>
-                        {rec.bonus !== null && rec.bonus > 0 && (
-                          <div className="text-[10px] text-slate-400 font-normal">≈ {formatIQD(Math.round(rec.bonus * activeFxRate))} د.ع</div>
-                        )}
+                        <div>{formatIQD(rec.bonus)} <span className="text-[10px] font-sans font-medium text-slate-500">د.ع</span></div>
                       </td>
                       <td className="py-2.5 px-3 text-end font-mono font-black text-slate-900 dark:text-white">
-                        <div>${formatUSD(totalRow)}</div>
-                        {totalRow > 0 && (
-                          <div className="text-[10px] text-teal-600 dark:text-teal-400 font-bold">≈ {formatIQD(Math.round(totalRow * activeFxRate))} د.ع</div>
-                        )}
+                        <div>{formatIQD(totalRow)} <span className="text-[10px] font-sans font-medium text-slate-500">د.ع</span></div>
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">

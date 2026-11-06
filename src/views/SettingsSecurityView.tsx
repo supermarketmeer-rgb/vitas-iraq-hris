@@ -1581,7 +1581,7 @@ export const SettingsSecurityView: React.FC = () => {
             }
             const rawBadge = getVal(row, ['Badge No', 'Badge Number', 'badgeNo', 'badge_no', 'رقم البادج', 'البادج', 'Badge']);
             const badgeNo = rawBadge || `B-${1000 + rowIdx}`;
-            const waid = getVal(row, ['WAID', 'waid', 'wa_id', 'معرف الحوافز', 'كود الحوافز', 'معرف الحوافز (WAID)', 'Incentives ID', 'Incentives WAID']);
+            const waid = getVal(row, ['SystemID', 'System ID', 'system_id', 'systemid', 'WAID', 'waid', 'wa_id', 'معرف الحوافز', 'كود الحوافز', 'معرف الحوافز (WAID)', 'Incentives ID', 'Incentives WAID', 'Incentives WAID(For Incentives)']);
             const dob = parseExcelDate(getVal(row, ['Date of Birth', 'dob', 'تاريخ الميلاد', 'تاريخ ولادة', 'DOB', 'Birth Date']));
             const email = getVal(row, ['Email', 'email', 'البريد الإلكتروني المؤسسي', 'البريد الإلكتروني', 'البريد الالكتروني', 'الإيميل', 'الايميل', 'البريد المؤسسي']);
             const personalEmail = getVal(row, ['Personal Email', 'personalEmail', 'personal_email', 'البريد الإلكتروني الشخصي', 'البريد الشخصي', 'الايميل الشخصي']);

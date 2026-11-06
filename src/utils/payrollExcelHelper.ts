@@ -183,8 +183,16 @@ export async function parsePayrollExcel(
         let totalOtherDeductions = 0;
 
         rawRows.forEach((row, idx) => {
-          // Find employee identifier
+          // Find employee identifier (Supporting SystemID / Incentives WAID as well)
           const rawBadge =
+            row['SystemID'] ??
+            row['System ID'] ??
+            row['system_id'] ??
+            row['systemid'] ??
+            row['Incentives WAID'] ??
+            row['Incentives WAID(For Incentives)'] ??
+            row['WAID'] ??
+            row['waid'] ??
             row['الرقم الوظيفي / Badge No'] ??
             row['الرقم الوظيفي'] ??
             row['badge_no'] ??
@@ -209,13 +217,20 @@ export async function parsePayrollExcel(
 
           // Match with existing employees
           const matchedEmp = existingEmployees.find((emp) => {
+            const empWaid = String(emp.waid || emp.wa_id || '').trim();
             const empBadge = String(emp.badge_no || emp.badgeNo || emp.employeeId || emp.id || '').trim();
             const empNameAr = String(emp.name_ar || emp.name || emp.employee_name || '').trim();
             const empNameEn = String(emp.name_en || '').trim();
             const empId = String(emp.id).trim();
 
-            if (cleanBadge && (empBadge === cleanBadge || empId === cleanBadge)) return true;
-            if (cleanBadge && empBadge.replace(/\s+/g, '') === cleanBadge.replace(/\s+/g, '')) return true;
+            if (cleanBadge) {
+              if (empWaid && (empWaid.toLowerCase() === cleanBadge.toLowerCase())) return true;
+              if (empBadge && (empBadge.toLowerCase() === cleanBadge.toLowerCase())) return true;
+              if (empId && (empId.toLowerCase() === cleanBadge.toLowerCase())) return true;
+              if (empBadge.replace(/\s+/g, '') === cleanBadge.replace(/\s+/g, '')) return true;
+              const cleanDigits = cleanBadge.replace(/\D/g, '');
+              if (cleanDigits && (empWaid.replace(/\D/g, '') === cleanDigits || empBadge.replace(/\D/g, '') === cleanDigits)) return true;
+            }
             if (cleanName && (empNameAr === cleanName || empNameEn.toLowerCase() === cleanName.toLowerCase())) return true;
             return false;
           });

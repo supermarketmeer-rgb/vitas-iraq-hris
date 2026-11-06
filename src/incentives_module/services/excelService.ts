@@ -82,10 +82,14 @@ export class ExcelService {
     headers.forEach((header) => {
       const hLower = header.toLowerCase();
 
-      // WAID mapping detection
+      // WAID / SystemID mapping detection
       if (
+        hLower.includes('systemid') ||
+        hLower.includes('system_id') ||
+        hLower.includes('system id') ||
         hLower.includes('waid') ||
         hLower.includes('wa_id') ||
+        hLower.includes('incentives waid') ||
         hLower.includes('معرف الحوافز') ||
         hLower.includes('كود الحوافز') ||
         hLower.includes('حوافز')

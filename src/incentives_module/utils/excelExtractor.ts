@@ -132,8 +132,8 @@ export function parseFinancialValue(cell: XLSX.CellObject | undefined): {
  */
 const PATTERNS = {
   employeeId: [
-    /(?:emp(?:loyee)?[\s_-]*(?:id|no|num|code|#)|staff[\s_-]*id|id[\s_-]*code|رقم[\s_-]*(?:الموظف|الوظيفي|الكود)|كود[\s_-]*الموظف)/i,
-    /^(?:id|code|رقم|كود)$/i,
+    /(?:system[\s_-]*id|systemid|waid|wa[\s_-]*id|incentives?[\s_-]*waid|emp(?:loyee)?[\s_-]*(?:id|no|num|code|#)|staff[\s_-]*id|id[\s_-]*code|رقم[\s_-]*(?:الموظف|الوظيفي|الكود)|كود[\s_-]*الموظف|معرف[\s_-]*الحوافز)/i,
+    /^(?:systemid|system[\s_-]*id|waid|id|code|رقم|كود)$/i,
   ],
   office: [
     /^(?:branch|office|location|site|الفرع|المكتب)$/i,
@@ -291,7 +291,15 @@ export function inspectWorksheet(
       }
     }
 
-    // STEP 2: General scan
+    // STEP 2: General scan (with top priority for SystemID / WAID)
+    for (const [colStr, header] of Object.entries(rowHeaders)) {
+      const c = parseInt(colStr, 10);
+      if (/system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز/i.test(header.trim())) {
+        empIdCol = c;
+        break;
+      }
+    }
+
     for (const [colStr, header] of Object.entries(rowHeaders)) {
       const c = parseInt(colStr, 10);
       if (empIdCol === null && matchHeader(header, PATTERNS.employeeId)) empIdCol = c;
@@ -412,6 +420,15 @@ export function extractPayoutRecords(
     let sumInc = 0;
     const offices = new Set<string>();
 
+    let systemIdColCO = -1;
+    for (let hr = 0; hr <= 5; hr++) {
+      const hRow = coRows[hr];
+      if (Array.isArray(hRow)) {
+        const found = hRow.findIndex((c: any) => /system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز/i.test(String(c || '').trim()));
+        if (found >= 0) { systemIdColCO = found; break; }
+      }
+    }
+
     for (let r = 6; r < coRows.length; r++) {
       const row = coRows[r];
       const name = String(row[0] || '').trim();
@@ -422,10 +439,11 @@ export function extractPayoutRecords(
       const prop = parseFloat(String(row[42] || '0')) || 0;
       const inc = prop > 0 ? prop : net;
       sumInc += inc;
+      const empId = systemIdColCO >= 0 && row[systemIdColCO] ? String(row[systemIdColCO]).trim() : '—';
 
       coRecords.push({
         index: idx++,
-        employeeId: '—',
+        employeeId: empId,
         office,
         employeeName: cleanDisplayName(name),
         jobTitle: 'CO',
@@ -483,6 +501,15 @@ export function extractPayoutRecords(
     let sumInc = 0;
     const offices = new Set<string>();
 
+    let systemIdColLOS = -1;
+    for (let hr = 0; hr <= 4; hr++) {
+      const hRow = losRows[hr];
+      if (Array.isArray(hRow)) {
+        const found = hRow.findIndex((c: any) => /system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز/i.test(String(c || '').trim()));
+        if (found >= 0) { systemIdColLOS = found; break; }
+      }
+    }
+
     for (let r = 5; r < losRows.length; r++) {
       const row = losRows[r];
       const name = String(row[0] || '').trim();
@@ -493,10 +520,11 @@ export function extractPayoutRecords(
       const prop = parseFloat(String(row[40] || '0')) || 0;
       const inc = prop > 0 ? prop : net;
       sumInc += inc;
+      const empId = systemIdColLOS >= 0 && row[systemIdColLOS] ? String(row[systemIdColLOS]).trim() : '—';
 
       losRecords.push({
         index: idx++,
-        employeeId: '—',
+        employeeId: empId,
         office,
         employeeName: cleanDisplayName(name),
         jobTitle: 'LOS',
@@ -747,6 +775,14 @@ export function extractConsolidatedAllRoles(
   const wsFinal = wb.Sheets['Final Incentives CO,LOS and LO'];
   if (wsFinal) {
     const rowsFinal = XLSX.utils.sheet_to_json(wsFinal, { header: 1, defval: '' }) as any[][];
+    let systemIdColFinal = -1;
+    for (let hr = 0; hr <= 3; hr++) {
+      const hRow = rowsFinal[hr];
+      if (Array.isArray(hRow)) {
+        const found = hRow.findIndex((c: any) => /system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز/i.test(String(c || '').trim()));
+        if (found >= 0) { systemIdColFinal = found; break; }
+      }
+    }
 
     // CO rows in Final Sheet (139-143)
     for (let r = 139; r <= 143; r++) {
@@ -757,16 +793,18 @@ export function extractConsolidatedAllRoles(
       const inc = parseFloat(String(row[2] || '0')) || 0;
       const trans = parseFloat(String(row[3] || '0')) || 0;
       const bonus = parseFloat(String(row[4] || '0')) || 0;
+      const empId = systemIdColFinal >= 0 && row[systemIdColFinal] ? String(row[systemIdColFinal]).trim() : '—';
 
       if (masterMap.has(key)) {
         const rec = masterMap.get(key)!;
         if (trans > 0) rec.transportation = trans;
         if (bonus > 0) rec.bonus = bonus;
         if (rec.incentives === 0 && inc > 0) rec.incentives = inc;
+        if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
       } else {
         masterMap.set(key, {
           index: 0,
-          employeeId: '—',
+          employeeId: empId,
           office: String(row[0] || 'Unspecified').trim(),
           employeeName: cleanDisplayName(name),
           jobTitle: 'CO',
@@ -791,12 +829,13 @@ export function extractConsolidatedAllRoles(
       const inc = parseFloat(String(row[2] || '0')) || 0;
       const trans = parseFloat(String(row[3] || '0')) || 0;
       const bonus = parseFloat(String(row[4] || '0')) || 0;
+      const empId = systemIdColFinal >= 0 && row[systemIdColFinal] ? String(row[systemIdColFinal]).trim() : '—';
       const key = normalizeEmployeeName(name);
 
       if (!masterMap.has(key)) {
         masterMap.set(key, {
           index: 0,
-          employeeId: '—',
+          employeeId: empId,
           office: office || 'Unspecified',
           employeeName: cleanDisplayName(name),
           jobTitle: 'LOS',
@@ -814,6 +853,7 @@ export function extractConsolidatedAllRoles(
         if (inc > 0 && rec.incentives === 0) rec.incentives = inc;
         if (trans > 0 && rec.transportation === 0) rec.transportation = trans;
         if (bonus > 0 && rec.bonus === 0) rec.bonus = bonus;
+        if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
       }
     };
 
@@ -832,12 +872,13 @@ export function extractConsolidatedAllRoles(
       const inc = parseFloat(String(row[2] || '0')) || 0;
       const trans = parseFloat(String(row[3] || '0')) || 0;
       const bonus = parseFloat(String(row[4] || '0')) || 0;
+      const empId = systemIdColFinal >= 0 && row[systemIdColFinal] ? String(row[systemIdColFinal]).trim() : '—';
       const key = normalizeEmployeeName(name);
 
       if (!masterMap.has(key)) {
         masterMap.set(key, {
           index: 0,
-          employeeId: '—',
+          employeeId: empId,
           office,
           employeeName: cleanDisplayName(name),
           jobTitle: 'Collection',
@@ -849,6 +890,9 @@ export function extractConsolidatedAllRoles(
           sourceRowNumber: r + 1,
           hasZeroValue: inc === 0 || trans === 0 || bonus === 0,
         });
+      } else {
+        const rec = masterMap.get(key)!;
+        if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
       }
     }
   }
@@ -924,6 +968,15 @@ export function extractConsolidatedAllRoles(
   const wsLO = wb.Sheets['LO'];
   if (wsLO) {
     const rowsLO = XLSX.utils.sheet_to_json(wsLO, { header: 1, defval: '' }) as any[][];
+    let systemIdColLO = -1;
+    for (let hr = 0; hr <= 5; hr++) {
+      const hRow = rowsLO[hr];
+      if (Array.isArray(hRow)) {
+        const found = hRow.findIndex((c: any) => /system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز/i.test(String(c || '').trim()));
+        if (found >= 0) { systemIdColLO = found; break; }
+      }
+    }
+
     for (let r = 6; r < rowsLO.length; r++) {
       const row = rowsLO[r];
       const rawName = String(row[0] || '').trim();
@@ -932,13 +985,14 @@ export function extractConsolidatedAllRoles(
       const inc = parseFloat(String(row[50] || '0')) || 0;
       const trans = parseFloat(String(row[51] || '0')) || 0;
       const bonus = parseFloat(String(row[52] || '0')) || 0;
+      const empId = systemIdColLO >= 0 && row[systemIdColLO] ? String(row[systemIdColLO]).trim() : '—';
       const key = normalizeEmployeeName(rawName);
 
       if (rawName.startsWith('ZZ LOS ')) {
         if (!masterMap.has(key)) {
           masterMap.set(key, {
             index: 0,
-            employeeId: '—',
+            employeeId: empId,
             office,
             employeeName: cleanDisplayName(rawName),
             jobTitle: 'LOS',
@@ -954,12 +1008,13 @@ export function extractConsolidatedAllRoles(
           const rec = masterMap.get(key)!;
           if (trans > 0 && rec.transportation === 0) rec.transportation = trans;
           if (bonus > 0 && rec.bonus === 0) rec.bonus = bonus;
+          if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
         }
       } else if (rawName.startsWith('ZZ Collection ')) {
         if (!masterMap.has(key)) {
           masterMap.set(key, {
             index: 0,
-            employeeId: '—',
+            employeeId: empId,
             office,
             employeeName: cleanDisplayName(rawName),
             jobTitle: 'Collection',
@@ -971,13 +1026,16 @@ export function extractConsolidatedAllRoles(
             sourceRowNumber: r + 1,
             hasZeroValue: inc === 0 || trans === 0 || bonus === 0,
           });
+        } else {
+          const rec = masterMap.get(key)!;
+          if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
         }
       } else {
         // Loan Officer
         if (!masterMap.has(key)) {
           masterMap.set(key, {
             index: 0,
-            employeeId: '—',
+            employeeId: empId,
             office,
             employeeName: cleanDisplayName(rawName),
             jobTitle: 'LO',
@@ -996,6 +1054,7 @@ export function extractConsolidatedAllRoles(
             rec.transportation = trans;
             rec.bonus = bonus;
           }
+          if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
         }
       }
     }
