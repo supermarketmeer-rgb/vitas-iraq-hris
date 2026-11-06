@@ -2300,7 +2300,7 @@ export const Category3EmployeeView: React.FC = () => {
                         {/* Actions */}
                         <td className="py-3 px-4 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
-                            {/* Edit Icon (Green) */}
+                            {/* Edit Icon (Dark Background, Green Icon) */}
                             <button
                               type="button"
                               onClick={(e) => {
@@ -2311,7 +2311,7 @@ export const Category3EmployeeView: React.FC = () => {
                                 setActiveModuleId('emp-edit');
                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                               }}
-                              className="p-1.5 rounded-lg text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 shadow-sm border border-slate-700/60 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
                               title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
                             >
                               <span className="material-symbols-outlined text-lg">edit</span>
@@ -2331,14 +2331,14 @@ export const Category3EmployeeView: React.FC = () => {
                               <span className="material-symbols-outlined text-lg">description</span>
                             </button>
 
-                            {/* Delete Icon (Red) */}
+                            {/* Delete Icon (Dark Background, Red Icon) */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar });
                               }}
-                              className="p-1.5 rounded-lg text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 hover:text-rose-300 shadow-sm border border-slate-700/60 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
                               title={t('حذف الموظف', 'Delete Employee')}
                             >
                               <span className="material-symbols-outlined text-lg">delete</span>
@@ -2441,7 +2441,7 @@ export const Category3EmployeeView: React.FC = () => {
                           setActiveModuleId('emp-edit');
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
-                        className="p-1.5 rounded-lg text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 shadow-sm border border-slate-700/60 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
                         title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
                       >
                         <span className="material-symbols-outlined text-lg">edit</span>
@@ -2466,7 +2466,7 @@ export const Category3EmployeeView: React.FC = () => {
                           e.stopPropagation();
                           setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar });
                         }}
-                        className="p-1.5 rounded-lg text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 hover:text-rose-300 shadow-sm border border-slate-700/60 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
                         title={t('حذف الموظف', 'Delete Employee')}
                       >
                         <span className="material-symbols-outlined text-lg">delete</span>
@@ -2549,21 +2549,21 @@ export const Category3EmployeeView: React.FC = () => {
                       const empTargetId = emp.id || emp.employeeId || emp.employee_id;
                       return (
                         <div className="flex items-center justify-between w-full px-1">
-                          {/* Right Side: Delete Icon (Red, No BG, No Border) */}
+                          {/* Right Side: Delete Icon (Dark Background) */}
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteConfirm({ show: true, empId: empTargetId, empName: emp.fullName || emp.full_name || emp.name_ar });
                             }}
-                            className="p-1.5 bg-transparent border-0 text-red-500 hover:text-red-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 hover:text-rose-300 shadow-sm border border-slate-700/60 transition-all duration-150 hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
                             style={{ order: language === 'ar' ? 1 : 3 }}
                             title={t('حذف الموظف', 'Delete Employee')}
                           >
-                            <span className="material-symbols-outlined text-xl">delete</span>
+                            <span className="material-symbols-outlined text-lg">delete</span>
                           </button>
 
-                          {/* Center: Preview & Print Contract Icon (Blue, No BG, No Border) */}
+                          {/* Center: Preview & Print Contract Icon (Blue) */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -2571,14 +2571,14 @@ export const Category3EmployeeView: React.FC = () => {
                               e.stopPropagation();
                               handleOpenContractPreview(emp);
                             }}
-                            className="p-1.5 bg-transparent border-0 text-blue-500 hover:text-blue-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                            className="p-1.5 rounded-lg text-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all duration-150 hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
                             style={{ order: 2 }}
                             title={t('معاينة وطباعة عقد العمل', 'Preview and Print Employment Contract')}
                           >
-                            <span className="material-symbols-outlined text-xl">description</span>
+                            <span className="material-symbols-outlined text-lg">description</span>
                           </button>
 
-                          {/* Left Side: Edit Icon (Green, No BG, No Border) */}
+                          {/* Left Side: Edit Icon (Dark Background) */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -2589,11 +2589,11 @@ export const Category3EmployeeView: React.FC = () => {
                               setActiveModuleId('emp-edit');
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
-                            className="p-1.5 bg-transparent border-0 text-emerald-500 hover:text-emerald-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 shadow-sm border border-slate-700/60 transition-all duration-150 hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
                             style={{ order: language === 'ar' ? 3 : 1 }}
                             title={t('تعديل بيانات الموظف', 'Edit Employee Data')}
                           >
-                            <span className="material-symbols-outlined text-xl">edit</span>
+                            <span className="material-symbols-outlined text-lg">edit</span>
                           </button>
                         </div>
                       );
@@ -5102,22 +5102,22 @@ export const Category3EmployeeView: React.FC = () => {
                         </td>
                         {canWrite() && (
                           <td className="py-3 px-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex items-center justify-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => handleEditBranch(branch)}
-                                className="p-1.5 bg-transparent border-0 text-emerald-500 hover:text-emerald-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 shadow-sm border border-slate-700/60 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
                                 title={t('تعديل الفرع', 'Edit Branch')}
                               >
-                                <span className="material-symbols-outlined text-xl">edit_note</span>
+                                <span className="material-symbols-outlined text-lg">edit_note</span>
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteBranchClick(branch)}
-                                className="p-1.5 bg-transparent border-0 text-red-500 hover:text-red-400 transition-all duration-150 hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 hover:text-rose-300 shadow-sm border border-slate-700/60 transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
                                 title={t('حذف الفرع', 'Delete Branch')}
                               >
-                                <span className="material-symbols-outlined text-xl">delete</span>
+                                <span className="material-symbols-outlined text-lg">delete</span>
                               </button>
                             </div>
                           </td>
