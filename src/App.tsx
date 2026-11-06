@@ -263,6 +263,7 @@ function AppContent() {
       case 'sup-training':
       case 'sup-guides':
       case 'sup-contact':
+      case 'supp-emp-portal':
       case 'supp-agent-desk':
       case 'supp-knowledge-base':
       case 'supp-guide-center':
@@ -276,10 +277,6 @@ function AppContent() {
       case 'supp-enterprise-nexus':
       case 'supp-nexus-mobile':
         return <Category11SupportHelpView />;
-
-      // Employee Portal (internal view)
-      case 'supp-emp-portal':
-        return <EmployeePortalView />;
 
       // Archive Module
       case 'cat-12-archive':
