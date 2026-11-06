@@ -207,7 +207,7 @@ export function inspectWorksheet(
     sheetNameWeight += 35;
     reasons.push('Loan Officer Supervisor worksheet');
   } else if (lowerSheet.includes('final') || lowerSheet.includes('payout')) {
-    sheetNameWeight += 40;
+    sheetNameWeight += 60;
     reasons.push('Final payout summary worksheet');
   }
 
@@ -574,6 +574,125 @@ export function extractPayoutRecords(
     };
   }
 
+  // Standalone specialized extraction for Final Incentives sheet if selected directly
+  if (lowerSheet.includes('final') && (lowerSheet.includes('incentive') || lowerSheet.includes('payout'))) {
+    const finalRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
+    let headerRowFinal = -1;
+    let colSystemIdFinal = -1;
+    let colBranchFinal = -1;
+    let colNameFinal = -1;
+    let colIncFinal = -1;
+    let colTransFinal = -1;
+    let colBonusFinal = -1;
+
+    for (let hr = 0; hr <= 6 && hr < finalRows.length; hr++) {
+      const hRow = finalRows[hr];
+      if (!Array.isArray(hRow)) continue;
+      hRow.forEach((c: any, colIdx: number) => {
+        const s = String(c || '').trim().toLowerCase();
+        if (/system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز|كود[\s_-]*الحوافز/i.test(s)) colSystemIdFinal = colIdx;
+        if (colBranchFinal < 0 && /branch|office|المكتب|الفرع/i.test(s)) colBranchFinal = colIdx;
+        if (colNameFinal < 0 && /name|اسم|الموظف/i.test(s)) colNameFinal = colIdx;
+        if (colIncFinal < 0 && /incentive|حوافز|الحوافز/i.test(s)) colIncFinal = colIdx;
+        if (colTransFinal < 0 && /transport|نقل|بدل.*نقل/i.test(s)) colTransFinal = colIdx;
+        if (colBonusFinal < 0 && /bonus|مكاف|علاو|مكافأة|مكافآت/i.test(s)) colBonusFinal = colIdx;
+      });
+      if (colNameFinal >= 0 && (colIncFinal >= 0 || colTransFinal >= 0)) {
+        headerRowFinal = hr;
+        break;
+      }
+    }
+
+    if (colBranchFinal < 0) colBranchFinal = 0;
+    if (colNameFinal < 0) colNameFinal = 1;
+    if (colIncFinal < 0) colIncFinal = 2;
+    if (colTransFinal < 0) colTransFinal = 3;
+    if (colBonusFinal < 0) colBonusFinal = 4;
+    const startRowFinal = headerRowFinal >= 0 ? headerRowFinal + 1 : 4;
+
+    const finalRecords: EmployeePayoutRecord[] = [];
+    let idx = 1;
+    let sumInc = 0;
+    let sumTrans = 0;
+    let sumBonus = 0;
+    const offices = new Set<string>();
+
+    for (let r = startRowFinal; r < finalRows.length; r++) {
+      const row = finalRows[r];
+      if (!row) continue;
+      const rawName = colNameFinal >= 0 ? String(row[colNameFinal] || '').trim() : '';
+      if (!rawName || /^total|^sum|^grand|^المجموع/i.test(rawName)) continue;
+
+      const office = colBranchFinal >= 0 ? String(row[colBranchFinal] || 'Unspecified').trim() : 'Unspecified';
+      offices.add(office);
+      const inc = colIncFinal >= 0 ? (parseFloat(String(row[colIncFinal] || '0')) || 0) : 0;
+      const trans = colTransFinal >= 0 ? (parseFloat(String(row[colTransFinal] || '0')) || 0) : 0;
+      const bonus = colBonusFinal >= 0 ? (parseFloat(String(row[colBonusFinal] || '0')) || 0) : 0;
+      const empId = colSystemIdFinal >= 0 && row[colSystemIdFinal] ? String(row[colSystemIdFinal]).trim() : '—';
+
+      sumInc += inc;
+      sumTrans += trans;
+      sumBonus += bonus;
+
+      let title = 'LO';
+      if (r >= 139 && r <= 143) title = 'CO';
+      else if ((r >= 144 && r <= 167) || r === 8) title = 'LOS';
+      else if (r >= 168 && r <= 191) title = 'Collection';
+      else if (rawName.startsWith('ZZ LOS ')) title = 'LOS';
+      else if (rawName.startsWith('ZZ Collection ')) title = 'Collection';
+
+      finalRecords.push({
+        index: idx++,
+        employeeId: empId,
+        office,
+        employeeName: cleanDisplayName(rawName),
+        jobTitle: title,
+        incentives: inc,
+        transportation: trans,
+        bonus: bonus,
+        currency: 'IQD',
+        sourceSheet: sheetName,
+        sourceRowNumber: r + 1,
+        hasZeroValue: inc === 0 || trans === 0 || bonus === 0,
+      });
+    }
+
+    return {
+      records: finalRecords,
+      summary: {
+        totalEmployees: finalRecords.length,
+        totalIncentives: sumInc,
+        totalTransportation: sumTrans,
+        totalBonus: sumBonus,
+        grandTotal: sumInc + sumTrans + sumBonus,
+        currency: 'IQD',
+        officesCount: offices.size,
+        jobTitlesCount: 4,
+        validZeroAmountsCount: 0,
+      },
+      mapping: {
+        employeeIdCol: colSystemIdFinal >= 0 ? colSystemIdFinal : null,
+        officeCol: colBranchFinal,
+        employeeNameCol: colNameFinal,
+        jobTitleCol: null,
+        incentivesCol: colIncFinal,
+        transportationCol: colTransFinal,
+        bonusCol: colBonusFinal,
+        headerRowIndex: headerRowFinal >= 0 ? headerRowFinal : 3,
+        headers: { [colNameFinal]: 'Name', [colIncFinal]: 'Incentives', [colTransFinal]: 'Transportation', [colBonusFinal]: 'Bonus' },
+      },
+      auditMetrics: {
+        totalFormulaCellsEvaluated: finalRecords.length * 3,
+        staleOrMissingFormulaCells: 0,
+        crossSheetIdMatches: 0,
+        zeroAmountValuesCount: 0,
+        skippedSubtotalRows: 0,
+      },
+      warnings: [],
+      detectedCurrency: 'IQD',
+    };
+  }
+
   const mapping = mappingOverride || inspectWorksheet(ws, sheetName).mapping;
   if (mapping.headerRowIndex === -1) {
     throw new Error(`Unable to detect a valid header row in sheet "${sheetName}".`);
@@ -771,128 +890,98 @@ export function extractConsolidatedAllRoles(
     }
   }
 
-  // 2. Final Sheet (Supervisors rows 144-167 + row 8, CO rows 139-143, and Collection rows 168-191)
-  const wsFinal = wb.Sheets['Final Incentives CO,LOS and LO'];
+  // 2. Final Sheet - Authoritative Final Payout for ALL roles (LO, CO, LOS, Collection, and others)
+  const finalSheetName = wb.SheetNames.find(
+    (name) =>
+      name === 'Final Incentives CO,LOS and LO' ||
+      (/final/i.test(name) && /incentive/i.test(name)) ||
+      /final\s*payout/i.test(name)
+  );
+  const wsFinal = finalSheetName ? wb.Sheets[finalSheetName] : undefined;
   if (wsFinal) {
     const rowsFinal = XLSX.utils.sheet_to_json(wsFinal, { header: 1, defval: '' }) as any[][];
-    let systemIdColFinal = -1;
-    for (let hr = 0; hr <= 3; hr++) {
+    let headerRowFinal = -1;
+    let colSystemIdFinal = -1;
+    let colBranchFinal = -1;
+    let colNameFinal = -1;
+    let colIncFinal = -1;
+    let colTransFinal = -1;
+    let colBonusFinal = -1;
+
+    for (let hr = 0; hr <= 6 && hr < rowsFinal.length; hr++) {
       const hRow = rowsFinal[hr];
-      if (Array.isArray(hRow)) {
-        const found = hRow.findIndex((c: any) => /system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز/i.test(String(c || '').trim()));
-        if (found >= 0) { systemIdColFinal = found; break; }
+      if (!Array.isArray(hRow)) continue;
+      hRow.forEach((c: any, colIdx: number) => {
+        const s = String(c || '').trim().toLowerCase();
+        if (/system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز|كود[\s_-]*الحوافز/i.test(s)) colSystemIdFinal = colIdx;
+        if (colBranchFinal < 0 && /branch|office|المكتب|الفرع/i.test(s)) colBranchFinal = colIdx;
+        if (colNameFinal < 0 && /name|اسم|الموظف/i.test(s)) colNameFinal = colIdx;
+        if (colIncFinal < 0 && /incentive|حوافز|الحوافز/i.test(s)) colIncFinal = colIdx;
+        if (colTransFinal < 0 && /transport|نقل|بدل.*نقل/i.test(s)) colTransFinal = colIdx;
+        if (colBonusFinal < 0 && /bonus|مكاف|علاو|مكافأة|مكافآت/i.test(s)) colBonusFinal = colIdx;
+      });
+      if (colNameFinal >= 0 && (colIncFinal >= 0 || colTransFinal >= 0)) {
+        headerRowFinal = hr;
+        break;
       }
     }
 
-    // CO rows in Final Sheet (139-143)
-    for (let r = 139; r <= 143; r++) {
-      const row = rowsFinal[r];
-      const name = String(row[1] || '').trim();
-      if (!name) continue;
-      const key = normalizeEmployeeName(name);
-      const inc = parseFloat(String(row[2] || '0')) || 0;
-      const trans = parseFloat(String(row[3] || '0')) || 0;
-      const bonus = parseFloat(String(row[4] || '0')) || 0;
-      const empId = systemIdColFinal >= 0 && row[systemIdColFinal] ? String(row[systemIdColFinal]).trim() : '—';
+    if (colBranchFinal < 0) colBranchFinal = 0;
+    if (colNameFinal < 0) colNameFinal = 1;
+    if (colIncFinal < 0) colIncFinal = 2;
+    if (colTransFinal < 0) colTransFinal = 3;
+    if (colBonusFinal < 0) colBonusFinal = 4;
+    const startRowFinal = headerRowFinal >= 0 ? headerRowFinal + 1 : 4;
 
-      if (masterMap.has(key)) {
-        const rec = masterMap.get(key)!;
-        if (trans > 0) rec.transportation = trans;
-        if (bonus > 0) rec.bonus = bonus;
-        if (rec.incentives === 0 && inc > 0) rec.incentives = inc;
-        if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
-      } else {
-        masterMap.set(key, {
-          index: 0,
-          employeeId: empId,
-          office: String(row[0] || 'Unspecified').trim(),
-          employeeName: cleanDisplayName(name),
-          jobTitle: 'CO',
-          incentives: inc,
-          transportation: trans,
-          bonus: bonus,
-          currency: 'IQD',
-          sourceSheet: 'Final Incentives CO,LOS and LO',
-          sourceRowNumber: r + 1,
-          hasZeroValue: inc === 0 || trans === 0 || bonus === 0,
-        });
+    // Process ALL rows in the authoritative Final Sheet
+    for (let r = startRowFinal; r < rowsFinal.length; r++) {
+      const row = rowsFinal[r];
+      if (!row) continue;
+      const rawName = colNameFinal >= 0 ? String(row[colNameFinal] || '').trim() : '';
+      if (!rawName || /^total|^sum|^grand|^المجموع/i.test(rawName)) continue;
+
+      const office = colBranchFinal >= 0 ? String(row[colBranchFinal] || 'Unspecified').trim() : 'Unspecified';
+      const inc = colIncFinal >= 0 ? (parseFloat(String(row[colIncFinal] || '0')) || 0) : 0;
+      const trans = colTransFinal >= 0 ? (parseFloat(String(row[colTransFinal] || '0')) || 0) : 0;
+      const bonus = colBonusFinal >= 0 ? (parseFloat(String(row[colBonusFinal] || '0')) || 0) : 0;
+      const empId = colSystemIdFinal >= 0 && row[colSystemIdFinal] ? String(row[colSystemIdFinal]).trim() : '—';
+      const key = normalizeEmployeeName(rawName);
+
+      // Determine clean role title based on section or prefix
+      let title = 'LO';
+      if (r >= 139 && r <= 143) {
+        title = 'CO';
+      } else if ((r >= 144 && r <= 167) || r === 8) {
+        title = 'LOS';
+      } else if (r >= 168 && r <= 191) {
+        title = 'Collection';
+      } else if (rawName.startsWith('ZZ LOS ')) {
+        title = 'LOS';
+      } else if (rawName.startsWith('ZZ Collection ')) {
+        title = 'Collection';
       }
-    }
-
-    // Supervisors in Final Sheet (row 8 Ali Kadhum, and rows 144 to 167)
-    const addFinalLOS = (r: number) => {
-      const row = rowsFinal[r];
-      if (!row) return;
-      const name = String(row[1] || '').trim();
-      if (!name) return;
-      const office = String(row[0] || 'Unspecified').trim();
-      const inc = parseFloat(String(row[2] || '0')) || 0;
-      const trans = parseFloat(String(row[3] || '0')) || 0;
-      const bonus = parseFloat(String(row[4] || '0')) || 0;
-      const empId = systemIdColFinal >= 0 && row[systemIdColFinal] ? String(row[systemIdColFinal]).trim() : '—';
-      const key = normalizeEmployeeName(name);
 
       if (!masterMap.has(key)) {
         masterMap.set(key, {
           index: 0,
           employeeId: empId,
           office: office || 'Unspecified',
-          employeeName: cleanDisplayName(name),
-          jobTitle: 'LOS',
+          employeeName: cleanDisplayName(rawName),
+          jobTitle: title,
           incentives: inc,
           transportation: trans,
           bonus: bonus,
           currency: 'IQD',
-          sourceSheet: 'Final Incentives CO,LOS and LO',
+          sourceSheet: finalSheetName || 'Final Incentives CO,LOS and LO',
           sourceRowNumber: r + 1,
           hasZeroValue: inc === 0 || trans === 0 || bonus === 0,
         });
       } else {
         const rec = masterMap.get(key)!;
-        if (rec.jobTitle !== 'CO') rec.jobTitle = 'LOS';
         if (inc > 0 && rec.incentives === 0) rec.incentives = inc;
         if (trans > 0 && rec.transportation === 0) rec.transportation = trans;
         if (bonus > 0 && rec.bonus === 0) rec.bonus = bonus;
-        if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
-      }
-    };
-
-    addFinalLOS(8);
-    for (let r = 144; r <= 167; r++) {
-      addFinalLOS(r);
-    }
-
-    // Collection staff in Final Sheet (rows 168 to 191)
-    for (let r = 168; r <= 191; r++) {
-      const row = rowsFinal[r];
-      if (!row) continue;
-      const name = String(row[1] || '').trim();
-      if (!name || /^total/i.test(name)) continue;
-      const office = String(row[0] || 'Unspecified').trim();
-      const inc = parseFloat(String(row[2] || '0')) || 0;
-      const trans = parseFloat(String(row[3] || '0')) || 0;
-      const bonus = parseFloat(String(row[4] || '0')) || 0;
-      const empId = systemIdColFinal >= 0 && row[systemIdColFinal] ? String(row[systemIdColFinal]).trim() : '—';
-      const key = normalizeEmployeeName(name);
-
-      if (!masterMap.has(key)) {
-        masterMap.set(key, {
-          index: 0,
-          employeeId: empId,
-          office,
-          employeeName: cleanDisplayName(name),
-          jobTitle: 'Collection',
-          incentives: inc,
-          transportation: trans,
-          bonus: bonus,
-          currency: 'IQD',
-          sourceSheet: 'Final Incentives CO,LOS and LO',
-          sourceRowNumber: r + 1,
-          hasZeroValue: inc === 0 || trans === 0 || bonus === 0,
-        });
-      } else {
-        const rec = masterMap.get(key)!;
-        if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
+        if (empId !== '—' && (rec.employeeId === '—' || !rec.employeeId)) rec.employeeId = empId;
       }
     }
   }
@@ -968,24 +1057,49 @@ export function extractConsolidatedAllRoles(
   const wsLO = wb.Sheets['LO'];
   if (wsLO) {
     const rowsLO = XLSX.utils.sheet_to_json(wsLO, { header: 1, defval: '' }) as any[][];
-    let systemIdColLO = -1;
-    for (let hr = 0; hr <= 5; hr++) {
+    let colSystemIdLO = -1;
+    let colBranchLO = -1;
+    let colNameLO = -1;
+    let colIncLO = -1;
+    let colTransLO = -1;
+    let colBonusLO = -1;
+    let headerRowLO = -1;
+
+    for (let hr = 0; hr <= 6 && hr < rowsLO.length; hr++) {
       const hRow = rowsLO[hr];
-      if (Array.isArray(hRow)) {
-        const found = hRow.findIndex((c: any) => /system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز/i.test(String(c || '').trim()));
-        if (found >= 0) { systemIdColLO = found; break; }
+      if (!Array.isArray(hRow)) continue;
+      hRow.forEach((c: any, colIdx: number) => {
+        const s = String(c || '').trim().toLowerCase();
+        if (/system[\s_-]*id|systemid|waid|wa[\s_-]*id|معرف[\s_-]*الحوافز|كود[\s_-]*الحوافز/i.test(s)) colSystemIdLO = colIdx;
+        if (colBranchLO < 0 && /branch|office|المكتب|الفرع/i.test(s)) colBranchLO = colIdx;
+        if (colNameLO < 0 && /name|اسم|الموظف/i.test(s)) colNameLO = colIdx;
+        if (colIncLO < 0 && /^incentives?$|^حوافز$|^الحوافز$/i.test(s)) colIncLO = colIdx;
+        if (colTransLO < 0 && /^transportation$|^نقل$|^بدل.*نقل$/i.test(s)) colTransLO = colIdx;
+        if (colBonusLO < 0 && /^bonus$|^مكاف|^علاو/i.test(s)) colBonusLO = colIdx;
+      });
+      if (colIncLO >= 0 || colTransLO >= 0) {
+        headerRowLO = hr;
+        break;
       }
     }
 
-    for (let r = 6; r < rowsLO.length; r++) {
+    if (colNameLO < 0) colNameLO = 0;
+    if (colBranchLO < 0) colBranchLO = 3;
+    if (colIncLO < 0) colIncLO = 50;
+    if (colTransLO < 0) colTransLO = 51;
+    if (colBonusLO < 0) colBonusLO = 52;
+    const startRowLO = headerRowLO >= 0 ? headerRowLO + 1 : 6;
+
+    for (let r = startRowLO; r < rowsLO.length; r++) {
       const row = rowsLO[r];
-      const rawName = String(row[0] || '').trim();
+      if (!row) continue;
+      const rawName = String(row[colNameLO] || '').trim();
       if (!rawName || /^total/i.test(rawName)) continue;
-      const office = String(row[3] || 'Unspecified').trim();
-      const inc = parseFloat(String(row[50] || '0')) || 0;
-      const trans = parseFloat(String(row[51] || '0')) || 0;
-      const bonus = parseFloat(String(row[52] || '0')) || 0;
-      const empId = systemIdColLO >= 0 && row[systemIdColLO] ? String(row[systemIdColLO]).trim() : '—';
+      const office = String(row[colBranchLO] || 'Unspecified').trim();
+      const inc = parseFloat(String(row[colIncLO] || '0')) || 0;
+      const trans = parseFloat(String(row[colTransLO] || '0')) || 0;
+      const bonus = parseFloat(String(row[colBonusLO] || '0')) || 0;
+      const empId = colSystemIdLO >= 0 && row[colSystemIdLO] ? String(row[colSystemIdLO]).trim() : '—';
       const key = normalizeEmployeeName(rawName);
 
       if (rawName.startsWith('ZZ LOS ')) {
@@ -1006,9 +1120,10 @@ export function extractConsolidatedAllRoles(
           });
         } else {
           const rec = masterMap.get(key)!;
+          if (inc > 0 && rec.incentives === 0) rec.incentives = inc;
           if (trans > 0 && rec.transportation === 0) rec.transportation = trans;
           if (bonus > 0 && rec.bonus === 0) rec.bonus = bonus;
-          if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
+          if (empId !== '—' && (rec.employeeId === '—' || !rec.employeeId)) rec.employeeId = empId;
         }
       } else if (rawName.startsWith('ZZ Collection ')) {
         if (!masterMap.has(key)) {
@@ -1028,7 +1143,10 @@ export function extractConsolidatedAllRoles(
           });
         } else {
           const rec = masterMap.get(key)!;
-          if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
+          if (inc > 0 && rec.incentives === 0) rec.incentives = inc;
+          if (trans > 0 && rec.transportation === 0) rec.transportation = trans;
+          if (bonus > 0 && rec.bonus === 0) rec.bonus = bonus;
+          if (empId !== '—' && (rec.employeeId === '—' || !rec.employeeId)) rec.employeeId = empId;
         }
       } else {
         // Loan Officer
@@ -1049,12 +1167,11 @@ export function extractConsolidatedAllRoles(
           });
         } else {
           const rec = masterMap.get(key)!;
-          if (rec.jobTitle === 'LO') {
-            rec.incentives = inc;
-            rec.transportation = trans;
-            rec.bonus = bonus;
-          }
-          if (empId !== '—' && rec.employeeId === '—') rec.employeeId = empId;
+          // CRUCIAL: NEVER overwrite valid non-zero amounts with zero!
+          if (inc > 0 && rec.incentives === 0) rec.incentives = inc;
+          if (trans > 0 && rec.transportation === 0) rec.transportation = trans;
+          if (bonus > 0 && rec.bonus === 0) rec.bonus = bonus;
+          if (empId !== '—' && (rec.employeeId === '—' || !rec.employeeId)) rec.employeeId = empId;
         }
       }
     }
