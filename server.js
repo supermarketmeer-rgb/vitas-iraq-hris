@@ -929,41 +929,83 @@ const syncSettingsFromEmployees = async () => {
       }
     }
 
-    // 3. Initial seeding for Departments ONLY if table is empty
+    // 3. Initial seeding for Departments & Employee Department Sync
     const existingDepts = await query('SELECT id FROM departments LIMIT 1').catch(() => []);
     const DEPT_EN_MAP = {
       'إدارة التمويل الأصغر والعمليات': 'Microfinance & Operations',
       'الموارد البشرية والشؤون الإدارية': 'Human Resources & Administration',
       'إدارة الموارد البشرية والعمليات': 'Human Resources & Operations',
       'الموارد البشرية': 'Human Resources',
-      'قسم الائتمان': 'Credit',
+      'قسم الائتمان': 'Credit Department',
       'القروض والائتمان': 'Loans & Credit',
       'تكنولوجيا المعلومات': 'Information Technology',
-      'الأمن': 'Security',
+      'نظم المعلومات الإدارية (MIS)': 'Management Information Systems (MIS)',
+      'الأمن': 'Security Department',
+      'قسم الأمن': 'Security Department',
       'المشتريات والتسهيلات': 'Procurement & Facilities',
-      'قسم الخزينة': 'Treasury',
+      'قسم الخزينة': 'Treasury Department',
       'المالية والمحاسبة': 'Finance & Accounting',
       'الاستحصال والتحصيل': 'Collection & Recovery',
+      'المخاطر والامتثال': 'Risk & Compliance',
       'المخاطر والامتثال والتدقيق': 'Risk, Compliance & Audit',
+      'قسم الامتثال': 'Compliance Department',
+      'التدقيق الداخلي': 'Internal Audit',
       'التسويق والمبيعات': 'Marketing & Sales',
+      'التسويق والعلاقات العامة': 'Marketing & PR',
+      'العمليات وإدارة الفروع': 'Operations & Branch Management',
       'العمليات': 'Operations'
     };
 
+    // Auto-infer and update departments for employees where department is NULL
+    const nullDeptEmps = await query(`
+      SELECT id, position, position_ar, position_en FROM employees 
+      WHERE department IS NULL OR department = ''
+    `).catch(() => []);
+    if (nullDeptEmps && nullDeptEmps.length > 0) {
+      for (const emp of nullDeptEmps) {
+        const p = `${emp.position_ar || emp.position || ''} ${emp.position_en || emp.position || ''}`.toLowerCase();
+        let targetDept = 'قسم الائتمان';
+        if (p.includes('treasur') || p.includes('خزين') || p.includes('صندوق') || p.includes('صراف')) targetDept = 'قسم الخزينة';
+        else if (p.includes('secur') || p.includes('guard') || p.includes('أمن') || p.includes('حارس')) targetDept = 'قسم الأمن';
+        else if (p.includes('audit') || p.includes('تدقيق')) targetDept = 'التدقيق الداخلي';
+        else if (p.includes('risk') || p.includes('مخاطر')) targetDept = 'المخاطر والامتثال';
+        else if (p.includes('compliance') || p.includes('regulatory') || p.includes('امتثال')) targetDept = 'قسم الامتثال';
+        else if (p.includes('account') || p.includes('financ') || p.includes('محاسب') || p.includes('مالي') || p.includes('حسابات')) targetDept = 'المالية والمحاسبة';
+        else if (p.includes('hr') || p.includes('recruit') || p.includes('training') || p.includes('personnel') || p.includes('compensation') || p.includes('موارد بشرية')) targetDept = 'الموارد البشرية';
+        else if (p.includes('mis')) targetDept = 'نظم المعلومات الإدارية (MIS)';
+        else if (p.includes('it') || p.includes('معلومات') || p.includes('تقنية') || p.includes('technical')) targetDept = 'تكنولوجيا المعلومات';
+        else if (p.includes('collect') || p.includes('تحصيل') || p.includes('استحصال')) targetDept = 'الاستحصال والتحصيل';
+        else if (p.includes('procure') || p.includes('facilit') || p.includes('مشتريات') || p.includes('تسهيلات')) targetDept = 'المشتريات والتسهيلات';
+        else if (p.includes('market') || p.includes('pr') || p.includes('social media') || p.includes('تسويق') || p.includes('علاقات عامة')) targetDept = 'التسويق والعلاقات العامة';
+        else if (p.includes('office manager') || p.includes('reception') || p.includes('clean') || p.includes('نظافة') || p.includes('استقبال') || p.includes('مدير مكتب')) targetDept = 'العمليات وإدارة الفروع';
+        
+        await query('UPDATE employees SET department = ? WHERE id = ?', [targetDept, emp.id]).catch(() => {});
+      }
+    }
+
     if (!existingDepts || existingDepts.length === 0) {
-      const empDepts = await query(`
-        SELECT DISTINCT department FROM employees 
-        WHERE department IS NOT NULL AND department != ''
-      `).catch(() => []);
-      let idx = 1;
-      for (const d of (empDepts || [])) {
-        const nameAr = String(d.department || '').trim();
-        const nameEn = DEPT_EN_MAP[nameAr] || nameAr;
-        if (nameAr) {
-          await query(
-            'INSERT INTO departments (name_en, name_ar, name, status, sort_order) VALUES (?, ?, ?, ?, ?)',
-            [nameEn, nameAr, nameAr, 'Active', idx++]
-          ).catch(() => {});
-        }
+      const defaultDepartments = [
+        { name_ar: 'قسم الائتمان', name_en: 'Credit Department', sort: 1 },
+        { name_ar: 'المالية والمحاسبة', name_en: 'Finance & Accounting', sort: 2 },
+        { name_ar: 'قسم الخزينة', name_en: 'Treasury Department', sort: 3 },
+        { name_ar: 'الموارد البشرية', name_en: 'Human Resources', sort: 4 },
+        { name_ar: 'تكنولوجيا المعلومات', name_en: 'Information Technology', sort: 5 },
+        { name_ar: 'نظم المعلومات الإدارية (MIS)', name_en: 'Management Information Systems (MIS)', sort: 6 },
+        { name_ar: 'الاستحصال والتحصيل', name_en: 'Collection & Recovery', sort: 7 },
+        { name_ar: 'قسم الامتثال', name_en: 'Compliance Department', sort: 8 },
+        { name_ar: 'المخاطر والامتثال', name_en: 'Risk & Compliance', sort: 9 },
+        { name_ar: 'التدقيق الداخلي', name_en: 'Internal Audit', sort: 10 },
+        { name_ar: 'المشتريات والتسهيلات', name_en: 'Procurement & Facilities', sort: 11 },
+        { name_ar: 'التسويق والعلاقات العامة', name_en: 'Marketing & PR', sort: 12 },
+        { name_ar: 'العمليات وإدارة الفروع', name_en: 'Operations & Branch Management', sort: 13 },
+        { name_ar: 'قسم الأمن', name_en: 'Security Department', sort: 14 }
+      ];
+
+      for (const d of defaultDepartments) {
+        await query(
+          'INSERT INTO departments (name_en, name_ar, name, status, sort_order) VALUES (?, ?, ?, ?, ?)',
+          [d.name_en, d.name_ar, d.name_ar, 'Active', d.sort]
+        ).catch(() => {});
       }
     }
   } catch (err) {
@@ -3429,7 +3471,11 @@ app.patch('/api/departments/:id/manager-location', async (req, res) => {
 // Settings - Departments CRUD
 app.get(['/api/settings/departments', '/api/departments'], async (req, res) => {
   try {
-        const results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
+    let results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
+    if (!results || results.length === 0) {
+      await syncSettingsFromEmployees().catch(() => {});
+      results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
+    }
     const employees = await query('SELECT id, department, branch, status FROM employees').catch(() => []);
     const branches = await query('SELECT id, name, name_ar, name_en, status FROM branches').catch(() => []);
     const positions = await query('SELECT id, department_id, department FROM positions').catch(() => []);

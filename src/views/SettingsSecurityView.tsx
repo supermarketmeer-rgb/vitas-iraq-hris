@@ -1606,8 +1606,42 @@ export const SettingsSecurityView: React.FC = () => {
 
             const jobTitle = getVal(row, ['Job Title (Arabic)', 'Job Title (AR)', 'jobTitle', 'job_title', 'position', 'position_ar', 'المسمى الوظيفي (عربي)', 'العنوان الوظيفي (عربي)', 'المسمى الوظيفي عربي', 'المسمى الوظيفي', 'العنوان الوظيفي', 'الوظيفة']);
             const jobTitleEn = getVal(row, ['Job Title (English)', 'Job Title (EN)', 'jobTitleEn', 'job_title_en', 'position_en', 'المسمى الوظيفي (إنجليزي)', 'المسمى الوظيفي (انجليزي)', 'العنوان الوظيفي (إنجليزي)', 'العنوان الوظيفي (انجليزي)', 'المسمى الوظيفي إنجليزي', 'Job Title English']) || jobTitle;
-            const department = getVal(row, ['Department (Arabic)', 'Department (AR)', 'department', 'department_ar', 'القسم / الإدارة (عربي)', 'القسم/الإدارة (عربي)', 'القسم (عربي)', 'القسم / الإدارة', 'القسم', 'الإدارة']);
-            const departmentEn = getVal(row, ['Department (English)', 'Department (EN)', 'departmentEn', 'department_en', 'القسم / الإدارة (إنجليزي)', 'القسم / الإدارة (انجليزي)', 'القسم/الإدارة (إنجليزي)', 'القسم (إنجليزي)', 'Department English']) || department;
+            let department = getVal(row, ['Department (Arabic)', 'Department (AR)', 'department', 'department_ar', 'القسم / الإدارة (عربي)', 'القسم/الإدارة (عربي)', 'القسم (عربي)', 'القسم / الإدارة', 'القسم', 'الإدارة']);
+            let departmentEn = getVal(row, ['Department (English)', 'Department (EN)', 'departmentEn', 'department_en', 'القسم / الإدارة (إنجليزي)', 'القسم / الإدارة (انجليزي)', 'القسم/الإدارة (إنجليزي)', 'القسم (إنجليزي)', 'Department English']) || department;
+
+            // Auto-infer Department from Job Title if missing in the Excel sheet
+            if (!department && (jobTitle || jobTitleEn)) {
+              const p = `${jobTitle || ''} ${jobTitleEn || ''}`.toLowerCase();
+              if (p.includes('treasur') || p.includes('خزين') || p.includes('صندوق') || p.includes('صراف')) {
+                department = 'قسم الخزينة'; departmentEn = 'Treasury Department';
+              } else if (p.includes('secur') || p.includes('guard') || p.includes('أمن') || p.includes('حارس')) {
+                department = 'قسم الأمن'; departmentEn = 'Security Department';
+              } else if (p.includes('audit') || p.includes('تدقيق')) {
+                department = 'التدقيق الداخلي'; departmentEn = 'Internal Audit';
+              } else if (p.includes('risk') || p.includes('مخاطر')) {
+                department = 'المخاطر والامتثال'; departmentEn = 'Risk & Compliance';
+              } else if (p.includes('compliance') || p.includes('regulatory') || p.includes('امتثال')) {
+                department = 'قسم الامتثال'; departmentEn = 'Compliance Department';
+              } else if (p.includes('account') || p.includes('financ') || p.includes('محاسب') || p.includes('مالي') || p.includes('حسابات')) {
+                department = 'المالية والمحاسبة'; departmentEn = 'Finance & Accounting';
+              } else if (p.includes('hr') || p.includes('recruit') || p.includes('training') || p.includes('personnel') || p.includes('compensation') || p.includes('موارد بشرية')) {
+                department = 'الموارد البشرية'; departmentEn = 'Human Resources';
+              } else if (p.includes('mis')) {
+                department = 'نظم المعلومات الإدارية (MIS)'; departmentEn = 'Management Information Systems (MIS)';
+              } else if (p.includes('it') || p.includes('معلومات') || p.includes('تقنية') || p.includes('technical')) {
+                department = 'تكنولوجيا المعلومات'; departmentEn = 'Information Technology';
+              } else if (p.includes('collect') || p.includes('تحصيل') || p.includes('استحصال')) {
+                department = 'الاستحصال والتحصيل'; departmentEn = 'Collection & Recovery';
+              } else if (p.includes('procure') || p.includes('facilit') || p.includes('مشتريات') || p.includes('تسهيلات')) {
+                department = 'المشتريات والتسهيلات'; departmentEn = 'Procurement & Facilities';
+              } else if (p.includes('market') || p.includes('pr') || p.includes('social media') || p.includes('تسويق') || p.includes('علاقات عامة')) {
+                department = 'التسويق والعلاقات العامة'; departmentEn = 'Marketing & PR';
+              } else if (p.includes('office manager') || p.includes('reception') || p.includes('clean') || p.includes('نظافة') || p.includes('استقبال') || p.includes('مدير مكتب')) {
+                department = 'العمليات وإدارة الفروع'; departmentEn = 'Operations & Branch Management';
+              } else {
+                department = 'قسم الائتمان'; departmentEn = 'Credit Department';
+              }
+            }
             const branch = getVal(row, ['Branch (Arabic)', 'Branch (AR)', 'Location (AR)', 'Location (Arabic)', 'branch', 'branch_ar', 'location', 'location_ar', 'الفرع (عربي)', 'الموقع (عربي)', 'الفرع العربي', 'الفرع', 'الموقع', 'مكان العمل']);
             const branchEn = getVal(row, ['Branch (English)', 'Branch (EN)', 'Location (EN)', 'Location (English)', 'branchEn', 'branch_en', 'location_en', 'الفرع (إنجليزي)', 'الفرع (انجليزي)', 'الموقع (إنجليزي)', 'الفرع الإنجليزي', 'Branch English']) || branch;
             const supervisorName = getVal(row, ['Supervisor Name', 'supervisorName', 'supervisor_name', 'اسم المشرف المباشر', 'اسم المشرف', 'المشرف', 'المدير المباشر']);
