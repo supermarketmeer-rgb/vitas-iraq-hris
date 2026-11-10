@@ -53,7 +53,7 @@ export const IncentivesModuleView: React.FC = () => {
   const [currentWorkbookBuffer, setCurrentWorkbookBuffer] = useState<Uint8Array | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [currentFileName, setCurrentFileName] = useState<string>('LO-LOS Bouns-Incentive Dinar_Sep_26Fin.xlsx');
+  const [currentFileName, setCurrentFileName] = useState<string>('Incentive-SEP2026-Updated.xlsx');
   const [selectedSheet, setSelectedSheet] = useState<string>('Final Sammary');
   const [uploadSuccess, setUploadSuccess] = useState<{
     fileName: string;
@@ -295,8 +295,9 @@ export const IncentivesModuleView: React.FC = () => {
         setCurrentWorkbookBuffer(uint8Array);
         setCurrentFileName(fileName);
 
-        const activeSheetToUse = targetSheet || selectedSheet;
-        const result = inspectAndExtractWorkbook(uint8Array, fileName, activeSheetToUse);
+        // When a specific targetSheet is provided (e.g. from user dropdown selection), use it.
+        // Otherwise, allow inspectAndExtractWorkbook to prioritize Final Sammary automatically.
+        const result = inspectAndExtractWorkbook(uint8Array, fileName, targetSheet);
 
         // Cross-reference with HRIS employee table
         const enrichedRecords = enrichRecordsWithHRIS(result.records);
@@ -350,28 +351,36 @@ export const IncentivesModuleView: React.FC = () => {
   );
 
   /**
-   * Load the real default official workbook (LO-LOS Bouns-Incentive Dinar_Sep_26Fin.xlsx)
+   * Load the updated incentives workbook (Incentive-SEP2026-Updated.xlsx) which contains Final Sammary sheet.
+   * Falls back to the legacy official workbook if unavailable.
    */
   const handleLoadOfficialWorkbook = useCallback(async () => {
     setIsProcessing(true);
     setErrorMessage(null);
-    try {
-      const response = await fetch('/LO-LOS Bouns-Incentive Dinar_Sep_26Fin.xlsx');
-      if (!response.ok) {
-        throw new Error('Could not fetch the official workbook file');
+    // Try the updated workbook first (has Final Sammary)
+    const filesToTry = [
+      { url: '/Incentive-SEP2026-Updated.xlsx', name: 'Incentive-SEP2026-Updated.xlsx' },
+      { url: '/LO-LOS Bouns-Incentive Dinar_Sep_26Fin.xlsx', name: 'LO-LOS Bouns-Incentive Dinar_Sep_26Fin.xlsx' },
+    ];
+    for (const { url, name } of filesToTry) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) continue;
+        const buffer = await response.arrayBuffer();
+        // Pass undefined as targetSheet to let extractor auto-detect Final Sammary
+        processExcelData(buffer, name, undefined);
+        return;
+      } catch {
+        // Try next
       }
-      const buffer = await response.arrayBuffer();
-      processExcelData(buffer, 'LO-LOS Bouns-Incentive Dinar_Sep_26Fin.xlsx', selectedSheet);
-    } catch (err) {
-      console.warn('Failed to fetch official workbook from server:', err);
-      setErrorMessage(
-        language === 'ar'
-          ? 'تعذر تحميل ملف الإكسل الافتراضي تلقائياً. يمكنك رفع ملف الإكسل الخاص بالفرع يدوياً عبر زر الرفع أدناه.'
-          : 'Could not load the default workbook automatically. You can upload your branch Excel file manually.'
-      );
-      setIsProcessing(false);
     }
-  }, [processExcelData, selectedSheet, language]);
+    setErrorMessage(
+      language === 'ar'
+        ? 'تعذر تحميل ملف الإكسل الافتراضي تلقائياً. يمكنك رفع ملف الإكسل الخاص بالفرع يدوياً عبر زر الرفع أدناه.'
+        : 'Could not load the default workbook automatically. You can upload your branch Excel file manually.'
+    );
+    setIsProcessing(false);
+  }, [processExcelData, language]);
 
   // Initial load on component mount
   useEffect(() => {

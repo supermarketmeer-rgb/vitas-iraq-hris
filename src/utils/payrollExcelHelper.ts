@@ -145,6 +145,136 @@ export async function parsePayrollExcel(
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         
+        // === Priority 1: If the workbook contains "Final Sammary" / "Final Summary" sheet, extract from it directly ===
+        // This is the authoritative consolidated sheet for Incentive-SEP2026-Updated.xlsx
+        const masterSummarySheetName = workbook.SheetNames.find(
+          (n) => /final\s*s[au]mmary/i.test(n) || /خلاصة/i.test(n)
+        );
+
+        if (masterSummarySheetName && workbook.Sheets[masterSummarySheetName]) {
+          const masterWs = workbook.Sheets[masterSummarySheetName];
+          const masterGrid = XLSX.utils.sheet_to_json(masterWs, { header: 1, defval: '' }) as any[][];
+
+          // Find the LO detail table header row (Badge No, Office Name, Employee Name, Position, Incentive...)
+          let masterHeaderIdx = -1;
+          let mColSys = 0, mColOff = 1, mColNm = 2, mColPos = 3, mColInc = 4, mColTr = 5, mColBon = 6;
+          for (let r = 0; r < masterGrid.length; r++) {
+            const row = masterGrid[r];
+            if (!Array.isArray(row)) continue;
+            const rowStr = row.map((c: any) => String(c || '').trim().toLowerCase()).join(' | ');
+            if (/badge|system[\s_-]*id|waid/i.test(rowStr) && /employee\s*name|اسم\s*الموظف/i.test(rowStr) && /incentive|حوافز/i.test(rowStr)) {
+              masterHeaderIdx = r;
+              row.forEach((cell: any, idx: number) => {
+                const s = String(cell || '').trim().toLowerCase();
+                if (/badge|system[\s_-]*id|waid/i.test(s)) mColSys = idx;
+                if (/office|branch/i.test(s)) mColOff = idx;
+                if (/employee\s*name|اسم\s*الموظف/i.test(s)) mColNm = idx;
+                if (/position/i.test(s)) mColPos = idx;
+                if (/incentive|حوافز/i.test(s)) mColInc = idx;
+                if (/transport|نقل/i.test(s)) mColTr = idx;
+                if (/bonus|مكاف|علاو/i.test(s)) mColBon = idx;
+              });
+              break;
+            }
+          }
+
+          if (masterHeaderIdx >= 0) {
+            const parsedAdjustments: Record<string, any> = {};
+            const unmatchedRows: any[] = [];
+            let matchedCount = 0;
+            let totalIncentives = 0, totalTransportation = 0, totalBonus = 0;
+
+            for (let r = masterHeaderIdx + 1; r < masterGrid.length; r++) {
+              const row = masterGrid[r];
+              if (!row) continue;
+              const sysId = String(row[mColSys] || '').trim();
+              const name = String(row[mColNm] || '').trim();
+
+              // Skip section headers, totals, repeated headers
+              if (!sysId || !name) continue;
+              if (/badge|system[\s_-]*id|employee\s*name|إجمالي|total|مجموع|خامساً|رابعاً|ثالثاً|ثانياً|أولاً/i.test(sysId)) continue;
+              if (/إجمالي|total|مجموع|employee\s*name/i.test(name)) continue;
+              if (/#ref!/i.test(sysId) || /#ref!/i.test(name)) continue;
+
+              const inc = parseFloat(String(row[mColInc] || '0').replace(/[$,\s]/g, '')) || 0;
+              const trans = parseFloat(String(row[mColTr] || '0').replace(/[$,\s]/g, '')) || 0;
+              const bonus = parseFloat(String(row[mColBon] || '0').replace(/[$,\s]/g, '')) || 0;
+
+              // Match to employee by Badge No
+              const matchedEmp = existingEmployees.find((emp) => {
+                const empBadge = String(emp.badge_no || emp.badgeNo || '').trim();
+                const empId = String(emp.employeeId || emp.employee_id || emp.id || '').trim();
+                const empWaid = String(emp.waid || emp.wa_id || '').trim();
+                const cleanSysId = sysId.toLowerCase();
+                if (empBadge && empBadge.toLowerCase() === cleanSysId) return true;
+                if (empId && empId.toLowerCase() === cleanSysId) return true;
+                if (empWaid && empWaid.toLowerCase() === cleanSysId) return true;
+                const digits = sysId.replace(/\D/g, '');
+                if (digits && empBadge.replace(/\D/g, '') === digits) return true;
+                return false;
+              });
+
+              if (!matchedEmp) {
+                unmatchedRows.push({ rowIndex: r + 1, rawBadge: sysId, rawName: name });
+                continue;
+              }
+
+              const targetId = String(matchedEmp.id);
+              const badgeKey = String(matchedEmp.badge_no || matchedEmp.badgeNo || sysId);
+              const empWaidVal = String(matchedEmp.waid || matchedEmp.wa_id || '').trim();
+              const empHasWaid = Boolean(empWaidVal && empWaidVal !== '-' && empWaidVal !== '—' && empWaidVal !== '0' && empWaidVal !== 'null' && empWaidVal !== 'undefined' && empWaidVal !== 'N/A');
+              
+              // Incentives only if employee has WAID (strict rule)
+              const incentivesVal = empHasWaid ? inc : 0;
+
+              const adjData = {
+                incentives: incentivesVal,
+                transportation: trans,
+                bonus: bonus,
+                currency: 'IQD',
+                badgeNo: badgeKey,
+                sourceSheet: masterSummarySheetName,
+              };
+              parsedAdjustments[targetId] = adjData;
+              parsedAdjustments[badgeKey] = adjData;
+              if (sysId && sysId !== badgeKey) parsedAdjustments[sysId] = adjData;
+
+              matchedCount++;
+              totalIncentives += incentivesVal;
+              totalTransportation += trans;
+              totalBonus += bonus;
+            }
+
+            // Persist to localStorage
+            const existing: Record<string, any> = (() => {
+              try { return JSON.parse(localStorage.getItem('vitas_payroll_manual_adjustments') || '{}'); } catch { return {}; }
+            })();
+            const merged = { ...existing, ...parsedAdjustments };
+            localStorage.setItem('vitas_payroll_manual_adjustments', JSON.stringify(merged));
+            window.dispatchEvent(new CustomEvent('vitas_payroll_adjustments_updated', { detail: merged }));
+
+            resolve({
+              success: true,
+              totalRows: matchedCount + unmatchedRows.length,
+              matchedCount,
+              unmatchedRows,
+              parsedAdjustments,
+              summary: {
+                totalIncentives,
+                totalTransportation,
+                totalBonus,
+                totalOvertime: 0,
+                totalEarnedLeave: 0,
+                totalAbsenceDays: 0,
+                totalLoanPayments: 0,
+                totalOtherDeductions: 0,
+              },
+            });
+            return; // Done — extracted from Final Sammary
+          }
+        }
+
+        // === Priority 2: Dynamic sheet selection for other workbook types ===
         // Dynamically select the sheet that contains payroll/incentives data
         let targetSheetName = workbook.SheetNames[0];
         for (const sName of workbook.SheetNames) {

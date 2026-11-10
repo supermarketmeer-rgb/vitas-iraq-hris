@@ -464,8 +464,16 @@ export function extractFromFinalSummaryWorksheet(
     const name = colNm >= 0 ? String(row[colNm] || '').trim() : '';
     const sysId = colSys >= 0 ? String(row[colSys] || '').trim() : '';
 
-    // Skip total row or empty rows
-    if (!name || /إجمالي|total|مجموع/i.test(name) || /إجمالي|total|مجموع/i.test(sysId)) {
+    // Skip total row, empty rows, or repeated table headers
+    if (
+      !name ||
+      /إجمالي|total|مجموع/i.test(name) ||
+      /إجمالي|total|مجموع/i.test(sysId) ||
+      /employee\s*name|اسم\s*الموظف/i.test(name) ||
+      /badge[\s_-]*no|system[\s_-]*id|waid/i.test(sysId) ||
+      /خامساً|رابعاً|ثالثاً|ثانياً|أولاً/i.test(sysId) ||
+      /خامساً|رابعاً|ثالثاً|ثانياً|أولاً/i.test(name)
+    ) {
       continue;
     }
 
@@ -1484,8 +1492,23 @@ export function inspectAndExtractWorkbook(
     (name) => /final\s*s[au]mmary/i.test(name) || /خلاصة/i.test(name)
   );
 
-  // If user requested consolidated view, OR if no sheet specified, OR requested master summary sheet:
-  if (!preferredSheet || preferredSheet === ALL_ROLES_SHEET_KEY || (masterSummarySheetName && preferredSheet === masterSummarySheetName)) {
+  // If the workbook has Final Sammary, prioritize it whenever:
+  // 1. No sheet is explicitly requested
+  // 2. ALL_ROLES_SHEET_KEY or masterSummarySheetName was requested
+  // 3. The requested sheet does NOT exist in this workbook
+  // 4. An updated incentives workbook is loaded (e.g. Incentive-SEP2026-Updated)
+  const shouldExtractMasterSummary = Boolean(
+    masterSummarySheetName && (
+      !preferredSheet ||
+      preferredSheet === ALL_ROLES_SHEET_KEY ||
+      preferredSheet === masterSummarySheetName ||
+      !wb.SheetNames.includes(preferredSheet) ||
+      /incentive.*updated/i.test(fileName) ||
+      /sep.*2026.*updated/i.test(fileName)
+    )
+  );
+
+  if (shouldExtractMasterSummary || !preferredSheet || preferredSheet === ALL_ROLES_SHEET_KEY) {
     const targetSheetName = masterSummarySheetName || ALL_ROLES_SHEET_KEY;
     const consolidated = masterSummarySheetName && wb.Sheets[masterSummarySheetName]
       ? extractFromFinalSummaryWorksheet(wb.Sheets[masterSummarySheetName], masterSummarySheetName, fileName)
