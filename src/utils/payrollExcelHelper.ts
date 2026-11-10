@@ -204,11 +204,9 @@ export async function parsePayrollExcel(
               const matchedEmp = existingEmployees.find((emp) => {
                 const empBadge = String(emp.badge_no || emp.badgeNo || '').trim();
                 const empId = String(emp.employeeId || emp.employee_id || emp.id || '').trim();
-                const empWaid = String(emp.waid || emp.wa_id || '').trim();
                 const cleanSysId = sysId.toLowerCase();
                 if (empBadge && empBadge.toLowerCase() === cleanSysId) return true;
                 if (empId && empId.toLowerCase() === cleanSysId) return true;
-                if (empWaid && empWaid.toLowerCase() === cleanSysId) return true;
                 const digits = sysId.replace(/\D/g, '');
                 if (digits && empBadge.replace(/\D/g, '') === digits) return true;
                 return false;
@@ -221,14 +219,10 @@ export async function parsePayrollExcel(
 
               const targetId = String(matchedEmp.id);
               const badgeKey = String(matchedEmp.badge_no || matchedEmp.badgeNo || sysId);
-              const empWaidVal = String(matchedEmp.waid || matchedEmp.wa_id || '').trim();
-              const empHasWaid = Boolean(empWaidVal && empWaidVal !== '-' && empWaidVal !== '—' && empWaidVal !== '0' && empWaidVal !== 'null' && empWaidVal !== 'undefined' && empWaidVal !== 'N/A');
-              
-              // Incentives only if employee has WAID (strict rule)
-              const incentivesVal = empHasWaid ? inc : 0;
 
+              // All matched employees get their incentives — Badge No is the identifier
               const adjData = {
-                incentives: incentivesVal,
+                incentives: inc,
                 transportation: trans,
                 bonus: bonus,
                 currency: 'IQD',
@@ -421,24 +415,25 @@ export async function parsePayrollExcel(
           }
           if (/^total|^grand\s*total|^sum|^المجموع/i.test(cleanName)) return;
 
-          // STRICT LINK RULE:
-          // User requirement: "المفروض يكون الرابط هو SystemID في الاكسل شيت و Incentives WAID(For Incentives) في جدول الموظفين"
+          // MATCH BY BADGE NO (primary) — Badge No replaces WAID as the incentive identifier
           let matchedEmp: any = null;
 
-          if (hasValidSystemId) {
-            // Priority 1: Match strictly by SystemID from Excel <---> Incentives WAID(For Incentives) in Employees table
+          // Priority 1: Match by Badge No from Excel ↔ badge_no in Employees table
+          const lookupId = hasValidSystemId ? cleanSystemId : cleanBadge;
+          if (lookupId) {
             matchedEmp = existingEmployees.find((emp) => {
-              const empWaid = String(emp.waid || emp.wa_id || '').trim();
-              if (!empWaid || empWaid === '-' || empWaid === '0' || empWaid === 'null' || empWaid === 'undefined' || empWaid === 'N/A') return false;
-              if (empWaid.toLowerCase() === cleanSystemId.toLowerCase()) return true;
-              const waidDigits = empWaid.replace(/\D/g, '');
-              const sysDigits = cleanSystemId.replace(/\D/g, '');
-              return Boolean(waidDigits && sysDigits && waidDigits === sysDigits);
+              const empBadge = String(emp.badge_no || emp.badgeNo || '').trim();
+              const empCode = String(emp.employeeId || emp.employee_id || emp.id || '').trim();
+              if (empBadge && empBadge.toLowerCase() === lookupId.toLowerCase()) return true;
+              if (empCode && empCode.toLowerCase() === lookupId.toLowerCase()) return true;
+              const lookupDigits = lookupId.replace(/\D/g, '');
+              const badgeDigits = empBadge.replace(/\D/g, '');
+              return Boolean(lookupDigits && badgeDigits && lookupDigits === badgeDigits);
             });
           }
 
-          // Priority 2: If no SystemID match, match by Badge No for general allowances (transportation, etc.)
-          if (!matchedEmp && cleanBadge) {
+          // Priority 2: Fallback match by the other identifier
+          if (!matchedEmp && cleanBadge && cleanBadge !== lookupId) {
             matchedEmp = existingEmployees.find((emp) => {
               const empBadge = String(emp.badge_no || emp.badgeNo || '').trim();
               const empCode = String(emp.employeeId || emp.employee_id || emp.id || '').trim();
@@ -468,24 +463,8 @@ export async function parsePayrollExcel(
           else if (!isNaN(rawProp) && rawProp > 0) incentives = rawProp;
           else if (!isNaN(rawStdNum) && rawStdNum > 0) incentives = rawStdNum;
 
-          // STRICT INCENTIVES RULE:
-          // Incentives can ONLY be awarded if:
-          // 1. The Excel row provided a valid SystemID
-          // 2. The matched employee HAS an Incentives WAID (emp.waid / emp.wa_id)
-          const empWaidVal = String(matchedEmp.waid || matchedEmp.wa_id || '').trim();
-          const empHasWaid = Boolean(
-            empWaidVal &&
-            empWaidVal !== '-' &&
-            empWaidVal !== '—' &&
-            empWaidVal !== '0' &&
-            empWaidVal !== 'null' &&
-            empWaidVal !== 'undefined' &&
-            empWaidVal !== 'N/A'
-          );
-
-          if (!hasValidSystemId || !empHasWaid) {
-            incentives = 0;
-          }
+          // All matched employees get their incentives — Badge No is the identifier (WAID removed)
+          // incentives remain as extracted without any WAID restriction
 
           const transportation = Number(
             parseFloat(String(
@@ -600,16 +579,10 @@ export async function parsePayrollExcel(
           matchedCount++;
         });
 
-        // Reset incentives to 0 for all existing employees who do NOT have a WAID or were not matched in Excel
+        // Reset incentives to 0 only for employees who were NOT in this import
         existingEmployees.forEach((emp) => {
-          const empWaid = String(emp.waid || emp.wa_id || '').trim();
-          const hasValidW = Boolean(empWaid && empWaid !== '-' && empWaid !== '0' && empWaid !== 'null' && empWaid !== 'undefined' && empWaid !== 'N/A');
-          if (!hasValidW) {
-            if (!parsedAdjustments[emp.id]) {
-              parsedAdjustments[emp.id] = { incentives: 0 };
-            } else {
-              parsedAdjustments[emp.id].incentives = 0;
-            }
+          if (!parsedAdjustments[emp.id]) {
+            parsedAdjustments[emp.id] = { incentives: 0 };
           }
         });
 

@@ -663,19 +663,9 @@ export const Category5PayrollView: React.FC = () => {
       const transportation = adj.transportation !== undefined ? adj.transportation : Number(emp.transportationFixed ?? emp.transportation_fixed ?? 0);
       // 3. bonus
       const bonus = adj.bonus !== undefined ? adj.bonus : (Number(emp.fixedBonus ?? emp.fixed_bonus ?? 0) + (adj.bonusExtra || 0));
-      // 4. incentives: Strictly restricted to employees with an ID (SystemID / WAID). Non-ID staff MUST be 0!
-      const rawWaid = String(emp.waid || emp.wa_id || '').trim();
-      const hasWaid = Boolean(
-        rawWaid &&
-        rawWaid !== '-' &&
-        rawWaid !== '—' &&
-        rawWaid !== '0' &&
-        rawWaid !== 'null' &&
-        rawWaid !== 'undefined' &&
-        rawWaid !== 'N/A'
-      );
+      // 4. incentives: Use Badge No for matching - all matched employees get their incentives
       const rawIncentives = adj.incentives !== undefined ? adj.incentives : Number(emp.incentives ?? 0);
-      const incentives = hasWaid ? rawIncentives : 0;
+      const incentives = rawIncentives;
       // 5. earned_leave
       const earned_leave = adj.earnedLeave !== undefined ? adj.earnedLeave : Number(emp.earnedLeave ?? emp.earned_leave ?? 0);
 
@@ -1821,19 +1811,10 @@ export const Category5PayrollView: React.FC = () => {
     setAdjustments(prev => {
       const next = { ...prev };
       
-      const validWaidIds = new Set<string>();
+      // 1. Reset incentives to 0 only for employees who weren't in this import
       employees.forEach(emp => {
-        const w = String(emp.waid || emp.wa_id || '').trim();
-        if (w && w !== '-' && w !== '—' && w !== '0' && w !== 'null' && w !== 'undefined' && w !== 'N/A') {
-          validWaidIds.add(String(emp.id));
-        }
-      });
-
-      // 1. Reset incentives to 0 for all employees who have no WAID or weren't in this import
-      employees.forEach(emp => {
-        const hasValidWaid = validWaidIds.has(String(emp.id));
         const wasInImport = Boolean(payrollImportModalData.parsedAdjustments[emp.id]);
-        if (!hasValidWaid || !wasInImport) {
+        if (!wasInImport) {
           next[emp.id] = {
             ...(next[emp.id] || {}),
             incentives: 0
@@ -1841,13 +1822,12 @@ export const Category5PayrollView: React.FC = () => {
         }
       });
 
-      // 2. Apply imported adjustments from Excel (Strictly zeroing incentives if no WAID)
+      // 2. Apply imported adjustments from Excel (matched by Badge No)
       Object.entries(payrollImportModalData.parsedAdjustments).forEach(([empId, adj]: [string, any]) => {
-        const hasValidWaid = validWaidIds.has(String(empId));
         next[empId] = {
           ...(next[empId] || {}),
           ...adj,
-          incentives: hasValidWaid ? (adj.incentives || 0) : 0
+          incentives: adj.incentives || 0
         };
       });
       return next;

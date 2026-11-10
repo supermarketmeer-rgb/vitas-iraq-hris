@@ -115,12 +115,7 @@ export const IncentivesModuleView: React.FC = () => {
 
   /**
    * Helper: Cross-reference extracted Excel records with actual HRIS employees
-   * Matches by:
-   * 1. WAID (Incentives identifier)
-   * 2. Badge No
-   * 3. Employee ID
-   * 4. Numeric digits match
-   * 5. Full name transliterated match
+   * Matches by Badge No (primary identifier — WAID has been removed)
    */
   const enrichRecordsWithHRIS = useCallback((rawRecords: EmployeePayoutRecord[]): EmployeePayoutRecord[] => {
     if (!employees || employees.length === 0) return rawRecords;
@@ -136,52 +131,30 @@ export const IncentivesModuleView: React.FC = () => {
     return rawRecords.map((record) => {
       const recIdClean = record.employeeId.trim();
       const recDigits = recIdClean.replace(/\D/g, '');
-      const recNameClean = normalize(record.employeeName);
 
-      // STRICT ID MATCHING: Only match if the Excel record has a valid SystemID / WAID.
-      // Names in Excel differ from the application, so NEVER fall back to fuzzy name matching!
+      // Skip rows without a valid ID
       if (!recIdClean || recIdClean === '—' || recIdClean === '-' || recIdClean === '0') {
-        return {
-          ...record,
-          isMatched: false,
-        };
+        return { ...record, isMatched: false };
       }
 
-      // Link Badge No column in sheet Final Sammary with Badge No field in Payroll (emp.badgeNo / emp.badge_no):
+      // Match by Badge No (primary) or Employee ID
       const match = employees.find((emp) => {
-        // 1. Direct Badge No match (emp.badgeNo / emp.badge_no):
+        // 1. Badge No match
         const empBadge = String(emp.badgeNo || emp.badge_no || '').trim();
-        if (empBadge && empBadge !== '-' && empBadge !== '0' && empBadge !== 'null' && empBadge !== 'undefined' && empBadge !== 'N/A') {
-          const empBadgeDigits = empBadge.replace(/\D/g, '');
-          if (empBadge.toLowerCase() === recIdClean.toLowerCase()) {
-            return true;
-          }
+        if (empBadge && empBadge !== '-' && empBadge !== '0' && empBadge !== 'null' && empBadge !== 'N/A') {
+          if (empBadge.toLowerCase() === recIdClean.toLowerCase()) return true;
           const cleanEmpBadge = empBadge.toLowerCase().replace(/^vts-?/i, '');
           const cleanRecId = recIdClean.toLowerCase().replace(/^vts-?/i, '');
-          if (cleanEmpBadge === cleanRecId) {
-            return true;
-          }
-          if (recDigits && empBadgeDigits && recDigits === empBadgeDigits) {
-            return true;
-          }
+          if (cleanEmpBadge === cleanRecId) return true;
+          const empBadgeDigits = empBadge.replace(/\D/g, '');
+          if (recDigits && empBadgeDigits && recDigits === empBadgeDigits) return true;
         }
 
-        // 2. Direct Employee ID match (emp.employeeId / emp.employee_id / emp.id):
+        // 2. Employee ID match
         const empId = String(emp.employeeId || emp.employee_id || emp.id || '').trim();
         if (empId && empId !== '-' && empId !== '0') {
           const empIdDigits = empId.replace(/\D/g, '');
-          if (empId.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empIdDigits && recDigits === empIdDigits)) {
-            return true;
-          }
-        }
-
-        // 3. Fallback: Incentives WAID if present:
-        const empWaid = String(emp.waid || emp.wa_id || '').trim();
-        if (empWaid && empWaid !== '-' && empWaid !== '0' && empWaid !== 'null' && empWaid !== 'undefined' && empWaid !== 'N/A') {
-          const empWaidDigits = empWaid.replace(/\D/g, '');
-          if (empWaid.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empWaidDigits && recDigits === empWaidDigits)) {
-            return true;
-          }
+          if (empId.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empIdDigits && recDigits === empIdDigits)) return true;
         }
 
         return false;
@@ -194,16 +167,12 @@ export const IncentivesModuleView: React.FC = () => {
           matchedEmployeeId: match.id,
           matchedEmployeeName: match.fullName || match.name_ar || match.name || record.employeeName,
           matchedBadgeNo: match.badgeNo || match.badge_no || match.employeeId || record.employeeId,
-          matchedWaid: match.waid || match.wa_id || record.employeeId,
           matchedDepartment: match.department || match.department_ar || '',
           matchedBranch: match.branch || match.location_ar || record.office,
         };
       }
 
-      return {
-        ...record,
-        isMatched: false,
-      };
+      return { ...record, isMatched: false };
     });
   }, [employees]);
 
