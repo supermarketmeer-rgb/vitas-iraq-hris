@@ -1283,7 +1283,21 @@ export const Category3EmployeeView: React.FC = () => {
     setTransportationFixed(Number(emp.transportationFixed || emp.transportation_fixed || 0));
     setFixedBonus(Number(emp.fixedBonus || emp.fixed_bonus || 0));
     setPhoneAllowance(Number(emp.phoneAllowance || emp.phone_allowance || 0));
-    setCertificateAllowance(Number(emp.certificateAllowance || emp.certificate_allowance || 0));
+    const existingCert = Number(emp.certificateAllowance || emp.certificate_allowance || 0);
+    const empDegree = clean(emp.graduationDegree || emp.graduation_degree);
+    if (existingCert > 0) {
+      setCertificateAllowance(existingCert);
+    } else if (empDegree) {
+      const curr = appSettings['certificate_allowance_currency'] || 'IQD';
+      const fx = parseFloat(appSettings['usd_to_iqd_rate'] || '1520') || 1520;
+      let rawVal = 0;
+      if (empDegree === 'Diplome') rawVal = parseFloat(appSettings['certificate_allowance_diplome'] || '50000') || 50000;
+      else if (empDegree === 'Bachelar') rawVal = parseFloat(appSettings['certificate_allowance_bachelar'] || '100000') || 100000;
+      else if (empDegree === 'Master') rawVal = parseFloat(appSettings['certificate_allowance_master'] || '150000') || 150000;
+      setCertificateAllowance(curr === 'USD' ? Math.round(rawVal * fx) : rawVal);
+    } else {
+      setCertificateAllowance(0);
+    }
     setSpouseAllowance(Number(emp.spouseAllowance || emp.spouse_allowance || 0));
     setChildAllowance(Number(emp.childAllowance || emp.child_allowance || 0));
 
@@ -1685,6 +1699,24 @@ export const Category3EmployeeView: React.FC = () => {
     const finalEmployeeId = empCode || (targetId.startsWith('VTS-') ? targetId : `VTS-${targetId.length > 5 ? targetId.slice(-4) : targetId}`);
     const finalBadgeNo = badgeNo || (targetId.startsWith('B-') ? targetId : `B-${targetId.length > 4 ? targetId.slice(-3) : targetId}`);
 
+    // Automatically ensure certificate allowance matches policy if graduation degree is set
+    let effectiveCertAllowance = Number(certificateAllowance || 0);
+    if ((effectiveCertAllowance === 0 || isNaN(effectiveCertAllowance)) && graduationDegree) {
+      const curr = appSettings['certificate_allowance_currency'] || 'IQD';
+      const fx = parseFloat(appSettings['usd_to_iqd_rate'] || '1520') || 1520;
+      let rawVal = 0;
+      if (graduationDegree === 'Diplome') rawVal = parseFloat(appSettings['certificate_allowance_diplome'] || '50000') || 50000;
+      else if (graduationDegree === 'Bachelar') rawVal = parseFloat(appSettings['certificate_allowance_bachelar'] || '100000') || 100000;
+      else if (graduationDegree === 'Master') rawVal = parseFloat(appSettings['certificate_allowance_master'] || '150000') || 150000;
+      effectiveCertAllowance = curr === 'USD' ? Math.round(rawVal * fx) : rawVal;
+    }
+
+    const basicSalaryNum = Number(basicSalary || 0);
+    const transFixedNum = Number(transportationFixed || 0);
+    const fixedBonusNum = Number(fixedBonus || 0);
+    const phoneAllowNum = Number(phoneAllowance || 0);
+    const finalCalculatedSalary = basicSalaryNum + transFixedNum + fixedBonusNum + phoneAllowNum + effectiveCertAllowance;
+
     // Convert field names to match database schema
     const dbEmployee = {
       id: targetId,
@@ -1733,7 +1765,7 @@ export const Category3EmployeeView: React.FC = () => {
       transportation_fixed: transportationFixed,
       fixed_bonus: fixedBonus,
       phone_allowance: phoneAllowance,
-      certificate_allowance: certificateAllowance,
+      certificate_allowance: effectiveCertAllowance,
       graduation_degree: graduationDegree || null,
       nationality,
       supervisor_name: supervisorName,
@@ -1783,13 +1815,13 @@ export const Category3EmployeeView: React.FC = () => {
       location_en: branchEn || branch,
       location: branch,
       joinDate: originalStartDate || new Date().toISOString().split('T')[0],
-      salary: totalCalculatedSalary,
+      salary: finalCalculatedSalary,
       basicSalary: Number(basicSalary),
       basic_salary: Number(basicSalary),
       transportationFixed: Number(transportationFixed),
       fixedBonus: Number(fixedBonus),
       phoneAllowance: Number(phoneAllowance),
-      certificateAllowance: Number(certificateAllowance),
+      certificateAllowance: Number(effectiveCertAllowance),
       graduationDegree: graduationDegree || undefined,
       graduation_degree: graduationDegree || undefined,
       writtenBasicSalaryAr,
@@ -2889,19 +2921,8 @@ export const Category3EmployeeView: React.FC = () => {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-black font-semibold text-[11px] mb-1">
-                      {t('معرف الحوافز (WAID)', 'Incentives WAID')}
-                      <span className="text-[10px] text-teal-600 font-normal mr-1 font-mono">({t('لتحميل الحوافز', 'For Incentives')})</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={t('مثال: WA-1008', 'Example: WA-1008')}
-                      value={waid}
-                      onChange={e => setWaid(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-teal-500/30 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-teal-300 font-mono focus:outline-none focus:border-teal-400 placeholder:text-slate-500"
-                    />
-                  </div>
+                  {/* Preserved Incentives WAID field: hidden from UI display per user instruction, but state and value are strictly maintained */}
+                  <input type="hidden" value={waid} />
 
                   {/* Row 2: Communication & Contact Details (4 fields) */}
                   <div>

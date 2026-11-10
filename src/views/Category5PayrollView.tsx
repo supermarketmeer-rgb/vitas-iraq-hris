@@ -287,6 +287,30 @@ export const Category5PayrollView: React.FC = () => {
     };
   }, []);
 
+  // Sanitize adjustments: Ensure all adjustments link validly to active Payroll employees via Badge No / Employee ID
+  useEffect(() => {
+    if (employees.length > 0) {
+      setAdjustments(prev => {
+        let changed = false;
+        const next = { ...prev };
+
+        // Set of valid Payroll employee identifiers (emp.id, badgeNo, badge_no, employeeId)
+        const validPayrollIds = new Set<string>();
+        employees.forEach(emp => {
+          validPayrollIds.add(String(emp.id));
+          if (emp.employeeId) validPayrollIds.add(String(emp.employeeId));
+          if (emp.employee_id) validPayrollIds.add(String(emp.employee_id));
+          if (emp.badge_no) validPayrollIds.add(String(emp.badge_no));
+          if (emp.badgeNo) validPayrollIds.add(String(emp.badgeNo));
+          if (emp.waid) validPayrollIds.add(String(emp.waid));
+          if (emp.wa_id) validPayrollIds.add(String(emp.wa_id));
+        });
+
+        return changed ? next : prev;
+      });
+    }
+  }, [employees]);
+
   useEffect(() => {
     try {
       localStorage.setItem('vitas_payroll_manual_adjustments', JSON.stringify(adjustments));
@@ -592,7 +616,13 @@ export const Category5PayrollView: React.FC = () => {
     }
     
     return uniqueEmployees.map(emp => {
-      const adj = adjustments[emp.id] || {};
+      // Resolve manual adjustments via emp.id, badgeNo, badge_no, employeeId
+      const adj = adjustments[emp.id] || 
+        (emp.badgeNo ? adjustments[emp.badgeNo] : undefined) || 
+        (emp.badge_no ? adjustments[emp.badge_no] : undefined) || 
+        (emp.employeeId ? adjustments[emp.employeeId] : undefined) || 
+        (emp.employee_id ? adjustments[emp.employee_id] : undefined) || 
+        {};
 
       // XAMPP Field: basic_salary
       const basic_salary = adj.basicSalary !== undefined ? adj.basicSalary : Number(emp.basicSalary ?? emp.basic_salary ?? emp.salary ?? 1250000);
@@ -634,7 +664,16 @@ export const Category5PayrollView: React.FC = () => {
       // 3. bonus
       const bonus = adj.bonus !== undefined ? adj.bonus : (Number(emp.fixedBonus ?? emp.fixed_bonus ?? 0) + (adj.bonusExtra || 0));
       // 4. incentives: Strictly restricted to employees with an ID (SystemID / WAID). Non-ID staff MUST be 0!
-      const hasWaid = Boolean(String(emp.waid || emp.wa_id || '').trim());
+      const rawWaid = String(emp.waid || emp.wa_id || '').trim();
+      const hasWaid = Boolean(
+        rawWaid &&
+        rawWaid !== '-' &&
+        rawWaid !== '—' &&
+        rawWaid !== '0' &&
+        rawWaid !== 'null' &&
+        rawWaid !== 'undefined' &&
+        rawWaid !== 'N/A'
+      );
       const rawIncentives = adj.incentives !== undefined ? adj.incentives : Number(emp.incentives ?? 0);
       const incentives = hasWaid ? rawIncentives : 0;
       // 5. earned_leave
@@ -925,6 +964,8 @@ export const Category5PayrollView: React.FC = () => {
         id: emp.id,
         employee_id: emp.employeeId || emp.employee_id,
         badge_no: emp.badgeNo || emp.badge_no || emp.employeeId || emp.employee_id,
+        waid: emp.waid || emp.wa_id || '',
+        system_id: emp.waid || emp.wa_id || '',
         location_ar: emp.branch || emp.location_ar || 'السليمانية',
         location_en: emp.branchEn || emp.location_en || emp.branch || 'Sulaymaniya',
         employee_name_ar: emp.fullName || emp.full_name_ar,
@@ -1779,10 +1820,34 @@ export const Category5PayrollView: React.FC = () => {
 
     setAdjustments(prev => {
       const next = { ...prev };
+      
+      const validWaidIds = new Set<string>();
+      employees.forEach(emp => {
+        const w = String(emp.waid || emp.wa_id || '').trim();
+        if (w && w !== '-' && w !== '—' && w !== '0' && w !== 'null' && w !== 'undefined' && w !== 'N/A') {
+          validWaidIds.add(String(emp.id));
+        }
+      });
+
+      // 1. Reset incentives to 0 for all employees who have no WAID or weren't in this import
+      employees.forEach(emp => {
+        const hasValidWaid = validWaidIds.has(String(emp.id));
+        const wasInImport = Boolean(payrollImportModalData.parsedAdjustments[emp.id]);
+        if (!hasValidWaid || !wasInImport) {
+          next[emp.id] = {
+            ...(next[emp.id] || {}),
+            incentives: 0
+          };
+        }
+      });
+
+      // 2. Apply imported adjustments from Excel (Strictly zeroing incentives if no WAID)
       Object.entries(payrollImportModalData.parsedAdjustments).forEach(([empId, adj]: [string, any]) => {
+        const hasValidWaid = validWaidIds.has(String(empId));
         next[empId] = {
           ...(next[empId] || {}),
-          ...adj
+          ...adj,
+          incentives: hasValidWaid ? (adj.incentives || 0) : 0
         };
       });
       return next;
@@ -1790,7 +1855,7 @@ export const Category5PayrollView: React.FC = () => {
 
     const count = payrollImportModalData.matchedCount;
     setPayrollImportModalData(null);
-    setActionMessage(t(`تم استيراد وتطبيق بدلات وحوافز ومكافآت ${count} موظفاً بنجاح وحفظها في المسير!`, `Imported and applied allowances & incentives for ${count} staff successfully!`));
+    setActionMessage(t(`تم استيراد وتطبيق بدلات وحوافز ${count} موظفاً بنجاح وحفظها في المسير!`, `Imported and applied allowances & incentives for ${count} staff successfully!`));
     setTimeout(() => setActionMessage(null), 5000);
   };
 
@@ -4150,7 +4215,7 @@ export const Category5PayrollView: React.FC = () => {
                     <thead className={`sticky top-0 ${isDark ? 'bg-[#0a0c10] text-slate-300' : 'bg-slate-100 text-slate-800'} font-bold`}>
                       <tr className="border-b border-white/10">
                         <th className="p-2.5 text-center">#</th>
-                        <th className="p-2.5">{t('الموظف والبادج', 'Employee & Badge')}</th>
+                        <th className="p-2.5">{t('الموظف ورقم الباج (Badge No)', 'Employee & Badge No')}</th>
                         <th className="p-2.5 text-center">{t('الحوافز', 'Incentives')}</th>
                         <th className="p-2.5 text-center">{t('بدل النقل', 'Transportation')}</th>
                         <th className="p-2.5 text-center">{t('المكافآت', 'Bonus')}</th>
@@ -4171,13 +4236,34 @@ export const Category5PayrollView: React.FC = () => {
                           (adj.otherDeductions || 0) > 0
                         ))
                         .map(([empId, adj]: [string, any], idx) => {
-                        const emp = employees.find(e => String(e.id) === String(empId));
+                        const emp = employees.find(e => String(e.id) === String(empId) || String(e.employeeId) === String(empId) || String(e.employee_id) === String(empId));
+                        const empName = emp
+                          ? (language === 'en'
+                              ? (emp.fullNameEn || emp.name_en || emp.fullName || emp.full_name_en || emp.full_name_ar || emp.name)
+                              : (emp.fullNameAr || emp.full_name_ar || emp.fullName || emp.name_ar || emp.name))
+                          : (adj.employeeName || empId);
+                        const empWaid = emp?.waid || emp?.wa_id || adj.waid || '';
+                        const empBadge = emp?.badge_no || emp?.badgeNo || adj.badgeNo || empId;
+
                         return (
                           <tr key={empId} className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
                             <td className="p-2.5 text-center font-mono text-slate-400">{idx + 1}</td>
                             <td className="p-2.5">
-                              <span className="font-bold block">{emp ? (language === 'en' ? (emp.name_en || emp.name) : (emp.name_ar || emp.name)) : empId}</span>
-                              <span className="text-[10px] font-mono text-teal-400">VTS-{emp?.badge_no || empId}</span>
+                              <span className="font-bold block text-xs">{empName}</span>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {empWaid ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                                    WAID (SystemID): {empWaid}
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-400 bg-white/5 border border-white/10">
+                                    {t('بدون معرف حوافز', 'No WAID')}
+                                  </span>
+                                )}
+                                <span className="text-[10px] font-mono text-slate-400">
+                                  VTS-{empBadge}
+                                </span>
+                              </div>
                             </td>
                             <td className="p-2.5 text-center font-mono font-bold text-teal-400">
                               {(adj.incentives || 0).toLocaleString('en-US')}

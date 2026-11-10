@@ -1098,6 +1098,7 @@ export const SettingsSecurityView: React.FC = () => {
           'الجنس': emp.gender === 'female' || emp.gender === 'أنثى' ? 'أنثى' : 'ذكر',
           'الحالة الاجتماعية': sanitizeCellText(emp.maritalStatus || emp.marital_status || ''),
           'الجنسية': sanitizeCellText(emp.nationality || 'عراقي'),
+          'الدرجة العلمية / Graduation Degree': sanitizeCellText(emp.graduationDegree || emp.graduation_degree || ''),
           'تاريخ المباشرة': sanitizeCellText(emp.originalStartDate || emp.original_start_date || emp.contract_original_start || emp.joinDate || ''),
           'تاريخ بداية العقد': sanitizeCellText(emp.contractStartDate || emp.contract_start_date || ''),
           'تاريخ نهاية العقد': sanitizeCellText(emp.contractEndDate || emp.contract_end_date || ''),
@@ -1190,6 +1191,7 @@ export const SettingsSecurityView: React.FC = () => {
           'Gender': 'ذكر',
           'Marital Status': 'متأهل',
           'Nationality': 'عراقي',
+          'Graduation Degree': 'Bachelar',
           'Phone': '07700000000',
           'Emergency Phone': '07800000000',
           'Email': 'mustafa@vitasiraq.com',
@@ -1253,6 +1255,7 @@ export const SettingsSecurityView: React.FC = () => {
           'Gender': 'أنثى',
           'Marital Status': 'متأهل',
           'Nationality': 'عراقي',
+          'Graduation Degree': 'Master',
           'Phone': '07711111111',
           'Emergency Phone': '07811111111',
           'Email': 'zainab@vitasiraq.com',
@@ -1596,6 +1599,26 @@ export const SettingsSecurityView: React.FC = () => {
 
             const nationality = getVal(row, ['Nationality', 'nationality', 'الجنسية']) || 'عراقي';
 
+            const rawGraduationDegree = getVal(row, [
+              'Graduation Degree', 'graduationDegree', 'graduation_degree', 
+              'الدرجة العلمية', 'الشهادة العلمية', 'المؤهل العلمي', 'المؤهل', 'الشهادة', 
+              'Graduation', 'Degree', 'الدرجة العلمية (Graduation Degree)', 'الدرجة العلمية / Graduation Degree',
+              'Graduation Degree (Diplome, Bachelar, Master)'
+            ]);
+            let graduationDegree = '';
+            if (rawGraduationDegree) {
+              const normDeg = String(rawGraduationDegree).trim().toLowerCase();
+              if (normDeg.includes('master') || normDeg.includes('ماجستير')) {
+                graduationDegree = 'Master';
+              } else if (normDeg.includes('bachelor') || normDeg.includes('bachelar') || normDeg.includes('بكالوريوس')) {
+                graduationDegree = 'Bachelar';
+              } else if (normDeg.includes('diploma') || normDeg.includes('diplome') || normDeg.includes('دبلوم')) {
+                graduationDegree = 'Diplome';
+              } else {
+                graduationDegree = String(rawGraduationDegree).trim();
+              }
+            }
+
             const contractStartDate = parseExcelDate(getVal(row, ['Contract Start Date', 'contractStartDate', 'contract_start_date', 'تاريخ بداية العقد', 'تاريخ بدء العقد', 'تاريخ بداية العقد الحالي', 'بداية العقد']));
             const contractEndDate = parseExcelDate(getVal(row, ['Contract End Date', 'contractEndDate', 'contract_end_date', 'تاريخ نهاية العقد', 'تاريخ انتهاء العقد', 'نهاية العقد']));
             const originalStartDate = parseExcelDate(getVal(row, ['Original Start Date', 'originalStartDate', 'original_start_date', 'joinDate', 'تاريخ المباشرة', 'تاريخ المباشرة الأولى', 'تاريخ المباشره', 'تاريخ التعيين']));
@@ -1665,7 +1688,22 @@ export const SettingsSecurityView: React.FC = () => {
             const transportationFixed = parseValToNum(getVal(row, ['Transportation Fixed', 'transportationFixed', 'بدل النقل الثابت', 'بدل النقل', 'مخصصات النقل']));
             const fixedBonus = parseValToNum(getVal(row, ['Fixed Bonus', 'fixedBonus', 'المكافأة الثابتة', 'مكافأة ثابتة', 'المكافاة الثابتة']));
             const phoneAllowance = parseValToNum(getVal(row, ['Phone Allowance', 'phoneAllowance', 'بدل الهاتف', 'مخصصات الهاتف']));
-            const certificateAllowance = parseValToNum(getVal(row, ['Certificate Allowance', 'certificateAllowance', 'بدل الشهادة', 'مخصصات الشهادة']));
+            let certificateAllowance = parseValToNum(getVal(row, ['Certificate Allowance', 'certificateAllowance', 'بدل الشهادة', 'مخصصات الشهادة']));
+
+            // Automatically calculate and save certificate allowance from policies if 0 or empty but graduation degree is provided
+            if (certificateAllowance === 0 && graduationDegree) {
+              const curr = appSettings['certificate_allowance_currency'] || 'IQD';
+              const fx = parseFloat(appSettings['usd_to_iqd_rate'] || '1520') || 1520;
+              let policyVal = 0;
+              if (graduationDegree === 'Diplome') {
+                policyVal = parseFloat(appSettings['certificate_allowance_diplome'] || '50000') || 50000;
+              } else if (graduationDegree === 'Bachelar') {
+                policyVal = parseFloat(appSettings['certificate_allowance_bachelar'] || '100000') || 100000;
+              } else if (graduationDegree === 'Master') {
+                policyVal = parseFloat(appSettings['certificate_allowance_master'] || '150000') || 150000;
+              }
+              certificateAllowance = curr === 'USD' ? Math.round(policyVal * fx) : policyVal;
+            }
             const bankName = getVal(row, ['Bank Name', 'bankName', 'bank_name', 'اسم المصرف', 'المصرف', 'البنك']) || '';
             const iban = getVal(row, ['IBAN', 'iban', 'رقم IBAN', 'رقم الحساب', 'الآيبان', 'حساب المصرف']) || '';
 
@@ -1765,6 +1803,9 @@ export const SettingsSecurityView: React.FC = () => {
               fixedBonus,
               phoneAllowance,
               certificateAllowance,
+              certificate_allowance: certificateAllowance,
+              graduationDegree: graduationDegree || null,
+              graduation_degree: graduationDegree || null,
               bankName,
               iban,
               isSsTaxExempt,

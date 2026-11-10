@@ -74,6 +74,7 @@ export interface OfficeLoanOfficer {
   bonus: number;
   hasReachedBonus: boolean;
   incentives: number;
+  hasReachedTarget: boolean;
   transportation: number;
 }
 
@@ -96,7 +97,8 @@ export interface OfficeTargetEvaluation {
   officeNameAr: string;
   officeNameEn: string;
   totalLOs: number;
-  achievedLOs: number;
+  achievedLOs: number; // المحققين للحوافز (Incentive > 0)
+  achievedBonusLOs: number; // المحققين للبونص (Bonus > 0)
   requiredThreshold: number;
   achievementPercentage: number;
   reachedTarget: boolean;
@@ -358,18 +360,24 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
       }
     > = {};
 
-    // 1. Process Extracted Records for Loan Officers ONLY
+    // 1. Process Extracted Records for Loan Officers ONLY (excluding Supervisors, Coordinators, and Collection)
     extractedRecords.forEach((rec) => {
       const office = rec.office?.trim() || 'Unspecified';
       if (!office || office.toLowerCase() === 'unspecified' || office.toLowerCase() === 'end') return;
 
       const title = (rec.jobTitle || '').toLowerCase();
-      // A loan officer in the extraction sheet:
+      // Ensure Supervisors (LOS), Coordinators (CO), and Collection are excluded from Loan Officers:
+      const isSupervisor = title.includes('supervisor') || title.includes('مشرف') || title.includes('los');
+      const isCO = title.includes('coordinator') || title.includes('منسق') || title === 'co';
+      const isCollection = title.includes('collection') || title.includes('تحصيل');
       const isLO =
-        title === 'lo' ||
-        title.includes('loan officer') ||
-        title.includes('مسؤول قروض') ||
-        title.includes('ضابط قروض');
+        (title === 'lo' ||
+          title.includes('loan officer') ||
+          title.includes('مسؤول قروض') ||
+          title.includes('ضابط قروض')) &&
+        !isSupervisor &&
+        !isCO &&
+        !isCollection;
 
       // Only actual Loan Officers are counted for the LO disbursement target
       if (!isLO) return;
@@ -382,13 +390,20 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
       }
 
       const bonusVal = rec.bonus || 0;
+      const incVal = rec.incentives || 0;
+      // In accordance with policy and target condition (=IF(G41>=E41,...)),
+      // target achievement is strictly based on Loan Officers earning the target performance bonus (Bonus > 0):
+      const hasReachedTarget = bonusVal > 0;
+      const hasReachedBonus = bonusVal > 0;
+
       officeGroups[canonicalKey].loanOfficers.push({
         id: rec.matchedEmployeeId || rec.employeeId,
         name: rec.employeeName,
         badgeNo: rec.matchedBadgeNo || rec.employeeId,
         bonus: bonusVal,
-        hasReachedBonus: bonusVal > 0,
-        incentives: rec.incentives || 0,
+        hasReachedBonus: hasReachedBonus,
+        incentives: incVal,
+        hasReachedTarget: hasReachedTarget,
         transportation: rec.transportation || 0,
       });
     });
@@ -409,19 +424,22 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
         return;
       }
 
-      // Formula as explicitly stated:
-      // Even: >= N / 2 (e.g. 8 -> 4)
-      // Odd: >= floor(N / 2) (e.g. 7 -> 3)
+      // Formula as explicitly stated in the Excel sheet and policy:
+      // Even: >= N / 2 (e.g. 14 -> 7, 8 -> 4)
+      // Odd: >= (N - 1) / 2 (e.g. 15 -> 7, 13 -> 6, 11 -> 5, 7 -> 3, 5 -> 2)
       const requiredThreshold =
         totalLOs <= 0
           ? 0
           : totalLOs % 2 === 0
           ? totalLOs / 2
-          : Math.max(1, Math.floor(totalLOs / 2));
+          : Math.max(1, (totalLOs - 1) / 2);
 
-      const achievedLOs = data.loanOfficers.filter((lo) => lo.hasReachedBonus).length;
-      const reachedTarget = totalLOs > 0 && achievedLOs >= requiredThreshold;
-      const achievementPercentage = totalLOs > 0 ? Math.round((achievedLOs / totalLOs) * 100) : 0;
+      // In Excel: Column F = COUNTIFS(..., Incentive > 0), Column G = COUNTIFS(..., Bonus > 0)
+      const achievedLOs = data.loanOfficers.filter((lo) => lo.hasReachedTarget).length;
+      const achievedBonusLOs = data.loanOfficers.filter((lo) => lo.hasReachedBonus).length;
+      const reachedTarget = totalLOs > 0 && achievedBonusLOs >= requiredThreshold;
+      // In Excel: =IF(E41>0, G41/E41, 0)
+      const achievementPercentage = requiredThreshold > 0 ? Math.round((achievedBonusLOs / requiredThreshold) * 1000) / 10 : 0;
 
       // Localized Office Names
       const mapped = BRANCH_NAMES_MAP[officeKey] || BRANCH_NAMES_MAP[data.rawOfficeName];
@@ -492,6 +510,7 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
         officeNameEn,
         totalLOs,
         achievedLOs,
+        achievedBonusLOs,
         requiredThreshold,
         achievementPercentage,
         reachedTarget,
@@ -514,7 +533,7 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
     return officesEvaluation.flatMap((off) => off.beneficiaryStaff);
   }, [officesEvaluation]);
 
-  // Overall Statistics
+  // Overall Statistics matching Excel Row 53 exactly
   const stats = useMemo(() => {
     const totalOffices = officesEvaluation.filter((o) => o.totalLOs > 0).length;
     const reachedOffices = officesEvaluation.filter((o) => o.reachedTarget).length;
@@ -522,6 +541,11 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
     const totalBonusAmount = allBeneficiaries.reduce((sum, b) => sum + b.bonusAmount, 0);
     const totalLoanOfficers = officesEvaluation.reduce((sum, o) => sum + o.totalLOs, 0);
     const achievedLoanOfficers = officesEvaluation.reduce((sum, o) => sum + o.achievedLOs, 0);
+    const achievedBonusOfficers = officesEvaluation.reduce((sum, o) => sum + o.achievedBonusLOs, 0);
+    const totalThreshold = officesEvaluation.reduce((sum, o) => sum + o.requiredThreshold, 0);
+    const overallAchievementPercentage = totalThreshold > 0
+      ? Math.round((achievedLoanOfficers / totalThreshold) * 1000) / 10
+      : 0;
 
     return {
       totalOffices,
@@ -530,6 +554,9 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
       totalBonusAmount,
       totalLoanOfficers,
       achievedLoanOfficers,
+      achievedBonusOfficers,
+      totalThreshold,
+      overallAchievementPercentage,
     };
   }, [officesEvaluation, allBeneficiaries]);
 
@@ -642,16 +669,17 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
   const handleExportExcel = useCallback(() => {
     const wb = XLSX.utils.book_new();
 
-    // Sheet 1: Offices Evaluation
+    // Sheet 1: Offices Evaluation (matching Final Sammary Section 3)
     const officesRows = officesEvaluation.map((o, idx) => ({
       '#': idx + 1,
       'Office Name (En)': o.officeNameEn,
       'اسم المكتب (عربي)': o.officeNameAr,
-      'Total Loan Officers': o.totalLOs,
-      'LOs Reached Bonus': o.achievedLOs,
+      'Total Loan Officers (N)': o.totalLOs,
       'Required Threshold': o.requiredThreshold,
+      'LOs with Incentives > 0': o.achievedLOs,
+      'LOs with Bonus > 0': o.achievedBonusLOs,
+      'Target Status': o.reachedTarget ? 'حققت التاركت ✓' : 'لم تحقق ✗',
       'Achievement %': `${o.achievementPercentage}%`,
-      'Target Status': o.reachedTarget ? 'Reached Target' : 'Not Reached',
       'Eligible Admin Staff Count': o.beneficiaryStaff.length,
       'Total Bonus IQD': o.totalOfficeBonus,
     }));
@@ -713,8 +741,8 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-3xl leading-relaxed">
                 {t(
-                  'احتساب علاوة الأداء للموظفين الإداريين في الفروع ومشرفي مسؤولي القروض عند وصول نصف عدد مسؤولي القروض في الفرع إلى الهدف المطلوب من مبلغ الصرف خلال الشهر (حصول مسؤول القروض على Bonus دليل على تحقيقه للهدف).',
-                  'Performance bonus calculation for administrative staff and loan officer supervisors when half of the branch loan officers reach their disbursement target (LO Bonus > 0 indicates target achievement).'
+                  'احتساب علاوة الأداء للموظفين الإداريين في الفروع ومشرفي مسؤولي القروض عند وصول نصف عدد مسؤولي القروض في الفرع إلى الهدف المطلوب من مبلغ الصرف خلال الشهر (حصول مسؤول القروض على الحافز/Bonus دليل على تحقيقه للهدف).',
+                  'Performance bonus calculation for administrative staff and loan officer supervisors when half of the branch loan officers reach their disbursement target (LO Incentive/Bonus > 0 indicates target achievement).'
                 )}
               </p>
             </div>
@@ -846,22 +874,23 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
         <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
             <span className="text-xs font-bold uppercase tracking-wider">
-              {t('مسؤولو القروض المحققون للبونص', 'Loan Officers Reached Target')}
+              {t('مسؤولو القروض المحققون للحوافز', 'LOs with Incentives > 0')}
             </span>
-            <Target className="w-4 h-4 text-blue-500" />
+            <Target className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black font-mono text-blue-600 dark:text-blue-400">
+            <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
               {stats.achievedLoanOfficers}
             </span>
             <span className="text-xs text-slate-500 font-bold">
-              {t(`من أصل ${stats.totalLoanOfficers} مسؤول قروض`, `of ${stats.totalLoanOfficers} LOs`)}
+              {t(`من أصل ${stats.totalLoanOfficers} (تاركت: ${stats.totalThreshold})`, `of ${stats.totalLoanOfficers} (Target: ${stats.totalThreshold})`)}
             </span>
           </div>
-          <p className="mt-2 text-[11px] text-slate-500">
-            {stats.totalLoanOfficers > 0
-              ? `${Math.round((stats.achievedLoanOfficers / stats.totalLoanOfficers) * 100)}% ${t('نسبة إنجاز مسؤولي القروض العامة', 'overall LO achievement rate')}`
-              : '—'}
+          <p className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+            <span>{stats.overallAchievementPercentage}% {t('نسبة الإنجاز العامة', 'Overall rate')}</span>
+            <span className="text-amber-600 dark:text-amber-400 font-bold">
+              {stats.achievedBonusOfficers} {t('محققين للبونص', 'with bonus')}
+            </span>
           </p>
         </div>
       </div>
@@ -888,7 +917,7 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
               {t('الأعداد الزوجية: النصف (>= N / 2)', 'Even LOs: Half (>= N / 2)')}
             </span>
             <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-              {t('الأعداد الفردية: مثال 7 -> 3 (>= Math.floor(N / 2))', 'Odd LOs: e.g. 7 -> 3')}
+              {t('الأعداد الفردية: مثال 15 -> 7 ((N-1) / 2)', 'Odd LOs: e.g. 15 -> 7 ((N-1)/2)')}
             </span>
             <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-800 dark:text-teal-300 border border-teal-500/30">
               {t('سعر الصرف المعتمد:', 'Exchange Rate:')} 1$ = {activeFxRate.toLocaleString()} IQD
@@ -988,22 +1017,23 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
           <table className="w-full text-xs text-start">
             <thead className="incentives-table-header bg-slate-200/90 dark:bg-slate-800 border-b border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-100 font-bold">
               <tr>
-                <th className="px-4 py-3 text-start">#</th>
-                <th className="px-4 py-3 text-start">{t('المكتب / الفرع', 'Office / Branch')}</th>
-                <th className="px-4 py-3 text-center">{t('إجمالي مسؤولي القروض', 'Total Loan Officers')}</th>
-                <th className="px-4 py-3 text-center">{t('المحققون للبونص (>0)', 'LOs with Bonus > 0')}</th>
-                <th className="px-4 py-3 text-center">{t('الحد المطلوب', 'Required Threshold')}</th>
-                <th className="px-4 py-3 text-center">{t('نسبة الإنجاز', 'Achievement %')}</th>
-                <th className="px-4 py-3 text-center">{t('حالة الهدف', 'Target Status')}</th>
-                <th className="px-4 py-3 text-center">{t('الكوادر الإدارية المستحقة', 'Eligible Admin Staff')}</th>
-                <th className="px-4 py-3 text-end">{t('إجمالي علاوة المكتب', 'Total Office Bonus')}</th>
-                <th className="px-4 py-3 text-center">{t('التفاصيل', 'Details')}</th>
+                <th className="px-3 py-3 text-start">#</th>
+                <th className="px-3 py-3 text-start">{t('المكتب / الفرع (Office / Branch)', 'Office / Branch')}</th>
+                <th className="px-3 py-3 text-center">{t('عدد مسؤولي القروض (N)', 'Loan Officers (N)')}</th>
+                <th className="px-3 py-3 text-center">{t('الحد المطلوب (Threshold)', 'Threshold')}</th>
+                <th className="px-3 py-3 text-center">{t('المحققون للحوافز (Incentive > 0)', 'Incentives > 0')}</th>
+                <th className="px-3 py-3 text-center">{t('المحققون للبونص (Bonus > 0)', 'Bonus > 0')}</th>
+                <th className="px-3 py-3 text-center">{t('حالة تحقيق التاركت (Target Status)', 'Target Status')}</th>
+                <th className="px-3 py-3 text-center">{t('نسبة الإنجاز (Achievement %)', 'Achievement %')}</th>
+                <th className="px-3 py-3 text-center">{t('الكوادر الإدارية المستحقة', 'Eligible Staff')}</th>
+                <th className="px-3 py-3 text-end">{t('إجمالي علاوة المكتب', 'Total Office Bonus')}</th>
+                <th className="px-3 py-3 text-center">{t('التفاصيل', 'Details')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {filteredOffices.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={11} className="px-4 py-12 text-center text-slate-400">
                     <Building2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
                     <p>{t('لا توجد مكاتب مطابقة لمعايير البحث الحالية', 'No offices match the selected filter.')}</p>
                   </td>
@@ -1020,8 +1050,8 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
                             : 'hover:bg-slate-50 dark:hover:bg-white/5'
                         }`}
                       >
-                        <td className="px-4 py-3.5 font-mono text-slate-400 font-bold">{idx + 1}</td>
-                        <td className="px-4 py-3.5 font-bold text-slate-900 dark:text-white">
+                        <td className="px-3 py-3.5 font-mono text-slate-400 font-bold">{idx + 1}</td>
+                        <td className="px-3 py-3.5 font-bold text-slate-900 dark:text-white">
                           <div className="flex items-center gap-2">
                             <Building2 className={`w-4 h-4 ${office.reachedTarget ? 'text-emerald-600' : 'text-slate-400'}`} />
                             <div>
@@ -1032,26 +1062,50 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
+                        <td className="px-3 py-3.5 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
                           {office.totalLOs}
                         </td>
-                        <td className="px-4 py-3.5 text-center font-mono font-bold">
+                        <td className="px-3 py-3.5 text-center font-mono font-bold text-slate-600 dark:text-slate-400">
+                          {office.requiredThreshold}
+                        </td>
+                        <td className="px-3 py-3.5 text-center font-mono font-bold">
                           <span
                             className={`px-2 py-0.5 rounded-lg ${
                               office.achievedLOs >= office.requiredThreshold && office.totalLOs > 0
-                                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold'
                                 : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300'
                             }`}
                           >
                             {office.achievedLOs}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-600 dark:text-slate-400">
-                          {office.requiredThreshold}
+                        <td className="px-3 py-3.5 text-center font-mono font-bold">
+                          <span
+                            className={`px-2 py-0.5 rounded-lg ${
+                              office.achievedBonusLOs > 0
+                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold'
+                                : 'bg-slate-100 dark:bg-white/5 text-slate-400'
+                            }`}
+                          >
+                            {office.achievedBonusLOs}
+                          </span>
                         </td>
-                        <td className="px-4 py-3.5 text-center">
+                        <td className="px-3 py-3.5 text-center">
+                          {office.reachedTarget ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 shadow-2xs">
+                              <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                              <span>{t('حققت التاركت ✓', 'Reached Target ✓')}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
+                              <XCircle className="w-3.5 h-3.5 text-rose-500" />
+                              <span>{t('لم تحقق ✗', 'Not Reached ✗')}</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3.5 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <div className="w-16 bg-slate-200 dark:bg-white/10 rounded-full h-2 overflow-hidden">
+                            <div className="w-14 bg-slate-200 dark:bg-white/10 rounded-full h-2 overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-500 ${
                                   office.reachedTarget ? 'bg-emerald-500' : 'bg-slate-400'
@@ -1064,20 +1118,7 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-3.5 text-center">
-                          {office.reachedTarget ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 shadow-2xs">
-                              <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                              <span>{t('وصل الهدف (Reached Target)', 'Reached Target')}</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-white/5 text-slate-500 border border-slate-200 dark:border-white/10">
-                              <XCircle className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{t('لم يصل الهدف', 'Not Reached')}</span>
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3.5 text-center font-mono font-bold">
+                        <td className="px-3 py-3.5 text-center font-mono font-bold">
                           {office.beneficiaryStaff.length > 0 ? (
                             <span className="px-2.5 py-0.5 rounded-full bg-teal-500/15 text-teal-800 dark:text-teal-300 font-bold text-xs">
                               {office.beneficiaryStaff.length} {t('موظفاً', 'staff')}
@@ -1086,14 +1127,14 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
                             <span className="text-slate-400">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3.5 text-end font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        <td className="px-3 py-3.5 text-end font-mono font-bold text-emerald-600 dark:text-emerald-400">
                           {office.totalOfficeBonus > 0 ? (
                             <span>{office.totalOfficeBonus.toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
                           ) : (
                             <span className="text-slate-400">0</span>
                           )}
                         </td>
-                        <td className="px-4 py-3.5 text-center">
+                        <td className="px-3 py-3.5 text-center">
                           <button
                             type="button"
                             onClick={() => setExpandedOffice(isExpanded ? null : office.officeKey)}
@@ -1108,7 +1149,7 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
                       {/* Expandable Details Drawer */}
                       {isExpanded && (
                         <tr className="bg-slate-50/70 dark:bg-white/[0.02]">
-                          <td colSpan={10} className="p-4 border-t border-b border-slate-200 dark:border-white/10">
+                          <td colSpan={11} className="p-4 border-t border-b border-slate-200 dark:border-white/10">
                             <div className="space-y-4">
                               {/* Sub-Section 1: Eligible Beneficiaries in this Winning Office */}
                               {office.reachedTarget && (
@@ -1175,8 +1216,10 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
                                     <div
                                       key={lIdx}
                                       className={`p-2.5 rounded-lg border text-xs flex items-center justify-between ${
-                                        lo.hasReachedBonus
+                                        lo.hasReachedTarget
                                           ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-300'
+                                          : lo.hasReachedBonus
+                                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-300'
                                           : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300'
                                       }`}
                                     >
@@ -1185,17 +1228,28 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
                                         <span className="text-[10px] opacity-75">{lo.badgeNo}</span>
                                       </div>
                                       <div className="text-end">
-                                        <span className="font-mono font-bold block">
-                                          {lo.bonus > 0 ? `${lo.bonus.toLocaleString()} (≈ ${Math.round(lo.bonus * activeFxRate).toLocaleString()} د.ع)` : '—'}
-                                        </span>
+                                        <div className="text-[10px] font-mono">
+                                          <span className="text-slate-500">{t('حافز: ', 'Inc: ')}</span>
+                                          <span className={`font-bold ${lo.hasReachedTarget ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                                            {lo.incentives.toLocaleString()}
+                                          </span>
+                                        </div>
+                                        <div className="text-[10px] font-mono">
+                                          <span className="text-slate-500">{t('بونص: ', 'Bonus: ')}</span>
+                                          <span className={`font-bold ${lo.hasReachedBonus ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+                                            {lo.bonus.toLocaleString()}
+                                          </span>
+                                        </div>
                                         <span
-                                          className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                                            lo.hasReachedBonus
+                                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded mt-0.5 inline-block ${
+                                            lo.hasReachedTarget
                                               ? 'bg-emerald-600 text-white'
+                                              : lo.hasReachedBonus
+                                              ? 'bg-amber-600 text-white'
                                               : 'bg-slate-200 dark:bg-white/10 text-slate-500'
                                           }`}
                                         >
-                                          {lo.hasReachedBonus ? t('حقق الهدف', 'Achieved') : t('لم يحقق', 'Zero Bonus')}
+                                          {lo.hasReachedTarget ? t('حقق الحافز ✓', 'Incentive ✓') : lo.hasReachedBonus ? t('بونص فقط', 'Bonus Only') : t('لم يحقق', 'Zero')}
                                         </span>
                                       </div>
                                     </div>
@@ -1211,6 +1265,43 @@ export const OfficesReachedTargetView: React.FC<OfficesReachedTargetViewProps> =
                 })
               )}
             </tbody>
+            {/* Consolidated Totals Row - Matching Excel Section 3 Row 53 exactly */}
+            {filteredOffices.length > 0 && (
+              <tfoot className="bg-amber-500/10 dark:bg-amber-500/5 font-bold border-t-2 border-amber-500/30 text-slate-900 dark:text-slate-100">
+                <tr>
+                  <td colSpan={2} className="px-3 py-3.5 text-start font-black text-amber-900 dark:text-amber-300">
+                    {t('الإجمالي العام للمكاتب', 'Grand Total for Offices')}
+                  </td>
+                  <td className="px-3 py-3.5 text-center font-mono font-black text-slate-900 dark:text-white">
+                    {stats.totalLoanOfficers}
+                  </td>
+                  <td className="px-3 py-3.5 text-center font-mono font-black text-slate-700 dark:text-slate-300">
+                    {stats.totalThreshold}
+                  </td>
+                  <td className="px-3 py-3.5 text-center font-mono font-black text-emerald-700 dark:text-emerald-400">
+                    {stats.achievedLoanOfficers}
+                  </td>
+                  <td className="px-3 py-3.5 text-center font-mono font-black text-amber-700 dark:text-amber-400">
+                    {stats.achievedBonusOfficers}
+                  </td>
+                  <td className="px-3 py-3.5 text-center">
+                    <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-600 text-white shadow-xs">
+                      {stats.reachedOffices} {t('مكاتب حققت التاركت', 'offices reached target')}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3.5 text-center font-mono font-black text-amber-800 dark:text-amber-300">
+                    {stats.overallAchievementPercentage}%
+                  </td>
+                  <td className="px-3 py-3.5 text-center font-mono font-black text-teal-700 dark:text-teal-300">
+                    {stats.totalBeneficiaries} {t('موظفاً', 'staff')}
+                  </td>
+                  <td className="px-3 py-3.5 text-end font-mono font-black text-emerald-700 dark:text-emerald-400">
+                    {stats.totalBonusAmount.toLocaleString('en-US')} {t('د.ع', 'IQD')}
+                  </td>
+                  <td className="px-3 py-3.5 text-center text-slate-400">—</td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

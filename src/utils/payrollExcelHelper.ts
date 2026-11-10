@@ -66,6 +66,7 @@ export async function generatePayrollTemplateExcel(
     return {
       '#': index + 1,
       'الرقم الوظيفي / Badge No': row.badge_no || row.badgeNo || row.employeeId || row.id || '',
+      'معرف الحوافز / SystemID (WAID)': row.waid || row.wa_id || '',
       'اسم الموظف / Employee Name': row.employee_name || row.name || row.name_ar || '',
       'الموقع / Location': row.location || row.branch || '',
       'المسمى الوظيفي / Position': row.position || row.job_title || '',
@@ -226,22 +227,32 @@ export async function parsePayrollExcel(
         let totalOtherDeductions = 0;
 
         rawRows.forEach((row, idx) => {
-          // Find employee identifier (Supporting SystemID / Incentives WAID as well)
-          const rawBadge =
+          // 1. Explicitly check for SystemID column (The required link with Incentives WAID)
+          const rawSystemId =
             row['SystemID'] ??
             row['System ID'] ??
             row['system_id'] ??
             row['systemid'] ??
             row['Incentives WAID'] ??
             row['Incentives WAID(For Incentives)'] ??
+            row['معرف الحوافز (WAID)'] ??
+            row['معرف الحوافز / SystemID (WAID)'] ??
+            row['معرف الحوافز'] ??
+            row['كود الحوافز'] ??
             row['WAID'] ??
             row['waid'] ??
+            '';
+
+          // 2. Check for Badge No column (for standard payroll template)
+          const rawBadge =
             row['الرقم الوظيفي / Badge No'] ??
             row['الرقم الوظيفي'] ??
             row['badge_no'] ??
             row['badgeNo'] ??
             row['employee_id'] ??
             row['employeeId'] ??
+            row['Badge No'] ??
+            row['Badge'] ??
             row['id'] ??
             row['ID'] ??
             row['الكود'] ??
@@ -261,33 +272,56 @@ export async function parsePayrollExcel(
             row['name'] ??
             '';
 
+          const cleanSystemId = String(rawSystemId).trim();
           const cleanBadge = String(rawBadge).trim();
           const cleanName = String(rawName).trim();
 
-          // STRICT ID RULE: If no SystemID/WAID is present on this Excel row, SKIP IT completely!
-          // As instructed: "في الاكسل شيت يوجد 5 موظفين لديهم SystemID ولكن في التطبيق يوجد اكثر من ذلك... الاسماء ليست متطابقة بين الاكسل والتطبيق. يجب ان يظهر حوافز الموظفين الذين لديهم آي دي اما من ليس لديه آيدي يجب ان تظهر صفر"
-          if (!cleanBadge || cleanBadge === '—' || cleanBadge === '-' || cleanBadge === '0' || cleanBadge === 'null' || cleanBadge === 'undefined') {
+          const hasValidSystemId = Boolean(
+            cleanSystemId &&
+            cleanSystemId !== '—' &&
+            cleanSystemId !== '-' &&
+            cleanSystemId !== '0' &&
+            cleanSystemId !== 'null' &&
+            cleanSystemId !== 'undefined'
+          );
+
+          // Skip completely empty or invalid rows
+          if (!hasValidSystemId && (!cleanBadge || cleanBadge === '—' || cleanBadge === '-' || cleanBadge === '0' || cleanBadge === 'null' || cleanBadge === 'undefined')) {
             return;
           }
           if (/^total|^grand\s*total|^sum|^المجموع/i.test(cleanName)) return;
 
-          // Match with existing employees STRICTLY by ID (waid / SystemID / badge / employee_id)
-          // NO FUZZY NAME MATCHING as names in Excel differ from App!
-          const matchedEmp = existingEmployees.find((emp) => {
-            const empWaid = String(emp.waid || emp.wa_id || '').trim();
-            const empBadge = String(emp.badge_no || emp.badgeNo || '').trim();
-            const empId = String(emp.id || emp.employeeId || emp.employee_id || '').trim();
+          // STRICT LINK RULE:
+          // User requirement: "المفروض يكون الرابط هو SystemID في الاكسل شيت و Incentives WAID(For Incentives) في جدول الموظفين"
+          let matchedEmp: any = null;
 
-            if (empWaid && (empWaid.toLowerCase() === cleanBadge.toLowerCase())) return true;
-            if (empWaid && cleanBadge.replace(/\D/g, '') && empWaid.replace(/\D/g, '') === cleanBadge.replace(/\D/g, '')) return true;
-            if (empBadge && (empBadge.toLowerCase() === cleanBadge.toLowerCase())) return true;
-            if (empBadge && cleanBadge.replace(/\D/g, '') && empBadge.replace(/\D/g, '') === cleanBadge.replace(/\D/g, '')) return true;
-            if (empId && (empId.toLowerCase() === cleanBadge.toLowerCase())) return true;
-            return false;
-          });
+          if (hasValidSystemId) {
+            // Priority 1: Match strictly by SystemID from Excel <---> Incentives WAID(For Incentives) in Employees table
+            matchedEmp = existingEmployees.find((emp) => {
+              const empWaid = String(emp.waid || emp.wa_id || '').trim();
+              if (!empWaid || empWaid === '-' || empWaid === '0' || empWaid === 'null' || empWaid === 'undefined' || empWaid === 'N/A') return false;
+              if (empWaid.toLowerCase() === cleanSystemId.toLowerCase()) return true;
+              const waidDigits = empWaid.replace(/\D/g, '');
+              const sysDigits = cleanSystemId.replace(/\D/g, '');
+              return Boolean(waidDigits && sysDigits && waidDigits === sysDigits);
+            });
+          }
+
+          // Priority 2: If no SystemID match, match by Badge No for general allowances (transportation, etc.)
+          if (!matchedEmp && cleanBadge) {
+            matchedEmp = existingEmployees.find((emp) => {
+              const empBadge = String(emp.badge_no || emp.badgeNo || '').trim();
+              const empCode = String(emp.employeeId || emp.employee_id || emp.id || '').trim();
+              if (empBadge && empBadge.toLowerCase() === cleanBadge.toLowerCase()) return true;
+              if (empCode && empCode.toLowerCase() === cleanBadge.toLowerCase()) return true;
+              const cleanDigits = cleanBadge.replace(/\D/g, '');
+              const badgeDigits = empBadge.replace(/\D/g, '');
+              return Boolean(cleanDigits && badgeDigits && cleanDigits === badgeDigits);
+            });
+          }
 
           if (!matchedEmp) {
-            unmatchedRows.push({ rowIndex: idx + 2, rawBadge, rawName });
+            unmatchedRows.push({ rowIndex: idx + 2, rawBadge: rawSystemId || rawBadge, rawName });
             return;
           }
 
@@ -303,6 +337,25 @@ export async function parsePayrollExcel(
           else if (!isNaN(rawInc0) && rawInc0 > 0) incentives = rawInc0;
           else if (!isNaN(rawProp) && rawProp > 0) incentives = rawProp;
           else if (!isNaN(rawStdNum) && rawStdNum > 0) incentives = rawStdNum;
+
+          // STRICT INCENTIVES RULE:
+          // Incentives can ONLY be awarded if:
+          // 1. The Excel row provided a valid SystemID
+          // 2. The matched employee HAS an Incentives WAID (emp.waid / emp.wa_id)
+          const empWaidVal = String(matchedEmp.waid || matchedEmp.wa_id || '').trim();
+          const empHasWaid = Boolean(
+            empWaidVal &&
+            empWaidVal !== '-' &&
+            empWaidVal !== '—' &&
+            empWaidVal !== '0' &&
+            empWaidVal !== 'null' &&
+            empWaidVal !== 'undefined' &&
+            empWaidVal !== 'N/A'
+          );
+
+          if (!hasValidSystemId || !empHasWaid) {
+            incentives = 0;
+          }
 
           const transportation = Number(
             parseFloat(String(
@@ -389,6 +442,10 @@ export async function parsePayrollExcel(
           );
 
           parsedAdjustments[matchedEmp.id] = {
+            employeeId: matchedEmp.id,
+            waid: empWaidVal,
+            badgeNo: matchedEmp.badge_no || matchedEmp.badgeNo || '',
+            employeeName: matchedEmp.fullNameEn || matchedEmp.fullNameAr || matchedEmp.full_name_ar || matchedEmp.fullName || matchedEmp.name || '',
             incentives: isNaN(incentives) ? 0 : incentives,
             transportation: isNaN(transportation) ? 0 : transportation,
             bonus: isNaN(bonus) ? 0 : bonus,
@@ -416,7 +473,8 @@ export async function parsePayrollExcel(
         // Reset incentives to 0 for all existing employees who do NOT have a WAID or were not matched in Excel
         existingEmployees.forEach((emp) => {
           const empWaid = String(emp.waid || emp.wa_id || '').trim();
-          if (!empWaid) {
+          const hasValidW = Boolean(empWaid && empWaid !== '-' && empWaid !== '0' && empWaid !== 'null' && empWaid !== 'undefined' && empWaid !== 'N/A');
+          if (!hasValidW) {
             if (!parsedAdjustments[emp.id]) {
               parsedAdjustments[emp.id] = { incentives: 0 };
             } else {

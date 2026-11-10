@@ -34,8 +34,10 @@ import {
   ShieldCheck,
   Sparkles,
   Trophy,
-  Target
+  Target,
+  X
 } from 'lucide-react';
+import { soundSynth } from '../utils/audio';
 
 export const IncentivesModuleView: React.FC = () => {
   const { theme, language, t, employees, setActiveModuleId, appSettings } = useApp();
@@ -52,7 +54,25 @@ export const IncentivesModuleView: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentFileName, setCurrentFileName] = useState<string>('LO-LOS Bouns-Incentive Dinar_Sep_26Fin.xlsx');
-  const [selectedSheet, setSelectedSheet] = useState<string>(ALL_ROLES_SHEET_KEY);
+  const [selectedSheet, setSelectedSheet] = useState<string>('Final Sammary');
+  const [uploadSuccess, setUploadSuccess] = useState<{
+    fileName: string;
+    sheetName: string;
+    totalRecords: number;
+    matchedCount: number;
+    grandTotal: number;
+    currency: string;
+    timestamp: string;
+  } | null>(null);
+
+  // Auto-dismiss upload success message after 9 seconds
+  useEffect(() => {
+    if (!uploadSuccess) return;
+    const timer = setTimeout(() => {
+      setUploadSuccess(null);
+    }, 9000);
+    return () => clearTimeout(timer);
+  }, [uploadSuccess]);
 
   // Table Filtering, Sorting, & Pagination State
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -127,26 +147,41 @@ export const IncentivesModuleView: React.FC = () => {
         };
       }
 
-      // Search matching employee in HRIS active database strictly by ID (waid / badge / employee_id)
+      // Link Badge No column in sheet Final Sammary with Badge No field in Payroll (emp.badgeNo / emp.badge_no):
       const match = employees.find((emp) => {
-        const empWaid = String(emp.waid || emp.wa_id || '').trim();
-        const empWaidDigits = empWaid.replace(/\D/g, '');
+        // 1. Direct Badge No match (emp.badgeNo / emp.badge_no):
         const empBadge = String(emp.badgeNo || emp.badge_no || '').trim();
-        const empBadgeDigits = empBadge.replace(/\D/g, '');
-        const empId = String(emp.id || emp.employeeId || emp.employee_id || '').trim();
-        const empIdDigits = empId.replace(/\D/g, '');
+        if (empBadge && empBadge !== '-' && empBadge !== '0' && empBadge !== 'null' && empBadge !== 'undefined' && empBadge !== 'N/A') {
+          const empBadgeDigits = empBadge.replace(/\D/g, '');
+          if (empBadge.toLowerCase() === recIdClean.toLowerCase()) {
+            return true;
+          }
+          const cleanEmpBadge = empBadge.toLowerCase().replace(/^vts-?/i, '');
+          const cleanRecId = recIdClean.toLowerCase().replace(/^vts-?/i, '');
+          if (cleanEmpBadge === cleanRecId) {
+            return true;
+          }
+          if (recDigits && empBadgeDigits && recDigits === empBadgeDigits) {
+            return true;
+          }
+        }
 
-        // 1. Direct SystemID to Incentives WAID (For Incentives) match - TOP PRIORITY
-        if (empWaid && (empWaid.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empWaidDigits && recDigits === empWaidDigits))) {
-          return true;
+        // 2. Direct Employee ID match (emp.employeeId / emp.employee_id / emp.id):
+        const empId = String(emp.employeeId || emp.employee_id || emp.id || '').trim();
+        if (empId && empId !== '-' && empId !== '0') {
+          const empIdDigits = empId.replace(/\D/g, '');
+          if (empId.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empIdDigits && recDigits === empIdDigits)) {
+            return true;
+          }
         }
-        // 2. Direct Badge No match
-        if (empBadge && (empBadge.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empBadgeDigits && recDigits === empBadgeDigits))) {
-          return true;
-        }
-        // 3. Employee ID match (e.g. VTS-1074 matches 1074 or VTS-1074)
-        if (empId && (empId.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empIdDigits && recDigits === empIdDigits))) {
-          return true;
+
+        // 3. Fallback: Incentives WAID if present:
+        const empWaid = String(emp.waid || emp.wa_id || '').trim();
+        if (empWaid && empWaid !== '-' && empWaid !== '0' && empWaid !== 'null' && empWaid !== 'undefined' && empWaid !== 'N/A') {
+          const empWaidDigits = empWaid.replace(/\D/g, '');
+          if (empWaid.toLowerCase() === recIdClean.toLowerCase() || (recDigits && empWaidDigits && recDigits === empWaidDigits)) {
+            return true;
+          }
         }
 
         return false;
@@ -181,38 +216,48 @@ export const IncentivesModuleView: React.FC = () => {
       const savedRaw = localStorage.getItem('vitas_payroll_manual_adjustments');
       const adjustments: Record<string, any> = savedRaw ? JSON.parse(savedRaw) : {};
 
+      const validBadgeIds = new Set<string>();
+      employees.forEach(emp => {
+        validBadgeIds.add(String(emp.id));
+        if (emp.employeeId) validBadgeIds.add(String(emp.employeeId));
+        if (emp.employee_id) validBadgeIds.add(String(emp.employee_id));
+        if (emp.badge_no) validBadgeIds.add(String(emp.badge_no));
+        if (emp.badgeNo) validBadgeIds.add(String(emp.badgeNo));
+      });
+
       let syncedCount = 0;
       let totalSyncedIQD = 0;
       recordsToSync.forEach((rec) => {
-        // Resolve target employee ID: preferably the linked HRIS employee ID, or direct record ID
-        const targetId = String(rec.matchedEmployeeId || rec.employeeId);
-        if (!targetId || targetId === '—') return;
+        // Link matched employees directly to Payroll via Badge No / Employee ID
+        if (!rec.isMatched || !rec.matchedEmployeeId) return;
+        const targetId = String(rec.matchedEmployeeId);
+        if (!validBadgeIds.has(targetId)) return;
 
         // Directly use amounts in Iraqi Dinar (IQD) as-is without requiring exchange rate conversion
         const incentivesIQD = rec.incentives !== null ? Math.round(rec.incentives) : (adjustments[targetId]?.incentives || 0);
         const transportationIQD = rec.transportation !== null ? Math.round(rec.transportation) : (adjustments[targetId]?.transportation || 0);
         const bonusIQD = rec.bonus !== null ? Math.round(rec.bonus) : (adjustments[targetId]?.bonus || 0);
 
-        adjustments[targetId] = {
+        const adjData = {
           ...(adjustments[targetId] || {}),
           incentives: incentivesIQD,
           transportation: transportationIQD,
           bonus: bonusIQD,
           currency: 'IQD',
+          badgeNo: rec.matchedBadgeNo || rec.employeeId,
         };
+
+        // Key adjustment by employee ID and also by Badge No for direct Payroll resolution
+        adjustments[targetId] = adjData;
+        if (rec.matchedBadgeNo) {
+          adjustments[rec.matchedBadgeNo] = adjData;
+        }
+        if (rec.employeeId && rec.employeeId !== '—') {
+          adjustments[rec.employeeId] = adjData;
+        }
+
         syncedCount++;
         totalSyncedIQD += (incentivesIQD || 0) + (transportationIQD || 0) + (bonusIQD || 0);
-      });
-
-      // Reset incentives to 0 for all employees who have no WAID
-      employees.forEach((emp) => {
-        const hasWaid = Boolean(String(emp.waid || emp.wa_id || '').trim());
-        if (!hasWaid) {
-          adjustments[emp.id] = {
-            ...(adjustments[emp.id] || {}),
-            incentives: 0
-          };
-        }
       });
 
       // Persist to localStorage
@@ -261,6 +306,28 @@ export const IncentivesModuleView: React.FC = () => {
         };
 
         setInspectionResult(enrichedResult);
+        if (enrichedResult.selectedSheetName) {
+          setSelectedSheet(enrichedResult.selectedSheetName);
+        }
+
+        const matchedCount = enrichedRecords.filter((r) => r.isMatched).length;
+        setUploadSuccess({
+          fileName,
+          sheetName: enrichedResult.selectedSheetName || 'Final Sammary',
+          totalRecords: enrichedRecords.length,
+          matchedCount,
+          grandTotal: enrichedResult.summary.grandTotal,
+          currency: enrichedResult.detectedCurrency || 'IQD',
+          timestamp: new Date().toLocaleTimeString(language === 'ar' ? 'ar-IQ' : 'en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          }),
+        });
+
+        try {
+          soundSynth.playCompleteChime();
+        } catch {}
 
         // Auto-sync to payroll if enabled
         if (autoSyncToPayroll && enrichedRecords.length > 0) {
@@ -362,7 +429,7 @@ export const IncentivesModuleView: React.FC = () => {
   const handleExportCleanExcel = () => {
     if (!inspectionResult || inspectionResult.records.length === 0) return;
     const cleanFileName = `Vitas_Extracted_Incentives_${(inspectionResult.selectedSheetName || 'All').replace(/\s+/g, '_')}.xlsx`;
-    exportExtractedDataToExcel(inspectionResult.records, cleanFileName, activeFxRate);
+    exportExtractedDataToExcel(inspectionResult.records, cleanFileName);
   };
 
   // Distinct offices and job titles for filters
@@ -712,21 +779,21 @@ export const IncentivesModuleView: React.FC = () => {
           </div>
 
           {/* Card 5: Grand Total */}
-          <div className="bg-gradient-to-br from-slate-900 to-slate-950 dark:from-teal-950 dark:to-slate-950 border border-slate-800 dark:border-teal-500/30 text-white rounded-2xl p-4 shadow-md">
-            <div className="flex items-center justify-between text-slate-300 mb-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-teal-300">
+          <div className="bg-white dark:bg-[#111827] border border-teal-200 dark:border-teal-500/30 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
                 {language === 'ar' ? 'المجموع الشامل للمستحقات' : 'Grand Total Payout'}
               </span>
-              <Wallet className="w-4 h-4 text-teal-400" />
+              <Wallet className="w-4 h-4 text-teal-600 dark:text-teal-400" />
             </div>
-            <div className="text-xl font-black font-mono text-teal-300 truncate flex items-baseline gap-1">
+            <div className="text-xl font-black font-mono text-slate-900 dark:text-white truncate flex items-baseline gap-1">
               <span>{formatIQD(inspectionResult.summary.grandTotal)}</span>
-              <span className="text-xs font-sans text-teal-300 font-bold">{language === 'ar' ? 'د.ع' : 'IQD'}</span>
+              <span className="text-xs font-sans text-teal-700 dark:text-teal-400 font-bold">{language === 'ar' ? 'د.ع' : 'IQD'}</span>
             </div>
-            <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between font-medium">
+            <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between font-medium">
               <span>{language === 'ar' ? 'حوافز + نقل + بونص' : 'Incentives + Transport + Bonus'}</span>
               {lastSyncTime && (
-                <span className="text-emerald-400 text-[10px]">✓ {lastSyncTime}</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20">✓ {lastSyncTime}</span>
               )}
             </div>
           </div>
@@ -810,20 +877,30 @@ export const IncentivesModuleView: React.FC = () => {
                 <Layers className="w-4 h-4 text-teal-600" />
                 <span>{language === 'ar' ? 'ورقة العمل المصدر:' : 'Source Worksheet:'}</span>
               </span>
-              <select
-                value={selectedSheet}
-                onChange={(e) => handleSheetChange(e.target.value)}
-                className="bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none cursor-pointer"
-              >
-                <option value={ALL_ROLES_SHEET_KEY}>
-                  ★ {language === 'ar' ? 'كافة الوظائف المجمعة (LO + LOS + CO + Collection)' : 'All Roles Consolidated (LO + LOS + CO + Collection)'}
-                </option>
-                {inspectionResult.sheetNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+              {(() => {
+                const masterSheetName = inspectionResult.sheetNames.find((n) => /final\s*s[au]mmary/i.test(n) || /خلاصة/i.test(n));
+                return (
+                  <select
+                    value={selectedSheet}
+                    onChange={(e) => handleSheetChange(e.target.value)}
+                    className="bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none cursor-pointer"
+                  >
+                    {masterSheetName && (
+                      <option value={masterSheetName}>
+                        ★ {masterSheetName} ({language === 'ar' ? 'الشيت الرئيسي المعتمد للمطابقة' : 'Master Sheet - Primary for Matching'})
+                      </option>
+                    )}
+                    <option value={ALL_ROLES_SHEET_KEY}>
+                      {language === 'ar' ? 'كافة الوظائف المجمعة (الوضع العام)' : 'All Roles Consolidated (Legacy)'}
+                    </option>
+                    {inspectionResult.sheetNames.filter((n) => n !== masterSheetName).map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                );
+              })()}
               <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20">
                 {inspectionResult.records.length} {language === 'ar' ? 'سجل مستخرج' : 'records extracted'}
               </span>
@@ -852,6 +929,53 @@ export const IncentivesModuleView: React.FC = () => {
               <strong className="font-bold block mb-0.5">{language === 'ar' ? 'تنبيه في قراءة الملف' : 'File Reading Notice'}</strong>
               <p>{errorMessage}</p>
             </div>
+          </div>
+        )}
+
+        {/* Upload & Extraction Success Notice */}
+        {uploadSuccess && (
+          <div className="bg-emerald-50/90 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 rounded-2xl p-4 flex items-start justify-between gap-3 text-emerald-950 dark:text-emerald-100 text-xs shadow-sm transition-all duration-300">
+            <div className="flex items-start gap-3 flex-1">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-1.5 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <strong className="text-sm font-black text-emerald-900 dark:text-emerald-100">
+                    {language === 'ar' ? 'تم اكتمال رفع ومعالجة المصنف بنجاح!' : 'Workbook Uploaded & Processed Successfully!'}
+                  </strong>
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    {uploadSuccess.timestamp}
+                  </span>
+                </div>
+                <p className="text-slate-700 dark:text-slate-300">
+                  {language === 'ar'
+                    ? `تم بنجاح قراءة وتدقيق ملف "${uploadSuccess.fileName}" واعتماد البيانات من شيت [${uploadSuccess.sheetName}].`
+                    : `Successfully read and audited file "${uploadSuccess.fileName}" and extracted official payout records from sheet [${uploadSuccess.sheetName}].`}
+                </p>
+                <div className="flex items-center gap-2 flex-wrap pt-1 text-[11px] font-bold">
+                  <span className="bg-white dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{uploadSuccess.totalRecords} {language === 'ar' ? 'سجل مستخرج' : 'records extracted'}</span>
+                  </span>
+                  <span className="bg-white dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                    <BadgeCheck className="w-3.5 h-3.5 text-teal-600" />
+                    <span>{uploadSuccess.matchedCount} {language === 'ar' ? 'موظف مطابق مع HRIS' : 'matched with HRIS'}</span>
+                  </span>
+                  <span className="bg-white dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                    <Wallet className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{language === 'ar' ? 'إجمالي المستحقات:' : 'Total:'} {uploadSuccess.grandTotal.toLocaleString()} {uploadSuccess.currency}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setUploadSuccess(null)}
+              className="text-emerald-600 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-100 p-1 rounded-lg hover:bg-emerald-500/10 transition-colors"
+              title={language === 'ar' ? 'إغلاق' : 'Close'}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>

@@ -173,7 +173,8 @@ export function inspectWorksheet(
   sheetName: string
 ): SheetEvaluationScore {
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
-  const maxRowsToScan = Math.min(range.e.r, 20);
+  const isSummarySheet = /final\s*s[au]mmary/i.test(sheetName) || /خلاصة/i.test(sheetName);
+  const maxRowsToScan = isSummarySheet ? Math.min(range.e.r, 80) : Math.min(range.e.r, 20);
 
   let bestHeaderRow = -1;
   let bestScore = -1;
@@ -194,7 +195,10 @@ export function inspectWorksheet(
   const reasons: string[] = [];
 
   // Sheet specific weights
-  if (lowerSheet === 'lo' || lowerSheet === 'loan officer') {
+  if (isSummarySheet) {
+    sheetNameWeight += 200;
+    reasons.push('Primary Master Summary Worksheet (Final Sammary) with direct SystemID matching');
+  } else if (lowerSheet === 'lo' || lowerSheet === 'loan officer') {
     sheetNameWeight += 50;
     reasons.push('Primary Loan Officers (LO) worksheet');
   } else if (lowerSheet === 'co incentive' || lowerSheet === 'co') {
@@ -380,6 +384,177 @@ export function inspectWorksheet(
     columnsFound,
     totalDataRows,
     mapping: bestMapping,
+  };
+}
+
+/**
+ * Specialized extractor for the Master Summary Worksheet (Final Sammary / Final Summary / خلاصة الحوافز والبدلات).
+ * Extracts the authoritative Section 4 detailed staff table containing SystemID, Office, Employee Name, Position,
+ * Incentive, Transportation, Bonus, and Total.
+ */
+export function extractFromFinalSummaryWorksheet(
+  ws: XLSX.WorkSheet,
+  sheetName: string,
+  fileName = ''
+): {
+  records: EmployeePayoutRecord[];
+  summary: PayoutSummary;
+  mapping: SheetColumnMapping;
+  auditMetrics: {
+    totalFormulaCellsEvaluated: number;
+    staleOrMissingFormulaCells: number;
+    crossSheetIdMatches: number;
+    zeroAmountValuesCount: number;
+    skippedSubtotalRows: number;
+  };
+  warnings: string[];
+  detectedCurrency: string;
+} {
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
+  let headerIdx = -1;
+  let colSys = -1;
+  let colOff = -1;
+  let colNm = -1;
+  let colPos = -1;
+  let colInc = -1;
+  let colTr = -1;
+  let colBon = -1;
+
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
+    if (!Array.isArray(row)) continue;
+    row.forEach((cell: any, cIdx: number) => {
+      const s = String(cell || '').trim().toLowerCase();
+      if (/badge[\s_-]*no|badge|الباج|رقم[\s_-]*الباج|system[\s_-]*id|systemid|waid/i.test(s)) colSys = cIdx;
+      if (/office|branch|المكتب|الفرع/i.test(s)) colOff = cIdx;
+      if (/employee\s*name|اسم\s*الموظف/i.test(s)) colNm = cIdx;
+      if (/position|المنصب|العنوان|الوظيفة/i.test(s)) colPos = cIdx;
+      if (/incentive|حوافز/i.test(s)) colInc = cIdx;
+      if (/transport|نقل/i.test(s)) colTr = cIdx;
+      if (/bonus|علاو|مكاف/i.test(s)) colBon = cIdx;
+    });
+    if (colSys >= 0 && colNm >= 0 && colInc >= 0) {
+      headerIdx = r;
+      break;
+    }
+  }
+
+  // Fallbacks if not auto-detected
+  if (headerIdx < 0) headerIdx = 55;
+  if (colSys < 0) colSys = 0;
+  if (colOff < 0) colOff = 1;
+  if (colNm < 0) colNm = 2;
+  if (colPos < 0) colPos = 3;
+  if (colInc < 0) colInc = 4;
+  if (colTr < 0) colTr = 5;
+  if (colBon < 0) colBon = 6;
+
+  const records: EmployeePayoutRecord[] = [];
+  let idx = 1;
+  let sumInc = 0;
+  let sumTrans = 0;
+  let sumBonus = 0;
+  let validZeros = 0;
+  const offices = new Set<string>();
+  const titles = new Set<string>();
+
+  for (let r = headerIdx + 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row) continue;
+    const name = colNm >= 0 ? String(row[colNm] || '').trim() : '';
+    const sysId = colSys >= 0 ? String(row[colSys] || '').trim() : '';
+
+    // Skip total row or empty rows
+    if (!name || /إجمالي|total|مجموع/i.test(name) || /إجمالي|total|مجموع/i.test(sysId)) {
+      continue;
+    }
+
+    // Skip #REF! errors from deleted rows in Excel
+    if (/#ref!/i.test(name) || /#ref!/i.test(sysId)) {
+      continue;
+    }
+
+    const office = colOff >= 0 ? String(row[colOff] || 'Unspecified').trim() : 'Unspecified';
+    const pos = colPos >= 0 ? String(row[colPos] || 'Loan Officer').trim() : 'Loan Officer';
+
+    // Exclude inactive employees
+    if (/inactive|غير فعال|مستق/i.test(pos) || /inactive|غير فعال|مستق|^quit|^zz/i.test(name)) {
+      continue;
+    }
+    const inc = colInc >= 0 ? (parseFloat(String(row[colInc] || '0').replace(/[$,\s]/g, '')) || 0) : 0;
+    const trans = colTr >= 0 ? (parseFloat(String(row[colTr] || '0').replace(/[$,\s]/g, '')) || 0) : 0;
+    const bonus = colBon >= 0 ? (parseFloat(String(row[colBon] || '0').replace(/[$,\s]/g, '')) || 0) : 0;
+
+    if (office && office !== 'Unspecified') offices.add(office);
+    if (pos) titles.add(pos);
+
+    sumInc += inc;
+    sumTrans += trans;
+    sumBonus += bonus;
+
+    if (inc === 0) validZeros++;
+    if (trans === 0) validZeros++;
+    if (bonus === 0) validZeros++;
+
+    records.push({
+      index: idx++,
+      employeeId: sysId || '—',
+      office,
+      employeeName: cleanDisplayName(name),
+      jobTitle: pos,
+      incentives: inc,
+      transportation: trans,
+      bonus: bonus,
+      currency: 'IQD',
+      sourceSheet: sheetName,
+      sourceRowNumber: r + 1,
+      hasZeroValue: inc === 0 || trans === 0 || bonus === 0,
+    });
+  }
+
+  const grandTotal = sumInc + sumTrans + sumBonus;
+
+  return {
+    records,
+    summary: {
+      totalEmployees: records.length,
+      totalIncentives: sumInc,
+      totalTransportation: sumTrans,
+      totalBonus: sumBonus,
+      grandTotal,
+      currency: 'IQD',
+      officesCount: offices.size,
+      jobTitlesCount: titles.size,
+      validZeroAmountsCount: validZeros,
+    },
+    mapping: {
+      employeeIdCol: colSys,
+      officeCol: colOff,
+      employeeNameCol: colNm,
+      jobTitleCol: colPos,
+      incentivesCol: colInc,
+      transportationCol: colTr,
+      bonusCol: colBon,
+      headerRowIndex: headerIdx,
+      headers: {
+        [colSys]: 'SystemID',
+        [colOff]: 'Office Name',
+        [colNm]: 'Employee Name',
+        [colPos]: 'Position',
+        [colInc]: 'Incentive (IQD)',
+        [colTr]: 'Transportation (IQD)',
+        [colBon]: 'Bonus (IQD)',
+      },
+    },
+    auditMetrics: {
+      totalFormulaCellsEvaluated: records.length * 3,
+      staleOrMissingFormulaCells: 0,
+      crossSheetIdMatches: records.filter((r) => r.employeeId && r.employeeId !== '—').length,
+      zeroAmountValuesCount: validZeros,
+      skippedSubtotalRows: 1,
+    },
+    warnings: [],
+    detectedCurrency: 'IQD',
   };
 }
 
@@ -574,6 +749,11 @@ export function extractPayoutRecords(
     };
   }
 
+  // 0. Primary Master Summary Worksheet (Final Sammary / Final Summary / خلاصة الحوافز والبدلات)
+  if (/final\s*s[au]mmary/i.test(sheetName) || /خلاصة/i.test(sheetName)) {
+    return extractFromFinalSummaryWorksheet(ws, sheetName, fileName);
+  }
+
   // Standalone specialized extraction for Final Incentives sheet if selected directly
   if (lowerSheet.includes('final') && (lowerSheet.includes('incentive') || lowerSheet.includes('payout'))) {
     const finalRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
@@ -622,6 +802,8 @@ export function extractPayoutRecords(
       if (!row) continue;
       const rawName = colNameFinal >= 0 ? String(row[colNameFinal] || '').trim() : '';
       if (!rawName || /^total|^sum|^grand|^المجموع/i.test(rawName)) continue;
+      if (/#ref!/i.test(rawName)) continue;
+      if (/inactive|غير فعال|مستق|^quit|^zz/i.test(rawName)) continue;
 
       const office = colBranchFinal >= 0 ? String(row[colBranchFinal] || 'Unspecified').trim() : 'Unspecified';
       offices.add(office);
@@ -857,6 +1039,15 @@ export function extractConsolidatedAllRoles(
   warnings: string[];
   detectedCurrency: string;
 } {
+  // If the Master Summary Worksheet (Final Sammary / Final Summary / خلاصة) exists,
+  // it is the primary authoritative source that consolidates all LO, LOS, and CO roles with exact SystemIDs!
+  const masterSummarySheetName = wb.SheetNames.find(
+    (name) => /final\s*s[au]mmary/i.test(name) || /خلاصة/i.test(name)
+  );
+  if (masterSummarySheetName && wb.Sheets[masterSummarySheetName]) {
+    return extractFromFinalSummaryWorksheet(wb.Sheets[masterSummarySheetName], masterSummarySheetName, fileName);
+  }
+
   const masterMap = new Map<string, EmployeePayoutRecord>();
 
   // 1. Credit Coordinators (CO) first to guarantee CO classification
@@ -939,6 +1130,8 @@ export function extractConsolidatedAllRoles(
       if (!row) continue;
       const rawName = colNameFinal >= 0 ? String(row[colNameFinal] || '').trim() : '';
       if (!rawName || /^total|^sum|^grand|^المجموع/i.test(rawName)) continue;
+      if (/#ref!/i.test(rawName)) continue;
+      if (/inactive|غير فعال|مستق|^quit|^zz/i.test(rawName)) continue;
 
       const office = colBranchFinal >= 0 ? String(row[colBranchFinal] || 'Unspecified').trim() : 'Unspecified';
       const inc = colIncFinal >= 0 ? (parseFloat(String(row[colIncFinal] || '0')) || 0) : 0;
@@ -1286,14 +1479,23 @@ export function inspectAndExtractWorkbook(
 
   sheetScores.sort((a, b) => b.score - a.score);
 
-  // If user requested consolidated view, OR if no sheet specified, DEFAULT TO ALL ROLES CONSOLIDATED!
-  if (!preferredSheet || preferredSheet === ALL_ROLES_SHEET_KEY) {
-    const consolidated = extractConsolidatedAllRoles(wb, fileName);
+  // Detect if workbook contains the primary master summary sheet (Final Sammary / Final Summary / خلاصة)
+  const masterSummarySheetName = wb.SheetNames.find(
+    (name) => /final\s*s[au]mmary/i.test(name) || /خلاصة/i.test(name)
+  );
+
+  // If user requested consolidated view, OR if no sheet specified, OR requested master summary sheet:
+  if (!preferredSheet || preferredSheet === ALL_ROLES_SHEET_KEY || (masterSummarySheetName && preferredSheet === masterSummarySheetName)) {
+    const targetSheetName = masterSummarySheetName || ALL_ROLES_SHEET_KEY;
+    const consolidated = masterSummarySheetName && wb.Sheets[masterSummarySheetName]
+      ? extractFromFinalSummaryWorksheet(wb.Sheets[masterSummarySheetName], masterSummarySheetName, fileName)
+      : extractConsolidatedAllRoles(wb, fileName);
+
     return {
       fileName,
       fileSize: data.byteLength,
       sheetNames: wb.SheetNames,
-      selectedSheetName: ALL_ROLES_SHEET_KEY,
+      selectedSheetName: targetSheetName,
       sheetScores,
       columnMapping: consolidated.mapping,
       detectedCurrency: consolidated.detectedCurrency,

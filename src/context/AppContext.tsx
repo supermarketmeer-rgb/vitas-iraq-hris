@@ -585,7 +585,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         if (Array.isArray(empData) && empData.length > 0) {
           setEmployees(prev => {
-            if (prev.length === empData.length) return prev;
+            if (prev.length === empData.length && JSON.stringify(prev) === JSON.stringify(empData)) return prev;
             try { localStorage.setItem('vitas_employees', JSON.stringify(empData)); } catch (e) {}
             return empData;
           });

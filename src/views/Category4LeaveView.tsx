@@ -11,6 +11,7 @@ import {
   Language,
   LeaveBalance,
   LeaveRequest,
+  LeaveType,
   PublicHoliday,
   RawAttendanceLog,
 } from '../components/leaves_attendance/types';
@@ -107,6 +108,7 @@ export const Category4LeaveView: React.FC = () => {
   const [biometricSettings, setBiometricSettings] = useState<BiometricServerSettings | null>(null);
   const [rawLogs, setRawLogs] = useState<RawAttendanceLog[]>([]);
   const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
 
   // UI Modals state
   const [isApplyLeaveOpen, setIsApplyLeaveOpen] = useState(false);
@@ -174,6 +176,11 @@ export const Category4LeaveView: React.FC = () => {
       const balRes = await leavesApi.getLeaveBalances();
       if (balRes.data) {
         setLeaveBalances(balRes.data);
+      }
+
+      const typesRes = await leavesApi.getLeaveTypes();
+      if (typesRes.data) {
+        setLeaveTypes(typesRes.data);
       }
     } catch (e) {
       console.error('Failed to load leave data:', e);
@@ -421,6 +428,8 @@ export const Category4LeaveView: React.FC = () => {
       {/* MODALS */}
       {isApplyLeaveOpen && (
         <LeaveApplyModal
+          currentUser={currentUser}
+          leaveTypes={leaveTypes}
           leaveBalances={stats.my_leave_balances}
           lang={lang}
           onClose={() => setIsApplyLeaveOpen(false)}

@@ -1228,16 +1228,16 @@ export class StorageService {
       const recId = 'employeeId' in rec ? rec.employeeId : (rec as SupervisorEntitlement).supervisorId;
       const recName = 'employeeName' in rec ? rec.employeeName : (rec as SupervisorEntitlement).supervisorName;
 
-      // Find matching employee by badge_no, id, or institutional employeeId
-      const emp = vitasEmployees.find(
-        (e) =>
-          String(e.badge_no) === recId.replace('VTS-', '') ||
-          String(e.id) === recId ||
-          (e.name_ar && e.name_ar === recName) ||
-          (e.name && e.name === recName)
-      );
+      // Find matching employee STRICTLY by Incentives WAID (For Incentives) / SystemID
+      const emp = vitasEmployees.find((e) => {
+        const w = String(e.waid || e.wa_id || '').trim();
+        if (!w || w === '-' || w === '0' || w === 'null' || w === 'undefined' || w === 'N/A') return false;
+        return w.toLowerCase() === recId.toLowerCase() || (w.replace(/\D/g, '') && recId.replace(/\D/g, '') && w.replace(/\D/g, '') === recId.replace(/\D/g, ''));
+      });
 
-      const targetId = emp ? String(emp.id) : recId;
+      if (!emp) return;
+
+      const targetId = String(emp.id);
 
       existingAdjustments[targetId] = {
         ...(existingAdjustments[targetId] || {}),

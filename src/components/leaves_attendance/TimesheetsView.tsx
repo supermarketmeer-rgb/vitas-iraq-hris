@@ -162,6 +162,10 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
   }, [employees, selectedBranch, filterText]);
 
   // Selected Employee Data
+  const currentEmployee = useMemo(() => {
+    return employees.find(e => e.code === selectedEmpCode) || employees[0] || null;
+  }, [employees, selectedEmpCode]);
+
   const activeException = useMemo(() => {
     if (!currentEmployee || !attendanceExceptions.length) return null;
     const c = (currentEmployee.code || '').toLowerCase().trim();
@@ -181,10 +185,6 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
       );
     });
   }, [currentEmployee, attendanceExceptions]);
-
-  const currentEmployee = useMemo(() => {
-    return employees.find(e => e.code === selectedEmpCode) || employees[0] || null;
-  }, [employees, selectedEmpCode]);
 
   // Formatted Cycle Dates for display (dd/MM/yyyy)
   const formattedStartDate = useMemo(() => {

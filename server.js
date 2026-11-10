@@ -1437,8 +1437,30 @@ app.post('/api/employees', async (req, res) => {
     const transportationFixed = parseNum(data.transportationFixed || data.transportation_fixed);
     const fixedBonus = parseNum(data.fixedBonus || data.fixed_bonus);
     const phoneAllowance = parseNum(data.phoneAllowance || data.phone_allowance);
-    const certificateAllowance = parseNum(data.certificateAllowance || data.certificate_allowance);
+    let certificateAllowance = parseNum(data.certificateAllowance || data.certificate_allowance);
     const graduationDegree = data.graduationDegree || data.graduation_degree || null;
+
+    if ((certificateAllowance === 0 || isNaN(certificateAllowance)) && graduationDegree) {
+      try {
+        const settingRows = await query("SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('certificate_allowance_diplome', 'certificate_allowance_bachelar', 'certificate_allowance_master', 'certificate_allowance_currency', 'usd_to_iqd_rate')");
+        const sMap = {};
+        (settingRows || []).forEach(r => { sMap[r.setting_key] = r.setting_value; });
+        const normDeg = String(graduationDegree).trim().toLowerCase();
+        let rawPolicyVal = 0;
+        if (normDeg.includes('diplom') || normDeg.includes('دبلوم')) {
+          rawPolicyVal = parseFloat(sMap['certificate_allowance_diplome'] || '50000') || 50000;
+        } else if (normDeg.includes('bachelor') || normDeg.includes('bachelar') || normDeg.includes('بكالوريوس')) {
+          rawPolicyVal = parseFloat(sMap['certificate_allowance_bachelar'] || '100000') || 100000;
+        } else if (normDeg.includes('master') || normDeg.includes('ماجستير')) {
+          rawPolicyVal = parseFloat(sMap['certificate_allowance_master'] || '150000') || 150000;
+        }
+        const curr = sMap['certificate_allowance_currency'] || 'IQD';
+        const fx = parseFloat(sMap['usd_to_iqd_rate'] || '1520') || 1520;
+        certificateAllowance = curr === 'USD' ? Math.round(rawPolicyVal * fx) : rawPolicyVal;
+      } catch (e) {
+        console.warn('Could not auto-calculate certificate allowance in server:', e.message);
+      }
+    }
     const writtenBasicSalaryAr = data.writtenBasicSalaryAr || data.written_basic_salary_ar || null;
 
     const bankName = data.bankName || data.bank_name || null;
