@@ -48,13 +48,31 @@ export const IncentivesModuleView: React.FC = () => {
   const [showLegacyView, setShowLegacyView] = useState<boolean>(false);
   const [showOfficesTargetView, setShowOfficesTargetView] = useState<boolean>(false);
 
-  // Core Workbook State
-  const [inspectionResult, setInspectionResult] = useState<WorkbookInspectionResult | null>(null);
+  // Core Workbook State - Initialized from localStorage to guarantee persistence across navigation
+  const [inspectionResult, setInspectionResult] = useState<WorkbookInspectionResult | null>(() => {
+    try {
+      const saved = localStorage.getItem('vitas_incentives_last_extracted');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed.records) && parsed.records.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached incentives inspection:', e);
+    }
+    return null;
+  });
+
   const [currentWorkbookBuffer, setCurrentWorkbookBuffer] = useState<Uint8Array | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [currentFileName, setCurrentFileName] = useState<string>('Incentive-SEP2026-Updated.xlsx');
-  const [selectedSheet, setSelectedSheet] = useState<string>('Final Sammary');
+  const [currentFileName, setCurrentFileName] = useState<string>(() => {
+    return localStorage.getItem('vitas_incentives_current_filename') || 'Incentive-SEP2026-Updated.xlsx';
+  });
+  const [selectedSheet, setSelectedSheet] = useState<string>(() => {
+    return localStorage.getItem('vitas_incentives_selected_sheet') || 'Final Sammary';
+  });
   const [uploadSuccess, setUploadSuccess] = useState<{
     fileName: string;
     sheetName: string;
@@ -280,6 +298,17 @@ export const IncentivesModuleView: React.FC = () => {
           setSelectedSheet(enrichedResult.selectedSheetName);
         }
 
+        // Persist extracted results to localStorage so that leaving the view and returning preserves all data
+        try {
+          localStorage.setItem('vitas_incentives_last_extracted', JSON.stringify(enrichedResult));
+          localStorage.setItem('vitas_incentives_current_filename', fileName);
+          if (enrichedResult.selectedSheetName) {
+            localStorage.setItem('vitas_incentives_selected_sheet', enrichedResult.selectedSheetName);
+          }
+        } catch (e) {
+          console.warn('Could not persist incentives result to localStorage:', e);
+        }
+
         const matchedCount = enrichedRecords.filter((r) => r.isMatched).length;
         setUploadSuccess({
           fileName,
@@ -323,7 +352,22 @@ export const IncentivesModuleView: React.FC = () => {
    * Load the updated incentives workbook (Incentive-SEP2026-Updated.xlsx) which contains Final Sammary sheet.
    * Falls back to the legacy official workbook if unavailable.
    */
-  const handleLoadOfficialWorkbook = useCallback(async () => {
+  const handleLoadOfficialWorkbook = useCallback(async (forceRefresh = false) => {
+    // If not a forced refresh and we already have cached data in localStorage, restore it without showing blank
+    if (!forceRefresh) {
+      try {
+        const saved = localStorage.getItem('vitas_incentives_last_extracted');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && Array.isArray(parsed.records) && parsed.records.length > 0) {
+            setInspectionResult(parsed);
+            if (parsed.selectedSheetName) setSelectedSheet(parsed.selectedSheetName);
+            return;
+          }
+        }
+      } catch (e) {}
+    }
+
     setIsProcessing(true);
     setErrorMessage(null);
     // Try the updated workbook first (has Final Sammary)
@@ -351,10 +395,30 @@ export const IncentivesModuleView: React.FC = () => {
     setIsProcessing(false);
   }, [processExcelData, language]);
 
-  // Initial load on component mount
+  // Initial load on component mount: Only fetch if we don't already have extracted records
   useEffect(() => {
-    handleLoadOfficialWorkbook();
-  }, [handleLoadOfficialWorkbook]);
+    const hasCachedRecords = inspectionResult && Array.isArray(inspectionResult.records) && inspectionResult.records.length > 0;
+    if (!hasCachedRecords) {
+      handleLoadOfficialWorkbook(false);
+    }
+  }, [handleLoadOfficialWorkbook, inspectionResult]);
+
+  // Keep HRIS matching up to date if employees load or change
+  useEffect(() => {
+    if (inspectionResult && Array.isArray(inspectionResult.records) && inspectionResult.records.length > 0 && employees && employees.length > 0) {
+      const reEnriched = enrichRecordsWithHRIS(inspectionResult.records);
+      const newlyMatched = reEnriched.filter(r => r.isMatched).length;
+      const prevMatched = inspectionResult.records.filter(r => r.isMatched).length;
+      if (newlyMatched !== prevMatched) {
+        setInspectionResult(prev => {
+          if (!prev) return null;
+          const updated = { ...prev, records: reEnriched };
+          try { localStorage.setItem('vitas_incentives_last_extracted', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+      }
+    }
+  }, [employees, enrichRecordsWithHRIS]);
 
   /**
    * Handle user-uploaded Excel file from disk
@@ -394,10 +458,22 @@ export const IncentivesModuleView: React.FC = () => {
   /**
    * Handle switching worksheet inside the current workbook
    */
-  const handleSheetChange = (newSheet: string) => {
+  const handleSheetChange = async (newSheet: string) => {
     setSelectedSheet(newSheet);
+    try { localStorage.setItem('vitas_incentives_selected_sheet', newSheet); } catch {}
     if (currentWorkbookBuffer) {
       processExcelData(currentWorkbookBuffer, currentFileName, newSheet);
+    } else {
+      // Re-fetch workbook buffer if needed (e.g. after navigating away and returning)
+      try {
+        const res = await fetch(`/${currentFileName}`);
+        if (res.ok) {
+          const buf = await res.arrayBuffer();
+          processExcelData(buf, currentFileName, newSheet);
+        }
+      } catch (e) {
+        console.warn('Could not re-fetch workbook buffer for sheet change:', e);
+      }
     }
   };
 
@@ -837,7 +913,7 @@ export const IncentivesModuleView: React.FC = () => {
           {/* Quick Reload Official Default File */}
           <button
             type="button"
-            onClick={handleLoadOfficialWorkbook}
+            onClick={() => handleLoadOfficialWorkbook(true)}
             disabled={isProcessing}
             className="px-4 py-3 rounded-xl border border-slate-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs shrink-0"
             title={language === 'ar' ? 'إعادة تحميل ملف الحوافز الافتراضي المعتمد' : 'Reload official template spreadsheet'}

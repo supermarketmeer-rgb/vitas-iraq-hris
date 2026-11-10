@@ -167,6 +167,7 @@ app.use('/api', (req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, 'dist')));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'dist', 'assets')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/apply/assets', express.static(path.join(__dirname, 'dist', 'assets')));

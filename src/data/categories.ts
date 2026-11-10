@@ -561,6 +561,13 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         description: 'متابعة مؤشرات الحوكمة وسجلات الامتثال المؤسسي'
       },
       {
+        id: 'risk-process-map',
+        title: 'خريطة العمليات وإطار الرقابة الإدارية',
+        titleEn: 'Enterprise Process Map & Controls',
+        icon: 'account_tree',
+        description: 'إطار الرقابة الإدارية، مصفوفة RACI، مسارات العمل التفصيلية ومؤشرات الأداء المؤسسية'
+      },
+      {
         id: 'risk-tracker',
         title: 'متتبع التوافق التنظيمي',
         titleEn: 'Regulatory Compliance Tracker',

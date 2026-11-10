@@ -2031,6 +2031,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         <h1 className="text-2xl font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
           {(activeModuleId === 'risk-audit-reports' || activeModuleId === 'risk-audit') && t('مركز تقارير التدقيق والامتثال التنظيمي', 'Audit & Regulatory Compliance Reports Center')}
           {(activeModuleId === 'risk-governance' || activeModuleId === 'risk-dashboard' || activeModuleId === 'cat-9-risk') && t('لوحة حوكمة الامتثال وسجلات الرقابة المصرفية', 'Compliance Governance & Banking Supervision Logs')}
+          {activeModuleId === 'risk-process-map' && t('خريطة العمليات المؤسسية وإطار الرقابة الإدارية', 'Enterprise Process Map & Management Control Framework')}
           {activeModuleId === 'risk-tracker' && t('متتبع التوافق والتشريعات واللوائح المصرفية', 'Regulatory Compliance & Statutory Tracker')}
           {(activeModuleId === 'risk-policies' || activeModuleId === 'risk-training') && t('سجل اللوائح والسياسات الداخلية المعتمدة', 'Approved Internal Policies & Regulations Register')}
           {(activeModuleId === 'risk-assessment' || activeModuleId === 'risk-incident') && t('سجل ونظرة عامة على تقييم المخاطر', 'Risk Assessment Register & Overview')}
@@ -2139,6 +2140,48 @@ export const Category9RiskComplianceView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODULE: Enterprise Process Map & Management Control Framework (risk-process-map)
+          ========================================================================= */}
+      {activeModuleId === 'risk-process-map' && (
+        <div className="space-y-4">
+          <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+            isDark ? 'bg-slate-900 border-white/10' : 'bg-blue-50/60 border-blue-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <span className="material-icons-outlined text-blue-600 text-3xl">account_tree</span>
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-800 dark:text-white">
+                  {t('خريطة العمليات المؤسسية وإطار الرقابة الإدارية لنظام الموارد البشرية', 'HRIS Enterprise Process Map & Management Control Framework')}
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                  {t('بوابة الإدارة العامة التفاعلية: مصفوفة RACI، مؤشرات كفاءة العمليات، ومسارات العمل المؤسسية', 'General Manager Interactive Portal: RACI Matrix, Process KPIs & Operational Workflows')}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href="http://localhost:3000"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors whitespace-nowrap"
+              >
+                <span className="material-icons-outlined text-sm">open_in_new</span>
+                {t('فتح في نافذة كاملة (Port 3000)', 'Open Fullscreen (Port 3000)')}
+              </a>
+            </div>
+          </div>
+
+          <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm bg-white dark:bg-slate-900">
+            <iframe
+              src="http://localhost:3000"
+              title="HRIS Enterprise Process Map & Management Control Framework"
+              className="w-full h-[78vh] border-0"
+            />
           </div>
         </div>
       )}
