@@ -735,7 +735,18 @@ export const Category3EmployeeView: React.FC = () => {
       })
       .catch(() => {});
   }, []);
-  const [workScope, setWorkScope] = useState('Field & Admin');
+  const [workScope, setWorkScope] = useState('Office Job');
+
+  // Alignment fields for Reports & System Integration
+  const [secondCitizenship, setSecondCitizenship] = useState('');
+  const [terminationReason, setTerminationReason] = useState('');
+  const [managementTier, setManagementTier] = useState<string>('Non Management');
+  const [branchVsMo, setBranchVsMo] = useState<string>('Branch');
+  const [perfRating, setPerfRating] = useState<string | number>('');
+  const [adminLine, setAdminLine] = useState('');
+  const [positionLevel1, setPositionLevel1] = useState('');
+  const [positionLevel2, setPositionLevel2] = useState('');
+  const [microfinPosition, setMicrofinPosition] = useState('');
 
   // Tab 4: Financial & Allowances
   const [basicSalary, setBasicSalary] = useState<number>(0);
@@ -1270,7 +1281,26 @@ export const Category3EmployeeView: React.FC = () => {
     setBranch(resolvedBranchAr);
     setBranchEn(resolvedBranchEn);
     setSupervisorName(clean(emp.supervisorName || emp.supervisor_name));
-    setWorkScope(clean(emp.workScope || emp.work_scope) || 'ميداني ومكتبي');
+    
+    // Normalize work scope to Office Job / Field Job
+    const rawScope = clean(emp.workScope || emp.work_scope) || '';
+    if (rawScope.toLowerCase().includes('field & admin') || rawScope.includes('ميداني ومكتبي')) {
+      setWorkScope('Field & Admin');
+    } else if (rawScope.toLowerCase().includes('field') || rawScope.includes('ميداني')) {
+      setWorkScope('Field Job');
+    } else {
+      setWorkScope('Office Job');
+    }
+
+    setSecondCitizenship(clean((emp as any).secondCitizenship || (emp as any).second_citizenship) || '');
+    setTerminationReason(clean((emp as any).terminationReason || (emp as any).termination_reason) || '');
+    setManagementTier(clean((emp as any).managementTier || (emp as any).management_tier || (emp as any).tier) || 'Non Management');
+    setBranchVsMo(clean((emp as any).branchVsMo || (emp as any).branch_vs_mo || (emp as any).branchVsMO) || 'Branch');
+    setPerfRating((emp as any).perfRating || (emp as any).perf_rating || '');
+    setAdminLine(clean((emp as any).adminLine || (emp as any).admin_line) || '');
+    setPositionLevel1(clean((emp as any).positionLevel1 || (emp as any).position_level_1 || (emp as any).position1) || '');
+    setPositionLevel2(clean((emp as any).positionLevel2 || (emp as any).position_level_2 || (emp as any).position2) || '');
+    setMicrofinPosition(clean((emp as any).microfinPosition || (emp as any).microfin_position) || '');
 
     const salaryVal = Number(emp.basicSalary || emp.basic_salary || emp.salary || 0);
     setBasicSalary(salaryVal);
@@ -1373,7 +1403,16 @@ export const Category3EmployeeView: React.FC = () => {
     setSupervisorName('');
     setGrade('');
     setTermOfContract('');
-    setWorkScope('Field & Admin');
+    setWorkScope('Office Job');
+    setSecondCitizenship('');
+    setTerminationReason('');
+    setManagementTier('Non Management');
+    setBranchVsMo('Branch');
+    setPerfRating('');
+    setAdminLine('');
+    setPositionLevel1('');
+    setPositionLevel2('');
+    setMicrofinPosition('');
     setWrittenBasicSalaryAr('');
     setBankName('');
     setIban('');
@@ -1768,8 +1807,17 @@ export const Category3EmployeeView: React.FC = () => {
       certificate_allowance: effectiveCertAllowance,
       graduation_degree: graduationDegree || null,
       nationality,
+      second_citizenship: secondCitizenship || null,
       supervisor_name: supervisorName,
       work_scope: workScope,
+      management_tier: managementTier || 'Non Management',
+      branch_vs_mo: branchVsMo || 'Branch',
+      perf_rating: perfRating !== '' ? Number(perfRating) : null,
+      admin_line: adminLine || null,
+      position_level_1: positionLevel1 || null,
+      position_level_2: positionLevel2 || null,
+      microfin_position: microfinPosition || null,
+      termination_reason: terminationReason || null,
       is_ss_tax_exempt: isSsTaxExempt ? 1 : 0,
       ss_tax_exemption_reason: ssTaxExemptionReason || null,
       years_of_employment: yearsOfEmployment,
@@ -1856,6 +1904,28 @@ export const Category3EmployeeView: React.FC = () => {
       supervisor_name: supervisorName,
       workScope,
       work_scope: workScope,
+      managementTier,
+      management_tier: managementTier,
+      tier: managementTier,
+      branchVsMo,
+      branch_vs_mo: branchVsMo,
+      branchVsMO: branchVsMo,
+      perfRating: perfRating !== '' ? Number(perfRating) : undefined,
+      perf_rating: perfRating !== '' ? Number(perfRating) : undefined,
+      adminLine,
+      admin_line: adminLine,
+      positionLevel1,
+      position_level_1: positionLevel1,
+      position1: positionLevel1,
+      positionLevel2,
+      position_level_2: positionLevel2,
+      position2: positionLevel2,
+      microfinPosition,
+      microfin_position: microfinPosition,
+      secondCitizenship,
+      second_citizenship: secondCitizenship,
+      terminationReason,
+      termination_reason: terminationReason,
       nationality,
       childrenList,
       childrenDetails,
@@ -3007,13 +3077,24 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الجنسية', 'Nationality')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الجنسية الأساسية', 'Primary Nationality')}</label>
                     <input
                       type="text"
                       value={language === 'en' && nationality === 'عراقي' ? 'Iraqi' : (language === 'ar' && nationality === 'Iraqi' ? 'عراقي' : nationality)}
                       onChange={e => setNationality(e.target.value)}
                       placeholder={t('عراقي', 'Iraqi')}
                       className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الجنسية الثانية (إن وجدت)', '2nd Citizenship (Optional)')}</label>
+                    <input
+                      type="text"
+                      value={secondCitizenship}
+                      onChange={e => setSecondCitizenship(e.target.value)}
+                      placeholder={t('مثال: ثانية أو N/A', 'e.g. Dual citizenship or N/A')}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -3250,6 +3331,17 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('سبب ترك العمل أو الاستقالة', 'Termination / Departure Reason')}</label>
+                    <input
+                      type="text"
+                      value={terminationReason}
+                      onChange={e => setTerminationReason(e.target.value)}
+                      placeholder={t('مثال: استقالة طوعية، انتهاء العقد، نقل...', 'e.g. Voluntary resignation, contract end, transfer')}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
                     <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
                       {t('سنوات الخدمة الكلية', 'Total Years of Employment')}
                       <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">{t('تلقائي', 'Auto')}</span>
@@ -3445,16 +3537,99 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div className="sm:col-span-1 lg:col-span-2">
-                    <label className="block text-black font-semibold text-[11px] mb-1">{t('نطاق وطبيعة العمل', 'Work Scope')}</label>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('نطاق وطبيعة العمل (Work Scope)', 'Work Scope (Office vs Field Job)')}</label>
                     <select
                       value={workScope}
                       onChange={e => setWorkScope(e.target.value)}
                       className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
                     >
-                      <option value="Field">{t('Field – ميداني بالكامل', 'Field – Full Fieldwork')}</option>
-                      <option value="Admin">{t('Admin – مكتبي / إداري', 'Admin – Office / Desk')}</option>
-                      <option value="Field & Admin">{t('Field & Admin – ميداني وإداري مختلط', 'Field & Admin – Hybrid')}</option>
+                      <option value="Office Job">{t('Office Job – مكتبي / إداري', 'Office Job – Desk / Administrative')}</option>
+                      <option value="Field Job">{t('Field Job – ميداني', 'Field Job – Field Operations')}</option>
+                      <option value="Field & Admin">{t('Field & Admin – ميداني وإداري مشترك', 'Field & Admin – Hybrid')}</option>
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('المستوى الإداري (Management Tier)', 'Management Tier')}</label>
+                    <select
+                      value={managementTier}
+                      onChange={e => setManagementTier(e.target.value)}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
+                    >
+                      <option value="Non Management">{t('Non Management – غير إداري', 'Non Management')}</option>
+                      <option value="Middle Management">{t('Middle Management – إدارة وسطى', 'Middle Management')}</option>
+                      <option value="Senior Management">{t('Senior Management – إدارة عليا', 'Senior Management')}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('تصنيف المكتب (Branch vs Main Office)', 'Branch vs Main Office')}</label>
+                    <select
+                      value={branchVsMo}
+                      onChange={e => setBranchVsMo(e.target.value)}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
+                    >
+                      <option value="Branch">{t('Branch – فرع', 'Branch')}</option>
+                      <option value="Main Office">{t('Main Office – الإدارة العامة', 'Main Office')}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('المستوى الوظيفي 1 (Position Level 1)', 'Position Level 1')}</label>
+                    <input
+                      type="text"
+                      value={positionLevel1}
+                      onChange={e => setPositionLevel1(e.target.value)}
+                      placeholder={t('مثال: Specialist / Coordinator', 'e.g. Specialist / Coordinator')}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('المستوى الوظيفي 2 (Position Level 2)', 'Position Level 2')}</label>
+                    <input
+                      type="text"
+                      value={positionLevel2}
+                      onChange={e => setPositionLevel2(e.target.value)}
+                      placeholder={t('مثال: Senior / Officer', 'e.g. Senior / Officer')}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('المسمى في ميكروفين (Microfin Position)', 'Microfin Position')}</label>
+                    <input
+                      type="text"
+                      value={microfinPosition}
+                      onChange={e => setMicrofinPosition(e.target.value)}
+                      placeholder={t('المسمى المعتمد في نظام القروض ميكروفين', 'Title in Microfin loan system')}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('خط التبعية الإداري (Admin Line)', 'Admin Line')}</label>
+                    <input
+                      type="text"
+                      value={adminLine}
+                      onChange={e => setAdminLine(e.target.value)}
+                      placeholder={t('مثال: Operations Line / HR Line', 'e.g. Operations Line / HR Line')}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('تقييم الأداء الأخير (Perf Rating)', 'Last Review Perf Rating')}</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1"
+                      max="100"
+                      value={perfRating}
+                      onChange={e => setPerfRating(e.target.value)}
+                      placeholder={t('مثال: 85% أو 4.5 من 5', 'e.g. 85 or 4.5 out of 5')}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none placeholder:text-slate-500 font-mono"
+                    />
                   </div>
                 </div>
               </div>

@@ -13,9 +13,14 @@ import exactWorkbooksData from '../data/exactWorkbooksData.json';
 
 // Initialize in-memory dataset with local storage override if user updated workbooks
 let currentDataset: HrMasterDataset = rawDataset as any;
+let currentExactWorkbooks: any = exactWorkbooksData;
 
 export function getExactWorkbooksData(): any {
-  return exactWorkbooksData;
+  return currentExactWorkbooks;
+}
+
+export function setExactWorkbooksData(data: any) {
+  currentExactWorkbooks = data;
 }
 
 export function getHrDataset(): HrMasterDataset {
@@ -24,6 +29,9 @@ export function getHrDataset(): HrMasterDataset {
 
 export function setHrDataset(newDataset: HrMasterDataset) {
   currentDataset = newDataset;
+  if ((newDataset as any)?.exactWorkbooks) {
+    currentExactWorkbooks = (newDataset as any).exactWorkbooks;
+  }
 }
 
 // Format numbers
@@ -69,9 +77,9 @@ export function getAvailableMonths(): string[] {
   const months = new Set<string>();
   currentDataset.metadata.reportingPeriods.payrollMonths.forEach(m => months.add(m));
   currentDataset.globalSnapshots.forEach(s => months.add(s.month));
-  if ((exactWorkbooksData as any)?.metadata?.monthsAvailable) {
-    (exactWorkbooksData as any).metadata.monthsAvailable.global?.forEach((m: string) => months.add(m));
-    (exactWorkbooksData as any).metadata.monthsAvailable.microfin?.forEach((m: string) => months.add(m));
+  if ((currentExactWorkbooks as any)?.metadata?.monthsAvailable) {
+    (currentExactWorkbooks as any).metadata.monthsAvailable.global?.forEach((m: string) => months.add(m));
+    (currentExactWorkbooks as any).metadata.monthsAvailable.microfin?.forEach((m: string) => months.add(m));
   }
   // Ensure 2026-10 is present
   months.add('2026-10');
@@ -105,7 +113,7 @@ export function generateReportData(filters: FilterState): any[] {
 
   switch (filters.reportId) {
     case 'hq_report': {
-      let list: any[] = (exactWorkbooksData as any).hqReport || [];
+      let list: any[] = (currentExactWorkbooks as any)?.hqReport || [];
       if (filters.office !== 'All') {
         list = list.filter((r: any) => r.office && r.office.toLowerCase() === filters.office.toLowerCase());
       }
@@ -131,7 +139,7 @@ export function generateReportData(filters: FilterState): any[] {
     }
 
     case 'roster_report': {
-      let list: any[] = (exactWorkbooksData as any).rosterReport || [];
+      let list: any[] = (currentExactWorkbooks as any)?.rosterReport || [];
       if (filters.office !== 'All') {
         list = list.filter((r: any) => r.office && r.office.toLowerCase() === filters.office.toLowerCase());
       }
@@ -161,7 +169,7 @@ export function generateReportData(filters: FilterState): any[] {
     }
 
     case 'global_report': {
-      const gMap = (exactWorkbooksData as any).globalReportByMonth || {};
+      const gMap = (currentExactWorkbooks as any)?.globalReportByMonth || {};
       const monthKeys = Object.keys(gMap);
       const chosenMonth = gMap[targetMonth] ? targetMonth : (gMap['2026-10'] ? '2026-10' : monthKeys[0]);
       let list: any[] = gMap[chosenMonth] || [];
@@ -179,7 +187,7 @@ export function generateReportData(filters: FilterState): any[] {
     }
 
     case 'microfin_report': {
-      const mfMap = (exactWorkbooksData as any).microfinReportByMonth || {};
+      const mfMap = (currentExactWorkbooks as any)?.microfinReportByMonth || {};
       const monthKeys = Object.keys(mfMap);
       const chosenMonth = mfMap[targetMonth] ? targetMonth : (mfMap['2026-08'] ? '2026-08' : monthKeys[0]);
       let list: any[] = mfMap[chosenMonth] || [];

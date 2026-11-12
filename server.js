@@ -1087,6 +1087,25 @@ const loadEmployeeColumns = async () => {
     await query("ALTER TABLE employees MODIFY COLUMN photo_url LONGTEXT").catch(() => {});
     await query("ALTER TABLE employees MODIFY COLUMN photo LONGBLOB").catch(() => {});
     await query("ALTER TABLE employees ADD COLUMN waid VARCHAR(50) NULL AFTER badge_no").catch(() => {});
+    
+    // Ensure all report-specific columns exist
+    await query("ALTER TABLE employees ADD COLUMN management_tier VARCHAR(50) DEFAULT 'Non Management'").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN branch_vs_mo VARCHAR(20) DEFAULT 'Branch'").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN perf_rating DECIMAL(3,1) DEFAULT NULL").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN admin_line VARCHAR(100) DEFAULT NULL").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN position_level_1 VARCHAR(100) DEFAULT NULL").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN position_level_2 VARCHAR(100) DEFAULT NULL").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN microfin_position VARCHAR(150) DEFAULT NULL").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN second_citizenship VARCHAR(100) DEFAULT NULL").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN termination_reason VARCHAR(255) DEFAULT NULL").catch(() => {});
+
+    await query("ALTER TABLE payroll_finalized_rows ADD COLUMN employer_social_security_12 DECIMAL(15,2) DEFAULT 0.00").catch(() => {});
+    await query("ALTER TABLE payroll_finalized_rows ADD COLUMN family_allowance DECIMAL(15,2) DEFAULT 0.00").catch(() => {});
+    await query("ALTER TABLE payroll_finalized_rows ADD COLUMN overtime_amount DECIMAL(15,2) DEFAULT 0.00").catch(() => {});
+    await query("ALTER TABLE payroll_finalized_rows ADD COLUMN adjust_1 DECIMAL(15,2) DEFAULT 0.00").catch(() => {});
+    await query("ALTER TABLE payroll_finalized_rows ADD COLUMN adjust_2 DECIMAL(15,2) DEFAULT 0.00").catch(() => {});
+    await query("ALTER TABLE payroll_finalized_rows ADD COLUMN earnings_2 DECIMAL(15,2) DEFAULT 0.00").catch(() => {});
+
     const cols = await query('SHOW COLUMNS FROM employees');
     employeeTableColumns = new Set(cols.map(c => c.Field));
     console.log('Detected employees table columns:', Array.from(employeeTableColumns));
@@ -1593,6 +1612,15 @@ app.post('/api/employees', async (req, res) => {
       grade: grade,
       trainings_record: trainingsRecord,
       warnings_record: warningsRecord,
+      management_tier: data.management_tier || data.managementTier || data.tier || 'Non Management',
+      branch_vs_mo: data.branch_vs_mo || data.branchVsMo || data.branchVsMO || (branch && (branch.toLowerCase().includes('main') || branch.toLowerCase().includes('hq') || branch.includes('العامة')) ? 'Main Office' : 'Branch'),
+      perf_rating: data.perf_rating !== undefined && data.perf_rating !== null && data.perf_rating !== '' ? Number(data.perf_rating || data.perfRating) : null,
+      admin_line: data.admin_line || data.adminLine || null,
+      position_level_1: data.position_level_1 || data.positionLevel1 || data.position1 || null,
+      position_level_2: data.position_level_2 || data.positionLevel2 || data.position2 || null,
+      microfin_position: data.microfin_position || data.microfinPosition || null,
+      second_citizenship: data.second_citizenship || data.secondCitizenship || null,
+      termination_reason: data.termination_reason || data.terminationReason || data.reason || null,
       is_ss_tax_exempt: (data.is_ss_tax_exempt === 1 || data.is_ss_tax_exempt === '1' || data.is_ss_tax_exempt === true || data.isSsTaxExempt === true) ? 1 : 0,
       ss_tax_exemption_reason: data.ss_tax_exemption_reason || data.ssTaxExemptionReason || null,
       status: statusVal
@@ -7141,6 +7169,19 @@ The annualized turnover rate closed at ${turnover}, well within standard benchma
   } catch (error) {
     console.error('Error generating executive insights:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── Live Reports & Analytics Dataset Endpoint ────
+import { buildLiveReportsDataset } from './database/reportsLiveSync.js';
+
+app.get('/api/reports/live-dataset', async (req, res) => {
+  try {
+    const dataset = await buildLiveReportsDataset(query);
+    res.json({ success: true, dataset });
+  } catch (err) {
+    console.error('Error generating live reports dataset:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
