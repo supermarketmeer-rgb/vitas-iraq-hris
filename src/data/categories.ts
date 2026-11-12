@@ -73,10 +73,10 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
       },
       {
         id: 'sys-dynamic-reports',
-        title: 'منشئ التقارير الديناميكية (Query Builder)',
-        titleEn: 'Dynamic Report Builder & Excel Engine',
-        icon: 'table_chart',
-        description: 'بناء تقارير مخصصة، اختيار الجداول والحقول، التصفية المتقدمة، التحديث التلقائي وتصدير إكسل'
+        title: 'التقارير الشهرية والتحليلات التنفيذية',
+        titleEn: 'HR Monthly Reports & Executive Analytics',
+        icon: 'analytics',
+        description: 'تقارير شهرية تنفيذية، مقارنة الفترات، بطاقات KPI، المخططات التفاعلية وتصدير إكسل'
       }
     ]
   },

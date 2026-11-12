@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
 import { DatabaseSchemaViewer } from '../components/DatabaseSchemaViewer';
 import { DynamicReportBuilder } from '../components/DynamicReportBuilder';
+import { MonthlyReportsView } from '../monthly_reports/MonthlyReportsView';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -272,7 +273,7 @@ export const Category10SystemDevView: React.FC = () => {
       )}
 
       {activeModuleId === 'sys-dynamic-reports' && (
-        <DynamicReportBuilder />
+        <MonthlyReportsView />
       )}
 
       {(activeModuleId === 'sys-health-config' ||

@@ -41,6 +41,7 @@ import { DriversModuleView } from './views/DriversModuleView';
 import { IncentivesModuleView } from './incentives_module/IncentivesModuleView';
 import { LebanonRegionalView } from './regional_module/LebanonRegionalView';
 import { DynamicReportBuilder } from './components/DynamicReportBuilder';
+import { MonthlyReportsView } from './monthly_reports/MonthlyReportsView';
 import { CandidatePortal } from './components/recruitment/CandidatePortal';
 import { EmployeePortal } from './components/EmployeePortal';
 import { EmployeePortalView } from './views/EmployeePortalView';
@@ -324,7 +325,7 @@ function AppContent() {
       case 'sys-database':
         return <DatabaseSchemaViewer />;
       case 'sys-dynamic-reports':
-        return <DynamicReportBuilder />;
+        return <MonthlyReportsView />;
 
       default:
         if (currentUser?.role === 'Recruiter') {
