@@ -28,7 +28,7 @@ import { SnapshotArchiveModal } from './components/SnapshotArchiveModal';
 import { TemplatesModal } from './components/TemplatesModal';
 
 export const MonthlyReportsView: React.FC = () => {
-  const { language: appLang, setLanguage, isDark, toggleTheme } = useApp();
+  const { language: appLang } = useApp();
   const language: Language = appLang === 'en' ? 'en' : 'ar';
   const isAr = language === 'ar';
 
@@ -242,13 +242,9 @@ export const MonthlyReportsView: React.FC = () => {
       {/* 1. Header Section */}
       <Header
         language={language}
-        onLanguageChange={setLanguage}
-        isDark={isDark}
-        onThemeToggle={toggleTheme}
         reportingPeriod={filters.selectedMonth}
         onExportExcel={handleExportExcel}
         onPrintPreview={handlePrintPreview}
-        onOpenAiInsights={() => setIsAiInsightsOpen(true)}
         onOpenDataQuality={() => setIsDataQualityOpen(true)}
         onOpenSnapshots={() => setIsSnapshotsOpen(true)}
         onOpenTemplates={() => setIsTemplatesOpen(true)}
@@ -259,44 +255,6 @@ export const MonthlyReportsView: React.FC = () => {
       {/* Main Workspace */}
       <main className="w-full space-y-5">
         
-        {/* Live Database Integration Banner */}
-        <section aria-label="Live Database Status" className={`flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl border transition-all ${
-          isLiveConnected 
-            ? 'bg-teal-500/10 border-teal-500/30 text-teal-900 dark:text-teal-200'
-            : 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
-        }`}>
-          <div className="flex items-center gap-2.5">
-            <span className={`w-2.5 h-2.5 rounded-full ${isLiveConnected ? 'bg-teal-500 animate-pulse' : 'bg-amber-500'}`} />
-            <span className="material-symbols-outlined text-lg text-teal-600 dark:text-teal-400">
-              {isLiveConnected ? 'database' : 'cloud_sync'}
-            </span>
-            <div>
-              <span className="font-bold text-xs sm:text-sm">
-                {isLiveConnected 
-                  ? (isAr ? `قاعدة البيانات الفعلية مربوطة بنجاح (${liveEmpCount} موظفاً فعلياً في النظام)` : `Live Database Connected (${liveEmpCount} Active Employees)`)
-                  : (isAr ? 'جاري الاتصال بقاعدة البيانات الحية للنظام...' : 'Connecting to Live Database...')}
-              </span>
-              {lastSyncTime && (
-                <span className="text-[11px] opacity-75 mx-2">
-                  {isAr ? `(آخر تحديث مباشر: ${lastSyncTime})` : `(Last sync: ${lastSyncTime})`}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <button
-            onClick={fetchLiveDataset}
-            disabled={isLoadingLive}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 active:scale-95 text-white text-xs font-semibold shadow transition-all cursor-pointer disabled:opacity-50"
-            title={isAr ? 'إعادة تحميل أحدث البيانات الفعلية من قاعدة البيانات' : 'Reload latest live data from database'}
-          >
-            <span className={`material-symbols-outlined text-sm ${isLoadingLive ? 'animate-spin' : ''}`}>
-              sync
-            </span>
-            <span>{isLoadingLive ? (isAr ? 'جاري التحديث...' : 'Refreshing...') : (isAr ? 'تحديث البيانات الحية' : 'Refresh Live Data')}</span>
-          </button>
-        </section>
-
         {/* 2. Prominent Searchable Report Selection ComboBox */}
         <section aria-label="Report Selection">
           <ReportSelector

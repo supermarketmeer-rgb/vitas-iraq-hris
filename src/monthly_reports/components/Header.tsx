@@ -1,32 +1,21 @@
 import React from 'react';
 import { 
-  Building2, 
   FileSpreadsheet, 
   Printer, 
-  Sparkles, 
   Calendar, 
   ShieldCheck, 
   Clock, 
-  Globe2,
-  Languages, 
-  Moon, 
-  Sun,
   Camera,
   Layers,
-  BookmarkCheck,
-  CheckCircle2
+  BookmarkCheck
 } from 'lucide-react';
 import { Language } from '../types/hr';
 
 interface HeaderProps {
   language: Language;
-  onLanguageChange: (lang: Language) => void;
-  isDark: boolean;
-  onThemeToggle: () => void;
   reportingPeriod: string;
   onExportExcel: () => void;
   onPrintPreview: () => void;
-  onOpenAiInsights: () => void;
   onOpenDataQuality: () => void;
   onOpenSnapshots: () => void;
   onOpenTemplates: () => void;
@@ -36,13 +25,9 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   language,
-  onLanguageChange,
-  isDark,
-  onThemeToggle,
   reportingPeriod,
   onExportExcel,
   onPrintPreview,
-  onOpenAiInsights,
   onOpenDataQuality,
   onOpenSnapshots,
   onOpenTemplates,
@@ -58,62 +43,32 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          
-          {/* Brand & Organization Title */}
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-teal-600 text-white flex items-center justify-center shadow-sm shrink-0">
-              <Building2 className="w-6 h-6 text-teal-400 dark:text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-                  {isAr ? 'مؤسسة فيتاس العراق' : 'VITAS Iraq'}
-                </h1>
-                <span className="text-xs px-2 py-0.5 rounded font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {isAr ? 'التمويل الأصغر' : 'Microfinance'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                {isAr ? 'نظام التقارير والتحليلات الشهرية للموارد البشرية' : 'HR Monthly Reports & Executive Analytics System'}
-              </p>
-            </div>
-          </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div className="flex flex-wrap items-center gap-3">
 
           {/* Center Metadata Strip */}
-          <div className="hidden sm:flex items-center gap-6 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700/60">
+          <div className="flex items-center gap-5 text-xs text-teal-700 dark:text-teal-300 bg-teal-50/50 dark:bg-teal-950/30 px-3.5 py-1.5 rounded-lg border border-teal-200 dark:border-teal-800/60 mr-auto">
             <div className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" />
               <span>{isAr ? 'الفترة:' : 'Period:'}</span>
-              <span className="font-semibold text-slate-900 dark:text-white font-mono">{reportingPeriod}</span>
+              <span className="font-semibold text-teal-900 dark:text-teal-100 font-mono">{reportingPeriod}</span>
             </div>
-            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <span className="text-teal-300 dark:text-teal-700">|</span>
             <div className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-emerald-500" />
+              <Clock className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" />
               <span>{isAr ? 'التاريخ:' : 'Date:'}</span>
-              <span className="font-medium text-slate-700 dark:text-slate-200">{today}</span>
+              <span className="font-medium text-teal-800 dark:text-teal-200">{today}</span>
             </div>
-            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <span className="text-teal-300 dark:text-teal-700">|</span>
             <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+              <ShieldCheck className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" />
               <span>{isAr ? 'المصنفات:' : 'Sources:'}</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">5 Workbooks</span>
+              <span className="font-semibold text-teal-900 dark:text-teal-100">5 Workbooks</span>
             </div>
           </div>
 
           {/* Action Toolbar */}
-          <div className="flex items-center flex-wrap gap-2">
-            
-            {/* AI Insights Button */}
-            <button
-              onClick={onOpenAiInsights}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/60 rounded-lg transition-colors border border-teal-200 dark:border-teal-800"
-              title={isAr ? 'تحليلات الذكاء الاصطناعي للمدير العام' : 'Executive AI Management Insights'}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-              <span>{isAr ? 'رؤى الإدارة (AI)' : 'AI Insights'}</span>
-            </button>
+          <div className="flex items-center gap-2">
 
             {/* Monthly Snapshot Archive */}
             <button
@@ -155,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{isAr ? 'القوالب' : 'Templates'}</span>
             </button>
 
-            <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+            <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
 
             {/* Print / PDF Button */}
             <button
@@ -174,31 +129,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
               <span>{isExportingExcel ? (isAr ? 'جاري التصدير...' : 'Exporting...') : (isAr ? 'تصدير Excel' : 'Export Excel')}</span>
-            </button>
-
-            {/* Language Switcher to English / Arabic */}
-            <button
-              onClick={() => onLanguageChange(isAr ? 'en' : 'ar')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-teal-300 dark:hover:border-teal-600 transition-colors shadow-2xs group"
-              title={isAr ? 'التبديل إلى اللغة الإنجليزية (Switch to English)' : 'التبديل إلى اللغة العربية (Switch to Arabic)'}
-              aria-label={isAr ? 'Switch language to English' : 'التبديل إلى اللغة العربية'}
-            >
-              <Languages className="w-4 h-4 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform" />
-              <span className="font-medium text-slate-800 dark:text-slate-200">
-                {isAr ? 'English' : 'العربية'}
-              </span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300">
-                {isAr ? 'EN' : 'عربي'}
-              </span>
-            </button>
-
-            {/* Theme Toggle */}
-            <button
-              onClick={onThemeToggle}
-              className="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-              title={isDark ? 'Light Mode' : 'Dark Mode'}
-            >
-              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
             </button>
 
           </div>
