@@ -1098,14 +1098,23 @@ export const SettingsSecurityView: React.FC = () => {
           'الجنس': emp.gender === 'female' || emp.gender === 'أنثى' ? 'أنثى' : 'ذكر',
           'الحالة الاجتماعية': sanitizeCellText(emp.maritalStatus || emp.marital_status || ''),
           'الجنسية': sanitizeCellText(emp.nationality || 'عراقي'),
+          'الجنسية الثانية': sanitizeCellText(emp.secondCitizenship || emp.second_citizenship || 'N/A'),
           'الدرجة العلمية / Graduation Degree': sanitizeCellText(emp.graduationDegree || emp.graduation_degree || ''),
           'تاريخ المباشرة': sanitizeCellText(emp.originalStartDate || emp.original_start_date || emp.contract_original_start || emp.joinDate || ''),
           'تاريخ بداية العقد': sanitizeCellText(emp.contractStartDate || emp.contract_start_date || ''),
           'تاريخ نهاية العقد': sanitizeCellText(emp.contractEndDate || emp.contract_end_date || ''),
           'نهاية فترة التجربة': sanitizeCellText(emp.probationEndDate || emp.probation_end_date || ''),
           'تاريخ المغادرة': sanitizeCellText(emp.exitDate || emp.exit_date || ''),
+          'سبب ترك العمل أو الاستقالة': sanitizeCellText(emp.terminationReason || emp.termination_reason || ''),
           'نوع العقد': sanitizeCellText(emp.termOfContract || emp.term_of_contract || ''),
           'الدرجة الوظيفية': sanitizeCellText(emp.grade || ''),
+          'المستوى الإداري (Management Tier)': sanitizeCellText(emp.managementTier || emp.management_tier || emp.tier || 'Non Management'),
+          'تصنيف المكتب (Branch vs MO)': sanitizeCellText(emp.branchVsMo || emp.branch_vs_mo || emp.branchVsMO || 'Branch'),
+          'المستوى الوظيفي 1 (Position Level 1)': sanitizeCellText(emp.positionLevel1 || emp.position_level_1 || emp.position1 || ''),
+          'المستوى الوظيفي 2 (Position Level 2)': sanitizeCellText(emp.positionLevel2 || emp.position_level_2 || emp.position2 || ''),
+          'المسمى في ميكروفين (Microfin Position)': sanitizeCellText(emp.microfinPosition || emp.microfin_position || ''),
+          'خط التبعية الإداري (Admin Line)': sanitizeCellText(emp.adminLine || emp.admin_line || ''),
+          'تقييم الأداء (Performance Rating)': emp.perfRating || emp.perf_rating || '',
           'المسمى الوظيفي (عربي)': sanitizeCellText(emp.jobTitle || emp.position_ar || emp.position || ''),
           'المسمى الوظيفي (إنجليزي)': sanitizeCellText(emp.jobTitleEn || emp.position_en || ''),
           'القسم / الإدارة (عربي)': sanitizeCellText(emp.department || ''),
@@ -1184,13 +1193,21 @@ export const SettingsSecurityView: React.FC = () => {
           'Job Title (English)': 'Senior Credit Officer',
           'Branch (Arabic)': 'فرع بغداد - الكرادة',
           'Branch (English)': 'Baghdad Branch - Karrada',
-          'Work Scope': 'ميداني ومكتبي',
+          'Branch vs Main Office': 'Branch',
+          'Work Scope': 'Field Job',
+          'Management Tier': 'Middle Management',
+          'Admin Line': 'Operations Line',
+          'Position Level 1': 'Specialist',
+          'Position Level 2': 'Senior',
+          'Microfin Position': 'Senior Credit Officer',
+          'Performance Rating': 85,
           'Grade': 'G-4 الدرجة الرابعة',
           'Supervisor Name': 'أحمد جاسم المحمداوي',
           'Date of Birth': '1990-01-01',
           'Gender': 'ذكر',
           'Marital Status': 'متأهل',
           'Nationality': 'عراقي',
+          'Second Citizenship': 'N/A',
           'Graduation Degree': 'Bachelar',
           'Phone': '07700000000',
           'Emergency Phone': '07800000000',
@@ -1204,6 +1221,7 @@ export const SettingsSecurityView: React.FC = () => {
           'Contract End Date': '2025-01-01',
           'Probation End Date': '2024-04-01',
           'Exit Date': '',
+          'Termination Reason': '',
           'Term of Contract': 'عقد محدد المدة (سنة واحدة)',
           'Basic Salary': 1200000,
           'Written Basic Salary (Arabic)': 'مليون ومائتا ألف دينار عراقي',
@@ -1248,13 +1266,21 @@ export const SettingsSecurityView: React.FC = () => {
           'Job Title (English)': 'Senior Accountant',
           'Branch (Arabic)': 'الفرع الرئيسي - بغداد',
           'Branch (English)': 'Head Office - Baghdad',
-          'Work Scope': 'مكتبي',
+          'Branch vs Main Office': 'Main Office',
+          'Work Scope': 'Office Job',
+          'Management Tier': 'Non Management',
+          'Admin Line': 'Finance Line',
+          'Position Level 1': 'Officer',
+          'Position Level 2': 'Principal',
+          'Microfin Position': 'Senior Accountant',
+          'Performance Rating': 90,
           'Grade': 'G-3 الدرجة الثالثة',
           'Supervisor Name': 'حسن كمال الدين',
           'Date of Birth': '1993-04-15',
           'Gender': 'أنثى',
           'Marital Status': 'متأهل',
           'Nationality': 'عراقي',
+          'Second Citizenship': 'N/A',
           'Graduation Degree': 'Master',
           'Phone': '07711111111',
           'Emergency Phone': '07811111111',
@@ -1268,6 +1294,7 @@ export const SettingsSecurityView: React.FC = () => {
           'Contract End Date': '2025-03-15',
           'Probation End Date': '2024-06-15',
           'Exit Date': '',
+          'Termination Reason': '',
           'Term of Contract': 'عقد غير محدد المدة (دائم)',
           'Basic Salary': 1500000,
           'Written Basic Salary (Arabic)': 'مليون وخمسمائة ألف دينار عراقي',
@@ -1668,7 +1695,37 @@ export const SettingsSecurityView: React.FC = () => {
             const branch = getVal(row, ['Branch (Arabic)', 'Branch (AR)', 'Location (AR)', 'Location (Arabic)', 'branch', 'branch_ar', 'location', 'location_ar', 'الفرع (عربي)', 'الموقع (عربي)', 'الفرع العربي', 'الفرع', 'الموقع', 'مكان العمل']);
             const branchEn = getVal(row, ['Branch (English)', 'Branch (EN)', 'Location (EN)', 'Location (English)', 'branchEn', 'branch_en', 'location_en', 'الفرع (إنجليزي)', 'الفرع (انجليزي)', 'الموقع (إنجليزي)', 'الفرع الإنجليزي', 'Branch English']) || branch;
             const supervisorName = getVal(row, ['Supervisor Name', 'supervisorName', 'supervisor_name', 'اسم المشرف المباشر', 'اسم المشرف', 'المشرف', 'المدير المباشر']);
-            const workScope = getVal(row, ['Work Scope', 'workScope', 'نطاق العمل']) || 'ميداني ومكتبي';
+
+            // Work Scope (Harmonized with Office Job & Field Job)
+            const rawWorkScope = getVal(row, ['Work Scope', 'workScope', 'work_scope', 'نطاق العمل', 'طبيعة العمل', 'نطاق وطبيعة العمل']) || 'Office Job';
+            let workScope = 'Office Job';
+            if (rawWorkScope.toLowerCase().includes('field & admin') || rawWorkScope.includes('ميداني ومكتبي')) {
+              workScope = 'Field & Admin';
+            } else if (rawWorkScope.toLowerCase().includes('field') || rawWorkScope.includes('ميداني')) {
+              workScope = 'Field Job';
+            } else {
+              workScope = 'Office Job';
+            }
+
+            // Management Tier
+            const managementTier = getVal(row, ['Management Tier', 'managementTier', 'management_tier', 'tier', 'المستوى الإداري', 'المستوى الاداري', 'المستوى']) || 'Non Management';
+
+            // Branch vs Main Office
+            const branchVsMo = getVal(row, ['Branch vs Main Office', 'Branch vs MO', 'branchVsMo', 'branch_vs_mo', 'branchVsMO', 'تصنيف المكتب', 'فرع أم إدارة عامة']) || (branch && (branch.toLowerCase().includes('main') || branch.toLowerCase().includes('hq') || branch.includes('الرئيسي') || branch.includes('العامة')) ? 'Main Office' : 'Branch');
+
+            // Admin Line
+            const adminLine = getVal(row, ['Admin Line', 'adminLine', 'admin_line', 'خط التبعية الإداري', 'خط التبعية الاداري', 'التبعية الإدارية']) || supervisorName || '';
+
+            // Position Levels
+            const positionLevel1 = getVal(row, ['Position Level 1', 'positionLevel1', 'position_level_1', 'position1', 'المستوى الوظيفي 1', 'المستوى الوظيفي الأول']) || '';
+            const positionLevel2 = getVal(row, ['Position Level 2', 'positionLevel2', 'position_level_2', 'position2', 'المستوى الوظيفي 2', 'المستوى الوظيفي الثاني']) || '';
+            const microfinPosition = getVal(row, ['Microfin Position', 'microfinPosition', 'microfin_position', 'مسمى ميكروفين', 'مسمى الوظيفة في ميكروفين', 'وظيفة ميكروفين']) || jobTitle || '';
+
+            // Second Citizenship
+            const secondCitizenship = getVal(row, ['Second Citizenship', '2nd Citizenship', 'secondCitizenship', 'second_citizenship', 'الجنسية الثانية', 'الجنسية 2']) || 'N/A';
+
+            // Termination Reason
+            const terminationReason = getVal(row, ['Termination Reason', 'terminationReason', 'termination_reason', 'reason', 'سبب ترك العمل', 'سبب الاستقالة', 'سبب إنهاء الخدمة']) || '';
 
             const parseValToNum = (v: any): number => {
               if (v === undefined || v === null) return 0;
@@ -1722,6 +1779,9 @@ export const SettingsSecurityView: React.FC = () => {
 
             const rawStatus = getVal(row, ['Status', 'status', 'الحالة', 'حالة الموظف']) || 'Active';
             const status = (rawStatus.toLowerCase().includes('inact') || rawStatus.includes('غير نشط')) ? 'Inactive' : 'Active';
+
+            const rawPerfRating = getVal(row, ['Performance Rating', 'perfRating', 'perf_rating', 'Rating', 'تقييم الأداء', 'تقييم الاداء', 'درجة التقييم']);
+            const perfRating = rawPerfRating !== '' ? parseValToNum(rawPerfRating) : null;
 
             // Auto-add Branch / Location to Settings if missing
             if (branch && !currentLocations.some(l => l.name_ar === branch || l.name === branch || (branchEn && l.name_en === branchEn))) {
@@ -1797,6 +1857,27 @@ export const SettingsSecurityView: React.FC = () => {
               branchEn,
               supervisorName,
               workScope,
+              work_scope: workScope,
+              managementTier,
+              management_tier: managementTier,
+              tier: managementTier,
+              branchVsMo,
+              branch_vs_mo: branchVsMo,
+              branchVsMO: branchVsMo,
+              adminLine,
+              admin_line: adminLine,
+              positionLevel1,
+              position_level_1: positionLevel1,
+              positionLevel2,
+              position_level_2: positionLevel2,
+              microfinPosition,
+              microfin_position: microfinPosition,
+              secondCitizenship,
+              second_citizenship: secondCitizenship,
+              terminationReason,
+              termination_reason: terminationReason,
+              perfRating,
+              perf_rating: perfRating,
               basicSalary,
               writtenBasicSalaryAr,
               transportationFixed,
