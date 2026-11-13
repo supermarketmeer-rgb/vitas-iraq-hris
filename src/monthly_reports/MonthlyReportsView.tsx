@@ -36,8 +36,8 @@ export const MonthlyReportsView: React.FC = () => {
   // Selected Report
   const [selectedReport, setSelectedReport] = useState<ReportDefinition>(REPORT_CATALOG[0]);
 
-  // Selected Columns
-  const [selectedColumns, setSelectedColumns] = useState<string[]>(REPORT_CATALOG[0].defaultColumns);
+  // Selected Columns — all columns checked by default
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(REPORT_CATALOG[0].columns.map(c => c.key));
 
   // Filters State
   const [filters, setFilters] = useState<FilterState>({
@@ -110,10 +110,10 @@ export const MonthlyReportsView: React.FC = () => {
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
 
-  // Handle report selection
+  // Handle report selection — check all columns by default
   const handleSelectReport = (report: ReportDefinition) => {
     setSelectedReport(report);
-    setSelectedColumns(report.defaultColumns);
+    setSelectedColumns(report.columns.map(c => c.key));
     setFilters(prev => ({
       ...prev,
       reportId: report.id
@@ -159,7 +159,11 @@ export const MonthlyReportsView: React.FC = () => {
   };
 
   const handleResetColumns = () => {
-    setSelectedColumns(selectedReport.defaultColumns);
+    setSelectedColumns(selectedReport.columns.map(c => c.key));
+  };
+
+  const handleSelectAllColumns = () => {
+    setSelectedColumns(selectedReport.columns.map(c => c.key));
   };
 
   // Chart handlers
@@ -308,6 +312,7 @@ export const MonthlyReportsView: React.FC = () => {
               selectedColumns={selectedColumns}
               onToggleColumn={handleToggleColumn}
               onResetColumns={handleResetColumns}
+              onSelectAllColumns={handleSelectAllColumns}
               language={language}
             />
           )}

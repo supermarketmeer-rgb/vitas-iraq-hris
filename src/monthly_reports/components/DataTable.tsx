@@ -18,6 +18,7 @@ interface DataTableProps {
   selectedColumns: string[];
   onToggleColumn: (colKey: string) => void;
   onResetColumns: () => void;
+  onSelectAllColumns?: () => void;
   language: Language;
 }
 
@@ -27,6 +28,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   selectedColumns,
   onToggleColumn,
   onResetColumns,
+  onSelectAllColumns,
   language
 }) => {
   const isAr = language === 'ar';
@@ -157,12 +159,23 @@ export const DataTable: React.FC<DataTableProps> = ({
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {isAr ? 'إظهار / إخفاء الأعمدة' : 'Customize Columns'}
                   </span>
-                  <button
-                    onClick={onResetColumns}
-                    className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline"
-                  >
-                    {isAr ? 'استعادة الافتراضي' : 'Reset'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={onSelectAllColumns || onResetColumns}
+                      className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline font-semibold"
+                    >
+                      {isAr ? 'تحديد الكل' : 'Select All'}
+                    </button>
+                    <span className="text-slate-300 dark:text-slate-700">|</span>
+                    <button
+                      type="button"
+                      onClick={onResetColumns}
+                      className="text-[11px] text-slate-500 hover:underline"
+                    >
+                      {isAr ? 'استعادة الافتراضي' : 'Reset'}
+                    </button>
+                  </div>
                 </div>
                 <div className="max-h-56 overflow-y-auto space-y-1 custom-scrollbar pr-1">
                   {report.columns.map(col => {

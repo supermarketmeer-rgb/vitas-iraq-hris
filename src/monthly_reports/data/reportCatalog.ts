@@ -646,6 +646,11 @@ export const REPORT_CATALOG: ReportDefinition[] = [
   }
 ];
 
+// Set all columns checked by default across all reports
+REPORT_CATALOG.forEach(report => {
+  report.defaultColumns = report.columns.map(c => c.key);
+});
+
 export function getReportById(id: string): ReportDefinition {
   const report = REPORT_CATALOG.find(r => r.id === id);
   return report || REPORT_CATALOG[0];
