@@ -1399,7 +1399,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem(key);
     }
     window.dispatchEvent(new CustomEvent('vitas_employees_updated', { detail: [] }));
+    window.dispatchEvent(new CustomEvent('vitas_departments_updated', { detail: [] }));
     window.dispatchEvent(new CustomEvent('vitas:data_refreshed', { detail: { table: 'all' } }));
+    window.dispatchEvent(new CustomEvent('vitas:data_refreshed', { detail: { table: 'departments' } }));
+    window.dispatchEvent(new Event('storage'));
   };
 
   // Branch Manager Scope & Segregation

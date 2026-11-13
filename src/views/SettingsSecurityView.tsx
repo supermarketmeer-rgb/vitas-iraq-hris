@@ -99,6 +99,12 @@ export const SettingsSecurityView: React.FC = () => {
         setPositions([]);
         setDepartments([]);
         if (setEmployees) setEmployees([]);
+        try {
+          localStorage.removeItem('vitas_departments');
+          localStorage.removeItem('vitas_branches');
+          localStorage.removeItem('vitas_positions');
+          localStorage.removeItem('vitas_employees');
+        } catch (e) {}
         await loadData();
         alert(language === 'ar' 
           ? 'تم حذف جدول الموظفين وتفريغ الفروع والمسميات والأقسام بنجاح.' 

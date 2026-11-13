@@ -1826,10 +1826,12 @@ async function executeDeleteAllEmployees(req, res) {
       executeCloudQuery('TRUNCATE TABLE settings_positions').catch(() => executeCloudQuery('DELETE FROM settings_positions')).catch(() => {});
     }
 
-    // 4. Clear Departments (departments)
+    // 4. Clear Departments (departments and department_heads)
     await query('TRUNCATE TABLE departments').catch(() => query('DELETE FROM departments'));
+    await query('TRUNCATE TABLE department_heads').catch(() => query('DELETE FROM department_heads'));
     if (!isRailway) {
       executeCloudQuery('TRUNCATE TABLE departments').catch(() => executeCloudQuery('DELETE FROM departments')).catch(() => {});
+      executeCloudQuery('TRUNCATE TABLE department_heads').catch(() => executeCloudQuery('DELETE FROM department_heads')).catch(() => {});
     }
 
     // 5. Clear related employee-specific tables
@@ -1954,8 +1956,31 @@ app.delete('/api/employees/:id', async (req, res) => {
       }
     }
 
+    // 4. Also clean up department if employee was head or if department becomes empty
+    const empDept = emp ? (emp.department || '').trim() : null;
+    if (empDept) {
+      await query('UPDATE departments SET manager_id = NULL, manager_name = NULL WHERE manager_id = ? OR manager_id = ?', [id, targetDbId]).catch(() => {});
+      await query('DELETE FROM department_heads WHERE employee_id = ? OR badge_no = ?', [targetDbId, targetCode]).catch(() => {});
+
+      const remaining = await query(
+        'SELECT COUNT(*) as cnt FROM employees WHERE (department = ? OR department = ?) AND id != ? AND employee_id != ?',
+        [empDept, empDept, id, targetCode]
+      ).catch(() => [{ cnt: 1 }]);
+      
+      const count = remaining && remaining[0] ? remaining[0].cnt : 1;
+      if (count === 0) {
+        console.log(`[DELETE-EMPLOYEE] Department "${empDept}" has no remaining employees. Removing from departments...`);
+        await query('DELETE FROM departments WHERE name = ? OR name_ar = ? OR name_en = ?', [empDept, empDept, empDept]).catch(() => {});
+        if (!isRailway) {
+          executeCloudQuery('DELETE FROM departments WHERE name = ? OR name_ar = ? OR name_en = ?', [empDept, empDept, empDept]).catch(() => {});
+        }
+        triggerRealtimeSync(db, 'departments');
+      }
+    }
+
     // Immediate sync triggering
     triggerRealtimeSync(db, 'employees');
+    triggerRealtimeSync(db, 'departments');
     syncLocalToCloud(db).catch(() => {});
 
     res.json({ success: true, message: 'Employee and associated user deleted successfully' });
@@ -3571,11 +3596,7 @@ app.patch('/api/departments/:id/manager-location', async (req, res) => {
 // Settings - Departments CRUD
 app.get(['/api/settings/departments', '/api/departments'], async (req, res) => {
   try {
-    let results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
-    if (!results || results.length === 0) {
-      await syncSettingsFromEmployees().catch(() => {});
-      results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
-    }
+    const results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
     const employees = await query('SELECT id, department, branch, status FROM employees').catch(() => []);
     const branches = await query('SELECT id, name, name_ar, name_en, status FROM branches').catch(() => []);
     const positions = await query('SELECT id, department_id, department FROM positions').catch(() => []);
