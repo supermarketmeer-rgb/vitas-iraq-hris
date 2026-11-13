@@ -1797,48 +1797,8 @@ app.post('/api/employees/:id/trainings', async (req, res) => {
   }
 });
 
-app.delete('/api/employees/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    // 1. Fetch employee info prior to deletion to get both numeric ID and business employee_id
-    const empRows = await query('SELECT id, employee_id FROM employees WHERE id = ? OR employee_id = ?', [id, id]).catch(() => []);
-    const emp = empRows && empRows[0];
-
-    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
-    const sourceEnv = isRailway ? 'cloud' : 'local';
-
-    // 2. Perform deletion from employees and associated users
-    await query('DELETE FROM employees WHERE id = ? OR employee_id = ?', [id, id]);
-    if (emp && emp.employee_id) {
-      await query('DELETE FROM users WHERE employee_id = ? OR username = ?', [emp.employee_id, emp.employee_id]).catch(() => {});
-    }
-
-    // 3. Record tombstones for both DB ID and employee_id to guarantee Cloud & Local deletion sync
-    const tombSql = 'INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE source_env = VALUES(source_env), deleted_at = NOW()';
-    
-    db.query(tombSql, ['employees', String(id), sourceEnv], () => {});
-    if (!isRailway) executeCloudQuery(tombSql, ['employees', String(id), 'local']).catch(() => {});
-
-    if (emp && emp.employee_id) {
-      db.query(tombSql, ['employees', String(emp.employee_id), sourceEnv], () => {});
-      db.query(tombSql, ['users', String(emp.employee_id), sourceEnv], () => {});
-      if (!isRailway) {
-        executeCloudQuery(tombSql, ['employees', String(emp.employee_id), 'local']).catch(() => {});
-        executeCloudQuery(tombSql, ['users', String(emp.employee_id), 'local']).catch(() => {});
-      }
-    }
-
-    // Immediate sync triggering
-    syncLocalToCloud(db).catch(() => {});
-
-    res.json({ success: true, message: 'Employee and associated user deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Delete Entire Employees Table and clear Locations (branches), Positions, and Departments
-app.delete(['/api/employees', '/api/employees/all', '/api/settings/employees/all'], async (req, res) => {
+// Shared handler for Delete All Employees
+async function executeDeleteAllEmployees(req, res) {
   try {
     const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
     console.log('[DELETE-ALL-EMPLOYEES] Deleting all employees and clearing branches, positions, departments...');
@@ -1881,7 +1841,14 @@ app.delete(['/api/employees', '/api/employees/all', '/api/settings/employees/all
       'employee_trainings',
       'employee_warnings',
       'employee_contracts',
-      'biometric_user_cache'
+      'biometric_user_cache',
+      'approval_requests',
+      'salary_slips',
+      'support_tickets',
+      'notifications',
+      'assets',
+      'employee_children',
+      'leave_requests'
     ];
     for (const tbl of employeeRelatedTables) {
       await query(`TRUNCATE TABLE \`${tbl}\``).catch(() => query(`DELETE FROM \`${tbl}\``)).catch(() => {});
@@ -1911,7 +1878,89 @@ app.delete(['/api/employees', '/api/employees/all', '/api/settings/employees/all
       message: 'تم حذف جدول الموظفين وتفريغ الفروع والمسميات والأقسام بنجاح' 
     });
   } catch (err) {
-    console.error('Error in DELETE /api/employees:', err);
+    console.error('Error in DELETE /api/employees/all:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// Delete all employees endpoints (must be defined or checked before :id)
+app.delete(['/api/employees', '/api/employees/all', '/api/settings/employees/all'], executeDeleteAllEmployees);
+app.post(['/api/employees/delete-all', '/api/settings/employees/delete-all'], executeDeleteAllEmployees);
+
+// Delete single employee endpoint
+app.delete('/api/employees/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (id === 'all' || id === 'delete-all') {
+      return executeDeleteAllEmployees(req, res);
+    }
+
+    // 1. Fetch employee info prior to deletion to get both numeric ID and business employee_id
+    const empRows = await query('SELECT id, employee_id, badge_no FROM employees WHERE id = ? OR employee_id = ? OR badge_no = ?', [id, id, id]).catch(() => []);
+    const emp = empRows && empRows[0];
+    const targetDbId = emp ? emp.id : (!isNaN(Number(id)) ? Number(id) : null);
+    const targetCode = emp ? emp.employee_id : id;
+
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    const sourceEnv = isRailway ? 'cloud' : 'local';
+
+    // 2. Perform deletion with foreign key safety
+    await query('SET FOREIGN_KEY_CHECKS = 0');
+    if (!isRailway) executeCloudQuery('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+
+    await query('DELETE FROM employees WHERE id = ? OR employee_id = ? OR badge_no = ?', [id, id, id]);
+    if (targetCode) {
+      await query('DELETE FROM users WHERE employee_id = ? OR username = ?', [targetCode, targetCode]).catch(() => {});
+      if (targetDbId) {
+        await query('DELETE FROM employee_contracts WHERE employee_id = ? OR employee_id = ?', [targetCode, targetDbId]).catch(() => {});
+        await query('DELETE FROM employee_status_changes WHERE employee_id = ? OR employee_id = ?', [targetCode, targetDbId]).catch(() => {});
+        await query('DELETE FROM employee_trainings WHERE employee_id = ? OR employee_id = ?', [targetCode, targetDbId]).catch(() => {});
+        await query('DELETE FROM employee_warnings WHERE employee_id = ? OR employee_id = ?', [targetCode, targetDbId]).catch(() => {});
+        await query('DELETE FROM leave_requests WHERE employee_id = ? OR employee_id = ?', [targetCode, targetDbId]).catch(() => {});
+        await query('DELETE FROM direct_supervisors WHERE employee_id = ? OR badge_no = ?', [targetDbId, targetCode]).catch(() => {});
+        await query('DELETE FROM department_heads WHERE employee_id = ? OR badge_no = ?', [targetDbId, targetCode]).catch(() => {});
+        await query('DELETE FROM attendance_exceptions WHERE employee_id = ? OR badge_no = ?', [targetDbId, targetCode]).catch(() => {});
+        await query('DELETE FROM approval_requests WHERE employee_id = ?', [targetDbId]).catch(() => {});
+        await query('DELETE FROM salary_slips WHERE employee_id = ?', [targetDbId]).catch(() => {});
+        await query('DELETE FROM support_tickets WHERE employee_id = ?', [targetDbId]).catch(() => {});
+        await query('DELETE FROM notifications WHERE employee_id = ?', [targetDbId]).catch(() => {});
+        await query('DELETE FROM assets WHERE employee_id = ?', [targetDbId]).catch(() => {});
+        await query('DELETE FROM employee_children WHERE employee_id = ?', [targetDbId]).catch(() => {});
+      }
+    }
+
+    if (!isRailway) {
+      executeCloudQuery('DELETE FROM employees WHERE id = ? OR employee_id = ? OR badge_no = ?', [id, id, id]).catch(() => {});
+      if (targetCode) {
+        executeCloudQuery('DELETE FROM users WHERE employee_id = ? OR username = ?', [targetCode, targetCode]).catch(() => {});
+      }
+    }
+
+    await query('SET FOREIGN_KEY_CHECKS = 1');
+    if (!isRailway) executeCloudQuery('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+
+    // 3. Record tombstones for both DB ID and employee_id to guarantee Cloud & Local deletion sync
+    const tombSql = 'INSERT INTO sync_deleted_records (table_name, record_id, source_env, deleted_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE source_env = VALUES(source_env), deleted_at = NOW()';
+    
+    db.query(tombSql, ['employees', String(id), sourceEnv], () => {});
+    if (!isRailway) executeCloudQuery(tombSql, ['employees', String(id), 'local']).catch(() => {});
+
+    if (targetCode) {
+      db.query(tombSql, ['employees', String(targetCode), sourceEnv], () => {});
+      db.query(tombSql, ['users', String(targetCode), sourceEnv], () => {});
+      if (!isRailway) {
+        executeCloudQuery(tombSql, ['employees', String(targetCode), 'local']).catch(() => {});
+        executeCloudQuery(tombSql, ['users', String(targetCode), 'local']).catch(() => {});
+      }
+    }
+
+    // Immediate sync triggering
+    triggerRealtimeSync(db, 'employees');
+    syncLocalToCloud(db).catch(() => {});
+
+    res.json({ success: true, message: 'Employee and associated user deleted successfully' });
+  } catch (err) {
+    console.error('Error in DELETE /api/employees/:id:', err);
     res.status(500).json({ error: err.message });
   }
 });

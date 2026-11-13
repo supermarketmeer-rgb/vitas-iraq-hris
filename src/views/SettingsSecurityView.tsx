@@ -2176,8 +2176,14 @@ export const SettingsSecurityView: React.FC = () => {
             onDelete={async (id) => {
               const confirmMsg = language === 'ar' ? 'هل أنت متأكد من حذف هذا الموظف؟' : 'Are you sure you want to delete this employee?';
               if (window.confirm(confirmMsg)) {
-                await deleteEmployee(String(id));
-                await refreshEmployees();
+                try {
+                  await deleteEmployee(String(id));
+                  await refreshEmployees();
+                  await loadData();
+                } catch (err: any) {
+                  console.error('Delete employee error:', err);
+                  alert(language === 'ar' ? `حدث خطأ أثناء الحذف: ${err?.message || 'فشل الحذف'}` : `Error deleting employee: ${err?.message || 'Failed'}`);
+                }
               }
             }}
             onDeleteAll={handleDeleteAllEmployees}

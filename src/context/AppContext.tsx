@@ -970,20 +970,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       alert(language === 'ar' ? 'عذراً، يمتلك مدير المكتب صلاحية العرض والمتابعة فقط ولا يمكنه حذف الموظفين.' : 'Branch Managers have read-only access and cannot delete employees.');
       return;
     }
+    const idStr = String(id).toLowerCase().trim();
     try {
       await api.deleteEmployee(id);
-      setEmployees(prev => prev.filter(e => String(e.id) !== String(id)));
     } catch (error) {
-      console.error('Error deleting employee:', error);
-      // Fallback to local state
-      setEmployees(prev => prev.filter(e => String(e.id) !== String(id)));
+      console.error('Error deleting employee via API:', error);
+    }
+
+    setEmployees(prev => {
+      const updated = prev.filter(e => {
+        const eId = String(e.id ?? '').toLowerCase().trim();
+        const empCode = String(e.employeeId || e.employee_id || '').toLowerCase().trim();
+        const badge = String(e.badgeNo || e.badge_no || '').toLowerCase().trim();
+        return eId !== idStr && empCode !== idStr && badge !== idStr;
+      });
+      try {
+        localStorage.setItem('vitas_employees', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('vitas_employees_updated'));
+      window.dispatchEvent(new CustomEvent('vitas:data_refreshed', { detail: { table: 'employees' } }));
+      window.dispatchEvent(new Event('storage'));
     }
   };
 
   const refreshEmployees = useCallback(async () => {
     try {
       const freshList = await api.getEmployees();
-      if (Array.isArray(freshList) && freshList.length > 0) {
+      if (Array.isArray(freshList)) {
         setEmployees(freshList);
         try {
           localStorage.setItem('vitas_employees', JSON.stringify(freshList));
