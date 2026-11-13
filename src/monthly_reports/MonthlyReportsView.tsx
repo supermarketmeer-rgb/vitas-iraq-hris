@@ -21,6 +21,7 @@ import { AdditionalFilters } from './components/AdditionalFilters';
 import { KpiCards } from './components/KpiCards';
 import { DataTable } from './components/DataTable';
 import { ChartBuilder } from './components/ChartBuilder';
+import { GlobalReportTable } from './components/GlobalReportTable';
 import { PeriodComparisonModal } from './components/PeriodComparisonModal';
 import { ExecutiveSummaryModal } from './components/ExecutiveSummaryModal';
 import { DataQualityModal } from './components/DataQualityModal';
@@ -293,14 +294,22 @@ export const MonthlyReportsView: React.FC = () => {
 
         {/* 6. Dynamic Interactive Data Table */}
         <section aria-label="Data Table">
-          <DataTable
-            report={selectedReport}
-            data={filteredReportRows}
-            selectedColumns={selectedColumns}
-            onToggleColumn={handleToggleColumn}
-            onResetColumns={handleResetColumns}
-            language={language}
-          />
+          {selectedReport.id === 'global_report' ? (
+            <GlobalReportTable
+              data={filteredReportRows}
+              language={language}
+              reportingPeriod={filters.selectedMonth}
+            />
+          ) : (
+            <DataTable
+              report={selectedReport}
+              data={filteredReportRows}
+              selectedColumns={selectedColumns}
+              onToggleColumn={handleToggleColumn}
+              onResetColumns={handleResetColumns}
+              language={language}
+            />
+          )}
         </section>
 
         {/* 7. Interactive Chart Builder with Multiple Visualizations */}
