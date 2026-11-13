@@ -44,6 +44,7 @@ interface GlobalReportTableProps {
   data: any[]; // CHFVITAS rows from reportingEngine (excludes Total row)
   language: Language;
   reportingPeriod: string;
+  isDark?: boolean;
 }
 
 const NUM_COLS = [
@@ -73,6 +74,7 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
   data,
   language,
   reportingPeriod,
+  isDark = false,
 }) => {
   const isAr = language === 'ar';
 
@@ -185,12 +187,22 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
   );
 
   const ColumnHeaderRow: React.FC<{ sectionKey: string }> = ({ sectionKey }) => (
-    <tr className="bg-blue-700 dark:bg-slate-800 text-white">
+    <tr
+      style={{
+        backgroundColor: !isDark ? '#1d4ed8' : '#1e293b',
+        color: '#ffffff'
+      }}
+      className="text-white"
+    >
       {cols.map(c => (
         <th
           key={`${sectionKey}-${c.key}`}
-          className="px-2 py-1.5 text-left text-[10px] font-semibold text-white border border-blue-800 dark:border-slate-700 whitespace-nowrap"
-          style={{ minWidth: c.isHeader ? 160 : 70 }}
+          style={{
+            minWidth: c.isHeader ? 160 : 70,
+            backgroundColor: !isDark ? '#1d4ed8' : '#1e293b',
+            color: '#ffffff'
+          }}
+          className="px-2 py-2 text-left text-[11px] font-semibold text-white border border-blue-900 dark:border-slate-700 whitespace-nowrap"
         >
           {c.enLabel}
         </th>
@@ -222,14 +234,30 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
   );
 
   const TotalRow: React.FC<{ totals: Record<string, number>; label?: string }> = ({ totals, label }) => (
-    <tr className="bg-blue-800 dark:bg-slate-900 text-white font-bold">
-      <td className="px-2 py-1.5 text-xs font-bold border border-blue-700 dark:border-slate-700 whitespace-nowrap">
+    <tr
+      style={{
+        backgroundColor: !isDark ? '#1e3a8a' : '#0f172a',
+        color: '#ffffff'
+      }}
+      className="text-white font-bold"
+    >
+      <td
+        style={{
+          backgroundColor: !isDark ? '#1e3a8a' : '#0f172a',
+          color: '#ffffff'
+        }}
+        className="px-2 py-2 text-xs font-bold border border-blue-900 dark:border-slate-700 whitespace-nowrap"
+      >
         {label || 'Total'}
       </td>
       {cols.slice(1).map(c => (
         <td
           key={c.key}
-          className="px-2 py-1.5 text-xs font-bold text-right border border-blue-700 dark:border-slate-700 whitespace-nowrap"
+          style={{
+            backgroundColor: !isDark ? '#1e3a8a' : '#0f172a',
+            color: '#ffffff'
+          }}
+          className="px-2 py-2 text-xs font-bold text-right border border-blue-900 dark:border-slate-700 whitespace-nowrap"
         >
           {(totals[c.key] ?? 0) === 0 ? '—' : (totals[c.key] ?? 0).toLocaleString()}
         </td>

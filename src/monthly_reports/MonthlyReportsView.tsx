@@ -304,6 +304,7 @@ export const MonthlyReportsView: React.FC = () => {
               data={filteredReportRows}
               language={language}
               reportingPeriod={filters.selectedMonth}
+              isDark={isDark}
             />
           ) : (
             <DataTable
@@ -314,6 +315,7 @@ export const MonthlyReportsView: React.FC = () => {
               onResetColumns={handleResetColumns}
               onSelectAllColumns={handleSelectAllColumns}
               language={language}
+              isDark={isDark}
             />
           )}
         </section>

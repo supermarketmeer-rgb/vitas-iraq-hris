@@ -20,6 +20,7 @@ interface DataTableProps {
   onResetColumns: () => void;
   onSelectAllColumns?: () => void;
   language: Language;
+  isDark?: boolean;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -29,7 +30,8 @@ export const DataTable: React.FC<DataTableProps> = ({
   onToggleColumn,
   onResetColumns,
   onSelectAllColumns,
-  language
+  language,
+  isDark = false
 }) => {
   const isAr = language === 'ar';
   const [sortKey, setSortKey] = useState<string>(report.defaultSort?.key || '');
@@ -209,26 +211,48 @@ export const DataTable: React.FC<DataTableProps> = ({
       <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-left rtl:text-right border-collapse text-xs">
           <thead>
-            <tr className="bg-blue-700 dark:bg-slate-800/80 text-white dark:text-slate-300 border-b border-blue-800 dark:border-slate-700/80 font-semibold select-none">
-              {activeColumns.map((col, idx) => {
+            <tr
+              style={{
+                backgroundColor: !isDark ? '#1d4ed8' : '#1e293b',
+                color: '#ffffff'
+              }}
+              className="border-b border-blue-900 dark:border-slate-700 font-semibold select-none"
+            >
+              {activeColumns.map((col) => {
                 const isSorted = sortKey === col.key;
                 const isNumeric = col.type === 'currency' || col.type === 'number' || col.type === 'percent';
                 return (
                   <th
                     key={col.key}
                     onClick={() => handleSort(col.key)}
-                    style={{ minWidth: col.width || 120 }}
-                    className={`px-3.5 py-3 cursor-pointer hover:bg-blue-800 dark:hover:bg-slate-700/60 transition-colors whitespace-nowrap text-white dark:text-slate-300 ${
-                      isNumeric ? 'text-right rtl:text-right' : 'text-left rtl:text-right'
-                    }`}
+                    style={{
+                      minWidth: col.width || 120,
+                      backgroundColor: !isDark ? '#1d4ed8' : '#1e293b',
+                      color: '#ffffff'
+                    }}
+                    className={`px-3.5 py-3 cursor-pointer whitespace-nowrap font-semibold border-b border-blue-900 dark:border-slate-700 transition-colors ${
+                      !isDark ? 'hover:bg-blue-800' : 'hover:bg-slate-700/80'
+                    } ${isNumeric ? 'text-right' : 'text-left'}`}
                   >
                     <div className={`flex items-center gap-1.5 ${isNumeric ? 'justify-end' : 'justify-start'}`}>
-                      <span className="text-white dark:text-slate-300 font-semibold">{col.headerEn}</span>
-                      <span className="text-blue-200 dark:text-slate-400">
+                      <span
+                        style={{ color: '#ffffff' }}
+                        className="font-semibold tracking-wide text-white"
+                      >
+                        {col.headerEn}
+                      </span>
+                      <span
+                        style={{ color: 'rgba(255, 255, 255, 0.85)' }}
+                        className="text-white"
+                      >
                         {isSorted ? (
-                          sortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-white dark:text-teal-400" /> : <ArrowDown className="w-3.5 h-3.5 text-white dark:text-teal-400" />
+                          sortDir === 'asc' ? (
+                            <ArrowUp className="w-3.5 h-3.5 text-white" />
+                          ) : (
+                            <ArrowDown className="w-3.5 h-3.5 text-white" />
+                          )
                         ) : (
-                          <ArrowUpDown className="w-3 h-3 opacity-60 hover:opacity-100" />
+                          <ArrowUpDown className="w-3 h-3 opacity-60 hover:opacity-100 text-white" />
                         )}
                       </span>
                     </div>
