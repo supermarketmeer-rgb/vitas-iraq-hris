@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { EmployeeSchedule, Language, PublicHoliday } from './types';
 import { translations } from './translations';
 
@@ -8,6 +8,36 @@ interface MyScheduleViewProps {
   lang: Language;
 }
 
+const ARABIC_MONTHS = [
+  'كانون الثاني / يناير',
+  'شباط / فبراير',
+  'آذار / مارس',
+  'نيسان / أبريل',
+  'أيار / مايو',
+  'حزيران / يونيو',
+  'تموز / يوليو',
+  'آب / أغسطس',
+  'أيلول / سبتمبر',
+  'تشرين الأول / أكتوبر',
+  'تشرين الثاني / نوفمبر',
+  'كانون الأول / ديسمبر',
+];
+
+const ENGLISH_MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 export const MyScheduleView: React.FC<MyScheduleViewProps> = ({
   schedule,
   publicHolidays,
@@ -15,14 +45,56 @@ export const MyScheduleView: React.FC<MyScheduleViewProps> = ({
 }) => {
   const t = translations[lang];
 
-  const daysInMonth = Array.from({ length: 31 }, (_, i) => {
+  // Dynamic system date from the user's computer
+  const now = new Date();
+  const [viewDate, setViewDate] = useState<Date>(
+    () => new Date(now.getFullYear(), now.getMonth(), 1)
+  );
+
+  const currentYear = viewDate.getFullYear();
+  const currentMonth = viewDate.getMonth(); // 0-based index
+
+  // Calculate actual days in the selected month
+  const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  // First day of month (0 = Sun, 1 = Mon, ..., 6 = Sat)
+  const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
+  // Since our calendar starts on Saturday:
+  // Saturday (6) -> 0, Sunday (0) -> 1, Monday (1) -> 2, ..., Friday (5) -> 6
+  const startOffset = (firstDayOfWeek + 1) % 7;
+
+  const handlePrevMonth = () => {
+    setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const handleToday = () => {
+    setViewDate(new Date(now.getFullYear(), now.getMonth(), 1));
+  };
+
+  const isCurrentViewMonth =
+    now.getFullYear() === currentYear && now.getMonth() === currentMonth;
+
+  const daysInMonth = Array.from({ length: totalDays }, (_, i) => {
     const day = i + 1;
-    const dateStr = `2026-08-${String(day).padStart(2, '0')}`;
-    const d = new Date(dateStr);
+    const monthStr = String(currentMonth + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const dateStr = `${currentYear}-${monthStr}-${dayStr}`;
+
+    const d = new Date(currentYear, currentMonth, day);
     const dayOfWeek = d.getDay();
 
+    // Weekend in Iraq / company policy: Friday (5) & Saturday (6)
     const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
-    const holiday = publicHolidays.find((h) => h.start_date <= dateStr && dateStr <= h.end_date);
+    const holiday = publicHolidays.find(
+      (h) => h.start_date <= dateStr && dateStr <= h.end_date
+    );
+
+    const isToday =
+      isCurrentViewMonth && day === now.getDate();
 
     return {
       day,
@@ -30,8 +102,14 @@ export const MyScheduleView: React.FC<MyScheduleViewProps> = ({
       dayOfWeek,
       isWeekend,
       holiday,
+      isToday,
     };
   });
+
+  const monthTitle =
+    lang === 'ar'
+      ? `تقويم الدوام (${ARABIC_MONTHS[currentMonth]} ${currentYear})`
+      : `Work Schedule Calendar (${ENGLISH_MONTHS[currentMonth]} ${currentYear})`;
 
   return (
     <div className="space-y-5">
@@ -106,10 +184,44 @@ export const MyScheduleView: React.FC<MyScheduleViewProps> = ({
 
       {/* Monthly Interactive Calendar View */}
       <div className="p-5 rounded-3xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-            {lang === 'ar' ? 'تقويم الدوام للشهر الحالي (آب / أغسطس 2026)' : 'Work Schedule Calendar (August 2026)'}
-          </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-white/10">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+              {monthTitle}
+            </h2>
+            {/* Navigation buttons */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                title={lang === 'ar' ? 'الشهر السابق' : 'Previous Month'}
+                className="w-7 h-7 rounded-lg border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+              >
+                <span className="material-symbols-outlined text-base">
+                  {lang === 'ar' ? 'chevron_right' : 'chevron_left'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleToday}
+                title={lang === 'ar' ? 'الرجوع لليوم الحالي' : 'Jump to Today'}
+                className="px-2 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+              >
+                {lang === 'ar' ? 'اليوم' : 'Today'}
+              </button>
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                title={lang === 'ar' ? 'الشهر القادم' : 'Next Month'}
+                className="w-7 h-7 rounded-lg border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+              >
+                <span className="material-symbols-outlined text-base">
+                  {lang === 'ar' ? 'chevron_left' : 'chevron_right'}
+                </span>
+              </button>
+            </div>
+          </div>
+
           <div className="flex items-center gap-3 text-xs">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
@@ -137,15 +249,22 @@ export const MyScheduleView: React.FC<MyScheduleViewProps> = ({
             </div>
           ))}
 
-          {daysInMonth.map((d) => {
-            const isToday = d.day === 8;
+          {/* Empty padding cells for day offset */}
+          {Array.from({ length: startOffset }).map((_, idx) => (
+            <div
+              key={`empty-${idx}`}
+              className="min-h-[85px] p-2 rounded-xl border border-dashed border-slate-200/60 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.02]"
+            />
+          ))}
 
+          {/* Actual days in month */}
+          {daysInMonth.map((d) => {
             return (
               <div
                 key={d.day}
                 className={`min-h-[85px] p-2 rounded-xl border text-xs flex flex-col justify-between transition-all ${
-                  isToday
-                    ? 'border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/20'
+                  d.isToday
+                    ? 'border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/30'
                     : d.holiday
                     ? 'border-teal-500/30 bg-teal-500/10'
                     : d.isWeekend
@@ -154,10 +273,16 @@ export const MyScheduleView: React.FC<MyScheduleViewProps> = ({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className={`font-bold text-sm ${isToday ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                  <span
+                    className={`font-bold text-sm ${
+                      d.isToday
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
                     {d.day}
                   </span>
-                  {isToday && (
+                  {d.isToday && (
                     <span className="text-[10px] px-1 py-0.2 rounded bg-teal-600 text-white font-bold">
                       {lang === 'ar' ? 'اليوم' : 'Today'}
                     </span>

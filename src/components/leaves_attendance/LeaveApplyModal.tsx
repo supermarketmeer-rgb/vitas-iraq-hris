@@ -21,10 +21,18 @@ export const LeaveApplyModal: React.FC<LeaveApplyModalProps> = ({
 }) => {
   const t = translations[lang];
 
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
+
   const [leaveTypeId, setLeaveTypeId] = useState<number>(leaveTypes[0]?.id || 1);
   const [isHourly, setIsHourly] = useState<boolean>(false);
-  const [startDate, setStartDate] = useState<string>('2026-08-10');
-  const [endDate, setEndDate] = useState<string>('2026-08-11');
+  const [startDate, setStartDate] = useState<string>(todayStr);
+  const [endDate, setEndDate] = useState<string>(todayStr);
   const [startTime, setStartTime] = useState<string>('09:00');
   const [endTime, setEndTime] = useState<string>('12:00');
   const [hourlyCount, setHourlyCount] = useState<number>(3);
