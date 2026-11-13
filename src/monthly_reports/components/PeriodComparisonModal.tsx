@@ -145,14 +145,17 @@ export const PeriodComparisonModal: React.FC<PeriodComparisonModalProps> = ({
 
         {/* Metrics Variance Table */}
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-xs text-left rtl:text-right border-collapse">
+          <table className="monthly-reports-table w-full text-xs text-left rtl:text-right border-collapse">
             <thead>
-              <tr className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
-                <th className="py-2.5 px-3">{isAr ? 'المؤشر' : 'Metric'}</th>
-                <th className="py-2.5 px-3 text-right font-mono">{periodB} ({isAr ? 'السابق' : 'Prior'})</th>
-                <th className="py-2.5 px-3 text-right font-mono">{periodA} ({isAr ? 'الحالي' : 'Current'})</th>
-                <th className="py-2.5 px-3 text-right font-mono">{isAr ? 'الفارق المطلق' : 'Variance'}</th>
-                <th className="py-2.5 px-3 text-right font-mono">{isAr ? 'نسبة التغير' : '% Change'}</th>
+              <tr
+                style={{ backgroundColor: '#1e3a8a', color: '#ffffff' }}
+                className="bg-blue-900 text-white font-semibold border-b border-blue-950"
+              >
+                <th style={{ backgroundColor: '#1e3a8a', color: '#ffffff' }} className="py-2.5 px-3">{isAr ? 'المؤشر' : 'Metric'}</th>
+                <th style={{ backgroundColor: '#1e3a8a', color: '#ffffff' }} className="py-2.5 px-3 text-right font-mono">{periodB} ({isAr ? 'السابق' : 'Prior'})</th>
+                <th style={{ backgroundColor: '#1e3a8a', color: '#ffffff' }} className="py-2.5 px-3 text-right font-mono">{periodA} ({isAr ? 'الحالي' : 'Current'})</th>
+                <th style={{ backgroundColor: '#1e3a8a', color: '#ffffff' }} className="py-2.5 px-3 text-right font-mono">{isAr ? 'الفارق المطلق' : 'Variance'}</th>
+                <th style={{ backgroundColor: '#1e3a8a', color: '#ffffff' }} className="py-2.5 px-3 text-right font-mono">{isAr ? 'نسبة التغير' : '% Change'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">

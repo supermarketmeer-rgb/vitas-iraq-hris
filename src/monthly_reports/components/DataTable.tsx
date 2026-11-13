@@ -209,14 +209,14 @@ export const DataTable: React.FC<DataTableProps> = ({
 
       {/* Main Table Viewport */}
       <div className="overflow-x-auto custom-scrollbar">
-        <table className="w-full text-left rtl:text-right border-collapse text-xs">
+        <table className="monthly-reports-table w-full text-left rtl:text-right border-collapse text-xs">
           <thead>
             <tr
               style={{
-                backgroundColor: !isDark ? '#1d4ed8' : '#1e293b',
+                backgroundColor: '#1e3a8a',
                 color: '#ffffff'
               }}
-              className="border-b border-blue-900 dark:border-slate-700 font-semibold select-none"
+              className="border-b border-blue-950 font-semibold select-none bg-blue-900 text-white"
             >
               {activeColumns.map((col) => {
                 const isSorted = sortKey === col.key;
@@ -227,12 +227,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                     onClick={() => handleSort(col.key)}
                     style={{
                       minWidth: col.width || 120,
-                      backgroundColor: !isDark ? '#1d4ed8' : '#1e293b',
+                      backgroundColor: '#1e3a8a',
                       color: '#ffffff'
                     }}
-                    className={`px-3.5 py-3 cursor-pointer whitespace-nowrap font-semibold border-b border-blue-900 dark:border-slate-700 transition-colors ${
-                      !isDark ? 'hover:bg-blue-800' : 'hover:bg-slate-700/80'
-                    } ${isNumeric ? 'text-right' : 'text-left'}`}
+                    className={`px-3.5 py-3 cursor-pointer whitespace-nowrap font-semibold border-b border-blue-950 transition-colors hover:bg-blue-800 ${
+                      isNumeric ? 'text-right' : 'text-left'
+                    }`}
                   >
                     <div className={`flex items-center gap-1.5 ${isNumeric ? 'justify-end' : 'justify-start'}`}>
                       <span
@@ -242,7 +242,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                         {col.headerEn}
                       </span>
                       <span
-                        style={{ color: 'rgba(255, 255, 255, 0.85)' }}
+                        style={{ color: '#ffffff' }}
                         className="text-white"
                       >
                         {isSorted ? (
@@ -252,7 +252,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                             <ArrowDown className="w-3.5 h-3.5 text-white" />
                           )
                         ) : (
-                          <ArrowUpDown className="w-3 h-3 opacity-60 hover:opacity-100 text-white" />
+                          <ArrowUpDown className="w-3 h-3 opacity-75 hover:opacity-100 text-white" />
                         )}
                       </span>
                     </div>
@@ -277,8 +277,10 @@ export const DataTable: React.FC<DataTableProps> = ({
                 ? { backgroundColor: '#0d9488', color: '#ffffff' }
                 : {};
 
-              const rowClassName = hqIsResigned || hqIsNewHire
-                ? 'transition-colors'
+              const rowClassName = hqIsResigned
+                ? 'report-row-resigned transition-colors'
+                : hqIsNewHire
+                ? 'report-row-newhire transition-colors'
                 : `hover:bg-teal-50/40 dark:hover:bg-teal-950/20 transition-colors ${
                     isZebra ? 'bg-slate-50/40 dark:bg-slate-800/20' : ''
                   }`;
@@ -301,13 +303,17 @@ export const DataTable: React.FC<DataTableProps> = ({
                     const isFlagYes = flagValue === 'Y' || flagValue === 'YES';
 
                     let cellStyle: React.CSSProperties = {};
+                    let cellClass = '';
+
                     if (hqIsResigned || hqIsNewHire) {
                       // inherit row colour
                       cellStyle = { backgroundColor: 'transparent', color: 'inherit' };
                     } else if (isNewHireCell && isFlagYes) {
                       cellStyle = { backgroundColor: '#0d9488', color: '#ffffff' };
+                      cellClass = 'report-cell-newhire';
                     } else if (isTerminatedCell && isFlagYes) {
                       cellStyle = { backgroundColor: '#dc2626', color: '#ffffff' };
+                      cellClass = 'report-cell-terminated';
                     }
 
                     let formattedVal: any = rawVal;
@@ -330,7 +336,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                       <td
                         key={col.key}
                         style={cellStyle}
-                        className={`px-3.5 py-2.5 whitespace-nowrap ${
+                        className={`px-3.5 py-2.5 whitespace-nowrap ${cellClass} ${
                           hqIsResigned || hqIsNewHire
                             ? 'font-medium'
                             : 'text-slate-800 dark:text-slate-200'

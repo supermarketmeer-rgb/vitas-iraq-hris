@@ -24,7 +24,7 @@ export async function exportReportToExcel(options: ExcelExportOptions): Promise<
   workbook.modified = new Date();
 
   const brandNavy = '1E3A8A'; // Deep Corporate Blue (Blue 900)
-  const headerFill = '1D4ED8'; // Royal Blue (Blue 700) — matches on-screen header
+  const headerFill = '1E3A8A'; // Dark Blue / Navy (Blue 900) — matches on-screen header
   const accentBlue = '2563EB'; // Blue 600
   const softBg = 'F8FAFC'; // Slate 50
   const zebraBg = 'F8FAFC'; // Slate 50

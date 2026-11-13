@@ -2898,3 +2898,112 @@ html:not(.dark) table td button[disabled].btn-payroll-release * {
   color: #94a3b8 !important;
   -webkit-text-fill-color: #94a3b8 !important;
 }
+
+/* ================================================================
+   MONTHLY HR REPORTS — ALL TABLE HEADERS (DARK BLUE WITH WHITE TEXT)
+   User Request: في صفحة التقارير في التطبيق لتكن خلفية الهيدر لجميع الجداول بلون ازرق غامق والكتابة بيضاء
+   ================================================================ */
+.monthly-reports-table thead,
+.monthly-reports-table thead tr,
+.monthly-reports-table thead th,
+.monthly-reports-table thead th *,
+.monthly-reports-table thead th span,
+.monthly-reports-table thead th div,
+html.light .monthly-reports-table thead,
+html.light .monthly-reports-table thead tr,
+html.light .monthly-reports-table thead th,
+html.light .monthly-reports-table thead th *,
+html.light .monthly-reports-table thead th span,
+html.light .monthly-reports-table thead th div,
+html:not(.dark) .monthly-reports-table thead,
+html:not(.dark) .monthly-reports-table thead tr,
+html:not(.dark) .monthly-reports-table thead th,
+html:not(.dark) .monthly-reports-table thead th *,
+html:not(.dark) .monthly-reports-table thead th span,
+html:not(.dark) .monthly-reports-table thead th div,
+html.dark .monthly-reports-table thead,
+html.dark .monthly-reports-table thead tr,
+html.dark .monthly-reports-table thead th,
+html.dark .monthly-reports-table thead th *,
+html.dark .monthly-reports-table thead th span,
+html.dark .monthly-reports-table thead th div {
+  background-color: #1e3a8a !important; /* Dark Blue / Corporate Navy */
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border-color: #172554 !important;
+}
+
+.monthly-reports-table thead th svg,
+html.light .monthly-reports-table thead th svg,
+html:not(.dark) .monthly-reports-table thead th svg,
+html.dark .monthly-reports-table thead th svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.monthly-reports-table thead th:hover,
+html.light .monthly-reports-table thead th:hover,
+html:not(.dark) .monthly-reports-table thead th:hover {
+  background-color: #1e40af !important;
+}
+
+/* ================================================================
+   HQ REPORT & ROSTER REPORT CONDITIONAL ROW & CELL HIGHLIGHTING
+   - HQ Resigned Staff: Red (#dc2626) background, white text
+   - HQ New Hire Staff: Teal (#0d9488) background, white text
+   - Roster New Hire: Teal (#0d9488) background, white text
+   - Roster Terminated: Red (#dc2626) background, white text
+   ================================================================ */
+tr.report-row-resigned,
+tr.report-row-resigned td,
+tr.report-row-resigned td *,
+html.light tr.report-row-resigned,
+html.light tr.report-row-resigned td,
+html.light tr.report-row-resigned td *,
+html:not(.dark) tr.report-row-resigned,
+html:not(.dark) tr.report-row-resigned td,
+html:not(.dark) tr.report-row-resigned td * {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+tr.report-row-newhire,
+tr.report-row-newhire td,
+tr.report-row-newhire td *,
+html.light tr.report-row-newhire,
+html.light tr.report-row-newhire td,
+html.light tr.report-row-newhire td *,
+html:not(.dark) tr.report-row-newhire,
+html:not(.dark) tr.report-row-newhire td,
+html:not(.dark) tr.report-row-newhire td * {
+  background-color: #0d9488 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+td.report-cell-newhire,
+td.report-cell-newhire *,
+html.light td.report-cell-newhire,
+html.light td.report-cell-newhire *,
+html:not(.dark) td.report-cell-newhire,
+html:not(.dark) td.report-cell-newhire * {
+  background-color: #0d9488 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: bold !important;
+}
+
+td.report-cell-terminated,
+td.report-cell-terminated *,
+html.light td.report-cell-terminated,
+html.light td.report-cell-terminated *,
+html:not(.dark) td.report-cell-terminated,
+html:not(.dark) td.report-cell-terminated * {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: bold !important;
+}

@@ -189,20 +189,20 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
   const ColumnHeaderRow: React.FC<{ sectionKey: string }> = ({ sectionKey }) => (
     <tr
       style={{
-        backgroundColor: !isDark ? '#1d4ed8' : '#1e293b',
+        backgroundColor: '#1e3a8a',
         color: '#ffffff'
       }}
-      className="text-white"
+      className="text-white bg-blue-900"
     >
       {cols.map(c => (
         <th
           key={`${sectionKey}-${c.key}`}
           style={{
             minWidth: c.isHeader ? 160 : 70,
-            backgroundColor: !isDark ? '#1d4ed8' : '#1e293b',
+            backgroundColor: '#1e3a8a',
             color: '#ffffff'
           }}
-          className="px-2 py-2 text-left text-[11px] font-semibold text-white border border-blue-900 dark:border-slate-700 whitespace-nowrap"
+          className="px-2 py-2 text-left text-[11px] font-semibold text-white border border-blue-950 whitespace-nowrap"
         >
           {c.enLabel}
         </th>
@@ -282,7 +282,7 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="border-collapse w-full text-xs">
+        <table className="monthly-reports-table border-collapse w-full text-xs">
 
           {/* ── SECTION 1: CHFVITAS ── */}
           <tbody>
