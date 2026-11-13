@@ -192,7 +192,7 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
           className="px-2 py-1.5 text-left text-[10px] font-semibold text-white border border-teal-700 whitespace-nowrap"
           style={{ minWidth: c.isHeader ? 160 : 70 }}
         >
-          {isAr ? c.arLabel : c.enLabel}
+          {c.enLabel}
         </th>
       ))}
     </tr>
@@ -224,7 +224,7 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
   const TotalRow: React.FC<{ totals: Record<string, number>; label?: string }> = ({ totals, label }) => (
     <tr className="bg-teal-700 dark:bg-teal-800 text-white">
       <td className="px-2 py-1.5 text-xs font-bold border border-teal-600 dark:border-teal-700 whitespace-nowrap">
-        {label || (isAr ? 'الإجمالي' : 'Total')}
+        {label || 'Total'}
       </td>
       {cols.slice(1).map(c => (
         <td
@@ -244,12 +244,12 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
       <div className="bg-slate-900 dark:bg-slate-950 px-4 py-2.5 flex items-center justify-between">
         <div>
           <span className="text-white font-bold text-sm">
-            {isAr ? 'التقرير الشامل للفروع' : 'Global Headcount Report'}
+            {'Global Headcount Report'}
           </span>
           <span className="ml-3 text-teal-400 text-xs font-mono">{reportingPeriod}</span>
         </div>
         <span className="text-slate-400 text-[11px]">
-          {isAr ? 'مطابق لمصنف: 2026-10-Global Report VITAS ATAS.xls' : 'Source: 2026-10-Global Report VITAS ATAS.xls'}
+          {'Source: 2026-10-Global Report VITAS ATAS.xls'}
         </span>
       </div>
 
@@ -259,7 +259,7 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
           {/* ── SECTION 1: CHFVITAS ── */}
           <tbody>
             <SectionHeader
-              label={isAr ? '١. CHFVITAS — الفروع العراقية' : '1. CHFVITAS — Iraqi Branches'}
+              label={'1. CHFVITAS — Iraqi Branches'}
               color="bg-teal-100 dark:bg-teal-900/60 text-teal-900 dark:text-teal-100"
             />
           </tbody>
@@ -277,7 +277,7 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
           <tbody>
             <tr><td colSpan={cols.length} className="h-2 bg-transparent border-0" /></tr>
             <SectionHeader
-              label={isAr ? '٢. Amalkom — لا توجد فروع نشطة حالياً' : '2. Amalkom — No Active Branches Currently'}
+              label={'2. Amalkom — No Active Branches Currently'}
               color="bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300"
             />
           </tbody>
@@ -295,7 +295,7 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
           <tbody>
             <tr><td colSpan={cols.length} className="h-2 bg-transparent border-0" /></tr>
             <SectionHeader
-              label={isAr ? '٣. ATAS — المكتب اللبناني' : '3. ATAS — Lebanon Office'}
+              label={'3. ATAS — Lebanon Office'}
               color="bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200"
             />
           </tbody>
@@ -313,7 +313,7 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
           <tbody>
             <tr><td colSpan={cols.length} className="h-2 bg-transparent border-0" /></tr>
             <SectionHeader
-              label={isAr ? '٤. VITAS + ATAS — الإجمالي الموحد' : '4. VITAS + ATAS — Combined Total'}
+              label={'4. VITAS + ATAS — Combined Total'}
               color="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200"
             />
           </tbody>
@@ -324,7 +324,7 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
             {vitasAtasRows.map((row, i) => (
               <DataRow key={row.office + '-vitasatas'} row={row} striped={i % 2 === 1} />
             ))}
-            <TotalRow totals={vitasAtasTotal} label={isAr ? 'الإجمالي الكلي' : 'Grand Total'} />
+            <TotalRow totals={vitasAtasTotal} label={'Grand Total'} />
           </tbody>
 
         </table>
@@ -334,20 +334,20 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
       <div className="bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 px-4 py-2 flex flex-wrap gap-4 text-[11px] text-slate-500 dark:text-slate-400">
         <span>
           <span className="font-semibold text-teal-700 dark:text-teal-400">{chfvitasTotal.totalStaff.toLocaleString()}</span>
-          {isAr ? ' موظف CHFVITAS' : ' CHFVITAS Staff'}
+          {' CHFVITAS Staff'}
         </span>
         <span>+</span>
         <span>
           <span className="font-semibold text-blue-700 dark:text-blue-400">{atasTotal.totalStaff.toLocaleString()}</span>
-          {isAr ? ' موظف ATAS' : ' ATAS Staff'}
+          {' ATAS Staff'}
         </span>
         <span>=</span>
         <span>
           <span className="font-semibold text-emerald-700 dark:text-emerald-400">{vitasAtasTotal.totalStaff.toLocaleString()}</span>
-          {isAr ? ' إجمالي VITAS+ATAS' : ' Total VITAS+ATAS'}
+          {' Total VITAS+ATAS'}
         </span>
         <span className="ms-auto">
-          {isAr ? 'الإناث:' : 'Female Staff:'}
+          {'Female Staff:'}
           <span className="font-semibold text-pink-600 dark:text-pink-400 ml-1">{vitasAtasTotal.totalFemaleStaff}</span>
           <span className="ml-1 text-slate-400">
             ({vitasAtasTotal.totalStaff > 0
@@ -359,3 +359,4 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
     </div>
   );
 };
+

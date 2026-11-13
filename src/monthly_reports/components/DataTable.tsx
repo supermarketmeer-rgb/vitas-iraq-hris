@@ -179,7 +179,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                           className="rounded text-teal-600 focus:ring-teal-500"
                         />
                         <span className="text-slate-700 dark:text-slate-300">
-                          {isAr ? col.headerAr : col.headerEn}
+                          {col.headerEn}
                         </span>
                       </label>
                     );
@@ -210,7 +210,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                     }`}
                   >
                     <div className={`flex items-center gap-1.5 ${isNumeric ? 'justify-end' : 'justify-start'}`}>
-                      <span>{isAr ? col.headerAr : col.headerEn}</span>
+                      <span>{col.headerEn}</span>
                       <span className="text-slate-400">
                         {isSorted ? (
                           sortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
