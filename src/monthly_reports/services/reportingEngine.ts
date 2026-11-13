@@ -114,6 +114,22 @@ export function generateReportData(filters: FilterState): any[] {
   switch (filters.reportId) {
     case 'hq_report': {
       let list: any[] = (currentExactWorkbooks as any)?.hqReport || [];
+      // Cross-reference with rosterReport to flag New Hires and Terminated employees
+      const rosterRows: any[] = (currentExactWorkbooks as any)?.rosterReport || [];
+      const rosterNewHireNames = new Set(
+        rosterRows.filter((r: any) => r.newHire === 'Y' || r.newHire === 'Yes')
+          .map((r: any) => (r.name || '').toLowerCase().trim())
+      );
+      const rosterTerminatedNames = new Set(
+        rosterRows.filter((r: any) => r.terminated === 'Y' || r.terminated === 'Yes')
+          .map((r: any) => (r.name || '').toLowerCase().trim())
+      );
+      list = list.map((r: any) => {
+        const nameLower = (r.name || '').toLowerCase().trim();
+        const isNewHire = rosterNewHireNames.has(nameLower);
+        const isResigned = rosterTerminatedNames.has(nameLower);
+        return { ...r, isNewHire, isResigned };
+      });
       if (filters.office !== 'All') {
         list = list.filter((r: any) => r.office && r.office.toLowerCase() === filters.office.toLowerCase());
       }

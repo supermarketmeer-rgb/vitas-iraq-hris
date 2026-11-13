@@ -264,18 +264,53 @@ export const DataTable: React.FC<DataTableProps> = ({
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 bg-white dark:bg-slate-900">
             {paginatedData.map((row, rowIdx) => {
               const isZebra = rowIdx % 2 === 1;
+
+              // ── HQ Report: row-level colour coding ──
+              const isHqReport = report.id === 'hq_report';
+              const hqIsResigned = isHqReport && !!row.isResigned;
+              const hqIsNewHire  = isHqReport && !!row.isNewHire && !hqIsResigned;
+
+              // row style (overrides zebra when flagged)
+              const rowStyle: React.CSSProperties = hqIsResigned
+                ? { backgroundColor: '#dc2626', color: '#ffffff' }
+                : hqIsNewHire
+                ? { backgroundColor: '#0d9488', color: '#ffffff' }
+                : {};
+
+              const rowClassName = hqIsResigned || hqIsNewHire
+                ? 'transition-colors'
+                : `hover:bg-teal-50/40 dark:hover:bg-teal-950/20 transition-colors ${
+                    isZebra ? 'bg-slate-50/40 dark:bg-slate-800/20' : ''
+                  }`;
+
               return (
                 <tr
                   key={row.id || rowIdx}
-                  className={`hover:bg-teal-50/40 dark:hover:bg-teal-950/20 transition-colors ${
-                    isZebra ? 'bg-slate-50/40 dark:bg-slate-800/20' : ''
-                  }`}
+                  className={rowClassName}
+                  style={rowStyle}
                 >
                   {activeColumns.map((col) => {
                     const rawVal = row[col.key];
                     const isNumeric = col.type === 'currency' || col.type === 'number' || col.type === 'percent';
 
-                    let formattedVal = rawVal;
+                    // ── Roster Report: cell-level colour coding ──
+                    const isRosterReport = report.id === 'roster_report';
+                    const isNewHireCell = isRosterReport && col.key === 'newHire';
+                    const isTerminatedCell = isRosterReport && col.key === 'terminated';
+                    const flagValue = String(rawVal || '').trim().toUpperCase();
+                    const isFlagYes = flagValue === 'Y' || flagValue === 'YES';
+
+                    let cellStyle: React.CSSProperties = {};
+                    if (hqIsResigned || hqIsNewHire) {
+                      // inherit row colour
+                      cellStyle = { backgroundColor: 'transparent', color: 'inherit' };
+                    } else if (isNewHireCell && isFlagYes) {
+                      cellStyle = { backgroundColor: '#0d9488', color: '#ffffff' };
+                    } else if (isTerminatedCell && isFlagYes) {
+                      cellStyle = { backgroundColor: '#dc2626', color: '#ffffff' };
+                    }
+
+                    let formattedVal: any = rawVal;
                     if (col.type === 'currency') {
                       formattedVal = formatCurrencyIQD(rawVal);
                     } else if (col.type === 'number') {
@@ -286,17 +321,25 @@ export const DataTable: React.FC<DataTableProps> = ({
                       formattedVal = String(rawVal).substring(0, 10);
                     }
 
+                    // For roster flag cells show 'Yes' / '—'
+                    if ((isNewHireCell || isTerminatedCell)) {
+                      formattedVal = isFlagYes ? 'Yes' : '—';
+                    }
+
                     return (
                       <td
                         key={col.key}
-                        className={`px-3.5 py-2.5 whitespace-nowrap text-slate-800 dark:text-slate-200 ${
-                          isNumeric ? 'text-right font-mono tabular-nums font-medium' : ''
-                        }`}
+                        style={cellStyle}
+                        className={`px-3.5 py-2.5 whitespace-nowrap ${
+                          hqIsResigned || hqIsNewHire
+                            ? 'font-medium'
+                            : 'text-slate-800 dark:text-slate-200'
+                        } ${isNumeric ? 'text-right font-mono tabular-nums font-medium' : ''}`}
                       >
                         {formattedVal !== undefined && formattedVal !== null && formattedVal !== '' ? (
                           formattedVal
                         ) : (
-                          <span className="text-slate-300 dark:text-slate-600">-</span>
+                          <span className={hqIsResigned || hqIsNewHire ? 'opacity-50' : 'text-slate-300 dark:text-slate-600'}>-</span>
                         )}
                       </td>
                     );

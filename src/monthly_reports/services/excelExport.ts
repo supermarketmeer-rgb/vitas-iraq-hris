@@ -31,6 +31,8 @@ export async function exportReportToExcel(options: ExcelExportOptions): Promise<
   const borderGray = 'CBD5E1';
   const totalRowBg = 'DBEAFE'; // Soft blue highlight for totals
   const totalText = '1E3A8A'; // Deep blue text for totals
+  const colorNewHire   = '0D9488'; // Teal 600 — new hire rows / cells
+  const colorResigned  = 'DC2626'; // Red 600  — terminated / resigned rows / cells
 
   // ==========================================
   // SHEET 1: MANAGEMENT SUMMARY
@@ -286,9 +288,21 @@ export async function exportReportToExcel(options: ExcelExportOptions): Promise<
     row.height = 19;
     const isZebra = itemIdx % 2 === 1;
 
+    // ── Conditional row highlighting (HQ Report) ──
+    const isHqReport  = report.id === 'hq_report';
+    const isRosterRep = report.id === 'roster_report';
+    const hqIsResigned = isHqReport && !!item.isResigned;
+    const hqIsNewHire  = isHqReport && !!item.isNewHire && !hqIsResigned;
+
     colDefs.forEach((colDef, cIdx) => {
       const cell = row.getCell(cIdx + 1);
       const val = item[colDef.key];
+
+      // ── Roster: flag cell value normalisation ──
+      const isNewHireCell   = isRosterRep && colDef.key === 'newHire';
+      const isTerminatedCell = isRosterRep && colDef.key === 'terminated';
+      const flagStr = String(val || '').trim().toUpperCase();
+      const isFlagYes = flagStr === 'Y' || flagStr === 'YES';
 
       if (colDef.type === 'currency') {
         const num = typeof val === 'number' ? val : (parseFloat(String(val).replace(/[^0-9.-]/g, '')) || 0);
@@ -307,15 +321,39 @@ export async function exportReportToExcel(options: ExcelExportOptions): Promise<
       } else if (colDef.type === 'date') {
         cell.value = val ? String(val).substring(0, 10) : '';
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      } else if (isNewHireCell || isTerminatedCell) {
+        // Roster flag cells
+        cell.value = isFlagYes ? 'Yes' : '—';
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
       } else {
         cell.value = val !== undefined && val !== null ? String(val) : '';
         cell.alignment = { horizontal: isRtl ? 'right' : 'left', vertical: 'middle' };
       }
 
-      cell.font = { name: 'Segoe UI', size: 9 };
-      if (isZebra) {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: zebraBg } };
+      // ── Apply fill & font ──
+      if (hqIsResigned) {
+        // Entire row: red background, white text
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorResigned } };
+        cell.font = { name: 'Segoe UI', size: 9, color: { argb: 'FFFFFF' }, bold: true };
+      } else if (hqIsNewHire) {
+        // Entire row: teal background, white text
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorNewHire } };
+        cell.font = { name: 'Segoe UI', size: 9, color: { argb: 'FFFFFF' }, bold: true };
+      } else if (isNewHireCell && isFlagYes) {
+        // Single cell: teal
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorNewHire } };
+        cell.font = { name: 'Segoe UI', size: 9, color: { argb: 'FFFFFF' }, bold: true };
+      } else if (isTerminatedCell && isFlagYes) {
+        // Single cell: red
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorResigned } };
+        cell.font = { name: 'Segoe UI', size: 9, color: { argb: 'FFFFFF' }, bold: true };
+      } else {
+        cell.font = { name: 'Segoe UI', size: 9 };
+        if (isZebra) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: zebraBg } };
+        }
       }
+
       cell.border = {
         top: { style: 'thin', color: { argb: borderGray } },
         bottom: { style: 'thin', color: { argb: borderGray } },
