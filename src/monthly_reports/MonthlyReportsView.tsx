@@ -29,7 +29,7 @@ import { SnapshotArchiveModal } from './components/SnapshotArchiveModal';
 import { TemplatesModal } from './components/TemplatesModal';
 
 export const MonthlyReportsView: React.FC = () => {
-  const { language: appLang } = useApp();
+  const { language: appLang, isDark } = useApp();
   const language: Language = appLang === 'en' ? 'en' : 'ar';
   const isAr = language === 'ar';
 
@@ -243,6 +243,7 @@ export const MonthlyReportsView: React.FC = () => {
       {/* 1. Header Section */}
       <Header
         language={language}
+        isDark={isDark}
         reportingPeriod={filters.selectedMonth}
         onExportExcel={handleExportExcel}
         onPrintPreview={handlePrintPreview}
