@@ -137,6 +137,10 @@ export const SettingsSecurityView: React.FC = () => {
   const [editingItem, setEditingItem] = useState<DataItem | null>(null);
   const [formData, setFormData] = useState({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' });
   
+  // High-speed Excel import states
+  const [isImporting, setIsImporting] = useState<boolean>(false);
+  const [importStatusText, setImportStatusText] = useState<string>('');
+  
   // Excel import/export states
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Track which tab the modal is operating on (for cross-tab modal operations)
@@ -1370,6 +1374,9 @@ export const SettingsSecurityView: React.FC = () => {
     // Reset input value so selecting the same file triggers onChange
     event.target.value = '';
 
+    setIsImporting(true);
+    setImportStatusText(language === 'ar' ? 'جاري قراءة وتحليل ملف Excel...' : 'Reading and analyzing Excel file...');
+
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -1535,7 +1542,10 @@ export const SettingsSecurityView: React.FC = () => {
           return age >= 0 ? age : 0;
         };
 
-        const importedEmployees: any[] = [];
+        const employeesToImport: any[] = [];
+        const branchesToCreate: any[] = [];
+        const departmentsToCreate: any[] = [];
+        const positionsToCreate: any[] = [];
         const errorsList: string[] = [];
         let currentLocations = [...locations];
         let currentDepartments = [...departments];
@@ -1789,48 +1799,39 @@ export const SettingsSecurityView: React.FC = () => {
             const rawPerfRating = getVal(row, ['Performance Rating', 'perfRating', 'perf_rating', 'Rating', 'تقييم الأداء', 'تقييم الاداء', 'درجة التقييم']);
             const perfRating = rawPerfRating !== '' ? parseValToNum(rawPerfRating) : null;
 
-            // Auto-add Branch / Location to Settings if missing
+            // Collect unique Branch / Location to add in batch
             if (branch && !currentLocations.some(l => l.name_ar === branch || l.name === branch || (branchEn && l.name_en === branchEn))) {
-              try {
-                const addedLoc: any = await api.addBranch({
+              if (!branchesToCreate.some(b => b.name_ar === branch || (branchEn && b.name_en === branchEn))) {
+                branchesToCreate.push({
                   name: branch,
                   name_ar: branch,
                   name_en: branchEn || branch,
                   status: 'Active'
                 });
-                currentLocations.push(addedLoc || { id: Date.now(), name_ar: branch, name: branch, name_en: branchEn || branch });
-              } catch (e) {
-                console.warn('Could not auto-add branch to settings:', e);
               }
             }
 
-            // Auto-add Department to Settings if missing
+            // Collect unique Department to add in batch
             if (department && !currentDepartments.some(d => d.name_ar === department || d.name === department || (departmentEn && d.name_en === departmentEn))) {
-              try {
-                const addedDept: any = await api.addDepartment({
+              if (!departmentsToCreate.some(d => d.name_ar === department || (departmentEn && d.name_en === departmentEn))) {
+                departmentsToCreate.push({
                   name_ar: department,
                   name_en: departmentEn || department,
                   sort_order: currentDepartments.length + 1,
                   status: 'Active'
                 });
-                currentDepartments.push(addedDept || { id: Date.now(), name_ar: department, name_en: departmentEn || department });
-              } catch (e) {
-                console.warn('Could not auto-add department to settings:', e);
               }
             }
 
-            // Auto-add Position / Job Title to Settings if missing
+            // Collect unique Position to add in batch
             if (jobTitle && !currentPositions.some(p => p.name_ar === jobTitle || p.name === jobTitle || (jobTitleEn && p.name_en === jobTitleEn))) {
-              try {
-                const addedPos: any = await api.addPosition({
+              if (!positionsToCreate.some(p => p.name_ar === jobTitle || (jobTitleEn && p.name_en === jobTitleEn))) {
+                positionsToCreate.push({
                   name_ar: jobTitle,
                   name_en: jobTitleEn || jobTitle,
                   sort_order: currentPositions.length + 1,
                   status: 'Active'
                 });
-                currentPositions.push(addedPos || { id: Date.now(), name_ar: jobTitle, name_en: jobTitleEn || jobTitle });
-              } catch (e) {
-                console.warn('Could not auto-add position to settings:', e);
               }
             }
 
@@ -1909,13 +1910,33 @@ export const SettingsSecurityView: React.FC = () => {
               status
             };
 
-            const result = await api.addEmployee(employeeData);
-            importedEmployees.push(result);
+            employeesToImport.push(employeeData);
           } catch (error: any) {
             console.error('Error importing employee row:', error);
             errorsList.push(error?.message || String(error));
           }
         }
+
+        if (employeesToImport.length === 0) {
+          setIsImporting(false);
+          const detail = errorsList.length > 0 ? `\n\nالتفاصيل: ${errorsList.slice(0, 3).join(', ')}` : '';
+          alert(language === 'ar' 
+            ? `لم يتم العثور على أي موظف صالح للاستيراد. يرجى التأكد من اختيار ملف يحتوي على بيانات الموظفين وعناوين الأعمدة الصحيحة.${detail}`
+            : `No employees imported. Please ensure the file contains valid employee rows and correct headers.${detail}`);
+          return;
+        }
+
+        setImportStatusText(language === 'ar'
+          ? `جاري حفظ ${employeesToImport.length} موظف دفعة واحدة بسرعة فائقة...`
+          : `Saving ${employeesToImport.length} employees to database in high-speed batch...`);
+
+        // Execute batch import in a single lightning-fast request
+        const batchResult: any = await api.batchImportEmployees({
+          employees: employeesToImport,
+          branches: branchesToCreate,
+          departments: departmentsToCreate,
+          positions: positionsToCreate
+        });
 
         // Reload Settings data (Locations, Departments, Positions) so new entries appear in Settings UI
         try {
@@ -1936,17 +1957,14 @@ export const SettingsSecurityView: React.FC = () => {
           console.warn('Could not refresh employees list:', err);
         }
 
-        if (importedEmployees.length > 0) {
-          alert(language === 'ar' 
-            ? `تم استيراد ${importedEmployees.length} موظف بنجاح وإعادة تحديث دليل الموظفين والإعدادات` 
-            : `Successfully imported ${importedEmployees.length} employees and updated directory & settings`);
-        } else {
-          const detail = errorsList.length > 0 ? `\n\nالتفاصيل: ${errorsList.slice(0, 3).join(', ')}` : '';
-          alert(language === 'ar' 
-            ? `لم يتم استيراد أي موظف. يرجى التأكد من اختيار ملف يحتوي على بيانات الموظفين وعناوين الأعمدة الصحيحة.${detail}`
-            : `No employees imported. Please ensure the file contains valid employee rows and correct headers.${detail}`);
-        }
+        setIsImporting(false);
+
+        const totalImported = batchResult?.count || employeesToImport.length;
+        alert(language === 'ar' 
+          ? `✅ تم استيراد وحفظ ${totalImported} موظف بنجاح وتحديث النظام بالكامل خلال ثوانٍ معدودة!` 
+          : `✅ Successfully imported ${totalImported} employees and updated directory & settings in seconds!`);
       } catch (error: any) {
+        setIsImporting(false);
         console.error('Error processing Employee Excel file:', error);
         alert(language === 'ar' 
           ? `حدث خطأ في معالجة ملف Excel للموظفين: ${error?.message || String(error)}` 
@@ -1963,6 +1981,23 @@ export const SettingsSecurityView: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* High-Speed Batch Import Overlay */}
+      {isImporting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" dir={isRTL ? 'rtl' : 'ltr'}>
+          <div className={`p-6 rounded-2xl shadow-2xl flex flex-col items-center max-w-md w-full mx-4 ${
+            theme === 'dark' ? 'bg-[#111827] border border-white/10 text-white' : 'bg-white text-gray-900 shadow-xl'
+          }`}>
+            <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+            <h3 className="text-lg font-bold mb-2">
+              {language === 'ar' ? 'استيراد بيانات الموظفين' : 'Importing Employee Data'}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+              {importStatusText || (language === 'ar' ? 'يرجى الانتظار، جاري حفظ البيانات بسرعة فائقة...' : 'Please wait, saving records at high speed...')}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

@@ -317,6 +317,16 @@ const query = (sql, params = []) => {
   });
 };
 
+// Fast local query helper for high-volume batch imports without per-row cloud round-trips
+const fastQuery = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.query(sql, params, (err, results) => {
+      if (err) return reject(err);
+      resolve(results);
+    });
+  });
+};
+
 // Real-Time Server-Sent Events (SSE) Stream
 app.get('/api/sync/events', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -1402,6 +1412,226 @@ const parseNum = (val) => {
   return isNaN(num) ? 0 : num;
 };
 
+function buildEmployeeCandidateData(data, sMap = {}) {
+  const rawInputEmpId = (data.employeeId || data.employee_id || data.empCode || '').trim();
+  const employeeId = rawInputEmpId || `VTS-${Date.now().toString().slice(-4)}${Math.floor(100 + Math.random() * 900)}`;
+
+  const rawInputBadge = (data.badgeNo || data.badge_no || '').trim();
+  const badgeNo = rawInputBadge || `B-${employeeId.replace(/[^\d]/g, '') || Math.floor(1000 + Math.random() * 9000)}`;
+
+  const rawInputWaid = (data.waid || data.wa_id || '').trim();
+  const rawInputEmail = (data.email && typeof data.email === 'string' ? data.email.trim() : '');
+
+  const fullNameAr = data.fullName || data.full_name_ar || 'غير محدد';
+  const fullNameEn = data.fullNameEn || data.full_name_en || fullNameAr || 'N/A';
+  let email = rawInputEmail;
+  if (!email || email === 'N/A' || email === 'غير محدد' || email === 'n/a') {
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    email = `no-email-${employeeId}-${uniqueSuffix}@vitasiraq.local`;
+  }
+  const personalEmail = data.personalEmail || data.personal_email || '';
+  const phone = data.phone || data.mobile || null;
+  const emergencyPhone = data.emergencyPhone || data.emergency_mobile || null;
+  const dob = formatDate(data.dob);
+  const yearsOfEmployment = parseNum(data.yearsOfEmployment || data.years_of_employment);
+  const yearsInPosition = parseNum(data.yearsInPosition || data.years_in_position);
+  const exitDate = formatDate(data.exitDate || data.exit_date);
+
+  const genderVal = data.gender === 'ذكر' || data.gender === 'male' || data.gender === 'Male' ? 'male' : 
+                   data.gender === 'أنثى' || data.gender === 'female' || data.gender === 'Female' ? 'female' : 'male';
+                   
+  const maritalVal = data.maritalStatus === 'أعزب' || data.marital_status === 'single' ? 'single' : 
+                    data.maritalStatus === 'متأهل' || data.marital_status === 'married' ? 'married' :
+                    data.maritalStatus === 'مطلق' || data.marital_status === 'divorced' ? 'divorced' : 
+                    data.maritalStatus === 'أرمل' || data.marital_status === 'widow' ? 'widow' : 'single';
+
+  const nationality = data.nationality || 'عراقي';
+  const department = data.department || null;
+  const positionAr = data.jobTitle || data.position_ar || data.position || null;
+  const positionEn = data.jobTitleEn || data.position_en || null;
+  const branch = data.branch || data.location_ar || null;
+  const branchEn = data.branchEn || data.location_en || null;
+  const supervisorName = data.supervisorName || data.supervisor_name || null;
+  const workScope = data.workScope || data.work_scope || null;
+
+  const salary = parseNum(data.salary);
+  const basicSalary = parseNum(data.basicSalary || data.basic_salary);
+  const transportationFixed = parseNum(data.transportationFixed || data.transportation_fixed);
+  const fixedBonus = parseNum(data.fixedBonus || data.fixed_bonus);
+  const phoneAllowance = parseNum(data.phoneAllowance || data.phone_allowance);
+  let certificateAllowance = parseNum(data.certificateAllowance || data.certificate_allowance);
+  const graduationDegree = data.graduationDegree || data.graduation_degree || null;
+
+  if ((certificateAllowance === 0 || isNaN(certificateAllowance)) && graduationDegree) {
+    const normDeg = String(graduationDegree).trim().toLowerCase();
+    let rawPolicyVal = 0;
+    if (normDeg.includes('diplom') || normDeg.includes('دبلوم')) {
+      rawPolicyVal = parseFloat(sMap['certificate_allowance_diplome'] || '50000') || 50000;
+    } else if (normDeg.includes('bachelor') || normDeg.includes('bachelar') || normDeg.includes('بكالوريوس')) {
+      rawPolicyVal = parseFloat(sMap['certificate_allowance_bachelar'] || '100000') || 100000;
+    } else if (normDeg.includes('master') || normDeg.includes('ماجستير')) {
+      rawPolicyVal = parseFloat(sMap['certificate_allowance_master'] || '150000') || 150000;
+    }
+    const curr = sMap['certificate_allowance_currency'] || 'IQD';
+    const fx = parseFloat(sMap['usd_to_iqd_rate'] || '1520') || 1520;
+    certificateAllowance = curr === 'USD' ? Math.round(rawPolicyVal * fx) : rawPolicyVal;
+  }
+  const writtenBasicSalaryAr = data.writtenBasicSalaryAr || data.written_basic_salary_ar || null;
+
+  const bankName = data.bankName || data.bank_name || null;
+  const iban = data.iban || null;
+  const nationalId = data.nationalId || data.national_id || null;
+  const passportNo = data.passportNo || data.passport_no || null;
+  const passportExpiry = formatDate(data.passportExpiry || data.passport_expiry);
+
+  const hasPhotoField = ('photo' in data) || ('photoUrl' in data) || ('photo_url' in data) || ('photo_removed' in data);
+  let photoData = null;
+  let finalPhotoUrl = null;
+  const rawPhoto = (data.photo !== undefined && data.photo !== null) ? data.photo :
+                   ((data.photoUrl !== undefined && data.photoUrl !== null) ? data.photoUrl : data.photo_url);
+  const isPhotoExplicitlyRemoved = data.photo_removed === true || data.photo_removed === 1 || data.photo_removed === '1' ||
+    (hasPhotoField && (rawPhoto === '' || rawPhoto === null || data.photo === '' || data.photoUrl === '' || data.photo_url === ''));
+
+  if (rawPhoto && typeof rawPhoto === 'string' && rawPhoto.trim() !== '' && !isPhotoExplicitlyRemoved) {
+    finalPhotoUrl = rawPhoto.trim();
+    if (finalPhotoUrl.startsWith('data:image')) {
+      const base64Data = finalPhotoUrl.replace(/^data:image\/[^;]+;base64,/, '');
+      photoData = Buffer.from(base64Data, 'base64');
+    }
+  } else if (isPhotoExplicitlyRemoved) {
+    finalPhotoUrl = null;
+    photoData = null;
+  }
+
+  const spouseName = data.spouseName || data.spouse_name || null;
+  const spouseEmployedHere = (data.spouseEmployedHere || data.spouse_employed_here) ? 1 : 0;
+  
+  let rawChildrenList = [];
+  if (Array.isArray(data.childrenList)) {
+    rawChildrenList = data.childrenList;
+  } else if (typeof data.childrenList === 'string') {
+    try { rawChildrenList = JSON.parse(data.childrenList); } catch (e) {}
+  } else if (data.childrenDetails) {
+    try { rawChildrenList = JSON.parse(data.childrenDetails); } catch (e) {}
+  }
+
+  const processedChildrenList = rawChildrenList.map(ch => {
+    let childAge = ch.age;
+    if ((childAge === undefined || childAge === null || childAge === 0) && ch.dob) {
+      const b = new Date(ch.dob);
+      if (!isNaN(b.getTime())) {
+        const today = new Date();
+        childAge = today.getFullYear() - b.getFullYear();
+        const m = today.getMonth() - b.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < b.getDate())) childAge--;
+        if (childAge < 0) childAge = 0;
+      }
+    }
+    return {
+      ...ch,
+      age: childAge || 0
+    };
+  });
+
+  const childrenDetails = processedChildrenList.length > 0 ? JSON.stringify(processedChildrenList) : null;
+
+  const originalStartDate = formatDate(data.originalStartDate || data.contract_original_start || data.joinDate);
+  const contractStartDate = formatDate(data.contractStartDate || data.contract_start_date);
+  const contractEndDate = formatDate(data.contractEndDate || data.contract_end_date);
+  const probationEndDate = formatDate(data.probationEndDate || data.probation_end_date);
+
+  const termOfContract = data.termOfContract || data.term_of_contract || null;
+  const grade = data.grade || null;
+
+  const trainingsRecord = typeof data.employeeTrainings === 'object' && data.employeeTrainings ? JSON.stringify(data.employeeTrainings) : (data.trainingsRecord || data.trainings_record || data.trainings_json || null);
+  const warningsRecord = data.warningsRecord || data.warnings_record || data.warnings_json || null;
+
+  const statusVal = data.status === 'Active' || data.status === 'active' ? 'active' :
+                   data.status === 'On Leave' || data.status === 'inactive' ? 'inactive' :
+                   data.status === 'Onboarding' || data.status === 'onboarding' ? 'onboarding' : 'active';
+
+  const candidateData = {
+    employee_id: employeeId,
+    badge_no: badgeNo,
+    waid: data.waid || data.wa_id || null,
+    full_name_ar: fullNameAr,
+    full_name_en: fullNameEn,
+    email: email,
+    personal_email: personalEmail,
+    photo_url: finalPhotoUrl,
+    photo: photoData,
+    phone: phone,
+    mobile: phone,
+    emergency_phone: emergencyPhone,
+    emergency_mobile: emergencyPhone,
+    dob: dob,
+    years_of_employment: yearsOfEmployment,
+    years_in_position: yearsInPosition,
+    exit_date: exitDate,
+    gender: genderVal,
+    marital_status: maritalVal,
+    nationality: nationality,
+    department: department,
+    position: positionAr,
+    position_ar: positionAr,
+    position_en: positionEn,
+    location_ar: branch,
+    location_en: branchEn,
+    branch: branch,
+    branch_en: branchEn,
+    supervisor_name: supervisorName,
+    work_scope: workScope,
+    salary: salary,
+    basic_salary: basicSalary,
+    transportation_fixed: transportationFixed,
+    fixed_bonus: fixedBonus,
+    phone_allowance: phoneAllowance,
+    certificate_allowance: certificateAllowance,
+    graduation_degree: graduationDegree,
+    written_basic_salary_ar: writtenBasicSalaryAr,
+    bank_name: bankName,
+    iban: iban,
+    national_id: nationalId,
+    passport_no: passportNo,
+    passport_expiry: passportExpiry,
+    spouse_name: spouseName,
+    spouse_employed_here: spouseEmployedHere,
+    children_details: childrenDetails,
+    original_start_date: originalStartDate,
+    contract_start_date: contractStartDate,
+    contract_end_date: contractEndDate,
+    probation_end_date: probationEndDate,
+    term_of_contract: termOfContract,
+    grade: grade,
+    trainings_record: trainingsRecord,
+    warnings_record: warningsRecord,
+    management_tier: data.management_tier || data.managementTier || data.tier || 'Non Management',
+    branch_vs_mo: data.branch_vs_mo || data.branchVsMo || data.branchVsMO || (branch && (branch.toLowerCase().includes('main') || branch.toLowerCase().includes('hq') || branch.includes('العامة')) ? 'Main Office' : 'Branch'),
+    perf_rating: data.perf_rating !== undefined && data.perf_rating !== null && data.perf_rating !== '' ? Number(data.perf_rating || data.perfRating) : null,
+    admin_line: data.admin_line || data.adminLine || null,
+    position_level_1: data.position_level_1 || data.positionLevel1 || data.position1 || null,
+    position_level_2: data.position_level_2 || data.positionLevel2 || data.position2 || null,
+    microfin_position: data.microfin_position || data.microfinPosition || null,
+    second_citizenship: data.second_citizenship || data.secondCitizenship || null,
+    termination_reason: data.termination_reason || data.terminationReason || data.reason || null,
+    is_ss_tax_exempt: (data.is_ss_tax_exempt === 1 || data.is_ss_tax_exempt === '1' || data.is_ss_tax_exempt === true || data.isSsTaxExempt === true) ? 1 : 0,
+    ss_tax_exemption_reason: data.ss_tax_exemption_reason || data.ssTaxExemptionReason || null,
+    status: statusVal
+  };
+
+  return {
+    candidateData,
+    rawInputEmpId,
+    rawInputBadge,
+    rawInputWaid,
+    rawInputEmail,
+    processedChildrenList,
+    hasPhotoField,
+    photoData,
+    finalPhotoUrl
+  };
+}
+
 app.post('/api/employees', async (req, res) => {
   try {
     const data = req.body;
@@ -1735,6 +1965,256 @@ app.post('/api/employees', async (req, res) => {
       res.json({ success: true, id: String(finalEmpDbId), data, updated: !!(existing && existing.length > 0) });
   } catch (err) {
     console.error('Error saving employee:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// High-Speed Bulk Import Endpoint for Employees and Settings Metadata
+app.post('/api/employees/batch-import', async (req, res) => {
+  try {
+    const { employees = [], branches = [], departments = [], positions = [] } = req.body;
+    if (!Array.isArray(employees) || employees.length === 0) {
+      return res.status(400).json({ error: 'No employee records provided for batch import' });
+    }
+
+    console.log(`[BatchImport] Starting high-speed batch import for ${employees.length} employees...`);
+    const startTime = Date.now();
+
+    // 1. Reload table columns once
+    await loadEmployeeColumns();
+
+    // 2. Pre-sync branches in batch if provided
+    let branchesAdded = false;
+    if (Array.isArray(branches) && branches.length > 0) {
+      const existingBranches = await fastQuery('SELECT id, name, name_ar, name_en FROM branches').catch(() => []);
+      const branchNames = new Set();
+      existingBranches.forEach(b => {
+        if (b.name) branchNames.add(b.name.trim().toLowerCase());
+        if (b.name_ar) branchNames.add(b.name_ar.trim().toLowerCase());
+        if (b.name_en) branchNames.add(b.name_en.trim().toLowerCase());
+      });
+
+      for (const b of branches) {
+        const nameAr = (b.name_ar || b.name || b.name_en || '').trim();
+        const nameEn = (b.name_en || b.name || b.name_ar || '').trim();
+        if (!nameAr && !nameEn) continue;
+        if (!branchNames.has(nameAr.toLowerCase()) && !branchNames.has(nameEn.toLowerCase())) {
+          const bId = b.id ? String(b.id) : `BR_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+          await fastQuery(
+            `INSERT INTO branches (id, name, name_ar, name_en, address, city, country, status, sort_order, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'Iraq', 'Active', 0, NOW())
+             ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+            [bId, nameAr, nameAr, nameEn, b.address || null, b.city || null]
+          ).catch(e => console.warn('Batch branch insert warn:', e.message));
+          branchNames.add(nameAr.toLowerCase());
+          branchNames.add(nameEn.toLowerCase());
+          branchesAdded = true;
+        }
+      }
+    }
+
+    // 3. Pre-sync departments in batch if provided
+    let deptsAdded = false;
+    if (Array.isArray(departments) && departments.length > 0) {
+      const existingDepts = await fastQuery('SELECT id, name, name_ar, name_en FROM departments').catch(() => []);
+      const deptNames = new Set();
+      existingDepts.forEach(d => {
+        if (d.name) deptNames.add(d.name.trim().toLowerCase());
+        if (d.name_ar) deptNames.add(d.name_ar.trim().toLowerCase());
+        if (d.name_en) deptNames.add(d.name_en.trim().toLowerCase());
+      });
+
+      for (const d of departments) {
+        const deptAr = (d.name_ar || d.name || d.name_en || '').trim();
+        const deptEn = (d.name_en || d.name || d.name_ar || '').trim();
+        if (!deptAr && !deptEn) continue;
+        if (!deptNames.has(deptAr.toLowerCase()) && !deptNames.has(deptEn.toLowerCase())) {
+          const dCode = (d.code || `DEP-${Date.now().toString().slice(-4)}`).trim().toUpperCase();
+          await fastQuery(
+            `INSERT INTO departments (name_en, name_ar, name, code, manager_name, status, sort_order)
+             VALUES (?, ?, ?, ?, 'Unassigned', 'Active', 0)`,
+            [deptEn, deptAr, deptAr, dCode]
+          ).catch(e => console.warn('Batch department insert warn:', e.message));
+          deptNames.add(deptAr.toLowerCase());
+          deptNames.add(deptEn.toLowerCase());
+          deptsAdded = true;
+        }
+      }
+    }
+
+    // 4. Pre-sync positions in batch if provided
+    let posAdded = false;
+    if (Array.isArray(positions) && positions.length > 0) {
+      const existingPositions = await fastQuery('SELECT id, name, name_ar, name_en, title, title_ar FROM positions').catch(() => []);
+      const posNames = new Set();
+      existingPositions.forEach(p => {
+        if (p.name) posNames.add(p.name.trim().toLowerCase());
+        if (p.name_ar) posNames.add(p.name_ar.trim().toLowerCase());
+        if (p.name_en) posNames.add(p.name_en.trim().toLowerCase());
+        if (p.title) posNames.add(p.title.trim().toLowerCase());
+        if (p.title_ar) posNames.add(p.title_ar.trim().toLowerCase());
+      });
+
+      for (const p of positions) {
+        const posAr = (p.title_ar || p.name_ar || p.title || p.name || p.name_en || '').trim();
+        const posEn = (p.title || p.name_en || p.title_ar || p.name_ar || p.name || '').trim();
+        if (!posAr && !posEn) continue;
+        if (!posNames.has(posAr.toLowerCase()) && !posNames.has(posEn.toLowerCase())) {
+          await fastQuery(
+            `INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order)
+             VALUES (?, ?, ?, ?, ?, 'Active', 0)`,
+            [posEn, posAr, posAr, posEn, posAr]
+          ).catch(e => console.warn('Batch position insert warn:', e.message));
+          posNames.add(posAr.toLowerCase());
+          posNames.add(posEn.toLowerCase());
+          posAdded = true;
+        }
+      }
+    }
+
+    // 5. Pre-load app settings for certificate allowance
+    const settingRows = await fastQuery("SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('certificate_allowance_diplome', 'certificate_allowance_bachelar', 'certificate_allowance_master', 'certificate_allowance_currency', 'usd_to_iqd_rate')").catch(() => []);
+    const sMap = {};
+    (settingRows || []).forEach(r => { sMap[r.setting_key] = r.setting_value; });
+
+    // 6. Pre-load existing employees to match updates vs inserts in memory
+    const existingEmpRows = await fastQuery('SELECT id, employee_id, badge_no, waid, LOWER(email) as email FROM employees').catch(() => []);
+    const idMap = new Map();
+    const empIdMap = new Map();
+    const badgeMap = new Map();
+    const waidMap = new Map();
+    const emailMap = new Map();
+
+    for (const emp of existingEmpRows) {
+      if (emp.id) idMap.set(Number(emp.id), emp.id);
+      if (emp.employee_id) empIdMap.set(String(emp.employee_id).trim().toLowerCase(), emp.id);
+      if (emp.badge_no) badgeMap.set(String(emp.badge_no).trim().toLowerCase(), emp.id);
+      if (emp.waid) waidMap.set(String(emp.waid).trim().toLowerCase(), emp.id);
+      if (emp.email && !emp.email.includes('no-email-') && emp.email.includes('@') && !emp.email.endsWith('@vitasiraq.local')) {
+        emailMap.set(emp.email.trim().toLowerCase(), emp.id);
+      }
+    }
+
+    let insertedCount = 0;
+    let updatedCount = 0;
+
+    // Process employees in memory and execute in concurrent chunks
+    const CHUNK_SIZE = 25;
+    for (let i = 0; i < employees.length; i += CHUNK_SIZE) {
+      const chunk = employees.slice(i, i + CHUNK_SIZE);
+      await Promise.all(chunk.map(async (empData) => {
+        try {
+          const {
+            candidateData,
+            rawInputEmpId,
+            rawInputBadge,
+            rawInputWaid,
+            rawInputEmail,
+            processedChildrenList,
+            hasPhotoField,
+            photoData,
+            finalPhotoUrl
+          } = buildEmployeeCandidateData(empData, sMap);
+
+          const validColumns = Object.keys(candidateData).filter(col => employeeTableColumns.has(col));
+
+          // In-memory match
+          let targetDbId = null;
+          if (empData.id && !isNaN(Number(empData.id)) && Number(empData.id) > 0 && Number(empData.id) < 2147483647 && idMap.has(Number(empData.id))) {
+            targetDbId = idMap.get(Number(empData.id));
+          } else if (rawInputEmpId && empIdMap.has(rawInputEmpId.toLowerCase())) {
+            targetDbId = empIdMap.get(rawInputEmpId.toLowerCase());
+          } else if (rawInputBadge && badgeMap.has(rawInputBadge.toLowerCase())) {
+            targetDbId = badgeMap.get(rawInputBadge.toLowerCase());
+          } else if (rawInputWaid && waidMap.has(rawInputWaid.toLowerCase())) {
+            targetDbId = waidMap.get(rawInputWaid.toLowerCase());
+          } else if (rawInputEmail && emailMap.has(rawInputEmail.toLowerCase())) {
+            targetDbId = emailMap.get(rawInputEmail.toLowerCase());
+          }
+
+          let finalEmpDbId = targetDbId;
+          if (targetDbId) {
+            // Update
+            let updateCols = validColumns.filter(col => col !== 'id');
+            if (!hasPhotoField && !photoData && !finalPhotoUrl) {
+              updateCols = updateCols.filter(col => col !== 'photo' && col !== 'photo_url');
+            }
+            const updateVals = updateCols.map(col => candidateData[col]);
+            updateVals.push(targetDbId);
+
+            const cleanEmpId = candidateData.employee_id || '';
+            let whereClause = 'WHERE id = ?';
+            if (cleanEmpId) {
+              whereClause = 'WHERE id = ? OR employee_id = ?';
+              updateVals.push(cleanEmpId);
+            }
+
+            const setClause = updateCols.map(col => `${col} = ?`).join(', ');
+            await fastQuery(`UPDATE employees SET ${setClause}, updated_at = NOW() ${whereClause}`, updateVals);
+            updatedCount++;
+          } else {
+            // Insert
+            const insertCols = validColumns.filter(col => col !== 'id');
+            const insertVals = insertCols.map(col => candidateData[col]);
+            const placeholders = insertCols.map(() => '?').join(', ');
+
+            const insertResult = await fastQuery(`INSERT INTO employees (${insertCols.join(', ')}) VALUES (${placeholders})`, insertVals);
+            finalEmpDbId = insertResult.insertId;
+            insertedCount++;
+
+            // Update in-memory match indices so duplicate records within the same import file won't conflict
+            if (finalEmpDbId) {
+              idMap.set(finalEmpDbId, finalEmpDbId);
+              if (candidateData.employee_id) empIdMap.set(candidateData.employee_id.toLowerCase(), finalEmpDbId);
+              if (candidateData.badge_no) badgeMap.set(candidateData.badge_no.toLowerCase(), finalEmpDbId);
+              if (candidateData.waid) waidMap.set(candidateData.waid.toLowerCase(), finalEmpDbId);
+              if (candidateData.email && !candidateData.email.includes('no-email-')) emailMap.set(candidateData.email.toLowerCase(), finalEmpDbId);
+            }
+          }
+
+          // Handle employee children if provided
+          if (finalEmpDbId && Array.isArray(processedChildrenList) && processedChildrenList.length > 0) {
+            await fastQuery('DELETE FROM employee_children WHERE employee_id = ?', [finalEmpDbId]).catch(() => {});
+            for (const ch of processedChildrenList) {
+              if (ch && (ch.name || ch.dob)) {
+                await fastQuery(
+                  'INSERT INTO employee_children (employee_id, name, relation, dob, age) VALUES (?, ?, ?, ?, ?)',
+                  [finalEmpDbId, ch.name || '', ch.relation || 'Son', ch.dob || null, ch.age || 0]
+                ).catch(() => {});
+              }
+            }
+          }
+        } catch (rowErr) {
+          console.error('[BatchImport] Error processing employee item:', rowErr.message);
+        }
+      }));
+    }
+
+    const elapsed = Date.now() - startTime;
+    console.log(`[BatchImport] Completed in ${elapsed}ms: ${insertedCount} inserted, ${updatedCount} updated.`);
+
+    // 7. Single delta cloud sync & single realtime event
+    triggerRealtimeSync(db, 'employees');
+    if (branchesAdded) triggerRealtimeSync(db, 'branches');
+    if (deptsAdded) triggerRealtimeSync(db, 'departments');
+    if (posAdded) triggerRealtimeSync(db, 'positions');
+
+    broadcastRealtimeEvent({
+      type: 'DATA_CHANGED',
+      table: 'employees',
+      count: employees.length,
+      timestamp: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      count: employees.length,
+      inserted: insertedCount,
+      updated: updatedCount,
+      elapsedMs: elapsed
+    });
+  } catch (err) {
+    console.error('[BatchImport] Global error:', err);
     res.status(500).json({ error: err.message });
   }
 });
