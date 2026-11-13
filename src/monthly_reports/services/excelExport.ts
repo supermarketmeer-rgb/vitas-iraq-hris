@@ -23,12 +23,14 @@ export async function exportReportToExcel(options: ExcelExportOptions): Promise<
   workbook.created = new Date();
   workbook.modified = new Date();
 
-  const brandNavy = '1E293B'; // Slate 800
-  const headerFill = '0F172A'; // Slate 900
+  const brandNavy = '1E3A8A'; // Deep Corporate Blue (Blue 900)
+  const headerFill = '1D4ED8'; // Royal Blue (Blue 700) — matches on-screen header
   const accentBlue = '2563EB'; // Blue 600
   const softBg = 'F8FAFC'; // Slate 50
-  const zebraBg = 'F1F5F9'; // Slate 100
+  const zebraBg = 'F8FAFC'; // Slate 50
   const borderGray = 'CBD5E1';
+  const totalRowBg = 'DBEAFE'; // Soft blue highlight for totals
+  const totalText = '1E3A8A'; // Deep blue text for totals
 
   // ==========================================
   // SHEET 1: MANAGEMENT SUMMARY
@@ -258,19 +260,21 @@ export async function exportReportToExcel(options: ExcelExportOptions): Promise<
 
   colDefs.forEach((colDef, idx) => {
     const cell = headerRow.getCell(idx + 1);
-    cell.value = isRtl ? colDef.headerAr : colDef.headerEn;
-    cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FFFFFF' } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: brandNavy } };
+    cell.value = colDef.headerEn; // Always English headers matching on-screen table
+    cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerFill } };
     cell.alignment = { 
-      horizontal: colDef.type === 'currency' || colDef.type === 'number' || colDef.type === 'percent' ? 'right' : (isRtl ? 'right' : 'left'), 
+      horizontal: colDef.type === 'currency' || colDef.type === 'number' || colDef.type === 'percent' ? 'right' : 'left', 
       vertical: 'middle' 
     };
     cell.border = {
-      top: { style: 'medium', color: { argb: '000000' } },
-      bottom: { style: 'medium', color: { argb: accentBlue } }
+      top: { style: 'thin', color: { argb: brandNavy } },
+      bottom: { style: 'medium', color: { argb: brandNavy } },
+      left: { style: 'thin', color: { argb: '3B82F6' } },
+      right: { style: 'thin', color: { argb: '3B82F6' } }
     };
     // Set column width
-    dataSheet.getColumn(idx + 1).width = Math.max(12, Math.min(35, (colDef.width || 120) / 7.5));
+    dataSheet.getColumn(idx + 1).width = Math.max(14, Math.min(38, (colDef.width || 120) / 7.2));
   });
 
   // Populate data rows
@@ -326,22 +330,22 @@ export async function exportReportToExcel(options: ExcelExportOptions): Promise<
   // Total Summary Row
   if (data.length > 0) {
     const totalRow = dataSheet.getRow(rowIdx);
-    totalRow.height = 22;
+    totalRow.height = 24;
     colDefs.forEach((colDef, cIdx) => {
       const cell = totalRow.getCell(cIdx + 1);
       if (cIdx === 0) {
-        cell.value = isRtl ? 'الإجمالي العام' : 'GRAND TOTAL';
-        cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: brandNavy } };
+        cell.value = 'GRAND TOTAL';
+        cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: totalText } };
       } else if (numericTotals[cIdx + 1] !== undefined) {
         cell.value = numericTotals[cIdx + 1];
-        cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: brandNavy } };
+        cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: totalText } };
         if (colDef.type === 'currency') cell.numFmt = '#,##0 "IQD"';
         else if (colDef.type === 'number') cell.numFmt = '#,##0';
       }
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: totalRowBg } };
       cell.border = {
-        top: { style: 'medium', color: { argb: brandNavy } },
-        bottom: { style: 'double', color: { argb: brandNavy } }
+        top: { style: 'medium', color: { argb: headerFill } },
+        bottom: { style: 'double', color: { argb: headerFill } }
       };
     });
   }

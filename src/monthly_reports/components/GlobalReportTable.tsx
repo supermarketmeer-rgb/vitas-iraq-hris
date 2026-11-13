@@ -185,11 +185,11 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
   );
 
   const ColumnHeaderRow: React.FC<{ sectionKey: string }> = ({ sectionKey }) => (
-    <tr className="bg-teal-800 dark:bg-teal-900">
+    <tr className="bg-blue-700 dark:bg-slate-800 text-white">
       {cols.map(c => (
         <th
           key={`${sectionKey}-${c.key}`}
-          className="px-2 py-1.5 text-left text-[10px] font-semibold text-white border border-teal-700 whitespace-nowrap"
+          className="px-2 py-1.5 text-left text-[10px] font-semibold text-white border border-blue-800 dark:border-slate-700 whitespace-nowrap"
           style={{ minWidth: c.isHeader ? 160 : 70 }}
         >
           {c.enLabel}
@@ -222,14 +222,14 @@ export const GlobalReportTable: React.FC<GlobalReportTableProps> = ({
   );
 
   const TotalRow: React.FC<{ totals: Record<string, number>; label?: string }> = ({ totals, label }) => (
-    <tr className="bg-teal-700 dark:bg-teal-800 text-white">
-      <td className="px-2 py-1.5 text-xs font-bold border border-teal-600 dark:border-teal-700 whitespace-nowrap">
+    <tr className="bg-blue-800 dark:bg-slate-900 text-white font-bold">
+      <td className="px-2 py-1.5 text-xs font-bold border border-blue-700 dark:border-slate-700 whitespace-nowrap">
         {label || 'Total'}
       </td>
       {cols.slice(1).map(c => (
         <td
           key={c.key}
-          className="px-2 py-1.5 text-xs font-bold text-right border border-teal-600 dark:border-teal-700 whitespace-nowrap"
+          className="px-2 py-1.5 text-xs font-bold text-right border border-blue-700 dark:border-slate-700 whitespace-nowrap"
         >
           {(totals[c.key] ?? 0) === 0 ? '—' : (totals[c.key] ?? 0).toLocaleString()}
         </td>

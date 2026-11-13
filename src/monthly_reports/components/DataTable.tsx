@@ -209,7 +209,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-left rtl:text-right border-collapse text-xs">
           <thead>
-            <tr className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700/80 font-semibold select-none">
+            <tr className="bg-blue-700 dark:bg-slate-800/80 text-white dark:text-slate-300 border-b border-blue-800 dark:border-slate-700/80 font-semibold select-none">
               {activeColumns.map((col, idx) => {
                 const isSorted = sortKey === col.key;
                 const isNumeric = col.type === 'currency' || col.type === 'number' || col.type === 'percent';
@@ -218,17 +218,17 @@ export const DataTable: React.FC<DataTableProps> = ({
                     key={col.key}
                     onClick={() => handleSort(col.key)}
                     style={{ minWidth: col.width || 120 }}
-                    className={`px-3.5 py-3 cursor-pointer hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors whitespace-nowrap ${
+                    className={`px-3.5 py-3 cursor-pointer hover:bg-blue-800 dark:hover:bg-slate-700/60 transition-colors whitespace-nowrap text-white dark:text-slate-300 ${
                       isNumeric ? 'text-right rtl:text-right' : 'text-left rtl:text-right'
                     }`}
                   >
                     <div className={`flex items-center gap-1.5 ${isNumeric ? 'justify-end' : 'justify-start'}`}>
-                      <span>{col.headerEn}</span>
-                      <span className="text-slate-400">
+                      <span className="text-white dark:text-slate-300 font-semibold">{col.headerEn}</span>
+                      <span className="text-blue-200 dark:text-slate-400">
                         {isSorted ? (
-                          sortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" /> : <ArrowDown className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                          sortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-white dark:text-teal-400" /> : <ArrowDown className="w-3.5 h-3.5 text-white dark:text-teal-400" />
                         ) : (
-                          <ArrowUpDown className="w-3 h-3 opacity-40 hover:opacity-100" />
+                          <ArrowUpDown className="w-3 h-3 opacity-60 hover:opacity-100" />
                         )}
                       </span>
                     </div>
