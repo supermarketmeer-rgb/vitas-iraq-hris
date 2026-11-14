@@ -173,6 +173,22 @@ export const Category5PayrollView: React.FC = () => {
 
   // Central Iraqi Legal Settings & Tax Brackets State
   const [legalSettings, setLegalSettings] = useState<PayrollLegalSettings>(getDefaultLegalSettings());
+
+  // Annual Social Security Baselines: Anchors social security base to Jan 1st of each year (never affected by absence or mid-year raises)
+  const [annualSsBaselines, setAnnualSsBaselines] = useState<Record<number, Record<string, number>>>(() => {
+    try {
+      const saved = localStorage.getItem('vitas_payroll_annual_ss_baseline');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vitas_payroll_annual_ss_baseline', JSON.stringify(annualSsBaselines));
+    } catch (e) {}
+  }, [annualSsBaselines]);
   const [taxBrackets, setTaxBrackets] = useState<TaxBracketConfig[]>(getDefaultTaxBrackets());
   const [traceCalculationResult, setTraceCalculationResult] = useState<FullPayrollTaxResult | null>(null);
   const [traceModalRow, setTraceModalRow] = useState<any | null>(null);
@@ -824,13 +840,38 @@ export const Category5PayrollView: React.FC = () => {
 
       // Deductions Fields: social_security, income_tax, insurance
       // Central Iraqi Social Security & Income Tax Calculation
+      // Statutory Rule (Iraqi Law 18 of 2023 & statutory directive):
+      // 1. Social security is NEVER affected by absence days (no absence deduction from SS base).
+      // 2. Social security base remains fixed throughout the calendar year (months 1-12) based on
+      //    the basic salary at the start of the year (January 1st / 1/1), and only updates once per year on Jan 1st.
+      const empIdStr = String(emp.id || emp.employee_id || emp.badge_no);
+      const masterContractBasic = Number(emp.basicSalary ?? emp.basic_salary ?? emp.salary ?? basic_salary);
+      let ss_base_salary = masterContractBasic;
+
+      if (selectedMonth === 1) {
+        // Month 1 (January - Start of New Year): baseline updates to the current basic salary
+        ss_base_salary = basic_salary;
+        if (annualSsBaselines[selectedYear]?.[empIdStr] !== basic_salary) {
+          annualSsBaselines[selectedYear] = annualSsBaselines[selectedYear] || {};
+          annualSsBaselines[selectedYear][empIdStr] = basic_salary;
+        }
+      } else {
+        // Months 2-12: locked to January baseline if recorded, or original master contract basic salary
+        if (annualSsBaselines[selectedYear]?.[empIdStr] !== undefined) {
+          ss_base_salary = annualSsBaselines[selectedYear][empIdStr];
+        } else {
+          ss_base_salary = masterContractBasic;
+        }
+      }
+
       const empBranch = emp.branch || emp.branch_en || emp.branch_ar || emp.office || '';
       const empLocation = emp.location || emp.location_en || emp.location_ar || emp.city || '';
       const isKurdistan = isKurdistanLocation(empLocation, empBranch);
       const combinedCalc = calculateCombinedPayrollTaxAndSecurity(
         {
           id: emp.id,
-          basic_salary: current_month_basic,
+          basic_salary: current_month_basic, // For income tax calculation (reduced by absence)
+          ss_base_salary: ss_base_salary,    // For social security (fixed annually from Jan 1, unaffected by absence or mid-year changes)
           marital_status: isMarried ? 'married' : 'single',
           gender: emp.gender,
           children_count: childCount,
@@ -2289,7 +2330,7 @@ export const Category5PayrollView: React.FC = () => {
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Overtime</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Earned Leaves</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Gross Salary</th>
-                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Social Security</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }} title={t('الضمان الاجتماعي ثابت سنوياً (من 1 كانون الثاني) ولا يتأثر بالغياب أو التغيير خلال السنة', 'Social Security is fixed annually (from Jan 1) and unaffected by absence or mid-year salary changes')}>Social Security</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Income Tax</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Insurance Deduction</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Loan Payment</th>

@@ -161,6 +161,7 @@ export interface EmployeeInputForCalculation {
   full_name_ar?: string;
   full_name_en?: string;
   basic_salary: number;
+  ss_base_salary?: number; // Annual fixed base salary for Social Security (anchored to Jan 1st, unaffected by absence or mid-year changes)
   marital_status: 'single' | 'married' | 'divorced' | 'widowed' | string;
   gender?: 'male' | 'female' | string;
   children_count?: number;
@@ -499,12 +500,17 @@ export function normalizeEmployeeInput(
   const rawGender = String(emp.gender || emp.gender_ar || '').toLowerCase().trim();
   const gender = (rawGender === 'female' || rawGender === 'أنثى' || rawGender === 'انثى') ? 'female' : 'male';
 
+  const ssBaseSalary = (emp.ss_base_salary !== undefined && emp.ss_base_salary !== null)
+    ? Number(emp.ss_base_salary)
+    : (emp.ssBaseSalary !== undefined && emp.ssBaseSalary !== null ? Number(emp.ssBaseSalary) : undefined);
+
   return {
     id: emp.id ?? emp.employee_id ?? 'emp_001',
     employee_id: emp.employee_id ?? emp.id ?? 'emp_001',
     full_name_ar: emp.full_name_ar ?? emp.fullNameAr ?? emp.name ?? 'موظف تجريبي',
     full_name_en: emp.full_name_en ?? emp.fullNameEn ?? '',
     basic_salary: basicSalary,
+    ss_base_salary: ssBaseSalary,
     marital_status: maritalStatus,
     gender,
     children_count: childrenCount,
@@ -557,6 +563,13 @@ export function calculateSocialSecurity(
     }
   }
 
+  // Social Security salary base: Uses ss_base_salary (annual fixed baseline as of Jan 1) if provided,
+  // which stays constant throughout the calendar year and is completely unaffected by absence deductions
+  // or mid-year salary changes.
+  const ssBasic = (employee.ss_base_salary !== undefined && !isNaN(employee.ss_base_salary) && employee.ss_base_salary > 0)
+    ? employee.ss_base_salary
+    : employee.basic_salary;
+
   let totalGrossMonthly = employee.basic_salary + fixedAllowancesSum;
 
   if (region === 'KURDISTAN') {
@@ -567,7 +580,7 @@ export function calculateSocialSecurity(
     // Employer SS 12% = Round((Basic + Allowances) * 12%)
     // Total SS = Employee SS + Employer SS
     // -------------------------------------------------------------
-    const insuredBase = employee.basic_salary + fixedAllowancesSum;
+    const insuredBase = ssBasic + fixedAllowancesSum;
     const empRate = Number(settings.ss_employee_rate) || 5;
     const emprRate = Number(settings.ss_employer_rate) || 12;
 
@@ -575,7 +588,7 @@ export function calculateSocialSecurity(
     const employerInsurance = Math.round(insuredBase * (emprRate / 100));
     const totalInsurance = employeeInsurance + employerInsurance;
 
-    trace.push(`[ضمان إقليم كردستان] الراتب الأساسي الخاضع للضمان = ${employee.basic_salary.toLocaleString()} د.ع.`);
+    trace.push(`[ضمان إقليم كردستان] الراتب الأساسي الخاضع للضمان (ثابت سنوياً) = ${ssBasic.toLocaleString()} د.ع.`);
     trace.push(`[ضمان إقليم كردستان] المخصصات الثابتة = ${fixedAllowancesSum.toLocaleString()} د.ع.`);
     trace.push(`[ضمان إقليم كردستان] وعاء الضمان (الأساسي + المخصصات) = ${insuredBase.toLocaleString()} د.ع.`);
     trace.push(`حصة الموظف (${empRate}%) = ${insuredBase.toLocaleString()} × ${empRate}% = ${employeeInsurance.toLocaleString()} د.ع.`);
@@ -586,7 +599,7 @@ export function calculateSocialSecurity(
 
     return {
       region,
-      nominal_salary: employee.basic_salary,
+      nominal_salary: ssBasic,
       eligible_components_sum: insuredBase,
       insured_salary_before_limits: insuredBase,
       minimum_limit: null,
@@ -615,7 +628,7 @@ export function calculateSocialSecurity(
   let eligibleSum = 0;
 
   if (eligibleCodes.includes('basic_salary')) {
-    eligibleSum += Number(employee.basic_salary) || 0;
+    eligibleSum += ssBasic;
   }
   for (const code of eligibleCodes) {
     if (code !== 'basic_salary' && allowances[code]) {
@@ -623,6 +636,7 @@ export function calculateSocialSecurity(
     }
   }
 
+  trace.push(`[ضمان العراق الاتحادي] الراتب الاسمي التأميني (ثابت سنوياً من بداية السنة وغير متأثر بالغياب) = ${ssBasic.toLocaleString()} د.ع.`);
   trace.push(`[ضمان العراق الاتحادي] الأجر الكلي المعتمد = ${eligibleSum.toLocaleString()} د.ع.`);
 
   // Ceiling and rounding per Excel formula: =ROUNDUP(IF(Wage>=1750000, 1750000, Wage), -3)
