@@ -2183,72 +2183,30 @@ export const Category5PayrollView: React.FC = () => {
               </div>
             </div>
 
-            {/* Actions & View Controls Toolbar */}
+            {/* Actions Toolbar on the same line as Search & Filter */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Hidden file input for Excel import */}
-              <input
-                type="file"
-                ref={payrollFileInputRef}
-                onChange={handleSelectPayrollImportFile}
-                accept=".xlsx, .xls"
-                className="hidden"
-              />
-
-              {/* Button: Export Excel Template with File Save Dialog */}
+              {/* Button: Export Payroll to Excel (Formerly Excel Template) */}
               <button
                 onClick={handleExportPayrollTemplate}
                 disabled={isExportingTemplate}
-                title={t('انشاء وتنزيل قالب إكسل مع نافذة لاختيار مكان الحفظ، يحتوي بيانات الموظفين والمبالغ الثابتة لتعديل الحوافز والمكافآت', 'Download pre-filled Excel template with employee baseline and fixed amounts')}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title={t('تصدير وحفظ مسير الرواتب لشهر الحالي إلى ملف إكسل', 'Export current month payroll to Excel')}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap active:scale-95"
               >
                 <span className="material-symbols-outlined text-sm">
                   {isExportingTemplate ? 'progress_activity' : 'download'}
                 </span>
-                <span>{isExportingTemplate ? t('جارِ التصدير...', 'Exporting...') : t('قالب إكسل (Template)', 'Excel Template')}</span>
-              </button>
-
-              {/* Button: Import Excel Sheet */}
-              <button
-                onClick={handleTriggerPayrollImport}
-                disabled={isImportingExcel}
-                title={t('استيراد الحوافز، بدل النقل، المكافآت، والعمل الإضافي من ملف إكسل وتطبيقها مباشرة', 'Import incentives, transportation, bonus, overtime from Excel sheet')}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-sm">
-                  {isImportingExcel ? 'progress_activity' : 'upload_file'}
-                </span>
-                <span>{isImportingExcel ? t('جارِ القراءة...', 'Reading...') : t('استيراد إكسل (Incentives / Bonus)', 'Import Excel')}</span>
+                <span>{isExportingTemplate ? t('جارِ التصدير...', 'Exporting...') : 'Export Payroll to Excel'}</span>
               </button>
 
               {/* Button: Policies & Rates */}
               <button
                 onClick={() => setShowPoliciesModal(true)}
                 title={t('عرض وتعديل سياسات الرواتب، أسعار الصرف، والبدلات والإجازات', 'View & edit payroll policies, exchange rates & allowances')}
-                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-900 font-medium text-xs border border-slate-300 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-900 font-medium text-xs border border-slate-300 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-sm text-teal-600">tune</span>
                 <span>{t('السياسات واللوائح', 'Policies & Rules')}</span>
               </button>
-
-              {/* View Mode Switcher (Summary vs Detailed Breakdown) */}
-              <div className="flex items-center gap-1.5 bg-[#0a0c10] p-1 rounded-xl border border-white/10">
-                <button
-                  onClick={() => setViewMode('summary')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    viewMode === 'summary' ? 'bg-teal-600 text-white shadow' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {t('ملخص موجز', 'Summary')}
-                </button>
-                <button
-                  onClick={() => setViewMode('detailed')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    viewMode === 'detailed' ? 'bg-teal-600 text-white shadow' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {t('جدول تفصيلي مطبق لقاعدة البيانات (25 حقل SQL)', 'SQL Full Database Table Schema')}
-                </button>
-              </div>
             </div>
           </div>
 
