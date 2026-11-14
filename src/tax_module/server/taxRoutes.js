@@ -127,7 +127,8 @@ export function calculateEmployeeTaxAndSS(e, settings = {}, brackets = [], branc
     const baseAfter30Percent = (basicSalary * 0.7) - empSS;
     const monthlyPersonal = Math.round((Number(settings.tax_personal_allowance) || 5000000) / 12); // 416,667
     const monthlySpouse = (isMarried && !spouseHasIncome) ? Math.round((Number(settings.tax_spouse_allowance) || 4000000) / 12) : 0; // 333,333
-    const monthlyChildren = Math.min(dependentsCount, 4) * Math.round((Number(settings.tax_child_allowance) || 400000) / 12); // 33,333/child
+    const maxKids = Number(settings.tax_eligible_children_limit) > 0 ? Number(settings.tax_eligible_children_limit) : 10;
+    const monthlyChildren = Math.min(dependentsCount, maxKids) * Math.round((Number(settings.tax_child_allowance) || 400000) / 12); // 33,333/child
     const totalExemptions = monthlyPersonal + monthlySpouse + monthlyChildren;
 
     taxableIncome = Math.max(0, baseAfter30Percent - totalExemptions);

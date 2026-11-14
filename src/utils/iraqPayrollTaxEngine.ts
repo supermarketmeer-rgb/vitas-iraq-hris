@@ -293,7 +293,7 @@ export function getDefaultLegalSettings(): PayrollLegalSettings {
     tax_personal_allowance: 5000000,
     tax_spouse_allowance: 4000000,
     tax_child_allowance: 400000,
-    tax_eligible_children_limit: 4,
+    tax_eligible_children_limit: 10,
     tax_spouse_income_condition: true,
     tax_employee_insurance_deductible: true,
     tax_other_allowed_deductions: 0,
@@ -849,7 +849,7 @@ export function calculateIncomeTax(
   // Under Iraqi Tax Law: married female employees do not receive child tax relief unless unmarried/sole provider
   const canClaimChildrenTaxExemption = !isFemale || (employee.marital_status !== 'married' && employee.marital_status !== 'متزوج' && employee.marital_status !== 'متأهل');
   const actualChildren = canClaimChildrenTaxExemption ? Math.max(0, Number(employee.children_count) || 0) : 0;
-  const maxEligibleChildren = Number(settings.tax_eligible_children_limit) || 4;
+  const maxEligibleChildren = Number(settings.tax_eligible_children_limit) > 0 ? Number(settings.tax_eligible_children_limit) : 10;
   const eligibleChildren = Math.min(actualChildren, maxEligibleChildren);
   const monthlyChildAllowanceRate = Math.round((settings.tax_child_allowance || 400000) / 12);
   const monthlyChildrenAllowanceTotal = eligibleChildren * monthlyChildAllowanceRate;
