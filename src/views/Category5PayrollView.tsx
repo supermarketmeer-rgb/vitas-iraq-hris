@@ -683,25 +683,22 @@ export const Category5PayrollView: React.FC = () => {
       // Family allowance calculation (spouse + children under 18) -> family_allowance
       // Values are fetched directly from Policies settings in appSettings (or defaults)
 
-      // Determine if employee is a Loan Officer (Loan Officer, Senior Loan Officer, SE Loan Officer - excluding supervisors & managers)
+      // Determine if employee is eligible for the 5 USD child rate (Credit department, Loan Officers, Office Managers, Supervisors in operations)
+      const empDept = `${emp.department || ''} ${emp.department_en || ''} ${emp.department_ar || ''}`.toLowerCase();
       const empPos = `${emp.position || ''} ${emp.position_en || ''} ${emp.position_ar || ''} ${emp.title || ''} ${emp.job_title || ''} ${emp.job_title_en || ''} ${emp.job_title_ar || ''}`.toLowerCase();
       const isLoanOfficer = ((): boolean => {
-        if (!empPos) return false;
-        if (
-          empPos.includes('supervisor') || empPos.includes('مشرف') || 
-          empPos.includes('manager') || empPos.includes('مدير') || 
-          empPos.includes('coordinator') || empPos.includes('منسق') || 
-          empPos.includes('assistant') || empPos.includes('مساعد') ||
-          empPos.includes('head') || empPos.includes('رئيس')
-        ) {
-          return false;
+        if (empDept.includes('credit') || empDept.includes('ائتمان')) {
+          return true;
         }
-        return empPos.includes('se loan officer') || 
-               empPos.includes('senior loan officer') || 
-               empPos.includes('loan officer') || 
+        if (!empPos) return false;
+        return empPos.includes('loan officer') || 
                empPos.includes('مسؤول قروض') || 
                empPos.includes('مسؤول القروض') || 
-               empPos.includes('ضابط قروض');
+               empPos.includes('ضابط قروض') ||
+               empPos.includes('office manager') ||
+               empPos.includes('مدير مكتب') ||
+               empPos.includes('credit') ||
+               empPos.includes('ائتمان');
       })();
 
       // Loan Officer: 5 USD default, Others: 4 USD default

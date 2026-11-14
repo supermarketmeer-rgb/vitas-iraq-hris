@@ -832,24 +832,19 @@ export const Category3EmployeeView: React.FC = () => {
     const rawSpouse = parseFloat(appSettings['marriage_allowance_default'] || appSettings['spouse_allowance_default'] || appSettings['marriage_allowance'] || '50000');
     const spouseCurr = appSettings['marriage_allowance_currency'] || 'IQD';
     const policySpouseAllowance = spouseCurr === 'USD' ? Math.round(rawSpouse * fxRate) : rawSpouse;
+    const deptStr = `${department || ''}`.toLowerCase();
     const posStr = `${jobTitle || ''} ${jobTitleEn || ''} ${grade || ''}`.toLowerCase();
     const isLoanOfficer = ((): boolean => {
+      if (deptStr.includes('credit') || deptStr.includes('ائتمان')) return true;
       if (!posStr) return false;
-      if (
-        posStr.includes('supervisor') || posStr.includes('مشرف') || 
-        posStr.includes('manager') || posStr.includes('مدير') || 
-        posStr.includes('coordinator') || posStr.includes('منسق') || 
-        posStr.includes('assistant') || posStr.includes('مساعد') ||
-        posStr.includes('head') || posStr.includes('رئيس')
-      ) {
-        return false;
-      }
-      return posStr.includes('se loan officer') || 
-             posStr.includes('senior loan officer') || 
-             posStr.includes('loan officer') || 
+      return posStr.includes('loan officer') || 
              posStr.includes('مسؤول قروض') || 
              posStr.includes('مسؤول القروض') || 
-             posStr.includes('ضابط قروض');
+             posStr.includes('ضابط قروض') ||
+             posStr.includes('office manager') ||
+             posStr.includes('مدير مكتب') ||
+             posStr.includes('credit') ||
+             posStr.includes('ائتمان');
     })();
 
     const loChildValRaw = parseFloat(appSettings['child_allowance_loan_officer_default'] || '5');

@@ -642,24 +642,19 @@ export function registerTaxModuleRoutes(app, query) {
         const dependentsCount = Array.isArray(childrenList) ? childrenList.length : 0;
         const isMarried = (e.marital_status === 'married' || e.marital_status === 'متأهل');
 
+        const empDept = `${e.department || ''} ${e.department_en || ''} ${e.department_ar || ''}`.toLowerCase();
         const empPos = `${e.position || ''} ${e.position_en || ''} ${e.position_ar || ''}`.toLowerCase();
         const isLoanOfficer = (() => {
+          if (empDept.includes('credit') || empDept.includes('ائتمان')) return true;
           if (!empPos) return false;
-          if (
-            empPos.includes('supervisor') || empPos.includes('مشرف') || 
-            empPos.includes('manager') || empPos.includes('مدير') || 
-            empPos.includes('coordinator') || empPos.includes('منسق') || 
-            empPos.includes('assistant') || empPos.includes('مساعد') ||
-            empPos.includes('head') || empPos.includes('رئيس')
-          ) {
-            return false;
-          }
-          return empPos.includes('se loan officer') || 
-                 empPos.includes('senior loan officer') || 
-                 empPos.includes('loan officer') || 
+          return empPos.includes('loan officer') || 
                  empPos.includes('مسؤول قروض') || 
                  empPos.includes('مسؤول القروض') || 
-                 empPos.includes('ضابط قروض');
+                 empPos.includes('ضابط قروض') ||
+                 empPos.includes('office manager') ||
+                 empPos.includes('مدير مكتب') ||
+                 empPos.includes('credit') ||
+                 empPos.includes('ائتمان');
         })();
 
         const currentChildAllowanceRate = isLoanOfficer ? loChildAllowance : otherChildAllowance;
