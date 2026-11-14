@@ -175,8 +175,25 @@ export async function generatePayrollTemplateExcel(
     };
   });
 
-  // 3. Populate Data Rows with formatting matching web table
-  payrollRows.forEach((row, index) => {
+  // 3. Ensure Rows are Sorted by Branch (Ascending) -> Position (Ascending)
+  const sortedPayrollRows = [...payrollRows].sort((a, b) => {
+    const branchA = (a.branch || a.location_en || a.location_ar || '').trim();
+    const branchB = (b.branch || b.location_en || b.location_ar || '').trim();
+    const branchComp = branchA.localeCompare(branchB, undefined, { numeric: true, sensitivity: 'base' });
+    if (branchComp !== 0) return branchComp;
+
+    const posA = (a.position_en || a.position || a.position_ar || '').trim();
+    const posB = (b.position_en || b.position || b.position_ar || '').trim();
+    const posComp = posA.localeCompare(posB, undefined, { numeric: true, sensitivity: 'base' });
+    if (posComp !== 0) return posComp;
+
+    const nameA = (a.employee_name_en || a.employee_name_ar || a.name || '').trim();
+    const nameB = (b.employee_name_en || b.employee_name_ar || b.name || '').trim();
+    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  // Populate Data Rows with formatting matching web table
+  sortedPayrollRows.forEach((row, index) => {
     const isEven = index % 2 === 1;
     const rowValues = {
       no: index + 1,

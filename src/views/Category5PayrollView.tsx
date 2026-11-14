@@ -1514,22 +1514,22 @@ export const Category5PayrollView: React.FC = () => {
     );
 
     return uniqueFiltered.sort((a, b) => {
-      // 1. Ascending sort by Location
-      const locA = (language === 'en' ? a.location_en : a.location_ar) || '';
-      const locB = (language === 'en' ? b.location_en : b.location_ar) || '';
-      const locComp = locA.localeCompare(locB, language === 'en' ? 'en' : 'ar');
-      if (locComp !== 0) return locComp;
+      // 1. Primary Default Sort: Office / Branch Name (Ascending / تصاعدي)
+      const branchA = (a.branch || a.location_en || a.location_ar || '').trim();
+      const branchB = (b.branch || b.location_en || b.location_ar || '').trim();
+      const branchComp = branchA.localeCompare(branchB, undefined, { numeric: true, sensitivity: 'base' });
+      if (branchComp !== 0) return branchComp;
 
-      // 2. Ascending sort by Employee_Name
-      const nameA = (language === 'en' ? a.employee_name_en : a.employee_name_ar) || '';
-      const nameB = (language === 'en' ? b.employee_name_en : b.employee_name_ar) || '';
-      const nameComp = nameA.localeCompare(nameB, language === 'en' ? 'en' : 'ar');
-      if (nameComp !== 0) return nameComp;
+      // 2. Secondary Default Sort: Job Title / Position (Ascending / تصاعدي)
+      const posA = (a.position_en || a.position || a.position_ar || '').trim();
+      const posB = (b.position_en || b.position || b.position_ar || '').trim();
+      const posComp = posA.localeCompare(posB, undefined, { numeric: true, sensitivity: 'base' });
+      if (posComp !== 0) return posComp;
 
-      // 3. Ascending sort by Position
-      const posA = (language === 'en' ? a.position_en : a.position_ar) || '';
-      const posB = (language === 'en' ? b.position_en : b.position_ar) || '';
-      return posA.localeCompare(posB, language === 'en' ? 'en' : 'ar');
+      // 3. Tie-breaker: Employee Name (Ascending)
+      const nameA = (a.employee_name_en || a.employee_name_ar || '').trim();
+      const nameB = (b.employee_name_en || b.employee_name_ar || '').trim();
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [computedPayrollRows, selectedBranch, searchQuery, language]);
 
@@ -1910,7 +1910,7 @@ export const Category5PayrollView: React.FC = () => {
   const handleExportPayrollTemplate = async () => {
     setIsExportingTemplate(true);
     try {
-      const res = await generatePayrollTemplateExcel(computedPayrollRows, selectedYear, selectedMonth);
+      const res = await generatePayrollTemplateExcel(filteredPayrollRows, selectedYear, selectedMonth);
       if (res.success) {
         setActionMessage(t(`تم إنشاء وتنزيل قالب مسير الرواتب والبدلات لشهر ${selectedMonth}/${selectedYear} بنجاح!`, `Payroll template for ${selectedMonth}/${selectedYear} exported successfully!`));
         setTimeout(() => setActionMessage(null), 4000);
