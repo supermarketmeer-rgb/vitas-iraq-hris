@@ -751,48 +751,37 @@ export const Category5PayrollView: React.FC = () => {
         try { rawChildren = JSON.parse(emp.children_json); } catch (e) {}
       }
 
-      // Calculate child age accurately (with 2-digit year correction & ghost date filtering)
-      const getChildAge = (child: any): number => {
-        if (!child) return 99;
+      // Filter out illogical dummy child dates (birth year <= 1999 or ghost dates)
+      const isValidChildRecord = (child: any): boolean => {
+        if (!child) return false;
         const dobStr = String(child.dob || '').trim();
-        // Ignore ghost dates generated from blank/0 Excel cells (e.g. 1899-12-30, 2000-01-01 or 2000-01-02)
-        if (dobStr.startsWith('1899') || dobStr.startsWith('1900') || dobStr.includes('1899-12-30') || dobStr === '2000-01-01' || dobStr === '2000-01-02' || dobStr === '2000-01-03') {
-          return 99;
+        if (!dobStr || dobStr === '-' || dobStr === 'N/A' || dobStr === '0') return false;
+        if (dobStr.startsWith('1899') || dobStr.startsWith('1900') || dobStr.includes('1899-12-30')) return false;
+        const match = dobStr.match(/^(\d{4})/);
+        if (match) {
+          const y = parseInt(match[1], 10);
+          if (isNaN(y) || y <= 1999) return false;
         }
-        if (dobStr && dobStr !== 'N/A' && dobStr !== '0') {
-          const birth = new Date(dobStr);
-          if (!isNaN(birth.getTime())) {
-            let y = birth.getFullYear();
-            if (y <= 1900 || y === 1899) return 99;
-            // 2-digit year correction: e.g. 1911 -> 2011, 1915 -> 2015, 1920 -> 2020
-            if (y >= 1900 && y <= 1945) {
-              y += 100;
-            }
-            const today = new Date();
-            let age = today.getFullYear() - y;
-            const m = today.getMonth() - birth.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-              age--;
-            }
-            if (age > 40) return 99;
-            return age < 0 ? 0 : age;
-          }
-        }
-        if (child.age !== undefined && child.age !== null && child.age !== '') {
-          const parsed = Number(child.age);
-          if (!isNaN(parsed)) {
-            if (parsed > 100) return 99; // ghost child age (e.g. 126)
-            return parsed;
-          }
-        }
-        return 99;
+        const birth = new Date(dobStr);
+        if (!isNaN(birth.getTime()) && birth.getFullYear() <= 1999) return false;
+        return true;
+      };
+
+      const validChildren = (Array.isArray(rawChildren) ? rawChildren : []).filter(isValidChildRecord);
+
+      // Helper to check if a valid child is over 18 years old
+      const isChildOver18 = (child: any): boolean => {
+        if (!child || !isValidChildRecord(child)) return false;
+        const dobStr = String(child.dob || '').trim();
+        const birth = new Date(dobStr);
+        if (isNaN(birth.getTime())) return false;
+        const eighteenthBday = new Date(birth.getFullYear() + 18, birth.getMonth(), birth.getDate());
+        const refDate = new Date();
+        return refDate >= eighteenthBday;
       };
 
       // Count children under 18 years old (including newborns age 0)
-      const childrenUnder18 = (Array.isArray(rawChildren) ? rawChildren : []).filter((child: any) => {
-        const age = getChildAge(child);
-        return age < 18;
-      });
+      const childrenUnder18 = validChildren.filter((child: any) => !isChildOver18(child));
 
       const childCount = childrenUnder18.length;
       const childAllow = childCount * childAllowanceVal;
@@ -1011,14 +1000,20 @@ export const Category5PayrollView: React.FC = () => {
         net_salary,
         overtime_hours: adj.overtimeHours,
 
-        // Children details (Columns 28 to 34)
-        children_count: Array.isArray(rawChildren) ? rawChildren.length : 0,
-        child_dob_1: rawChildren[0]?.dob || '-',
-        child_dob_2: rawChildren[1]?.dob || '-',
-        child_dob_3: rawChildren[2]?.dob || '-',
-        child_dob_4: rawChildren[3]?.dob || '-',
-        child_dob_5: rawChildren[4]?.dob || '-',
-        child_dob_6: rawChildren[5]?.dob || '-',
+        // Children details (Columns 28 to 34) - Valid children only (excluding dummy dates with year <= 1999)
+        children_count: validChildren.length,
+        child_dob_1: validChildren[0]?.dob || '-',
+        child_dob_2: validChildren[1]?.dob || '-',
+        child_dob_3: validChildren[2]?.dob || '-',
+        child_dob_4: validChildren[3]?.dob || '-',
+        child_dob_5: validChildren[4]?.dob || '-',
+        child_dob_6: validChildren[5]?.dob || '-',
+        child_over18_1: isChildOver18(validChildren[0]),
+        child_over18_2: isChildOver18(validChildren[1]),
+        child_over18_3: isChildOver18(validChildren[2]),
+        child_over18_4: isChildOver18(validChildren[3]),
+        child_over18_5: isChildOver18(validChildren[4]),
+        child_over18_6: isChildOver18(validChildren[5]),
 
         // On Hold & Release Audit History Fields
         on_hold: isOnHold ? 1 : 0,
@@ -2237,7 +2232,7 @@ export const Category5PayrollView: React.FC = () => {
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Total Deduction</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Net Salary</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Employee Name _ar</th>
-                      <th className="th-children-count p-3 border-r border-sky-600/40 text-white font-bold text-center" style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>No. of Children</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold text-center" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>No. of Children</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 1</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 2</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 3</th>
@@ -2400,41 +2395,84 @@ export const Category5PayrollView: React.FC = () => {
                           </td>
 
                           {/* 28. No. of Children */}
-                          <td className={`p-3 border-r whitespace-nowrap font-mono text-center font-bold ${
-                            isDark ? 'border-white/5 text-amber-300 bg-red-950/20' : 'border-slate-200 text-red-700 bg-red-50/50'
-                          }`}>
+                          <td
+                            className="p-3 border-r whitespace-nowrap font-mono text-center font-bold text-slate-900 dark:text-white"
+                            style={{ color: isDark ? '#ffffff' : '#000000' }}
+                          >
                             {row.children_count || 0}
                           </td>
 
                           {/* 29. DOB Child 1 */}
-                          <td className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
-                            isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700'
-                          }`}>{row.child_dob_1 || '-'}</td>
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              row.child_over18_1
+                                ? 'font-bold text-red-600 dark:text-red-400'
+                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                            }`}
+                            style={row.child_over18_1 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                          >
+                            {row.child_dob_1 || '-'}
+                          </td>
 
                           {/* 30. DOB Child 2 */}
-                          <td className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
-                            isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700'
-                          }`}>{row.child_dob_2 || '-'}</td>
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              row.child_over18_2
+                                ? 'font-bold text-red-600 dark:text-red-400'
+                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                            }`}
+                            style={row.child_over18_2 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                          >
+                            {row.child_dob_2 || '-'}
+                          </td>
 
                           {/* 31. DOB Child 3 */}
-                          <td className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
-                            isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700'
-                          }`}>{row.child_dob_3 || '-'}</td>
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              row.child_over18_3
+                                ? 'font-bold text-red-600 dark:text-red-400'
+                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                            }`}
+                            style={row.child_over18_3 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                          >
+                            {row.child_dob_3 || '-'}
+                          </td>
 
                           {/* 32. DOB Child 4 */}
-                          <td className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
-                            isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700'
-                          }`}>{row.child_dob_4 || '-'}</td>
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              row.child_over18_4
+                                ? 'font-bold text-red-600 dark:text-red-400'
+                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                            }`}
+                            style={row.child_over18_4 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                          >
+                            {row.child_dob_4 || '-'}
+                          </td>
 
                           {/* 33. DOB Child 5 */}
-                          <td className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
-                            isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700'
-                          }`}>{row.child_dob_5 || '-'}</td>
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              row.child_over18_5
+                                ? 'font-bold text-red-600 dark:text-red-400'
+                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                            }`}
+                            style={row.child_over18_5 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                          >
+                            {row.child_dob_5 || '-'}
+                          </td>
 
                           {/* 34. DOB Child 6 */}
-                          <td className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
-                            isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700'
-                          }`}>{row.child_dob_6 || '-'}</td>
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              row.child_over18_6
+                                ? 'font-bold text-red-600 dark:text-red-400'
+                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                            }`}
+                            style={row.child_over18_6 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                          >
+                            {row.child_dob_6 || '-'}
+                          </td>
 
                           {/* 35. Actions (Trace & Release) */}
                           <td className="p-3 text-center whitespace-nowrap">
@@ -2510,7 +2548,12 @@ export const Category5PayrollView: React.FC = () => {
                       {/* 25 */} <td className={`p-3 border-r font-mono font-black ${isDark ? 'border-white/10 text-rose-400' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.deductions)}</td>
                       {/* 26 */} <td className={`p-3 border-r font-mono font-black text-base ${isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'}`}>{(totals.net || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</td>
                       {/* 27 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
-                      {/* 28 */} <td className={`p-3 border-r font-mono text-center font-bold ${isDark ? 'border-white/10 text-amber-300' : 'border-slate-300 text-red-700'}`}>{totals.children_count || 0}</td>
+                      {/* 28 */} <td
+                        className="p-3 border-r font-mono text-center font-bold text-slate-900 dark:text-white"
+                        style={{ color: isDark ? '#ffffff' : '#000000' }}
+                      >
+                        {totals.children_count || 0}
+                      </td>
                       {/* 29 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
                       {/* 30 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
                       {/* 31 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>

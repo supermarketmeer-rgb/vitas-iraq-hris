@@ -1680,13 +1680,7 @@ html.dark .payroll-table thead th div {
   font-weight: 700 !important;
 }
 
-.payroll-table thead th.th-children-count,
-html.light .payroll-table thead th.th-children-count,
-html:not(.dark) .payroll-table thead th.th-children-count,
-html.dark .payroll-table thead th.th-children-count {
-  background-color: #dc2626 !important; /* Red highlight as shown in Image 1 */
-  color: #ffffff !important;
-}
+
 
 html.light table tbody tr,
 html.light table tbody tr.bg-white,
