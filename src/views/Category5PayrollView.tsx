@@ -962,7 +962,7 @@ export const Category5PayrollView: React.FC = () => {
         employee_name_en: emp.fullNameEn || emp.full_name_en || emp.fullName || emp.full_name_ar,
         position_ar: emp.jobTitle || emp.position_ar || emp.position,
         position_en: emp.jobTitleEn || emp.position_en || emp.jobTitle || emp.position,
-        department: emp.department || 'قسم الائتمان',
+        department: emp.department || emp.department_ar || emp.department_en || emp.departmentName || '',
         bank_name: emp.bankName || emp.bank_name || '',
         iban: emp.iban || '',
         original_start_date: emp.joinDate || emp.original_start_date || '2023-01-01',
@@ -2120,53 +2120,147 @@ export const Category5PayrollView: React.FC = () => {
                   <thead className="payroll-dark-header sticky top-0 z-10 shadow-lg">
                     <tr className="payroll-dark-header font-mono font-extrabold text-xs sm:text-sm select-none border-b-2 border-teal-500">
                       <th className="p-3.5 text-center border-r border-slate-700 w-10 font-black text-slate-400">#</th>
-                      <th className="th-badge p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">badge_no</th>
-                      <th className="th-location p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">location</th>
-                      <th className="th-name p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">employee_name</th>
-                      <th className="th-position p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">position</th>
+                      <th className="th-badge p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                        <div className="font-bold text-xs">{t('الرقم الوظيفي', 'Badge No')}</div>
+                        <div className="text-[10px] font-mono text-teal-300 font-normal">badge_no</div>
+                      </th>
+                      <th className="th-location p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                        <div className="font-bold text-xs">{t('الموقع / الفرع', 'Location')}</div>
+                        <div className="text-[10px] font-mono text-teal-300 font-normal">location</div>
+                      </th>
+                      <th className="th-department p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                        <div className="font-bold text-xs">{t('القسم', 'Department')}</div>
+                        <div className="text-[10px] font-mono text-teal-300 font-normal">department</div>
+                      </th>
+                      <th className="th-name p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                        <div className="font-bold text-xs">{t('اسم الموظف', 'Employee Name')}</div>
+                        <div className="text-[10px] font-mono text-teal-300 font-normal">employee_name</div>
+                      </th>
+                      <th className="th-position p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                        <div className="font-bold text-xs">{t('المسمى الوظيفي', 'Position')}</div>
+                        <div className="text-[10px] font-mono text-teal-300 font-normal">position</div>
+                      </th>
                       <th className="th-salary p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
-                        {viewMode === 'summary' ? 'current_month_basic' : 'basic_salary'}
+                        <div className="font-bold text-xs">
+                          {viewMode === 'summary' ? t('الراتب الاسمي للشهر', 'Current Month Basic') : t('الراتب الاسمي الشهري', 'Basic Salary')}
+                        </div>
+                        <div className="text-[10px] font-mono text-cyan-300 font-normal">
+                          {viewMode === 'summary' ? 'current_month_basic' : 'basic_salary'}
+                        </div>
                       </th>
 
                       {viewMode === 'summary' && (
                         <>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">incentives</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">transportation</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">bonus</th>
-                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">overtime</th>
-                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">earned_leave</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">allowances_total</th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('بدل النقل الثابت', 'Transportation')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">transportation</div>
+                          </th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('المكافأة الثابتة', 'Bonus')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">bonus</div>
+                          </th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('الحوافز', 'Incentives')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">incentives</div>
+                          </th>
+                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('أجر إضافي', 'Overtime')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">overtime</div>
+                          </th>
+                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('إجازات مستحقة', 'Earned Leave')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">earned_leave</div>
+                          </th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('إجمالي البدلات', 'Total Allowances')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">allowances_total</div>
+                          </th>
                         </>
                       )}
 
                       {viewMode === 'detailed' && (
                         <>
-                          <th className="th-salary p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">current_month_basic</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">phone_allowance</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">family_allowance</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">cert_allowance</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">incentives</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">transportation</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">bonus</th>
-                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">overtime</th>
-                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">earned_leave</th>
+                          <th className="th-salary p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('الراتب الاسمي للشهر', 'Current Month Basic')}</div>
+                            <div className="text-[10px] font-mono text-cyan-300 font-normal">current_month_basic</div>
+                          </th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('بدل النقل الثابت', 'Fixed Transportation')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">transportation</div>
+                          </th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('المكافأة الثابتة', 'Fixed Bonus')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">bonus</div>
+                          </th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('مخصصات الهاتف', 'Phone Allowance')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">phone_allowance</div>
+                          </th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('مخصصات الشهادة', 'Certificate Allowance')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">cert_allowance</div>
+                          </th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('المخصصات العائلية', 'Family Allowance')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">family_allowance</div>
+                          </th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('الحوافز', 'Incentives')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">incentives</div>
+                          </th>
+                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('أجر إضافي', 'Overtime')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">overtime</div>
+                          </th>
+                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('إجازات مستحقة', 'Earned Leave')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">earned_leave</div>
+                          </th>
+                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('إجمالي البدلات', 'Total Allowances')}</div>
+                            <div className="text-[10px] font-mono text-emerald-300 font-normal">allowances_total</div>
+                          </th>
                         </>
                       )}
 
-                      <th className="th-gross p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">gross_salary</th>
+                      <th className="th-gross p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                        <div className="font-bold text-xs">{t('الراتب الإجمالي', 'Gross Salary')}</div>
+                        <div className="text-[10px] font-mono text-cyan-200 font-normal">gross_salary</div>
+                      </th>
 
                       {viewMode === 'detailed' && (
                         <>
-                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">social_security</th>
-                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">income_tax</th>
-                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">insurance</th>
-                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">loan_payment</th>
-                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">other_deductions</th>
+                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('الضمان الاجتماعي', 'Social Security')}</div>
+                            <div className="text-[10px] font-mono text-rose-300 font-normal">social_security</div>
+                          </th>
+                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('ضريبة الدخل', 'Income Tax')}</div>
+                            <div className="text-[10px] font-mono text-rose-300 font-normal">income_tax</div>
+                          </th>
+                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('التأمين الصحي', 'Insurance')}</div>
+                            <div className="text-[10px] font-mono text-rose-300 font-normal">insurance</div>
+                          </th>
+                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('سداد سلف', 'Loan Payment')}</div>
+                            <div className="text-[10px] font-mono text-rose-300 font-normal">loan_payment</div>
+                          </th>
+                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                            <div className="font-bold text-xs">{t('استقطاعات أخرى', 'Other Deductions')}</div>
+                            <div className="text-[10px] font-mono text-rose-300 font-normal">other_deductions</div>
+                          </th>
                         </>
                       )}
 
-                      <th className="th-total-ded p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">total_deductions</th>
-                      <th className="th-net p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">net_salary</th>
+                      <th className="th-total-ded p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                        <div className="font-bold text-xs">{t('إجمالي الاستقطاعات', 'Total Deductions')}</div>
+                        <div className="text-[10px] font-mono text-rose-400 font-normal">total_deductions</div>
+                      </th>
+                      <th className="th-net p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
+                        <div className="font-bold text-xs">{t('صافي الراتب المستحق', 'Net Salary')}</div>
+                        <div className="text-[10px] font-mono text-cyan-200 font-normal">net_salary</div>
+                      </th>
                       <th className="th-action p-3.5 text-center whitespace-nowrap font-black">{t('إجراءات', 'Actions')}</th>
                     </tr>
                   </thead>
@@ -2194,6 +2288,12 @@ export const Category5PayrollView: React.FC = () => {
                           isDark ? 'border-white/5 text-sky-200' : 'border-slate-200 text-slate-900'
                         }`}>
                           {language === 'en' ? row.location_en : row.location_ar}
+                        </td>
+
+                        <td className={`p-3 border-r whitespace-nowrap font-normal text-xs ${
+                          isDark ? 'border-white/5 text-teal-200' : 'border-slate-200 text-slate-800'
+                        }`}>
+                          {row.department || '-'}
                         </td>
 
                         <td className={`p-3 border-r whitespace-nowrap font-normal ${
@@ -2229,9 +2329,9 @@ export const Category5PayrollView: React.FC = () => {
 
                         {viewMode === 'summary' && (
                           <>
+                            {renderEditableCell(row, 'transportation', 'Transportation', 'بدل النقل الثابت', row.transportation || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+                            {renderEditableCell(row, 'bonus', 'Bonus', 'المكافأة الثابتة', row.bonus || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
                             {renderEditableCell(row, 'incentives', 'Incentives', 'الحوافز', row.incentives || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'transportation', 'Transportation', 'بدل النقل', row.transportation || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'bonus', 'Bonus', 'المكافآت', row.bonus || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
                             {renderEditableCell(row, 'overtime', 'Overtime', 'أجر إضافي', row.overtime || 0, isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800')}
                             {renderEditableCell(row, 'earned_leave', 'Earned Leave', 'إجازة مستحقة', row.earned_leave || 0, isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800')}
                             <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
@@ -2245,14 +2345,19 @@ export const Category5PayrollView: React.FC = () => {
                         {viewMode === 'detailed' && (
                           <>
                             {renderEditableCell(row, 'current_month_basic', 'Current Month Basic', 'الراتب الاسمي للشهر', row.current_month_basic || 0, isDark ? 'border-white/5 text-white bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100')}
-                            {renderEditableCell(row, 'phone_allowance', 'Phone Allowance', 'بدل هاتف', row.phone_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'family_allowance', 'Family Allowance', 'مخصصات عائلية', row.family_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'cert_allowance', 'Certificate Allowance', 'مخصصات شهادة', row.cert_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+                            {renderEditableCell(row, 'transportation', 'Transportation', 'بدل النقل الثابت', row.transportation || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+                            {renderEditableCell(row, 'bonus', 'Bonus', 'المكافأة الثابتة', row.bonus || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+                            {renderEditableCell(row, 'phone_allowance', 'Phone Allowance', 'مخصصات الهاتف', row.phone_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+                            {renderEditableCell(row, 'cert_allowance', 'Certificate Allowance', 'مخصصات الشهادة', row.cert_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+                            {renderEditableCell(row, 'family_allowance', 'Family Allowance', 'المخصصات العائلية', row.family_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
                             {renderEditableCell(row, 'incentives', 'Incentives', 'الحوافز', row.incentives || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'transportation', 'Transportation', 'بدل النقل', row.transportation || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'bonus', 'Bonus', 'المكافآت', row.bonus || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
                             {renderEditableCell(row, 'overtime', 'Overtime', 'أجر إضافي', row.overtime || 0, isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800')}
                             {renderEditableCell(row, 'earned_leave', 'Earned Leave', 'إجازة مستحقة', row.earned_leave || 0, isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800')}
+                            <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
+                              isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800'
+                            }`}>
+                              +{(row.allowances_total || 0).toLocaleString('en-US')}
+                            </td>
                           </>
                         )}
 
@@ -2351,13 +2456,14 @@ export const Category5PayrollView: React.FC = () => {
                         isDark ? 'border-white/10 bg-slate-900 text-teal-400' : 'border-slate-300 bg-slate-200 text-teal-700'
                       }`}>∑</td>
                       <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
                       <td className={`p-3 border-r font-bold ${
                         isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'
                       }`}>{language === 'en' ? `${filteredPayrollRows.length} Staff` : `${filteredPayrollRows.length} موظف`}</td>
                       <td className={`p-3 border-r font-bold ${
                         isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'
                       }`}>{t('المجموع الكلي للمسير', 'Total Payroll Summary')}</td>
-                      <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
                       <td className={`p-3 border-r font-mono font-bold ${
                         isDark ? 'border-white/10 text-cyan-300 bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'
                       }`}>
@@ -2370,13 +2476,13 @@ export const Category5PayrollView: React.FC = () => {
                       {viewMode === 'summary' && (
                         <>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>
-                            {(totals.incentives || 0).toLocaleString('en-US')}
-                          </td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>
                             {(totals.transportation || 0).toLocaleString('en-US')}
                           </td>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>
                             {(totals.bonus || 0).toLocaleString('en-US')}
+                          </td>
+                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>
+                            {(totals.incentives || 0).toLocaleString('en-US')}
                           </td>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>
                             {(totals.overtime || 0).toLocaleString('en-US')}
@@ -2393,14 +2499,15 @@ export const Category5PayrollView: React.FC = () => {
                       {viewMode === 'detailed' && (
                         <>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-slate-900 bg-slate-200'}`}>{(totals.current_month_basic || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.phone_allowance || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.family_allowance || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.cert_allowance || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.incentives || 0).toLocaleString('en-US')}</td>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.transportation || 0).toLocaleString('en-US')}</td>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.bonus || 0).toLocaleString('en-US')}</td>
+                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.phone_allowance || 0).toLocaleString('en-US')}</td>
+                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.cert_allowance || 0).toLocaleString('en-US')}</td>
+                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.family_allowance || 0).toLocaleString('en-US')}</td>
+                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.incentives || 0).toLocaleString('en-US')}</td>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>{(totals.overtime || 0).toLocaleString('en-US')}</td>
                           <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>{(totals.earned_leave || 0).toLocaleString('en-US')}</td>
+                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>+{(totals.allowances || 0).toLocaleString('en-US')}</td>
                         </>
                       )}
 

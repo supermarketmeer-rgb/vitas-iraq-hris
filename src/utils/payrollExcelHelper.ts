@@ -69,6 +69,7 @@ export async function generatePayrollTemplateExcel(
       'معرف الحوافز / SystemID (WAID)': row.waid || row.wa_id || '',
       'اسم الموظف / Employee Name': row.employee_name || row.name || row.name_ar || '',
       'الموقع / Location': row.location || row.branch || '',
+      'القسم / Department': row.department || '',
       'المسمى الوظيفي / Position': row.position || row.job_title || '',
       'الراتب الأساسي / Basic Salary': Number(row.basic_salary || row.salary || 0),
       'الحوافز / Incentives': Number(row.incentives || 0),
@@ -92,6 +93,7 @@ export async function generatePayrollTemplateExcel(
     { wch: 15 }, // Badge No
     { wch: 28 }, // Employee Name
     { wch: 16 }, // Location
+    { wch: 20 }, // Department
     { wch: 22 }, // Position
     { wch: 18 }, // Basic Salary
     { wch: 16 }, // Incentives

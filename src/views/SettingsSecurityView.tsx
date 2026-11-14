@@ -1650,7 +1650,7 @@ export const SettingsSecurityView: React.FC = () => {
             if (cleanK.length >= 4) {
               const matchedKey = rowKeys.find(rk => {
                 const nrk = normalizeHeaderKey(rk);
-                return nrk === cleanK || (nrk.length >= 4 && (nrk.includes(cleanK) || cleanK.includes(nrk)));
+                return nrk === cleanK || (nrk.length >= 4 && nrk.includes(cleanK));
               });
               if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null && String(row[matchedKey]).trim() !== '') {
                 return String(row[matchedKey]).trim();
