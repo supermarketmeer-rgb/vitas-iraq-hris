@@ -1805,6 +1805,9 @@ export const Category3EmployeeView: React.FC = () => {
       fixed_bonus: fixedBonus,
       phone_allowance: phoneAllowance,
       certificate_allowance: effectiveCertAllowance,
+      spouse_allowance: Number(spouseAllowance) || 0,
+      child_allowance: Number(childAllowance) || 0,
+      family_allowance: Number(familyAllowance) || 0,
       graduation_degree: graduationDegree || null,
       nationality,
       second_citizenship: secondCitizenship || null,
@@ -1870,6 +1873,12 @@ export const Category3EmployeeView: React.FC = () => {
       fixedBonus: Number(fixedBonus),
       phoneAllowance: Number(phoneAllowance),
       certificateAllowance: Number(effectiveCertAllowance),
+      spouseAllowance: Number(spouseAllowance) || 0,
+      spouse_allowance: Number(spouseAllowance) || 0,
+      childAllowance: Number(childAllowance) || 0,
+      child_allowance: Number(childAllowance) || 0,
+      familyAllowance: Number(familyAllowance) || 0,
+      family_allowance: Number(familyAllowance) || 0,
       graduationDegree: graduationDegree || undefined,
       graduation_degree: graduationDegree || undefined,
       writtenBasicSalaryAr,
@@ -4047,9 +4056,27 @@ export const Category3EmployeeView: React.FC = () => {
                   <span className="mr-auto px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold">{t('جميع الحقول اختيارية', 'All fields optional')}</span>
                 </div>
 
-                {/* Spouse */}
+                {/* Marital Status, Spouse & Spouse Allowance */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 items-end">
-                  <div className="lg:col-span-2">
+                  {/* 1. Marital Status */}
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
+                      <span>{t('الحالة الاجتماعية', 'Marital Status')}</span>
+                    </label>
+                    <select
+                      value={maritalStatus}
+                      onChange={e => setMaritalStatus(e.target.value as any)}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
+                    >
+                      <option value="أعزب">{t('أعزب', 'Single')}</option>
+                      <option value="متأهل">{t('متأهل', 'Married')}</option>
+                      <option value="مطلق">{t('مطلق', 'Divorced')}</option>
+                      <option value="أرمل">{t('أرمل', 'Widowed')}</option>
+                    </select>
+                  </div>
+
+                  {/* 2. Spouse Name */}
+                  <div>
                     <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
                       <span>{t('اسم الزوج / الزوجة', 'Spouse Name')}</span>
                       <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-700 border border-slate-300 font-semibold">{t('اختياري', 'Optional')}</span>
@@ -4063,7 +4090,29 @@ export const Category3EmployeeView: React.FC = () => {
                     />
                   </div>
 
-                  <div className="lg:col-span-2 flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                  {/* 3. Spouse Allowance */}
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">
+                      <span>{t('مخصص الزوجية', 'Spouse Allowance')}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">{t('تلقائي', 'Auto')}</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={spouseAllowance > 0 ? formatWithCommas(spouseAllowance) : ''}
+                        onChange={e => setSpouseAllowance(parseFormatted(e.target.value))}
+                        placeholder="0"
+                        className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500 pe-10"
+                      />
+                      <span className="absolute inset-y-0 end-0 pe-2.5 flex items-center pointer-events-none text-slate-400 font-mono text-[10px]">
+                        {t('د.ع', 'IQD')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 4. Spouse Employed Here Checkbox */}
+                  <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-lg px-3 py-2 h-[38px]">
                     <input
                       type="checkbox"
                       id="spouseEmp"
@@ -4071,8 +4120,8 @@ export const Category3EmployeeView: React.FC = () => {
                       onChange={e => setSpouseEmployedHere(e.target.checked)}
                       className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 bg-[#0a0c10] border-white/20"
                     />
-                    <label htmlFor="spouseEmp" className="text-slate-200 text-xs font-semibold cursor-pointer select-none">
-                      {t('هل الزوج/الزوجة يعمل في مؤسسة فيتاس العراق؟', 'Does spouse work at VITAS Iraq?')}
+                    <label htmlFor="spouseEmp" className="text-slate-200 text-[11px] font-semibold cursor-pointer select-none truncate">
+                      {t('الزوج/ة يعمل بمؤسسة فيتاس؟', 'Spouse works at VITAS?')}
                     </label>
                   </div>
                 </div>
@@ -5079,11 +5128,23 @@ export const Category3EmployeeView: React.FC = () => {
                             {t('سجل عائلة الموظف', 'Employee Family Record')}
                           </h3>
                           <div className="space-y-2">
-                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1 shadow-xs text-xs`}>
-                              <p className={`${profileColors.textSecondary}`}>{t('اسم الزوج / الزوجة:', 'Spouse Name:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.spouseName && selectedEmployee.spouseName !== 'N/A' ? selectedEmployee.spouseName : '-'}</span></p>
-                              <p className={`${profileColors.textSecondary}`}>{t('هل الزوج يعمل بالمؤسسة؟', 'Does spouse work at the institution?')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.spouseEmployedHere ? t('نعم', 'Yes') : t('لا', 'No')}</span></p>
+                            <div className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} space-y-1.5 shadow-xs text-xs`}>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <p className={`${profileColors.textSecondary}`}>
+                                  {t('الحالة الاجتماعية:', 'Marital Status:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.maritalStatus || selectedEmployee.marital_status || t('غير محدد', 'Not specified')}</span>
+                                </p>
+                                <p className={`${profileColors.textSecondary}`}>
+                                  {t('مخصص الزوجية:', 'Spouse Allowance:')} <span className="text-emerald-500 font-mono font-bold">{Number(selectedEmployee.spouseAllowance || selectedEmployee.spouse_allowance || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
+                                </p>
+                                <p className={`${profileColors.textSecondary}`}>
+                                  {t('اسم الزوج / الزوجة:', 'Spouse Name:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.spouseName && selectedEmployee.spouseName !== 'N/A' ? selectedEmployee.spouseName : '-'}</span>
+                                </p>
+                                <p className={`${profileColors.textSecondary}`}>
+                                  {t('هل الزوج يعمل بالمؤسسة؟', 'Does spouse work at the institution?')} <span className={`${isDark ? 'text-teal-400' : 'text-teal-700'} font-bold`}>{selectedEmployee.spouseEmployedHere ? t('نعم', 'Yes') : t('لا', 'No')}</span>
+                                </p>
+                              </div>
                               {selectedEmployee.spouseEmployedHere && (
-                                <p className={`${profileColors.textSecondary}`}>{t('ملاحظة: تم تغيير الحالة الاجتماعية إلى أعزب للغرض من البدلات', 'Note: Marital status changed to Single for allowance purposes')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-600'} font-bold`}>{t('أعزب', 'Single')}</span></p>
+                                <p className={`${profileColors.textSecondary} text-[11px] mt-1`}>{t('ملاحظة: تم تغيير الحالة الاجتماعية إلى أعزب للغرض من البدلات', 'Note: Marital status changed to Single for allowance purposes')} <span className={`${isDark ? 'text-amber-400' : 'text-amber-600'} font-bold`}>{t('أعزب', 'Single')}</span></p>
                               )}
                             </div>
 
