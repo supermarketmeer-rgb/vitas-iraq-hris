@@ -17,23 +17,36 @@ import { PoliciesSection } from '../components/PoliciesSection';
 
 interface EmployeeAdjustment {
   absenceDays?: number;
+  absenceDeduction?: number;
+  absence_deduction?: number;
   basicSalary?: number;
+  currentMonthBasic?: number;
+  current_month_basic?: number;
   phoneAllowance?: number;
   familyAllowance?: number;
   certAllowance?: number;
   insurance?: number;
+  insuranceDeduction?: number;
   incentives?: number;
+  incentivesOverride?: number;
   transportation?: number;
+  transportationOverride?: number;
   bonus?: number;
+  bonusOverride?: number;
   overtime?: number;
   overtimeHours?: number;
   overtimeAmount?: number;
   earnedLeave?: number;
   socialSecurity?: number;
+  social_security?: number;
   incomeTax?: number;
+  income_tax?: number;
   loanPayment?: number;
+  loan_payment?: number;
   otherDeductions?: number;
+  other_deductions?: number;
   bonusExtra?: number;
+  [key: string]: any;
 }
 
 interface CellCommentItem {
@@ -635,10 +648,15 @@ export const Category5PayrollView: React.FC = () => {
       
       // XAMPP Field: absence_days (1. absence)
       const absence_days = adj.absenceDays !== undefined ? adj.absenceDays : 0;
-      const absenceDeduction = (absence_days * (basic_salary / 30));
+      const calculatedAbsence = (absence_days * (basic_salary / 30));
+      const absenceDeduction = adj.absenceDeduction !== undefined
+        ? adj.absenceDeduction
+        : (adj.absence_deduction !== undefined ? adj.absence_deduction : calculatedAbsence);
       
       // XAMPP Field: current_month_basic
-      const current_month_basic = Math.max(0, basic_salary - absenceDeduction);
+      const current_month_basic = (adj.currentMonthBasic !== undefined || adj.current_month_basic !== undefined)
+        ? (adj.currentMonthBasic !== undefined ? adj.currentMonthBasic : adj.current_month_basic)
+        : Math.max(0, basic_salary - absenceDeduction);
 
       // XAMPP Allowances Fields (supporting camelCase & snake_case)
       const phone_allowance = adj.phoneAllowance !== undefined ? adj.phoneAllowance : Number(emp.phoneAllowance ?? emp.phone_allowance ?? 0);
@@ -663,20 +681,26 @@ export const Category5PayrollView: React.FC = () => {
             : (emp.certificate_allowance && Number(emp.certificate_allowance) > 0 
                 ? Number(emp.certificate_allowance) 
                 : policyCertVal));
-      // 2. transportation: Fixed baseline + Monthly report amount
+      // 2. transportation: Fixed baseline + Monthly report amount (or direct cell edit override)
       const fixedTransportation = Number(emp.transportationFixed ?? emp.transportation_fixed ?? 0);
       const monthlyTransportation = adj.transportation !== undefined ? Number(adj.transportation) : 0;
-      const transportation = fixedTransportation + monthlyTransportation;
+      const transportation = adj.transportationOverride !== undefined
+        ? adj.transportationOverride
+        : (fixedTransportation + monthlyTransportation);
 
-      // 3. bonus: Fixed baseline + Monthly report amount / bonusExtra
+      // 3. bonus: Fixed baseline + Monthly report amount / bonusExtra (or direct cell edit override)
       const fixedBonus = Number(emp.fixedBonus ?? emp.fixed_bonus ?? 0);
       const monthlyBonus = adj.bonus !== undefined ? Number(adj.bonus) : (adj.bonusExtra || 0);
-      const bonus = fixedBonus + monthlyBonus;
+      const bonus = adj.bonusOverride !== undefined
+        ? adj.bonusOverride
+        : (fixedBonus + monthlyBonus);
 
-      // 4. incentives: Fixed baseline + Monthly report amount
+      // 4. incentives: Fixed baseline + Monthly report amount (or direct cell edit override)
       const fixedIncentives = Number(emp.incentivesFixed ?? emp.fixed_incentives ?? 0);
       const monthlyIncentives = adj.incentives !== undefined ? Number(adj.incentives) : Number(emp.incentives ?? 0);
-      const incentives = fixedIncentives + monthlyIncentives;
+      const incentives = adj.incentivesOverride !== undefined
+        ? adj.incentivesOverride
+        : (fixedIncentives + monthlyIncentives);
       // 5. earned_leave
       const earned_leave = adj.earnedLeave !== undefined ? adj.earnedLeave : Number(emp.earnedLeave ?? emp.earned_leave ?? 0);
 
@@ -908,8 +932,12 @@ export const Category5PayrollView: React.FC = () => {
       const deductions_calc = social_security + income_tax + insurance;
       
       // XAMPP Fields: loan_payment, other_deductions (9. loan_payment, 10. other_deductions)
-      const loan_payment = adj.loanPayment !== undefined ? adj.loanPayment : Number(emp.loanPayment ?? emp.loan_payment ?? 0);
-      const other_deductions = adj.otherDeductions !== undefined ? adj.otherDeductions : Number(emp.otherDeductions ?? emp.other_deductions ?? 0);
+      const loan_payment = (adj.loanPayment !== undefined || adj.loan_payment !== undefined)
+        ? (adj.loanPayment !== undefined ? adj.loanPayment : adj.loan_payment)
+        : Number(emp.loanPayment ?? emp.loan_payment ?? 0);
+      const other_deductions = (adj.otherDeductions !== undefined || adj.other_deductions !== undefined)
+        ? (adj.otherDeductions !== undefined ? adj.otherDeductions : adj.other_deductions)
+        : Number(emp.otherDeductions ?? emp.other_deductions ?? 0);
       
       // Total Deductions
       const total_deductions = deductions_calc + loan_payment + other_deductions;
@@ -1577,37 +1605,49 @@ export const Category5PayrollView: React.FC = () => {
       return;
     }
 
-    const numVal = parseFloat(cellValueInput) || 0;
+    const cleanVal = String(cellValueInput).replace(/,/g, '').replace(/[()]/g, '').trim();
+    const numVal = isNaN(parseFloat(cleanVal)) ? 0 : parseFloat(cleanVal);
     const commentKey = `${editingCell.empId}_${editingCell.fieldKey}`;
     const authorName = currentUser?.name || currentUser?.username || 'مستخدم النظام (HR)';
     const nowStr = new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
 
     // 1. Update Adjustments state
     setAdjustments(prev => {
-      const empAdj = { ...(prev[editingCell.empId] || {}) };
+      const existingAdj = prev[editingCell.empId] || (editingCell.badgeNo ? prev[editingCell.badgeNo] : undefined) || {};
+      const empAdj = { ...existingAdj };
       
       switch (editingCell.fieldKey) {
         case 'basic_salary':
+          empAdj.basicSalary = numVal;
+          break;
         case 'current_month_basic':
+          empAdj.currentMonthBasic = numVal;
+          empAdj.current_month_basic = numVal;
           empAdj.basicSalary = numVal;
           break;
         case 'phone_allowance':
           empAdj.phoneAllowance = numVal;
+          empAdj.phone_allowance = numVal;
           break;
         case 'family_allowance':
           empAdj.familyAllowance = numVal;
+          empAdj.family_allowance = numVal;
           break;
         case 'cert_allowance':
           empAdj.certAllowance = numVal;
+          empAdj.cert_allowance = numVal;
           break;
         case 'incentives':
           empAdj.incentives = numVal;
+          empAdj.incentivesOverride = numVal;
           break;
         case 'transportation':
           empAdj.transportation = numVal;
+          empAdj.transportationOverride = numVal;
           break;
         case 'bonus':
           empAdj.bonus = numVal;
+          empAdj.bonusOverride = numVal;
           break;
         case 'overtime':
           empAdj.overtime = numVal;
@@ -1617,25 +1657,45 @@ export const Category5PayrollView: React.FC = () => {
           break;
         case 'social_security':
           empAdj.socialSecurity = numVal;
+          empAdj.social_security = numVal;
           break;
         case 'income_tax':
           empAdj.incomeTax = numVal;
+          empAdj.income_tax = numVal;
           break;
         case 'insurance':
           empAdj.insurance = numVal;
+          empAdj.insuranceDeduction = numVal;
           break;
         case 'loan_payment':
           empAdj.loanPayment = numVal;
+          empAdj.loan_payment = numVal;
+          break;
+        case 'absence_deduction':
+        case 'absence':
+          empAdj.absenceDeduction = numVal;
+          empAdj.absence_deduction = numVal;
           break;
         case 'other_deductions':
+        case 'otherDeductions':
           empAdj.otherDeductions = numVal;
+          empAdj.other_deductions = numVal;
           break;
       }
 
-      return {
+      const next = {
         ...prev,
         [editingCell.empId]: empAdj
       };
+      if (editingCell.badgeNo) {
+        next[editingCell.badgeNo] = empAdj;
+      }
+
+      try {
+        localStorage.setItem('vitas_payroll_manual_adjustments', JSON.stringify(next));
+      } catch (e) {}
+
+      return next;
     });
 
     // 2. Update Cell Comments with Author and Timestamp
