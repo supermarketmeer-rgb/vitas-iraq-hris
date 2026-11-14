@@ -1625,22 +1625,67 @@ html:not(.dark) body textarea:not(aside textarea):not(header textarea):focus {
   outline: none !important;
 }
 
-/* Light Mode Tables (Table Headers, Table Rows & Records) */
-html.light table thead th,
-html.light table thead th *,
-html.light table thead th span,
-html.light table thead th div,
-html.light table thead tr th,
-html.light table thead tr th *,
-html:not(.dark) table thead th,
-html:not(.dark) table thead th *,
-html:not(.dark) table thead th span,
-html:not(.dark) table thead th div,
-html:not(.dark) table thead tr th,
-html:not(.dark) table thead tr th * {
+/* Light Mode Tables (Table Headers, Table Rows & Records) - Excludes .payroll-table */
+html.light table:not(.payroll-table) thead th,
+html.light table:not(.payroll-table) thead th *,
+html.light table:not(.payroll-table) thead th span,
+html.light table:not(.payroll-table) thead th div,
+html.light table:not(.payroll-table) thead tr th,
+html.light table:not(.payroll-table) thead tr th *,
+html:not(.dark) table:not(.payroll-table) thead th,
+html:not(.dark) table:not(.payroll-table) thead th *,
+html:not(.dark) table:not(.payroll-table) thead th span,
+html:not(.dark) table:not(.payroll-table) thead th div,
+html:not(.dark) table:not(.payroll-table) thead tr th,
+html:not(.dark) table:not(.payroll-table) thead tr th * {
   background-color: #eef2f6 !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
+}
+
+/* ================================================================
+   PAYROLL MASTER TABLE - SOLID CORPORATE BLUE HEADER (NO WHITE BACKGROUND)
+   ================================================================ */
+.payroll-table thead,
+.payroll-table thead tr,
+html.light .payroll-table thead,
+html.light .payroll-table thead tr,
+html:not(.dark) .payroll-table thead,
+html:not(.dark) .payroll-table thead tr,
+html.dark .payroll-table thead,
+html.dark .payroll-table thead tr {
+  background-color: #0284c7 !important; /* Vibrant Corporate Blue as shown in Image 1 */
+  border-color: #0369a1 !important;
+}
+
+.payroll-table thead th,
+.payroll-table thead th *,
+.payroll-table thead th span,
+.payroll-table thead th div,
+html.light .payroll-table thead th,
+html.light .payroll-table thead th *,
+html.light .payroll-table thead th span,
+html.light .payroll-table thead th div,
+html:not(.dark) .payroll-table thead th,
+html:not(.dark) .payroll-table thead th *,
+html:not(.dark) .payroll-table thead th span,
+html:not(.dark) .payroll-table thead th div,
+html.dark .payroll-table thead th,
+html.dark .payroll-table thead th *,
+html.dark .payroll-table thead th span,
+html.dark .payroll-table thead th div {
+  background-color: transparent !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  font-weight: 700 !important;
+}
+
+.payroll-table thead th.th-children-count,
+html.light .payroll-table thead th.th-children-count,
+html:not(.dark) .payroll-table thead th.th-children-count,
+html.dark .payroll-table thead th.th-children-count {
+  background-color: #dc2626 !important; /* Red highlight as shown in Image 1 */
+  color: #ffffff !important;
 }
 
 html.light table tbody tr,
