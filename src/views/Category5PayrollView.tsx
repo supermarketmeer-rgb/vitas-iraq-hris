@@ -1014,6 +1014,7 @@ export const Category5PayrollView: React.FC = () => {
         child_over18_4: isChildOver18(validChildren[3]),
         child_over18_5: isChildOver18(validChildren[4]),
         child_over18_6: isChildOver18(validChildren[5]),
+        spouse_allowance: spouseAllow,
 
         // On Hold & Release Audit History Fields
         on_hold: isOnHold ? 1 : 0,
@@ -1493,12 +1494,14 @@ export const Category5PayrollView: React.FC = () => {
       other_deductions: acc.other_deductions + (row.other_deductions || 0),
       deductions: acc.deductions + (row.total_deductions || 0),
       net: acc.net + (row.net_salary || 0),
-      children_count: acc.children_count + (row.children_count || 0)
+      children_count: acc.children_count + (row.children_count || 0),
+      spouse_allowance: acc.spouse_allowance + (row.spouse_allowance || 0)
     }), {
       basic: 0, current_month_basic: 0, phone_allowance: 0, family_allowance: 0,
       cert_allowance: 0, incentives: 0, transportation: 0, bonus: 0, overtime: 0,
       earned_leave: 0, allowances: 0, gross: 0, social_security: 0, income_tax: 0, insurance: 0,
-      loan_payment: 0, absence_deduction: 0, other_deductions: 0, deductions: 0, net: 0, children_count: 0
+      loan_payment: 0, absence_deduction: 0, other_deductions: 0, deductions: 0, net: 0, children_count: 0,
+      spouse_allowance: 0
     });
   }, [filteredPayrollRows]);
 
@@ -2239,6 +2242,8 @@ export const Category5PayrollView: React.FC = () => {
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 4</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 5</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 6</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold text-center" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Marital Status</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Spouse Allowance</th>
                       <th className="p-3 text-center border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Actions</th>
                     </tr>
                   </thead>
@@ -2486,7 +2491,21 @@ export const Category5PayrollView: React.FC = () => {
                             {row.child_dob_6 || '-'}
                           </td>
 
-                          {/* 35. Actions (Trace & Release) */}
+                          {/* 35. Marital Status */}
+                          <td className={`p-3 border-r whitespace-nowrap text-center text-xs font-semibold ${
+                            isDark ? 'border-white/5 text-slate-200' : 'border-slate-200 text-slate-800'
+                          }`}>
+                            {row.marital_status === 'married' ? t('متأهل', 'Married') : (row.marital_status === 'divorced' ? t('مطلق', 'Divorced') : (row.marital_status === 'widow' ? t('أرمل', 'Widowed') : t('أعزب', 'Single')))}
+                          </td>
+
+                          {/* 36. Spouse Allowance */}
+                          <td className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                            isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800'
+                          }`}>
+                            {(row.spouse_allowance || 0).toLocaleString('en-US')}
+                          </td>
+
+                          {/* 37. Actions (Trace & Release) */}
                           <td className="p-3 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-2">
                               {/* Trace Button */}
@@ -2572,7 +2591,9 @@ export const Category5PayrollView: React.FC = () => {
                       {/* 32 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
                       {/* 33 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
                       {/* 34 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
-                      {/* 35 */} <td className="p-3 text-center">-</td>
+                      {/* 35 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 36 */} <td className={`p-3 border-r font-mono font-bold ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>{(totals.spouse_allowance || 0).toLocaleString('en-US')}</td>
+                      {/* 37 */} <td className="p-3 text-center">-</td>
                     </tr>
                   </tfoot>
                 </table>
