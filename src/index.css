@@ -1680,7 +1680,13 @@ html.dark .payroll-table thead th div {
   font-weight: 700 !important;
 }
 
-
+.payroll-table td.child-over-18,
+html.light .payroll-table td.child-over-18,
+html:not(.dark) .payroll-table td.child-over-18,
+html.dark .payroll-table td.child-over-18 {
+  color: #dc2626 !important;
+  font-weight: 500 !important;
+}
 
 html.light table tbody tr,
 html.light table tbody tr.bg-white,

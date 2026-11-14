@@ -769,14 +769,14 @@ export const Category5PayrollView: React.FC = () => {
 
       const validChildren = (Array.isArray(rawChildren) ? rawChildren : []).filter(isValidChildRecord);
 
-      // Helper to check if a valid child is over 18 years old
+      // Helper to check if a valid child is over 18 years old in the selected payroll period
       const isChildOver18 = (child: any): boolean => {
         if (!child || !isValidChildRecord(child)) return false;
         const dobStr = String(child.dob || '').trim();
         const birth = new Date(dobStr);
         if (isNaN(birth.getTime())) return false;
         const eighteenthBday = new Date(birth.getFullYear() + 18, birth.getMonth(), birth.getDate());
-        const refDate = new Date();
+        const refDate = new Date(selectedYear, selectedMonth - 1, 28);
         return refDate >= eighteenthBday;
       };
 
@@ -2405,11 +2405,13 @@ export const Category5PayrollView: React.FC = () => {
                           {/* 29. DOB Child 1 */}
                           <td
                             className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
                               row.child_over18_1
-                                ? 'font-bold text-red-600 dark:text-red-400'
-                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
                             }`}
-                            style={row.child_over18_1 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                            style={row.child_over18_1 ? { color: '#dc2626' } : undefined}
                           >
                             {row.child_dob_1 || '-'}
                           </td>
@@ -2417,11 +2419,13 @@ export const Category5PayrollView: React.FC = () => {
                           {/* 30. DOB Child 2 */}
                           <td
                             className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
                               row.child_over18_2
-                                ? 'font-bold text-red-600 dark:text-red-400'
-                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
                             }`}
-                            style={row.child_over18_2 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                            style={row.child_over18_2 ? { color: '#dc2626' } : undefined}
                           >
                             {row.child_dob_2 || '-'}
                           </td>
@@ -2429,11 +2433,13 @@ export const Category5PayrollView: React.FC = () => {
                           {/* 31. DOB Child 3 */}
                           <td
                             className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
                               row.child_over18_3
-                                ? 'font-bold text-red-600 dark:text-red-400'
-                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
                             }`}
-                            style={row.child_over18_3 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                            style={row.child_over18_3 ? { color: '#dc2626' } : undefined}
                           >
                             {row.child_dob_3 || '-'}
                           </td>
@@ -2441,11 +2447,13 @@ export const Category5PayrollView: React.FC = () => {
                           {/* 32. DOB Child 4 */}
                           <td
                             className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
                               row.child_over18_4
-                                ? 'font-bold text-red-600 dark:text-red-400'
-                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
                             }`}
-                            style={row.child_over18_4 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                            style={row.child_over18_4 ? { color: '#dc2626' } : undefined}
                           >
                             {row.child_dob_4 || '-'}
                           </td>
@@ -2453,11 +2461,13 @@ export const Category5PayrollView: React.FC = () => {
                           {/* 33. DOB Child 5 */}
                           <td
                             className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
                               row.child_over18_5
-                                ? 'font-bold text-red-600 dark:text-red-400'
-                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
                             }`}
-                            style={row.child_over18_5 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                            style={row.child_over18_5 ? { color: '#dc2626' } : undefined}
                           >
                             {row.child_dob_5 || '-'}
                           </td>
@@ -2465,11 +2475,13 @@ export const Category5PayrollView: React.FC = () => {
                           {/* 34. DOB Child 6 */}
                           <td
                             className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
                               row.child_over18_6
-                                ? 'font-bold text-red-600 dark:text-red-400'
-                                : (isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-700')
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
                             }`}
-                            style={row.child_over18_6 ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                            style={row.child_over18_6 ? { color: '#dc2626' } : undefined}
                           >
                             {row.child_dob_6 || '-'}
                           </td>
