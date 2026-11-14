@@ -648,15 +648,15 @@ export const Category5PayrollView: React.FC = () => {
       
       // XAMPP Field: absence_days (1. absence)
       const absence_days = adj.absenceDays !== undefined ? adj.absenceDays : 0;
-      const calculatedAbsence = (absence_days * (basic_salary / 30));
-      const absenceDeduction = adj.absenceDeduction !== undefined
-        ? adj.absenceDeduction
-        : (adj.absence_deduction !== undefined ? adj.absence_deduction : calculatedAbsence);
+      const calculatedAbsence = Math.round(absence_days * (basic_salary / 30));
+      const absenceDeduction = adj.absenceDays !== undefined
+        ? calculatedAbsence
+        : (adj.absenceDeduction !== undefined ? adj.absenceDeduction : (adj.absence_deduction !== undefined ? adj.absence_deduction : calculatedAbsence));
       
-      // XAMPP Field: current_month_basic
-      const current_month_basic = (adj.currentMonthBasic !== undefined || adj.current_month_basic !== undefined)
+      // XAMPP Field: current_month_basic (Deduct absence directly from basic salary for this month)
+      const current_month_basic = (adj.currentMonthBasic !== undefined && adj.absenceDays === undefined)
         ? (adj.currentMonthBasic !== undefined ? adj.currentMonthBasic : adj.current_month_basic)
-        : Math.max(0, basic_salary - absenceDeduction);
+        : Math.max(0, basic_salary - calculatedAbsence);
 
       // XAMPP Allowances Fields (supporting camelCase & snake_case)
       const phone_allowance = adj.phoneAllowance !== undefined ? adj.phoneAllowance : Number(emp.phoneAllowance ?? emp.phone_allowance ?? 0);
@@ -1515,6 +1515,7 @@ export const Category5PayrollView: React.FC = () => {
       income_tax: acc.income_tax + (row.income_tax || 0),
       insurance: acc.insurance + (row.insurance || 0),
       loan_payment: acc.loan_payment + (row.loan_payment || 0),
+      absence_days: (acc.absence_days || 0) + (row.absence_days || 0),
       absence_deduction: acc.absence_deduction + (row.absence_deduction || 0),
       other_deductions: acc.other_deductions + (row.other_deductions || 0),
       deductions: acc.deductions + (row.total_deductions || 0),
@@ -1525,7 +1526,7 @@ export const Category5PayrollView: React.FC = () => {
       basic: 0, current_month_basic: 0, phone_allowance: 0, family_allowance: 0,
       cert_allowance: 0, incentives: 0, transportation: 0, bonus: 0, overtime: 0,
       earned_leave: 0, allowances: 0, gross: 0, social_security: 0, income_tax: 0, insurance: 0,
-      loan_payment: 0, absence_deduction: 0, other_deductions: 0, deductions: 0, net: 0, children_count: 0,
+      loan_payment: 0, absence_days: 0, absence_deduction: 0, other_deductions: 0, deductions: 0, net: 0, children_count: 0,
       spouse_allowance: 0
     });
   }, [filteredPayrollRows]);
@@ -1671,10 +1672,12 @@ export const Category5PayrollView: React.FC = () => {
           empAdj.loanPayment = numVal;
           empAdj.loan_payment = numVal;
           break;
+        case 'absence_days':
         case 'absence_deduction':
         case 'absence':
-          empAdj.absenceDeduction = numVal;
-          empAdj.absence_deduction = numVal;
+          empAdj.absenceDays = numVal;
+          delete empAdj.absenceDeduction;
+          delete empAdj.absence_deduction;
           break;
         case 'other_deductions':
         case 'otherDeductions':
@@ -1742,9 +1745,12 @@ export const Category5PayrollView: React.FC = () => {
     const comment = cellComments[commentKey];
     const hasComment = Boolean(comment?.note);
 
-    const formattedValue = isDeduction
-      ? (value > 0 ? `(${Math.round(value).toLocaleString('en-US')})` : '0')
-      : `${prefix}${Math.round(value || 0).toLocaleString('en-US')}`;
+    const isAbsenceDays = fieldKey === 'absence_days' || fieldKey === 'absence';
+    const formattedValue = isAbsenceDays
+      ? (value > 0 ? `${Number(value).toLocaleString('en-US', { maximumFractionDigits: 1 })}` : '0')
+      : (isDeduction
+          ? (value > 0 ? `(${Math.round(value).toLocaleString('en-US')})` : '0')
+          : `${prefix}${Math.round(value || 0).toLocaleString('en-US')}`);
 
     return (
       <td
@@ -2287,7 +2293,7 @@ export const Category5PayrollView: React.FC = () => {
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Income Tax</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Insurance Deduction</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Loan Payment</th>
-                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Absence</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>{t('أيام الغياب', 'Absence (Days)')}</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Other Deductions</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Total Deduction</th>
                       <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Net Salary</th>
@@ -2429,8 +2435,8 @@ export const Category5PayrollView: React.FC = () => {
                           {/* 22. Loan Payment */}
                           {renderEditableCell(row, 'loan_payment', 'Loan Payment', 'تسديد القروض', row.loan_payment || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)}
 
-                          {/* 23. Absence */}
-                          {renderEditableCell(row, 'absence_deduction', 'Absence', 'استقطاع الغياب', row.absence_deduction || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)}
+                          {/* 23. Absence (Days) */}
+                          {renderEditableCell(row, 'absence_days', 'Absence Days', 'أيام الغياب', row.absence_days || 0, isDark ? 'border-white/5 text-amber-300' : 'border-slate-200 text-amber-800', false, '')}
 
                           {/* 24. Other Deductions */}
                           {renderEditableCell(row, 'other_deductions', 'Other Deductions', 'استقطاعات أخرى', row.other_deductions || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)}
@@ -2631,7 +2637,7 @@ export const Category5PayrollView: React.FC = () => {
                       {/* 20 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.income_tax)}</td>
                       {/* 21 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.insurance)}</td>
                       {/* 22 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.loan_payment)}</td>
-                      {/* 23 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.absence_deduction)}</td>
+                      {/* 23 */} <td className={`p-3 border-r font-mono font-bold ${isDark ? 'border-white/10 text-amber-300' : 'border-slate-300 text-amber-800'}`}>{totals.absence_days > 0 ? `${totals.absence_days} ${t('يوم', 'days')}` : '0'}</td>
                       {/* 24 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.other_deductions)}</td>
                       {/* 25 */} <td className={`p-3 border-r font-mono font-black ${isDark ? 'border-white/10 text-rose-400' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.deductions)}</td>
                       {/* 26 */} <td className={`p-3 border-r font-mono font-black text-base ${isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'}`}>{(totals.net || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</td>
@@ -3948,11 +3954,13 @@ export const Category5PayrollView: React.FC = () => {
             {/* Cell Value Input */}
             <div className="flex items-center gap-2">
               <label className={`font-bold text-xs sm:text-sm shrink-0 ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-                {t('القيمة:', 'Value:')}
+                {editingCell.fieldKey === 'absence_days' || editingCell.fieldKey === 'absence' || editingCell.fieldKey === 'absence_deduction'
+                  ? t('أيام الغياب:', 'Absence Days:')
+                  : t('القيمة:', 'Value:')}
               </label>
               <input
                 type="number"
-                step="1000"
+                step={editingCell.fieldKey === 'absence_days' || editingCell.fieldKey === 'absence' || editingCell.fieldKey === 'absence_deduction' ? '0.5' : '1000'}
                 value={cellValueInput}
                 onChange={e => setCellValueInput(e.target.value)}
                 className={`flex-1 rounded px-2.5 py-1 text-xs sm:text-sm font-mono font-bold focus:outline-none shadow-xs border ${
@@ -3964,9 +3972,22 @@ export const Category5PayrollView: React.FC = () => {
                 autoFocus
               />
               <span className={`text-xs sm:text-sm font-bold shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-800'}`}>
-                {t('د.ع', 'IQD')}
+                {editingCell.fieldKey === 'absence_days' || editingCell.fieldKey === 'absence' || editingCell.fieldKey === 'absence_deduction'
+                  ? t('يوم', 'Days')
+                  : t('د.ع', 'IQD')}
               </span>
             </div>
+
+            {(editingCell.fieldKey === 'absence_days' || editingCell.fieldKey === 'absence' || editingCell.fieldKey === 'absence_deduction') && (
+              <div className={`p-2 rounded text-[11px] leading-relaxed border ${
+                isDark ? 'bg-amber-950/30 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-900'
+              }`}>
+                {t(
+                  '💡 استقطاع الغياب = (أيام الغياب × الراتب الاسمي / 30) يُستقطع مباشرة من الراتب الاسمي للشهر ويؤثر تلقائياً على خفض الوعاء الضريبي.',
+                  '💡 Absence deduction = (Absence Days × Basic / 30), deducted directly from this month\'s basic salary, automatically reducing the taxable income base.'
+                )}
+              </div>
+            )}
 
             {/* Note Textarea (Excel Note Body) */}
             <div className="space-y-1">
