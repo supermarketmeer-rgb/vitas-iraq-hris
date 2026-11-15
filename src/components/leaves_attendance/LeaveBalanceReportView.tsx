@@ -817,3 +817,4 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
     </div>
   );
 };
+
