@@ -13,6 +13,7 @@ interface LeaveDirectoryViewProps {
   onExportExcel: () => void;
   onUpdateBalance?: (balanceId: number, updates: Partial<LeaveBalance>) => Promise<void> | void;
   onNavigateToEarned?: () => void;
+  onNavigateToBalanceReport?: () => void;
 }
 
 export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
@@ -24,6 +25,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
   onExportExcel,
   onUpdateBalance,
   onNavigateToEarned,
+  onNavigateToBalanceReport,
 }) => {
   const t = translations[lang];
   const isAr = lang === 'ar';
@@ -210,6 +212,17 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          {onNavigateToBalanceReport && (
+            <button
+              onClick={onNavigateToBalanceReport}
+              className="px-3 py-2 rounded-xl text-xs font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100 dark:hover:bg-sky-500/20 border border-sky-300 dark:border-sky-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              title={isAr ? 'تقرير رصيد الإجازات ومكافأة نهاية الخدمة (Leave Balance Report)' : 'Leave Balance Report'}
+            >
+              <span className="material-symbols-outlined text-sm">fact_check</span>
+              <span>{isAr ? 'تقرير رصيد الإجازات (Leave Balance Report)' : 'Leave Balance Report'}</span>
+            </button>
+          )}
+
           {onNavigateToEarned && (
             <button
               onClick={onNavigateToEarned}
