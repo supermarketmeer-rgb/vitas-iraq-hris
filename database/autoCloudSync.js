@@ -615,7 +615,8 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
 
   // Batch insert new rows on Cloud
   if (rowsToInsertOnCloud.length > 0) {
-    const insertCols = hasAutoIncId ? commonCols.filter(k => k !== 'id') : commonCols;
+    // Retain 'id' during Cloud insertion so tables with non-auto-inc or varchar IDs on Cloud receive their values reliably
+    const insertCols = commonCols;
     const BATCH_SIZE = 50;
     for (let b = 0; b < rowsToInsertOnCloud.length; b += BATCH_SIZE) {
       const batch = rowsToInsertOnCloud.slice(b, b + BATCH_SIZE);
