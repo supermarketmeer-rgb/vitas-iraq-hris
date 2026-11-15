@@ -1625,7 +1625,7 @@ export const Category9RiskComplianceView: React.FC = () => {
 
       const categoryRollupKeys: Record<string, { catId: string; subIds: string[] }> = {
         employees: { catId: 'cat-3-emp', subIds: ['emp-list', 'emp-add', 'emp-contracts', 'emp-org-chart', 'emp-directory', 'emp-delegation', 'emp-sync-guide', 'emp-hr-directory'] },
-        attendance: { catId: 'cat-4-leave', subIds: ['leave-attendance', 'leave-apply', 'leave-balance', 'leave-approvals', 'leave-timesheets', 'leave-earned', 'leave-schedule', 'leave-biometric-settings', 'leave-db-schema'] },
+        attendance: { catId: 'cat-4-leave', subIds: ['leave-attendance', 'leave-balance-report', 'leave-apply', 'leave-balance', 'leave-approvals', 'leave-timesheets', 'leave-earned', 'leave-schedule', 'leave-biometric-settings', 'leave-db-schema'] },
         payroll: { catId: 'cat-5-payroll', subIds: ['payroll-sheet', 'payroll-payslip', 'payroll-loans', 'payroll-tax', 'payroll-end-service', 'payroll-analytics', 'pay-dashboard', 'payroll-mgmt'] },
         recruitment: { catId: 'cat-6-recruit', subIds: ['recruit-openings', 'recruit-pipeline', 'recruit-interviews', 'recruit-offers', 'recruit-onboarding', 'recruit-dash', 'recruit-ats', 'recruit-candidate-profile'] },
         reports: { catId: 'cat-2-dash', subIds: ['sys-dynamic-reports', 'dash-overview', 'dash-exec-1', 'dash-exec-2', 'dash-ess', 'dash-search'] },

@@ -136,6 +136,7 @@ function AppContent() {
       case 'cat-4-leave':
       case 'leave-dashboard':
       case 'leave-attendance':
+      case 'leave-balance-report':
       case 'leave-earned':
       case 'earned-leaves':
       case 'leave-timesheets':
