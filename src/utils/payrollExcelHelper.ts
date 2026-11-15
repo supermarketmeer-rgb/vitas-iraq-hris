@@ -1,20 +1,39 @@
+import ExcelJS from 'exceljs';
 import * as XLSX from 'xlsx';
 import { isKurdistanLocation } from './iraqPayrollTaxEngine';
 
 /**
  * Save an Excel workbook using the native File System Access API (showSaveFilePicker)
  * to let the user choose the folder and file name via a Windows save dialog,
- * with an automatic fallback to standard browser download (XLSX.writeFile).
+ * with an automatic fallback to standard browser download.
+ * Accepts ExcelJS.Workbook, XLSX.WorkBook, Blob, or Uint8Array.
  */
 export async function saveExcelWithSaveDialog(
-  workbook: XLSX.WorkBook,
+  workbookOrBuffer: any,
   suggestedFilename: string
 ): Promise<{ success: boolean; canceled?: boolean; filename?: string; error?: string }> {
   try {
-    const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    let blob: Blob;
+
+    if (workbookOrBuffer && typeof workbookOrBuffer.xlsx?.writeBuffer === 'function') {
+      // ExcelJS Workbook
+      const buffer = await workbookOrBuffer.xlsx.writeBuffer();
+      blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+    } else if (workbookOrBuffer instanceof Blob) {
+      blob = workbookOrBuffer;
+    } else if (workbookOrBuffer instanceof Uint8Array || workbookOrBuffer instanceof ArrayBuffer) {
+      blob = new Blob([workbookOrBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+    } else {
+      // SheetJS (XLSX) Workbook
+      const wbout = XLSX.write(workbookOrBuffer, { bookType: 'xlsx', type: 'array' });
+      blob = new Blob([wbout], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+    }
 
     // Check if File System Access API is supported (Supported in Chromium / Electron / Edge / Chrome)
     if (typeof window !== 'undefined' && 'showSaveFilePicker' in window) {
@@ -44,8 +63,19 @@ export async function saveExcelWithSaveDialog(
       }
     }
 
-    // Fallback: Standard browser download
-    XLSX.writeFile(workbook, suggestedFilename);
+    // Fallback: Standard browser download via object URL
+    if (typeof document !== 'undefined') {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = suggestedFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return { success: true, filename: suggestedFilename };
+    }
+
     return { success: true, filename: suggestedFilename };
   } catch (error: any) {
     console.error('Error exporting excel file:', error);
@@ -54,62 +84,332 @@ export async function saveExcelWithSaveDialog(
 }
 
 /**
- * Generate and export Payroll Excel Template pre-populated with active employees
- * and their fixed allowances (incentives, transportation, bonus, etc.)
+ * Generate and export full Payroll Excel Spreadsheet matching the UI design 100%
+ * (Blue header #0284c7, white bold text, Segoe UI font, alternating rows, formatted currency & deductions, totals row, frozen panes).
  */
 export async function generatePayrollTemplateExcel(
   payrollRows: any[],
   year: number,
   month: number
-): Promise<{ success: boolean; canceled?: boolean; filename?: string }> {
-  const templateRows = payrollRows.map((row, index) => {
-    return {
-      '#': index + 1,
-      'الرقم الوظيفي / Badge No': row.badge_no || row.badgeNo || row.employeeId || row.id || '',
-      'معرف الحوافز / SystemID (WAID)': row.waid || row.wa_id || '',
-      'اسم الموظف / Employee Name': row.employee_name || row.name || row.name_ar || '',
-      'الموقع / Location': row.location || row.branch || '',
-      'المسمى الوظيفي / Position': row.position || row.job_title || '',
-      'الراتب الأساسي / Basic Salary': Number(row.basic_salary || row.salary || 0),
-      'الحوافز / Incentives': Number(row.incentives || 0),
-      'بدل النقل / Transportation': Number(row.transportation || 0),
-      'المكافآت / Bonus': Number(row.bonus || 0),
-      'ساعات إضافي / Overtime Hours': Number(row.overtime_hours || row.overtimeHours || 0),
-      'مبلغ الإضافي / Overtime Amount': Number(row.overtime || row.overtimeAmount || 0),
-      'إجازات مستحقة / Earned Leave': Number(row.earned_leave || row.earnedLeave || 0),
-      'أيام الغياب / Absence Days': Number(row.absence_days || row.absenceDays || 0),
-      'سداد سلف / Loan Payment': Number(row.loan_payment || row.loanPayment || 0),
-      'استقطاعات أخرى / Other Deductions': Number(row.other_deductions || row.otherDeductions || 0),
-      'ملاحظات / Notes': '',
+): Promise<{ success: boolean; canceled?: boolean; filename?: string; error?: string }> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Vitas Iraq HRIS';
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet(`Payroll ${year}-${String(month).padStart(2, '0')}`, {
+    views: [{ state: 'frozen', xSplit: 2, ySplit: 1, activeCell: 'C2' }],
+    pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+  });
+
+  // 1. Column Definitions exactly matching the table on screen (36 columns)
+  const columns = [
+    { header: 'No.', key: 'no', width: 6, align: 'center' },
+    { header: 'Badge No.', key: 'badge_no', width: 14, align: 'center' },
+    { header: 'Branch', key: 'branch', width: 16, align: 'left' },
+    { header: 'Employee Name_En', key: 'name_en', width: 28, align: 'left' },
+    { header: 'Position', key: 'position', width: 32, align: 'left' },
+    { header: 'Department', key: 'department', width: 24, align: 'left' },
+    { header: 'Start Date', key: 'start_date', width: 14, align: 'center' },
+    { header: 'Basic Salary', key: 'basic_salary', width: 16, align: 'right', isMoney: true },
+    { header: 'Basic Salary for This Month', key: 'current_month_basic', width: 22, align: 'right', isMoney: true },
+    { header: 'Phone Allowance', key: 'phone_allowance', width: 16, align: 'right', isMoney: true },
+    { header: 'Incentives', key: 'incentives', width: 15, align: 'right', isMoney: true },
+    { header: 'Transp.', key: 'transportation', width: 15, align: 'right', isMoney: true },
+    { header: 'Other Benefits or Bonus (EOM, Target,…)', key: 'bonus', width: 28, align: 'right', isMoney: true },
+    { header: 'Family Allowance', key: 'family_allowance', width: 16, align: 'right', isMoney: true },
+    { header: 'Certificate Allowance', key: 'cert_allowance', width: 18, align: 'right', isMoney: true },
+    { header: 'Overtime', key: 'overtime', width: 15, align: 'right', isMoney: true },
+    { header: 'Earned Leaves', key: 'earned_leave', width: 15, align: 'right', isMoney: true },
+    { header: 'Gross Salary', key: 'gross_salary', width: 18, align: 'right', isMoney: true, isHighlight: true },
+    { header: 'Social Security', key: 'social_security', width: 16, align: 'right', isDeduction: true },
+    { header: 'Income Tax', key: 'income_tax', width: 15, align: 'right', isDeduction: true },
+    { header: 'Insurance Deduction', key: 'insurance', width: 18, align: 'right', isDeduction: true },
+    { header: 'Loan Payment', key: 'loan_payment', width: 15, align: 'right', isDeduction: true },
+    { header: 'Absence (Days)', key: 'absence_days', width: 15, align: 'center', isAbsence: true },
+    { header: 'Other Deductions', key: 'other_deductions', width: 16, align: 'right', isDeduction: true },
+    { header: 'Total Deduction', key: 'total_deductions', width: 18, align: 'right', isDeduction: true, isHighlight: true },
+    { header: 'Net Salary', key: 'net_salary', width: 20, align: 'right', isMoney: true, isNet: true },
+    { header: 'Employee Name _ar', key: 'name_ar', width: 28, align: 'right' },
+    { header: 'No. of Children', key: 'children_count', width: 15, align: 'center' },
+    { header: 'DOB Child 1', key: 'child_dob_1', width: 14, align: 'center' },
+    { header: 'DOB Child 2', key: 'child_dob_2', width: 14, align: 'center' },
+    { header: 'DOB Child 3', key: 'child_dob_3', width: 14, align: 'center' },
+    { header: 'DOB Child 4', key: 'child_dob_4', width: 14, align: 'center' },
+    { header: 'DOB Child 5', key: 'child_dob_5', width: 14, align: 'center' },
+    { header: 'DOB Child 6', key: 'child_dob_6', width: 14, align: 'center' },
+    { header: 'Marital Status', key: 'marital_status', width: 15, align: 'center' },
+    { header: 'Spouse Allowance', key: 'spouse_allowance', width: 18, align: 'right', isMoney: true },
+  ];
+
+  worksheet.columns = columns.map(c => ({
+    header: c.header,
+    key: c.key,
+    width: c.width
+  }));
+
+  // 2. Format Header Row exactly matching the web UI header (#0284c7)
+  const headerRow = worksheet.getRow(1);
+  headerRow.height = 28;
+  headerRow.eachCell((cell) => {
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF0284C7' } // Sky-600 ocean blue
+    };
+    cell.font = {
+      name: 'Segoe UI',
+      size: 10,
+      bold: true,
+      color: { argb: 'FFFFFFFF' } // Pure White text
+    };
+    cell.alignment = {
+      vertical: 'middle',
+      horizontal: 'center',
+      wrapText: false
+    };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF0369A1' } },
+      bottom: { style: 'medium', color: { argb: 'FF0369A1' } },
+      left: { style: 'thin', color: { argb: 'FF38BDF8' } },
+      right: { style: 'thin', color: { argb: 'FF38BDF8' } }
     };
   });
 
-  const worksheet = XLSX.utils.json_to_sheet(templateRows);
+  // 3. Ensure Rows are Sorted by Branch (Ascending) -> Position (Ascending)
+  const sortedPayrollRows = [...payrollRows].sort((a, b) => {
+    const branchA = (a.branch || a.location_en || a.location_ar || '').trim();
+    const branchB = (b.branch || b.location_en || b.location_ar || '').trim();
+    const branchComp = branchA.localeCompare(branchB, undefined, { numeric: true, sensitivity: 'base' });
+    if (branchComp !== 0) return branchComp;
 
-  // Column width configuration
-  worksheet['!cols'] = [
-    { wch: 5 },  // #
-    { wch: 15 }, // Badge No
-    { wch: 28 }, // Employee Name
-    { wch: 16 }, // Location
-    { wch: 22 }, // Position
-    { wch: 18 }, // Basic Salary
-    { wch: 16 }, // Incentives
-    { wch: 16 }, // Transportation
-    { wch: 16 }, // Bonus
-    { wch: 16 }, // Overtime Hours
-    { wch: 18 }, // Overtime Amount
-    { wch: 18 }, // Earned Leave
-    { wch: 16 }, // Absence Days
-    { wch: 16 }, // Loan Payment
-    { wch: 18 }, // Other Deductions
-    { wch: 25 }, // Notes
-  ];
+    const posA = (a.position_en || a.position || a.position_ar || '').trim();
+    const posB = (b.position_en || b.position || b.position_ar || '').trim();
+    const posComp = posA.localeCompare(posB, undefined, { numeric: true, sensitivity: 'base' });
+    if (posComp !== 0) return posComp;
 
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'قالب البدلات والحوافز');
+    const nameA = (a.employee_name_en || a.employee_name_ar || a.name || '').trim();
+    const nameB = (b.employee_name_en || b.employee_name_ar || b.name || '').trim();
+    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+  });
 
-  const suggestedFilename = `vitas_payroll_template_${year}_${String(month).padStart(2, '0')}.xlsx`;
+  // Populate Data Rows with formatting matching web table
+  sortedPayrollRows.forEach((row, index) => {
+    const isEven = index % 2 === 1;
+    const rowValues = {
+      no: index + 1,
+      badge_no: String(row.badge_no || row.badgeNo || row.employee_id || ''),
+      branch: row.branch || row.location_en || row.location_ar || '',
+      name_en: row.employee_name_en || row.fullNameEn || row.name || '',
+      position: row.position_en || row.position || row.jobTitleEn || '',
+      department: row.department || '',
+      start_date: row.original_start_date ? String(row.original_start_date).substring(0, 10) : '',
+      basic_salary: Number(row.basic_salary || 0),
+      current_month_basic: Number(row.current_month_basic || 0),
+      phone_allowance: Number(row.phone_allowance || 0),
+      incentives: Number(row.incentives || 0),
+      transportation: Number(row.transportation || 0),
+      bonus: Number(row.bonus || 0),
+      family_allowance: Number(row.family_allowance || 0),
+      cert_allowance: Number(row.cert_allowance || 0),
+      overtime: Number(row.overtime || 0),
+      earned_leave: Number(row.earned_leave || 0),
+      gross_salary: Number(row.gross_salary || 0),
+      social_security: Number(row.social_security || 0),
+      income_tax: Number(row.income_tax || 0),
+      insurance: Number(row.insurance || 0),
+      loan_payment: Number(row.loan_payment || 0),
+      absence_days: Number(row.absence_days || 0),
+      other_deductions: Number(row.other_deductions || 0),
+      total_deductions: Number(row.total_deductions || 0),
+      net_salary: Number(row.net_salary || 0),
+      name_ar: row.employee_name_ar || row.fullName || '',
+      children_count: Number(row.children_count || 0),
+      child_dob_1: row.child_dob_1 || '-',
+      child_dob_2: row.child_dob_2 || '-',
+      child_dob_3: row.child_dob_3 || '-',
+      child_dob_4: row.child_dob_4 || '-',
+      child_dob_5: row.child_dob_5 || '-',
+      child_dob_6: row.child_dob_6 || '-',
+      marital_status: row.marital_status || 'single',
+      spouse_allowance: Number(row.spouse_allowance || 0)
+    };
+
+    const addedRow = worksheet.addRow(rowValues);
+    addedRow.height = 22;
+
+    addedRow.eachCell((cell, colNumber) => {
+      const colDef = columns[colNumber - 1];
+      if (!colDef) return;
+
+      // Base font
+      cell.font = {
+        name: 'Segoe UI',
+        size: 10,
+        color: { argb: 'FF0F172A' }
+      };
+
+      // Alignment
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: (colDef.align as any) || 'left'
+      };
+
+      // Thin borders around every cell
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+      };
+
+      // Alternating background
+      if (isEven) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF8FAFC' } // Slate 50
+        };
+      }
+
+      // Column-specific formatting
+      if (colDef.key === 'badge_no') {
+        cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+      }
+
+      if (colDef.isMoney) {
+        cell.numFmt = '#,##0';
+        if (colDef.isHighlight) {
+          // Gross Salary
+          cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+        } else if (colDef.isNet) {
+          // Net Salary
+          cell.font = { name: 'Segoe UI', size: 10.5, bold: true, color: { argb: 'FF0F172A' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+          cell.numFmt = '#,##0" IQD"';
+        }
+      } else if (colDef.isDeduction) {
+        const val = Number(cell.value || 0);
+        cell.numFmt = val > 0 ? '(#,##0)' : '0';
+        cell.font = {
+          name: 'Segoe UI',
+          size: 10,
+          bold: colDef.isHighlight || false,
+          color: { argb: val > 0 ? 'FF991B1B' : 'FF64748B' } // Rose 800 if deduction > 0
+        };
+      } else if (colDef.isAbsence) {
+        const val = Number(cell.value || 0);
+        cell.numFmt = val > 0 ? '0.0' : '0';
+        cell.font = {
+          name: 'Segoe UI',
+          size: 10,
+          bold: val > 0,
+          color: { argb: val > 0 ? 'FFB45309' : 'FF64748B' } // Amber 700 if days > 0
+        };
+      }
+
+      // Check if child DOB is over 18 (highlight red)
+      if (colDef.key === 'child_dob_1' && row.child_over18_1) {
+        cell.font = { name: 'Segoe UI', size: 9.5, bold: true, color: { argb: 'FFDC2626' } };
+      }
+      if (colDef.key === 'child_dob_2' && row.child_over18_2) {
+        cell.font = { name: 'Segoe UI', size: 9.5, bold: true, color: { argb: 'FFDC2626' } };
+      }
+      if (colDef.key === 'child_dob_3' && row.child_over18_3) {
+        cell.font = { name: 'Segoe UI', size: 9.5, bold: true, color: { argb: 'FFDC2626' } };
+      }
+      if (colDef.key === 'child_dob_4' && row.child_over18_4) {
+        cell.font = { name: 'Segoe UI', size: 9.5, bold: true, color: { argb: 'FFDC2626' } };
+      }
+      if (colDef.key === 'child_dob_5' && row.child_over18_5) {
+        cell.font = { name: 'Segoe UI', size: 9.5, bold: true, color: { argb: 'FFDC2626' } };
+      }
+      if (colDef.key === 'child_dob_6' && row.child_over18_6) {
+        cell.font = { name: 'Segoe UI', size: 9.5, bold: true, color: { argb: 'FFDC2626' } };
+      }
+    });
+  });
+
+  // 4. Add Summary Totals Row at the bottom
+  const totalRowIndex = payrollRows.length + 2;
+  const totalValues: Record<string, any> = {
+    no: '',
+    badge_no: '',
+    branch: '',
+    name_en: 'Totals / المجموع',
+    position: '',
+    department: '',
+    start_date: '',
+    basic_salary: { formula: `SUM(H2:H${totalRowIndex - 1})` },
+    current_month_basic: { formula: `SUM(I2:I${totalRowIndex - 1})` },
+    phone_allowance: { formula: `SUM(J2:J${totalRowIndex - 1})` },
+    incentives: { formula: `SUM(K2:K${totalRowIndex - 1})` },
+    transportation: { formula: `SUM(L2:L${totalRowIndex - 1})` },
+    bonus: { formula: `SUM(M2:M${totalRowIndex - 1})` },
+    family_allowance: { formula: `SUM(N2:N${totalRowIndex - 1})` },
+    cert_allowance: { formula: `SUM(O2:O${totalRowIndex - 1})` },
+    overtime: { formula: `SUM(P2:P${totalRowIndex - 1})` },
+    earned_leave: { formula: `SUM(Q2:Q${totalRowIndex - 1})` },
+    gross_salary: { formula: `SUM(R2:R${totalRowIndex - 1})` },
+    social_security: { formula: `SUM(S2:S${totalRowIndex - 1})` },
+    income_tax: { formula: `SUM(T2:T${totalRowIndex - 1})` },
+    insurance: { formula: `SUM(U2:U${totalRowIndex - 1})` },
+    loan_payment: { formula: `SUM(V2:V${totalRowIndex - 1})` },
+    absence_days: { formula: `SUM(W2:W${totalRowIndex - 1})` },
+    other_deductions: { formula: `SUM(X2:X${totalRowIndex - 1})` },
+    total_deductions: { formula: `SUM(Y2:Y${totalRowIndex - 1})` },
+    net_salary: { formula: `SUM(Z2:Z${totalRowIndex - 1})` },
+    name_ar: '',
+    children_count: { formula: `SUM(AB2:AB${totalRowIndex - 1})` },
+    child_dob_1: '',
+    child_dob_2: '',
+    child_dob_3: '',
+    child_dob_4: '',
+    child_dob_5: '',
+    child_dob_6: '',
+    marital_status: '',
+    spouse_allowance: { formula: `SUM(AJ2:AJ${totalRowIndex - 1})` }
+  };
+
+  const totalRow = worksheet.addRow(totalValues);
+  totalRow.height = 26;
+
+  totalRow.eachCell((cell, colNumber) => {
+    const colDef = columns[colNumber - 1];
+    cell.font = {
+      name: 'Segoe UI',
+      size: 10.5,
+      bold: true,
+      color: { argb: 'FF0F172A' }
+    };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE2E8F0' } // Slate 200
+    };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF94A3B8' } },
+      bottom: { style: 'double', color: { argb: 'FF0F172A' } }, // Double accounting underline
+      left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+      right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+    };
+    cell.alignment = {
+      vertical: 'middle',
+      horizontal: (colDef?.align as any) || 'right'
+    };
+
+    if (colDef?.isMoney) {
+      cell.numFmt = colDef.isNet ? '#,##0" IQD"' : '#,##0';
+    } else if (colDef?.isDeduction) {
+      cell.numFmt = '(#,##0)';
+      cell.font = { name: 'Segoe UI', size: 10.5, bold: true, color: { argb: 'FF991B1B' } };
+    } else if (colDef?.isAbsence) {
+      cell.numFmt = '0.0" يوم"';
+      cell.font = { name: 'Segoe UI', size: 10.5, bold: true, color: { argb: 'FFB45309' } };
+    }
+  });
+
+  const suggestedFilename = `Payroll_Vitas_Iraq_${year}_${String(month).padStart(2, '0')}.xlsx`;
   return await saveExcelWithSaveDialog(workbook, suggestedFilename);
 }
 

@@ -424,6 +424,16 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-3">
+            {onNavigate && (
+              <button
+                onClick={() => onNavigate('leave-balance-report')}
+                className="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md hover:shadow-sky-500/25 active:scale-95"
+              >
+                <span className="material-symbols-outlined text-base">fact_check</span>
+                <span>{isAr ? 'تقرير رصيد الإجازات (Leave Balance Report)' : 'Leave Balance Report'}</span>
+              </button>
+            )}
+
             <button
               onClick={handleExportExcel}
               className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white dark:bg-teal-600/30 dark:hover:bg-teal-600/50 border border-teal-600 dark:border-teal-500/40 dark:text-teal-200 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md hover:shadow-teal-500/20"

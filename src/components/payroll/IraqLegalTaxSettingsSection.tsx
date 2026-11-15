@@ -635,6 +635,21 @@ export const IraqLegalTaxSettingsSection: React.FC<IraqLegalTaxSettingsSectionPr
               })}
             </div>
           </div>
+
+          {/* Statutory Rule: Fixed Annual Baseline & Immunity from Absence */}
+          <div className="p-4 rounded-2xl bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/50 flex items-start gap-3">
+            <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 shrink-0 mt-0.5">verified_user</span>
+            <div className="space-y-1 text-xs">
+              <span className="font-bold text-teal-900 dark:text-teal-200">
+                {isAr ? 'ضوابط ثبات أجر الاشتراك السنوي للضمان (قانون 18 لسنة 2023):' : 'Annual Fixed Social Security Wage Rules:'}
+              </span>
+              <p className="text-teal-800 dark:text-teal-300 text-[11px] leading-relaxed">
+                {isAr
+                  ? 'لا يتأثر استقطاع الضمان الاجتماعي بأيام الغياب للموظف المستمر في الخدمة، ويبقى قسط الضمان ثابتاً طيلة أشهر السنة الـ 12 حتى لو تغير الراتب الاسمي خلال السنة، ويتجدد الوعاء التأميني حصراً في 1 كانون الثاني (بداية كل سنة جديدة).'
+                  : 'Social Security contribution is unaffected by employee absence, remains fixed throughout all 12 calendar months even if basic salary changes mid-year, and updates exclusively on January 1st (start of each new year).'}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 

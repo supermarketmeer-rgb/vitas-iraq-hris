@@ -1983,6 +1983,15 @@ app.post('/api/employees/batch-import', async (req, res) => {
     // 1. Reload table columns once
     await loadEmployeeColumns();
 
+    // Build employee names set for strict guard against inserting person names into settings master tables
+    const employeeNames = new Set();
+    for (const emp of employees) {
+      if (emp.fullName) employeeNames.add(String(emp.fullName).trim().toLowerCase());
+      if (emp.fullNameEn) employeeNames.add(String(emp.fullNameEn).trim().toLowerCase());
+      if (emp.full_name_ar) employeeNames.add(String(emp.full_name_ar).trim().toLowerCase());
+      if (emp.full_name_en) employeeNames.add(String(emp.full_name_en).trim().toLowerCase());
+    }
+
     // 2. Pre-sync branches in batch if provided
     let branchesAdded = false;
     if (Array.isArray(branches) && branches.length > 0) {
@@ -1998,6 +2007,10 @@ app.post('/api/employees/batch-import', async (req, res) => {
         const nameAr = (b.name_ar || b.name || b.name_en || '').trim();
         const nameEn = (b.name_en || b.name || b.name_ar || '').trim();
         if (!nameAr && !nameEn) continue;
+        if (employeeNames.has(nameAr.toLowerCase()) || employeeNames.has(nameEn.toLowerCase())) {
+          console.warn(`[BatchImport] Skipping bogus branch matching employee name: ${nameAr || nameEn}`);
+          continue;
+        }
         if (!branchNames.has(nameAr.toLowerCase()) && !branchNames.has(nameEn.toLowerCase())) {
           const bId = b.id ? String(b.id) : `BR_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
           await fastQuery(
@@ -2028,6 +2041,10 @@ app.post('/api/employees/batch-import', async (req, res) => {
         const deptAr = (d.name_ar || d.name || d.name_en || '').trim();
         const deptEn = (d.name_en || d.name || d.name_ar || '').trim();
         if (!deptAr && !deptEn) continue;
+        if (employeeNames.has(deptAr.toLowerCase()) || employeeNames.has(deptEn.toLowerCase())) {
+          console.warn(`[BatchImport] Skipping bogus department matching employee name: ${deptAr || deptEn}`);
+          continue;
+        }
         if (!deptNames.has(deptAr.toLowerCase()) && !deptNames.has(deptEn.toLowerCase())) {
           const dCode = (d.code || `DEP-${Date.now().toString().slice(-4)}`).trim().toUpperCase();
           await fastQuery(
@@ -2059,6 +2076,10 @@ app.post('/api/employees/batch-import', async (req, res) => {
         const posAr = (p.title_ar || p.name_ar || p.title || p.name || p.name_en || '').trim();
         const posEn = (p.title || p.name_en || p.title_ar || p.name_ar || p.name || '').trim();
         if (!posAr && !posEn) continue;
+        if (employeeNames.has(posAr.toLowerCase()) || employeeNames.has(posEn.toLowerCase())) {
+          console.warn(`[BatchImport] Skipping bogus position matching employee name: ${posAr || posEn}`);
+          continue;
+        }
         if (!posNames.has(posAr.toLowerCase()) && !posNames.has(posEn.toLowerCase())) {
           await fastQuery(
             `INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order)
@@ -2087,9 +2108,12 @@ app.post('/api/employees/batch-import', async (req, res) => {
 
     for (const emp of existingEmpRows) {
       if (emp.id) idMap.set(Number(emp.id), emp.id);
-      if (emp.employee_id) empIdMap.set(String(emp.employee_id).trim().toLowerCase(), emp.id);
-      if (emp.badge_no) badgeMap.set(String(emp.badge_no).trim().toLowerCase(), emp.id);
-      if (emp.waid) waidMap.set(String(emp.waid).trim().toLowerCase(), emp.id);
+      const cleanEmpId = String(emp.employee_id || '').trim().toLowerCase();
+      if (cleanEmpId && cleanEmpId !== '0' && cleanEmpId !== '0.0') empIdMap.set(cleanEmpId, emp.id);
+      const cleanBadge = String(emp.badge_no || '').trim().toLowerCase();
+      if (cleanBadge && cleanBadge !== '0' && cleanBadge !== '0.0') badgeMap.set(cleanBadge, emp.id);
+      const cleanWaid = String(emp.waid || '').trim().toLowerCase();
+      if (cleanWaid && cleanWaid !== '0' && cleanWaid !== '0.0') waidMap.set(cleanWaid, emp.id);
       if (emp.email && !emp.email.includes('no-email-') && emp.email.includes('@') && !emp.email.endsWith('@vitasiraq.local')) {
         emailMap.set(emp.email.trim().toLowerCase(), emp.id);
       }
@@ -2120,16 +2144,21 @@ app.post('/api/employees/batch-import', async (req, res) => {
 
           // In-memory match
           let targetDbId = null;
+          const cleanInputEmpId = String(rawInputEmpId || '').trim().toLowerCase();
+          const cleanInputBadge = String(rawInputBadge || '').trim().toLowerCase();
+          const cleanInputWaid = String(rawInputWaid || '').trim().toLowerCase();
+          const cleanInputEmail = String(rawInputEmail || '').trim().toLowerCase();
+
           if (empData.id && !isNaN(Number(empData.id)) && Number(empData.id) > 0 && Number(empData.id) < 2147483647 && idMap.has(Number(empData.id))) {
             targetDbId = idMap.get(Number(empData.id));
-          } else if (rawInputEmpId && empIdMap.has(rawInputEmpId.toLowerCase())) {
-            targetDbId = empIdMap.get(rawInputEmpId.toLowerCase());
-          } else if (rawInputBadge && badgeMap.has(rawInputBadge.toLowerCase())) {
-            targetDbId = badgeMap.get(rawInputBadge.toLowerCase());
-          } else if (rawInputWaid && waidMap.has(rawInputWaid.toLowerCase())) {
-            targetDbId = waidMap.get(rawInputWaid.toLowerCase());
-          } else if (rawInputEmail && emailMap.has(rawInputEmail.toLowerCase())) {
-            targetDbId = emailMap.get(rawInputEmail.toLowerCase());
+          } else if (cleanInputEmpId && cleanInputEmpId !== '0' && cleanInputEmpId !== '0.0' && empIdMap.has(cleanInputEmpId)) {
+            targetDbId = empIdMap.get(cleanInputEmpId);
+          } else if (cleanInputBadge && cleanInputBadge !== '0' && cleanInputBadge !== '0.0' && badgeMap.has(cleanInputBadge)) {
+            targetDbId = badgeMap.get(cleanInputBadge);
+          } else if (cleanInputWaid && cleanInputWaid !== '0' && cleanInputWaid !== '0.0' && waidMap.has(cleanInputWaid)) {
+            targetDbId = waidMap.get(cleanInputWaid);
+          } else if (cleanInputEmail && emailMap.has(cleanInputEmail)) {
+            targetDbId = emailMap.get(cleanInputEmail);
           }
 
           let finalEmpDbId = targetDbId;
@@ -4076,7 +4105,36 @@ app.patch('/api/departments/:id/manager-location', async (req, res) => {
 // Settings - Departments CRUD
 app.get(['/api/settings/departments', '/api/departments'], async (req, res) => {
   try {
-    const results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
+    let results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
+    
+    // Auto-seed default corporate departments if table is empty
+    if (!results || results.length === 0) {
+      const defaultDepartments = [
+        { name_ar: 'قسم الائتمان', name_en: 'Credit Department', sort: 1 },
+        { name_ar: 'المالية والمحاسبة', name_en: 'Finance & Accounting', sort: 2 },
+        { name_ar: 'قسم الخزينة', name_en: 'Treasury Department', sort: 3 },
+        { name_ar: 'الموارد البشرية', name_en: 'Human Resources', sort: 4 },
+        { name_ar: 'تكنولوجيا المعلومات', name_en: 'Information Technology', sort: 5 },
+        { name_ar: 'نظم المعلومات الإدارية (MIS)', name_en: 'Management Information Systems (MIS)', sort: 6 },
+        { name_ar: 'الاستحصال والتحصيل', name_en: 'Collection & Recovery', sort: 7 },
+        { name_ar: 'قسم الامتثال', name_en: 'Compliance Department', sort: 8 },
+        { name_ar: 'المخاطر والامتثال', name_en: 'Risk & Compliance', sort: 9 },
+        { name_ar: 'التدقيق الداخلي', name_en: 'Internal Audit', sort: 10 },
+        { name_ar: 'المشتريات والتسهيلات', name_en: 'Procurement & Facilities', sort: 11 },
+        { name_ar: 'التسويق والعلاقات العامة', name_en: 'Marketing & PR', sort: 12 },
+        { name_ar: 'العمليات وإدارة الفروع', name_en: 'Operations & Branch Management', sort: 13 },
+        { name_ar: 'قسم الأمن', name_en: 'Security Department', sort: 14 }
+      ];
+
+      for (const d of defaultDepartments) {
+        await query(
+          'INSERT INTO departments (name_en, name_ar, name, status, sort_order) VALUES (?, ?, ?, ?, ?)',
+          [d.name_en, d.name_ar, d.name_ar, 'Active', d.sort]
+        ).catch(() => {});
+      }
+      results = await query('SELECT * FROM departments ORDER BY sort_order ASC, name_ar ASC, id ASC');
+    }
+
     const employees = await query('SELECT id, department, branch, status FROM employees').catch(() => []);
     const branches = await query('SELECT id, name, name_ar, name_en, status FROM branches').catch(() => []);
     const positions = await query('SELECT id, department_id, department FROM positions').catch(() => []);

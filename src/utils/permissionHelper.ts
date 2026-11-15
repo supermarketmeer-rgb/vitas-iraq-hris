@@ -588,6 +588,7 @@ export const MODULE_CATEGORY_MAP: Record<string, { catId: string; alias: string 
 
   // Category 4: leaves / attendance
   'leave-attendance': { catId: 'cat-4-leave', alias: 'attendance' },
+  'leave-balance-report': { catId: 'cat-4-leave', alias: 'attendance' },
   'leave-apply': { catId: 'cat-4-leave', alias: 'attendance' },
   'leave-balance': { catId: 'cat-4-leave', alias: 'attendance' },
   'leave-approvals': { catId: 'cat-4-leave', alias: 'attendance' },

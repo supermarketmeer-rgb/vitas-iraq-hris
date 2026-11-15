@@ -188,6 +188,13 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         description: 'سجل الحضور والدوام المعالج وحركات البصمة التفصيلية'
       },
       {
+        id: 'leave-balance-report',
+        title: 'تقرير رصيد الإجازات (Leave Balance Report)',
+        titleEn: 'Leave Balance Report',
+        icon: 'fact_check',
+        description: 'تقرير أرصدة الإجازات ومخصصات نهاية الخدمة لـ 351 موظفاً مع التصدير المطابق للإكسل'
+      },
+      {
         id: 'leave-earned',
         title: 'الإجازات المستحقة',
         titleEn: 'Earned Leaves',

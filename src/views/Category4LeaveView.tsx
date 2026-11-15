@@ -24,6 +24,7 @@ import { MyScheduleView } from '../components/leaves_attendance/MyScheduleView';
 import { ManagerApprovalCenter } from '../components/leaves_attendance/ManagerApprovalCenter';
 import { BiometricSettingsView } from '../components/leaves_attendance/BiometricSettingsView';
 import { EarnedLeavesView } from '../components/leaves_attendance/EarnedLeavesView';
+import { LeaveBalanceReportView } from '../components/leaves_attendance/LeaveBalanceReportView';
 
 import { LeaveApplyModal } from '../components/leaves_attendance/LeaveApplyModal';
 import { AttendanceCorrectionModal } from '../components/leaves_attendance/AttendanceCorrectionModal';
@@ -297,6 +298,13 @@ export const Category4LeaveView: React.FC = () => {
         />
       )}
 
+      {(activeModuleId === 'leave-balance-report' || activeModuleId === 'leave-balance-rep') && (
+        <LeaveBalanceReportView
+          lang={lang}
+          onNavigate={(tab) => setActiveModuleId(tab)}
+        />
+      )}
+
       {(activeModuleId === 'leave-earned' || activeModuleId === 'earned-leaves' || activeModuleId === 'leave-balance') && (
         <EarnedLeavesView
           employees={employees || []}
@@ -361,6 +369,7 @@ export const Category4LeaveView: React.FC = () => {
               await loadData();
             }}
             onNavigateToEarned={() => setActiveModuleId('leave-earned')}
+            onNavigateToBalanceReport={() => setActiveModuleId('leave-balance-report')}
           />
         </div>
       )}
@@ -382,6 +391,7 @@ export const Category4LeaveView: React.FC = () => {
             await loadData();
           }}
           onNavigateToEarned={() => setActiveModuleId('leave-earned')}
+          onNavigateToBalanceReport={() => setActiveModuleId('leave-balance-report')}
         />
       )}
 

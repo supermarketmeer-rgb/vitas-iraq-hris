@@ -43,6 +43,40 @@ export const REPORT_CATALOG: ReportDefinition[] = [
     ]
   },
   {
+    id: 'leave_balance_report',
+    category: 'WORKBOOKS',
+    titleEn: 'Leave Balance Report',
+    titleAr: 'تقرير رصيد الإجازات ومكافأة نهاية الخدمة (Leave Balance Report)',
+    descriptionEn: 'Official CHF - Vitas Iraq leave balances, monthly provisions, and end of service bonuses matching Leave Balance Report.xlsx (Till: 2026-10-01).',
+    descriptionAr: 'تقرير أرصدة الإجازات ومخصصات الإجازات ومكافأة نهاية الخدمة المطابق لمصنف Leave Balance Report.xlsx لمؤسسة فيتاس العراق (حتى تاريخ 2026-10-01).',
+    supportLevel: 'FULL',
+    dataSourceNote: 'مطابق لمصنف Leave Balance Report.xlsx (CHF - Vitas Iraq)',
+    columns: [
+      { key: 'sn', headerEn: 'SN', headerAr: '#', type: 'number', width: 60 },
+      { key: 'empId', headerEn: 'Emp ID', headerAr: 'معرف الموظف', type: 'number', width: 90 },
+      { key: 'empStatus', headerEn: 'Emp Status', headerAr: 'الحالة', type: 'string', width: 100 },
+      { key: 'employeeCode', headerEn: 'Employee Code', headerAr: 'كود الموظف', type: 'string', width: 180 },
+      { key: 'fullName', headerEn: 'Full Name', headerAr: 'اسم الموظف', type: 'string', width: 220 },
+      { key: 'joinDate', headerEn: 'Join Date', headerAr: 'تاريخ المباشرة', type: 'date', width: 110 },
+      { key: 'currentBasicSalary', headerEn: 'Current Basic Salary', headerAr: 'الراتب الأساسي', type: 'currency', width: 160 },
+      { key: 'monthlyLeaveProvision', headerEn: 'Monthly Leave Provision', headerAr: 'مخصص الإجازات', type: 'currency', width: 170 },
+      { key: 'monthlyEndOfServiceBonus', headerEn: 'Monthly End Of Service Bonus', headerAr: 'مكافأة نهاية الخدمة', type: 'currency', width: 180 },
+      { key: 'openingBalance', headerEn: 'Opening Balance', headerAr: 'الرصيد الافتتاحي', type: 'number', width: 120 },
+      { key: 'yearlyDays', headerEn: 'Yearly Days', headerAr: 'الأيام السنوية', type: 'number', width: 110 },
+      { key: 'totalBalance', headerEn: 'Total Balance', headerAr: 'إجمالي الرصيد', type: 'number', width: 120 },
+      { key: 'consumed', headerEn: 'Consumed', headerAr: 'المستهلك', type: 'number', width: 100 },
+      { key: 'earnedDays', headerEn: 'Earned Days', headerAr: 'أيام مستحقة', type: 'number', width: 110 },
+      { key: 'balanceTillToday', headerEn: 'Balance Till Today', headerAr: 'الرصيد حتى اليوم', type: 'number', width: 130 },
+      { key: 'balanceTillEndOfYear', headerEn: 'Balance Till End Of Year', headerAr: 'الرصيد لنهاية السنة', type: 'number', width: 140 }
+    ],
+    defaultColumns: ['sn', 'empId', 'employeeCode', 'fullName', 'joinDate', 'currentBasicSalary', 'monthlyLeaveProvision', 'monthlyEndOfServiceBonus', 'balanceTillToday', 'balanceTillEndOfYear'],
+    defaultSort: { key: 'sn', direction: 'asc' },
+    kpis: ['kpi_leave_total_staff', 'kpi_leave_total_salary', 'kpi_leave_provision', 'kpi_leave_eos_bonus'],
+    recommendedCharts: [
+      { type: 'column', titleEn: 'Leave Provision by Office', titleAr: 'مخصص الإجازات حسب المكتب', xAxis: 'office', yAxis: 'provision' }
+    ]
+  },
+  {
     id: 'roster_report',
     category: 'WORKBOOKS',
     titleEn: 'Roster Report',

@@ -127,7 +127,11 @@ export function calculateEmployeeTaxAndSS(e, settings = {}, brackets = [], branc
     const baseAfter30Percent = (basicSalary * 0.7) - empSS;
     const monthlyPersonal = Math.round((Number(settings.tax_personal_allowance) || 5000000) / 12); // 416,667
     const monthlySpouse = (isMarried && !spouseHasIncome) ? Math.round((Number(settings.tax_spouse_allowance) || 4000000) / 12) : 0; // 333,333
-    const monthlyChildren = Math.min(dependentsCount, 4) * Math.round((Number(settings.tax_child_allowance) || 400000) / 12); // 33,333/child
+    // Legal limit per Iraqi Income Tax Law No. 113 of 1982 (Article 12): Max 4 children
+    const maxKids = (settings.tax_eligible_children_limit !== undefined && settings.tax_eligible_children_limit !== null)
+      ? Math.min(Number(settings.tax_eligible_children_limit) || 4, 4)
+      : 4;
+    const monthlyChildren = Math.min(dependentsCount, maxKids) * Math.round((Number(settings.tax_child_allowance) || 400000) / 12); // 33,333/child
     const totalExemptions = monthlyPersonal + monthlySpouse + monthlyChildren;
 
     taxableIncome = Math.max(0, baseAfter30Percent - totalExemptions);
@@ -642,24 +646,19 @@ export function registerTaxModuleRoutes(app, query) {
         const dependentsCount = Array.isArray(childrenList) ? childrenList.length : 0;
         const isMarried = (e.marital_status === 'married' || e.marital_status === 'متأهل');
 
+        const empDept = `${e.department || ''} ${e.department_en || ''} ${e.department_ar || ''}`.toLowerCase();
         const empPos = `${e.position || ''} ${e.position_en || ''} ${e.position_ar || ''}`.toLowerCase();
         const isLoanOfficer = (() => {
+          if (empDept.includes('credit') || empDept.includes('ائتمان')) return true;
           if (!empPos) return false;
-          if (
-            empPos.includes('supervisor') || empPos.includes('مشرف') || 
-            empPos.includes('manager') || empPos.includes('مدير') || 
-            empPos.includes('coordinator') || empPos.includes('منسق') || 
-            empPos.includes('assistant') || empPos.includes('مساعد') ||
-            empPos.includes('head') || empPos.includes('رئيس')
-          ) {
-            return false;
-          }
-          return empPos.includes('se loan officer') || 
-                 empPos.includes('senior loan officer') || 
-                 empPos.includes('loan officer') || 
+          return empPos.includes('loan officer') || 
                  empPos.includes('مسؤول قروض') || 
                  empPos.includes('مسؤول القروض') || 
-                 empPos.includes('ضابط قروض');
+                 empPos.includes('ضابط قروض') ||
+                 empPos.includes('office manager') ||
+                 empPos.includes('مدير مكتب') ||
+                 empPos.includes('credit') ||
+                 empPos.includes('ائتمان');
         })();
 
         const currentChildAllowanceRate = isLoanOfficer ? loChildAllowance : otherChildAllowance;

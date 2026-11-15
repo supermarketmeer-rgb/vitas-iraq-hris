@@ -17,23 +17,36 @@ import { PoliciesSection } from '../components/PoliciesSection';
 
 interface EmployeeAdjustment {
   absenceDays?: number;
+  absenceDeduction?: number;
+  absence_deduction?: number;
   basicSalary?: number;
+  currentMonthBasic?: number;
+  current_month_basic?: number;
   phoneAllowance?: number;
   familyAllowance?: number;
   certAllowance?: number;
   insurance?: number;
+  insuranceDeduction?: number;
   incentives?: number;
+  incentivesOverride?: number;
   transportation?: number;
+  transportationOverride?: number;
   bonus?: number;
+  bonusOverride?: number;
   overtime?: number;
   overtimeHours?: number;
   overtimeAmount?: number;
   earnedLeave?: number;
   socialSecurity?: number;
+  social_security?: number;
   incomeTax?: number;
+  income_tax?: number;
   loanPayment?: number;
+  loan_payment?: number;
   otherDeductions?: number;
+  other_deductions?: number;
   bonusExtra?: number;
+  [key: string]: any;
 }
 
 interface CellCommentItem {
@@ -144,6 +157,10 @@ export const Category5PayrollView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'summary' | 'detailed'>('detailed');
 
+  // Fast High-Performance Table Pagination
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
   // Selected Employee & Office for Payslip View
   const [selectedEmpId, setSelectedEmpId] = useState<string>(employees[0]?.id || '');
   const [selectedPayslipOffice, setSelectedPayslipOffice] = useState<string>('All');
@@ -156,6 +173,22 @@ export const Category5PayrollView: React.FC = () => {
 
   // Central Iraqi Legal Settings & Tax Brackets State
   const [legalSettings, setLegalSettings] = useState<PayrollLegalSettings>(getDefaultLegalSettings());
+
+  // Annual Social Security Baselines: Anchors social security base to Jan 1st of each year (never affected by absence or mid-year raises)
+  const [annualSsBaselines, setAnnualSsBaselines] = useState<Record<number, Record<string, number>>>(() => {
+    try {
+      const saved = localStorage.getItem('vitas_payroll_annual_ss_baseline');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vitas_payroll_annual_ss_baseline', JSON.stringify(annualSsBaselines));
+    } catch (e) {}
+  }, [annualSsBaselines]);
   const [taxBrackets, setTaxBrackets] = useState<TaxBracketConfig[]>(getDefaultTaxBrackets());
   const [traceCalculationResult, setTraceCalculationResult] = useState<FullPayrollTaxResult | null>(null);
   const [traceModalRow, setTraceModalRow] = useState<any | null>(null);
@@ -631,10 +664,15 @@ export const Category5PayrollView: React.FC = () => {
       
       // XAMPP Field: absence_days (1. absence)
       const absence_days = adj.absenceDays !== undefined ? adj.absenceDays : 0;
-      const absenceDeduction = (absence_days * (basic_salary / 30));
+      const calculatedAbsence = Math.round(absence_days * (basic_salary / 30));
+      const absenceDeduction = adj.absenceDays !== undefined
+        ? calculatedAbsence
+        : (adj.absenceDeduction !== undefined ? adj.absenceDeduction : (adj.absence_deduction !== undefined ? adj.absence_deduction : calculatedAbsence));
       
-      // XAMPP Field: current_month_basic
-      const current_month_basic = Math.max(0, basic_salary - absenceDeduction);
+      // XAMPP Field: current_month_basic (Deduct absence directly from basic salary for this month)
+      const current_month_basic = (adj.currentMonthBasic !== undefined && adj.absenceDays === undefined)
+        ? (adj.currentMonthBasic !== undefined ? adj.currentMonthBasic : adj.current_month_basic)
+        : Math.max(0, basic_salary - calculatedAbsence);
 
       // XAMPP Allowances Fields (supporting camelCase & snake_case)
       const phone_allowance = adj.phoneAllowance !== undefined ? adj.phoneAllowance : Number(emp.phoneAllowance ?? emp.phone_allowance ?? 0);
@@ -659,35 +697,50 @@ export const Category5PayrollView: React.FC = () => {
             : (emp.certificate_allowance && Number(emp.certificate_allowance) > 0 
                 ? Number(emp.certificate_allowance) 
                 : policyCertVal));
-      // 2. transportation
-      const transportation = adj.transportation !== undefined ? adj.transportation : Number(emp.transportationFixed ?? emp.transportation_fixed ?? 0);
-      // 3. bonus
-      const bonus = adj.bonus !== undefined ? adj.bonus : (Number(emp.fixedBonus ?? emp.fixed_bonus ?? 0) + (adj.bonusExtra || 0));
-      // 4. incentives: Use Badge No for matching - all matched employees get their incentives
-      const rawIncentives = adj.incentives !== undefined ? adj.incentives : Number(emp.incentives ?? 0);
-      const incentives = rawIncentives;
+      // 2. transportation: Fixed baseline + Monthly report amount (or direct cell edit override)
+      const fixedTransportation = Number(emp.transportationFixed ?? emp.transportation_fixed ?? 0);
+      const monthlyTransportation = adj.transportation !== undefined ? Number(adj.transportation) : 0;
+      const transportation = adj.transportationOverride !== undefined
+        ? adj.transportationOverride
+        : (fixedTransportation + monthlyTransportation);
+
+      // 3. bonus: Fixed baseline + Monthly report amount / bonusExtra (or direct cell edit override)
+      const fixedBonus = Number(emp.fixedBonus ?? emp.fixed_bonus ?? 0);
+      const monthlyBonus = adj.bonus !== undefined ? Number(adj.bonus) : (adj.bonusExtra || 0);
+      const bonus = adj.bonusOverride !== undefined
+        ? adj.bonusOverride
+        : (fixedBonus + monthlyBonus);
+
+      // 4. incentives: Fixed baseline + Monthly report amount (or direct cell edit override)
+      const fixedIncentives = Number(emp.incentivesFixed ?? emp.fixed_incentives ?? 0);
+      const monthlyIncentives = adj.incentives !== undefined ? Number(adj.incentives) : Number(emp.incentives ?? 0);
+      const incentives = adj.incentivesOverride !== undefined
+        ? adj.incentivesOverride
+        : (fixedIncentives + monthlyIncentives);
       // 5. earned_leave
       const earned_leave = adj.earnedLeave !== undefined ? adj.earnedLeave : Number(emp.earnedLeave ?? emp.earned_leave ?? 0);
 
       // Family allowance calculation (spouse + children under 18) -> family_allowance
       // Values are fetched directly from Policies settings in appSettings (or defaults)
 
-      // Determine if employee is a Loan Officer (Loan Officer, Senior Loan Officer, SE Loan Officer - excluding supervisors & managers)
+      // Determine if employee is eligible for the 5 USD child rate
+      // Per company policy: ONLY Loan Officers (Loan Officer, Senior Loan Officer, SE Loan Officer, Collection/Field Loan Officers, etc.) get 5 USD.
+      // Other employees (including Office Managers, Credit Assistants, Coordinators, Branch Staff, and all other departments) get 4 USD.
       const empPos = `${emp.position || ''} ${emp.position_en || ''} ${emp.position_ar || ''} ${emp.title || ''} ${emp.job_title || ''} ${emp.job_title_en || ''} ${emp.job_title_ar || ''}`.toLowerCase();
       const isLoanOfficer = ((): boolean => {
-        if (!empPos) return false;
+        // Explicitly exclude non-loan-officer roles (even if in Credit department)
         if (
-          empPos.includes('supervisor') || empPos.includes('مشرف') || 
-          empPos.includes('manager') || empPos.includes('مدير') || 
-          empPos.includes('coordinator') || empPos.includes('منسق') || 
+          empPos.includes('office manager') || empPos.includes('مدير مكتب') ||
           empPos.includes('assistant') || empPos.includes('مساعد') ||
-          empPos.includes('head') || empPos.includes('رئيس')
+          empPos.includes('coordinator') || empPos.includes('منسق') ||
+          empPos.includes('receptionist') || empPos.includes('استقبال') ||
+          empPos.includes('analyst') || empPos.includes('محلل') ||
+          empPos.includes('clerk') || empPos.includes('admin') || empPos.includes('staff')
         ) {
           return false;
         }
-        return empPos.includes('se loan officer') || 
-               empPos.includes('senior loan officer') || 
-               empPos.includes('loan officer') || 
+
+        return empPos.includes('loan officer') || 
                empPos.includes('مسؤول قروض') || 
                empPos.includes('مسؤول القروض') || 
                empPos.includes('ضابط قروض');
@@ -740,48 +793,37 @@ export const Category5PayrollView: React.FC = () => {
         try { rawChildren = JSON.parse(emp.children_json); } catch (e) {}
       }
 
-      // Calculate child age accurately (with 2-digit year correction & ghost date filtering)
-      const getChildAge = (child: any): number => {
-        if (!child) return 99;
+      // Filter out illogical dummy child dates (birth year <= 1999 or ghost dates)
+      const isValidChildRecord = (child: any): boolean => {
+        if (!child) return false;
         const dobStr = String(child.dob || '').trim();
-        // Ignore ghost dates generated from blank/0 Excel cells (e.g. 1899-12-30, 2000-01-01 or 2000-01-02)
-        if (dobStr.startsWith('1899') || dobStr.startsWith('1900') || dobStr.includes('1899-12-30') || dobStr === '2000-01-01' || dobStr === '2000-01-02' || dobStr === '2000-01-03') {
-          return 99;
+        if (!dobStr || dobStr === '-' || dobStr === 'N/A' || dobStr === '0') return false;
+        if (dobStr.startsWith('1899') || dobStr.startsWith('1900') || dobStr.includes('1899-12-30')) return false;
+        const match = dobStr.match(/^(\d{4})/);
+        if (match) {
+          const y = parseInt(match[1], 10);
+          if (isNaN(y) || y <= 1999) return false;
         }
-        if (dobStr && dobStr !== 'N/A' && dobStr !== '0') {
-          const birth = new Date(dobStr);
-          if (!isNaN(birth.getTime())) {
-            let y = birth.getFullYear();
-            if (y <= 1900 || y === 1899) return 99;
-            // 2-digit year correction: e.g. 1911 -> 2011, 1915 -> 2015, 1920 -> 2020
-            if (y >= 1900 && y <= 1945) {
-              y += 100;
-            }
-            const today = new Date();
-            let age = today.getFullYear() - y;
-            const m = today.getMonth() - birth.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-              age--;
-            }
-            if (age > 40) return 99;
-            return age < 0 ? 0 : age;
-          }
-        }
-        if (child.age !== undefined && child.age !== null && child.age !== '') {
-          const parsed = Number(child.age);
-          if (!isNaN(parsed)) {
-            if (parsed > 100) return 99; // ghost child age (e.g. 126)
-            return parsed;
-          }
-        }
-        return 99;
+        const birth = new Date(dobStr);
+        if (!isNaN(birth.getTime()) && birth.getFullYear() <= 1999) return false;
+        return true;
+      };
+
+      const validChildren = (Array.isArray(rawChildren) ? rawChildren : []).filter(isValidChildRecord);
+
+      // Helper to check if a valid child is over 18 years old in the selected payroll period
+      const isChildOver18 = (child: any): boolean => {
+        if (!child || !isValidChildRecord(child)) return false;
+        const dobStr = String(child.dob || '').trim();
+        const birth = new Date(dobStr);
+        if (isNaN(birth.getTime())) return false;
+        const eighteenthBday = new Date(birth.getFullYear() + 18, birth.getMonth(), birth.getDate());
+        const refDate = new Date(selectedYear, selectedMonth - 1, 28);
+        return refDate >= eighteenthBday;
       };
 
       // Count children under 18 years old (including newborns age 0)
-      const childrenUnder18 = (Array.isArray(rawChildren) ? rawChildren : []).filter((child: any) => {
-        const age = getChildAge(child);
-        return age < 18;
-      });
+      const childrenUnder18 = validChildren.filter((child: any) => !isChildOver18(child));
 
       const childCount = childrenUnder18.length;
       const childAllow = childCount * childAllowanceVal;
@@ -803,13 +845,38 @@ export const Category5PayrollView: React.FC = () => {
 
       // Deductions Fields: social_security, income_tax, insurance
       // Central Iraqi Social Security & Income Tax Calculation
+      // Statutory Rule (Iraqi Law 18 of 2023 & statutory directive):
+      // 1. Social security is NEVER affected by absence days (no absence deduction from SS base).
+      // 2. Social security base remains fixed throughout the calendar year (months 1-12) based on
+      //    the basic salary at the start of the year (January 1st / 1/1), and only updates once per year on Jan 1st.
+      const empIdStr = String(emp.id || emp.employee_id || emp.badge_no);
+      const masterContractBasic = Number(emp.basicSalary ?? emp.basic_salary ?? emp.salary ?? basic_salary);
+      let ss_base_salary = masterContractBasic;
+
+      if (selectedMonth === 1) {
+        // Month 1 (January - Start of New Year): baseline updates to the current basic salary
+        ss_base_salary = basic_salary;
+        if (annualSsBaselines[selectedYear]?.[empIdStr] !== basic_salary) {
+          annualSsBaselines[selectedYear] = annualSsBaselines[selectedYear] || {};
+          annualSsBaselines[selectedYear][empIdStr] = basic_salary;
+        }
+      } else {
+        // Months 2-12: locked to January baseline if recorded, or original master contract basic salary
+        if (annualSsBaselines[selectedYear]?.[empIdStr] !== undefined) {
+          ss_base_salary = annualSsBaselines[selectedYear][empIdStr];
+        } else {
+          ss_base_salary = masterContractBasic;
+        }
+      }
+
       const empBranch = emp.branch || emp.branch_en || emp.branch_ar || emp.office || '';
       const empLocation = emp.location || emp.location_en || emp.location_ar || emp.city || '';
       const isKurdistan = isKurdistanLocation(empLocation, empBranch);
       const combinedCalc = calculateCombinedPayrollTaxAndSecurity(
         {
           id: emp.id,
-          basic_salary: current_month_basic,
+          basic_salary: current_month_basic, // For income tax calculation (reduced by absence)
+          ss_base_salary: ss_base_salary,    // For social security (fixed annually from Jan 1, unaffected by absence or mid-year changes)
           marital_status: isMarried ? 'married' : 'single',
           gender: emp.gender,
           children_count: childCount,
@@ -911,8 +978,12 @@ export const Category5PayrollView: React.FC = () => {
       const deductions_calc = social_security + income_tax + insurance;
       
       // XAMPP Fields: loan_payment, other_deductions (9. loan_payment, 10. other_deductions)
-      const loan_payment = adj.loanPayment !== undefined ? adj.loanPayment : Number(emp.loanPayment ?? emp.loan_payment ?? 0);
-      const other_deductions = adj.otherDeductions !== undefined ? adj.otherDeductions : Number(emp.otherDeductions ?? emp.other_deductions ?? 0);
+      const loan_payment = (adj.loanPayment !== undefined || adj.loan_payment !== undefined)
+        ? (adj.loanPayment !== undefined ? adj.loanPayment : adj.loan_payment)
+        : Number(emp.loanPayment ?? emp.loan_payment ?? 0);
+      const other_deductions = (adj.otherDeductions !== undefined || adj.other_deductions !== undefined)
+        ? (adj.otherDeductions !== undefined ? adj.otherDeductions : adj.other_deductions)
+        : Number(emp.otherDeductions ?? emp.other_deductions ?? 0);
       
       // Total Deductions
       const total_deductions = deductions_calc + loan_payment + other_deductions;
@@ -962,7 +1033,7 @@ export const Category5PayrollView: React.FC = () => {
         employee_name_en: emp.fullNameEn || emp.full_name_en || emp.fullName || emp.full_name_ar,
         position_ar: emp.jobTitle || emp.position_ar || emp.position,
         position_en: emp.jobTitleEn || emp.position_en || emp.jobTitle || emp.position,
-        department: emp.department || 'قسم الائتمان',
+        department: emp.department || emp.department_ar || emp.department_en || emp.departmentName || '',
         bank_name: emp.bankName || emp.bank_name || '',
         iban: emp.iban || '',
         original_start_date: emp.joinDate || emp.original_start_date || '2023-01-01',
@@ -995,9 +1066,26 @@ export const Category5PayrollView: React.FC = () => {
         loan_payment,
         other_deductions,
         absence_days,
+        absence_deduction: absenceDeduction,
         total_deductions,
         net_salary,
         overtime_hours: adj.overtimeHours,
+
+        // Children details (Columns 28 to 34) - Valid children only (excluding dummy dates with year <= 1999)
+        children_count: validChildren.length,
+        child_dob_1: validChildren[0]?.dob || '-',
+        child_dob_2: validChildren[1]?.dob || '-',
+        child_dob_3: validChildren[2]?.dob || '-',
+        child_dob_4: validChildren[3]?.dob || '-',
+        child_dob_5: validChildren[4]?.dob || '-',
+        child_dob_6: validChildren[5]?.dob || '-',
+        child_over18_1: isChildOver18(validChildren[0]),
+        child_over18_2: isChildOver18(validChildren[1]),
+        child_over18_3: isChildOver18(validChildren[2]),
+        child_over18_4: isChildOver18(validChildren[3]),
+        child_over18_5: isChildOver18(validChildren[4]),
+        child_over18_6: isChildOver18(validChildren[5]),
+        spouse_allowance: spouseAllow,
 
         // On Hold & Release Audit History Fields
         on_hold: isOnHold ? 1 : 0,
@@ -1426,24 +1514,33 @@ export const Category5PayrollView: React.FC = () => {
     );
 
     return uniqueFiltered.sort((a, b) => {
-      // 1. Ascending sort by Location
-      const locA = (language === 'en' ? a.location_en : a.location_ar) || '';
-      const locB = (language === 'en' ? b.location_en : b.location_ar) || '';
-      const locComp = locA.localeCompare(locB, language === 'en' ? 'en' : 'ar');
-      if (locComp !== 0) return locComp;
+      // 1. Primary Default Sort: Office / Branch Name (Ascending / تصاعدي)
+      const branchA = (a.branch || a.location_en || a.location_ar || '').trim();
+      const branchB = (b.branch || b.location_en || b.location_ar || '').trim();
+      const branchComp = branchA.localeCompare(branchB, undefined, { numeric: true, sensitivity: 'base' });
+      if (branchComp !== 0) return branchComp;
 
-      // 2. Ascending sort by Employee_Name
-      const nameA = (language === 'en' ? a.employee_name_en : a.employee_name_ar) || '';
-      const nameB = (language === 'en' ? b.employee_name_en : b.employee_name_ar) || '';
-      const nameComp = nameA.localeCompare(nameB, language === 'en' ? 'en' : 'ar');
-      if (nameComp !== 0) return nameComp;
+      // 2. Secondary Default Sort: Job Title / Position (Ascending / تصاعدي)
+      const posA = (a.position_en || a.position || a.position_ar || '').trim();
+      const posB = (b.position_en || b.position || b.position_ar || '').trim();
+      const posComp = posA.localeCompare(posB, undefined, { numeric: true, sensitivity: 'base' });
+      if (posComp !== 0) return posComp;
 
-      // 3. Ascending sort by Position
-      const posA = (language === 'en' ? a.position_en : a.position_ar) || '';
-      const posB = (language === 'en' ? b.position_en : b.position_ar) || '';
-      return posA.localeCompare(posB, language === 'en' ? 'en' : 'ar');
+      // 3. Tie-breaker: Employee Name (Ascending)
+      const nameA = (a.employee_name_en || a.employee_name_ar || '').trim();
+      const nameB = (b.employee_name_en || b.employee_name_ar || '').trim();
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [computedPayrollRows, selectedBranch, searchQuery, language]);
+
+  // Paginated Rows for Ultra-Fast Scrolling Performance (Zero Lag)
+  const effectivePageSize = pageSize === -1 ? filteredPayrollRows.length : pageSize;
+  const totalPages = Math.ceil(filteredPayrollRows.length / (effectivePageSize || 1)) || 1;
+  const paginatedPayrollRows = useMemo(() => {
+    if (pageSize === -1) return filteredPayrollRows;
+    const start = (currentPage - 1) * pageSize;
+    return filteredPayrollRows.slice(start, start + pageSize);
+  }, [filteredPayrollRows, currentPage, pageSize]);
 
   // Comprehensive Summary Totals for ALL financial columns
   const totals = useMemo(() => {
@@ -1464,14 +1561,19 @@ export const Category5PayrollView: React.FC = () => {
       income_tax: acc.income_tax + (row.income_tax || 0),
       insurance: acc.insurance + (row.insurance || 0),
       loan_payment: acc.loan_payment + (row.loan_payment || 0),
+      absence_days: (acc.absence_days || 0) + (row.absence_days || 0),
+      absence_deduction: acc.absence_deduction + (row.absence_deduction || 0),
       other_deductions: acc.other_deductions + (row.other_deductions || 0),
       deductions: acc.deductions + (row.total_deductions || 0),
-      net: acc.net + (row.net_salary || 0)
+      net: acc.net + (row.net_salary || 0),
+      children_count: acc.children_count + (row.children_count || 0),
+      spouse_allowance: acc.spouse_allowance + (row.spouse_allowance || 0)
     }), {
       basic: 0, current_month_basic: 0, phone_allowance: 0, family_allowance: 0,
       cert_allowance: 0, incentives: 0, transportation: 0, bonus: 0, overtime: 0,
       earned_leave: 0, allowances: 0, gross: 0, social_security: 0, income_tax: 0, insurance: 0,
-      loan_payment: 0, other_deductions: 0, deductions: 0, net: 0
+      loan_payment: 0, absence_days: 0, absence_deduction: 0, other_deductions: 0, deductions: 0, net: 0, children_count: 0,
+      spouse_allowance: 0
     });
   }, [filteredPayrollRows]);
 
@@ -1550,37 +1652,49 @@ export const Category5PayrollView: React.FC = () => {
       return;
     }
 
-    const numVal = parseFloat(cellValueInput) || 0;
+    const cleanVal = String(cellValueInput).replace(/,/g, '').replace(/[()]/g, '').trim();
+    const numVal = isNaN(parseFloat(cleanVal)) ? 0 : parseFloat(cleanVal);
     const commentKey = `${editingCell.empId}_${editingCell.fieldKey}`;
     const authorName = currentUser?.name || currentUser?.username || 'مستخدم النظام (HR)';
     const nowStr = new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
 
     // 1. Update Adjustments state
     setAdjustments(prev => {
-      const empAdj = { ...(prev[editingCell.empId] || {}) };
+      const existingAdj = prev[editingCell.empId] || (editingCell.badgeNo ? prev[editingCell.badgeNo] : undefined) || {};
+      const empAdj = { ...existingAdj };
       
       switch (editingCell.fieldKey) {
         case 'basic_salary':
+          empAdj.basicSalary = numVal;
+          break;
         case 'current_month_basic':
+          empAdj.currentMonthBasic = numVal;
+          empAdj.current_month_basic = numVal;
           empAdj.basicSalary = numVal;
           break;
         case 'phone_allowance':
           empAdj.phoneAllowance = numVal;
+          empAdj.phone_allowance = numVal;
           break;
         case 'family_allowance':
           empAdj.familyAllowance = numVal;
+          empAdj.family_allowance = numVal;
           break;
         case 'cert_allowance':
           empAdj.certAllowance = numVal;
+          empAdj.cert_allowance = numVal;
           break;
         case 'incentives':
           empAdj.incentives = numVal;
+          empAdj.incentivesOverride = numVal;
           break;
         case 'transportation':
           empAdj.transportation = numVal;
+          empAdj.transportationOverride = numVal;
           break;
         case 'bonus':
           empAdj.bonus = numVal;
+          empAdj.bonusOverride = numVal;
           break;
         case 'overtime':
           empAdj.overtime = numVal;
@@ -1590,25 +1704,47 @@ export const Category5PayrollView: React.FC = () => {
           break;
         case 'social_security':
           empAdj.socialSecurity = numVal;
+          empAdj.social_security = numVal;
           break;
         case 'income_tax':
           empAdj.incomeTax = numVal;
+          empAdj.income_tax = numVal;
           break;
         case 'insurance':
           empAdj.insurance = numVal;
+          empAdj.insuranceDeduction = numVal;
           break;
         case 'loan_payment':
           empAdj.loanPayment = numVal;
+          empAdj.loan_payment = numVal;
+          break;
+        case 'absence_days':
+        case 'absence_deduction':
+        case 'absence':
+          empAdj.absenceDays = numVal;
+          delete empAdj.absenceDeduction;
+          delete empAdj.absence_deduction;
           break;
         case 'other_deductions':
+        case 'otherDeductions':
           empAdj.otherDeductions = numVal;
+          empAdj.other_deductions = numVal;
           break;
       }
 
-      return {
+      const next = {
         ...prev,
         [editingCell.empId]: empAdj
       };
+      if (editingCell.badgeNo) {
+        next[editingCell.badgeNo] = empAdj;
+      }
+
+      try {
+        localStorage.setItem('vitas_payroll_manual_adjustments', JSON.stringify(next));
+      } catch (e) {}
+
+      return next;
     });
 
     // 2. Update Cell Comments with Author and Timestamp
@@ -1634,6 +1770,12 @@ export const Category5PayrollView: React.FC = () => {
     setTimeout(() => setActionMessage(null), 3500);
   };
 
+  const formatDeduction = (val: number): string => {
+    const n = Math.round(Number(val) || 0);
+    if (n === 0) return '0';
+    return `(${n.toLocaleString('en-US')})`;
+  };
+
   // Reusable Excel-like Editable Table Cell with Note Indicator & Tooltip
   const renderEditableCell = (
     row: any,
@@ -1642,11 +1784,19 @@ export const Category5PayrollView: React.FC = () => {
     fieldLabelAr: string,
     value: number,
     colorClasses: string,
+    isDeduction: boolean = false,
     prefix: string = ''
   ) => {
     const commentKey = `${row.id}_${fieldKey}`;
     const comment = cellComments[commentKey];
     const hasComment = Boolean(comment?.note);
+
+    const isAbsenceDays = fieldKey === 'absence_days' || fieldKey === 'absence';
+    const formattedValue = isAbsenceDays
+      ? (value > 0 ? `${Number(value).toLocaleString('en-US', { maximumFractionDigits: 1 })}` : '0')
+      : (isDeduction
+          ? (value > 0 ? `(${Math.round(value).toLocaleString('en-US')})` : '0')
+          : `${prefix}${Math.round(value || 0).toLocaleString('en-US')}`);
 
     return (
       <td
@@ -1672,7 +1822,7 @@ export const Category5PayrollView: React.FC = () => {
 
         {/* Value */}
         <span>
-          {prefix}{value.toLocaleString('en-US')}
+          {formattedValue}
         </span>
         {fieldKey === 'insurance' && row.is_insurance_prorated && (
           <span
@@ -1760,7 +1910,7 @@ export const Category5PayrollView: React.FC = () => {
   const handleExportPayrollTemplate = async () => {
     setIsExportingTemplate(true);
     try {
-      const res = await generatePayrollTemplateExcel(computedPayrollRows, selectedYear, selectedMonth);
+      const res = await generatePayrollTemplateExcel(filteredPayrollRows, selectedYear, selectedMonth);
       if (res.success) {
         setActionMessage(t(`تم إنشاء وتنزيل قالب مسير الرواتب والبدلات لشهر ${selectedMonth}/${selectedYear} بنجاح!`, `Payroll template for ${selectedMonth}/${selectedYear} exported successfully!`));
         setTimeout(() => setActionMessage(null), 4000);
@@ -2033,72 +2183,30 @@ export const Category5PayrollView: React.FC = () => {
               </div>
             </div>
 
-            {/* Actions & View Controls Toolbar */}
+            {/* Actions Toolbar on the same line as Search & Filter */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Hidden file input for Excel import */}
-              <input
-                type="file"
-                ref={payrollFileInputRef}
-                onChange={handleSelectPayrollImportFile}
-                accept=".xlsx, .xls"
-                className="hidden"
-              />
-
-              {/* Button: Export Excel Template with File Save Dialog */}
+              {/* Button: Export Payroll to Excel (Formerly Excel Template) */}
               <button
                 onClick={handleExportPayrollTemplate}
                 disabled={isExportingTemplate}
-                title={t('انشاء وتنزيل قالب إكسل مع نافذة لاختيار مكان الحفظ، يحتوي بيانات الموظفين والمبالغ الثابتة لتعديل الحوافز والمكافآت', 'Download pre-filled Excel template with employee baseline and fixed amounts')}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title={t('تصدير وحفظ مسير الرواتب لشهر الحالي إلى ملف إكسل', 'Export current month payroll to Excel')}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap active:scale-95"
               >
                 <span className="material-symbols-outlined text-sm">
                   {isExportingTemplate ? 'progress_activity' : 'download'}
                 </span>
-                <span>{isExportingTemplate ? t('جارِ التصدير...', 'Exporting...') : t('قالب إكسل (Template)', 'Excel Template')}</span>
-              </button>
-
-              {/* Button: Import Excel Sheet */}
-              <button
-                onClick={handleTriggerPayrollImport}
-                disabled={isImportingExcel}
-                title={t('استيراد الحوافز، بدل النقل، المكافآت، والعمل الإضافي من ملف إكسل وتطبيقها مباشرة', 'Import incentives, transportation, bonus, overtime from Excel sheet')}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-sm">
-                  {isImportingExcel ? 'progress_activity' : 'upload_file'}
-                </span>
-                <span>{isImportingExcel ? t('جارِ القراءة...', 'Reading...') : t('استيراد إكسل (Incentives / Bonus)', 'Import Excel')}</span>
+                <span>{isExportingTemplate ? t('جارِ التصدير...', 'Exporting...') : 'Export Payroll to Excel'}</span>
               </button>
 
               {/* Button: Policies & Rates */}
               <button
                 onClick={() => setShowPoliciesModal(true)}
                 title={t('عرض وتعديل سياسات الرواتب، أسعار الصرف، والبدلات والإجازات', 'View & edit payroll policies, exchange rates & allowances')}
-                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-900 font-medium text-xs border border-slate-300 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-900 font-medium text-xs border border-slate-300 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-sm text-teal-600">tune</span>
                 <span>{t('السياسات واللوائح', 'Policies & Rules')}</span>
               </button>
-
-              {/* View Mode Switcher (Summary vs Detailed Breakdown) */}
-              <div className="flex items-center gap-1.5 bg-[#0a0c10] p-1 rounded-xl border border-white/10">
-                <button
-                  onClick={() => setViewMode('summary')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    viewMode === 'summary' ? 'bg-teal-600 text-white shadow' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {t('ملخص موجز', 'Summary')}
-                </button>
-                <button
-                  onClick={() => setViewMode('detailed')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    viewMode === 'detailed' ? 'bg-teal-600 text-white shadow' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {t('جدول تفصيلي مطبق لقاعدة البيانات (25 حقل SQL)', 'SQL Full Database Table Schema')}
-                </button>
-              </div>
             </div>
           </div>
 
@@ -2110,324 +2218,481 @@ export const Category5PayrollView: React.FC = () => {
               description={t('لا توجد بيانات رواتب تطابق معايير البحث. قم بتسجيل الموظفين أولاً.', 'No payroll rows match search criteria.')}
             />
           ) : (
-            <div className={`p-6 rounded-3xl border shadow-xl space-y-4 ${
+            <div className={`p-4 sm:p-6 rounded-3xl border shadow-xl space-y-4 ${
               isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-md'
             }`}>
+              {/* Top Pagination & Controls Bar (Eliminates Scroll Lag) */}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-white/10 text-xs">
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-600 dark:text-slate-400 font-bold">{t('عرض لكل صفحة:', 'Show per page:')}</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="bg-white dark:bg-[#0a0c10] border border-slate-300 dark:border-white/15 rounded-xl px-3 py-1 text-xs font-bold text-slate-800 dark:text-teal-400 focus:outline-none cursor-pointer shadow-sm"
+                  >
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="250">250</option>
+                    <option value="-1">{t('الكل (All)', 'All')}</option>
+                  </select>
+                  <span className="text-slate-500 text-[11px] font-mono">
+                    ({filteredPayrollRows.length} {t('موظف إجمالي', 'total staff')})
+                  </span>
+                </div>
+
+                {/* Pagination Prev / Next Buttons */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1 || pageSize === -1}
+                    className="px-3 py-1 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-800 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-bold text-xs shadow-sm flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-xs">chevron_left</span>
+                    <span>{t('السابق', 'Prev')}</span>
+                  </button>
+                  <span className="px-2 font-mono font-bold text-slate-800 dark:text-teal-300">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages || pageSize === -1}
+                    className="px-3 py-1 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-800 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-bold text-xs shadow-sm flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    <span>{t('التالي', 'Next')}</span>
+                    <span className="material-symbols-outlined text-xs">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Master Table Viewport (Solid Corporate Blue Header - Zero Lag) */}
               <div className={`overflow-x-auto rounded-2xl border ${
                 isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-300 bg-white'
-              }`}>
-                <table className="w-full text-left text-xs sm:text-sm border-collapse" dir="ltr">
-                  <thead className="payroll-dark-header sticky top-0 z-10 shadow-lg">
-                    <tr className="payroll-dark-header font-mono font-extrabold text-xs sm:text-sm select-none border-b-2 border-teal-500">
-                      <th className="p-3.5 text-center border-r border-slate-700 w-10 font-black text-slate-400">#</th>
-                      <th className="th-badge p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">badge_no</th>
-                      <th className="th-location p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">location</th>
-                      <th className="th-name p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">employee_name</th>
-                      <th className="th-position p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">position</th>
-                      <th className="th-salary p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">
-                        {viewMode === 'summary' ? 'current_month_basic' : 'basic_salary'}
-                      </th>
-
-                      {viewMode === 'summary' && (
-                        <>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">incentives</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">transportation</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">bonus</th>
-                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">overtime</th>
-                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">earned_leave</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">allowances_total</th>
-                        </>
-                      )}
-
-                      {viewMode === 'detailed' && (
-                        <>
-                          <th className="th-salary p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">current_month_basic</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">phone_allowance</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">family_allowance</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">cert_allowance</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">incentives</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">transportation</th>
-                          <th className="th-allowance p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">bonus</th>
-                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">overtime</th>
-                          <th className="th-allowance-green p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">earned_leave</th>
-                        </>
-                      )}
-
-                      <th className="th-gross p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">gross_salary</th>
-
-                      {viewMode === 'detailed' && (
-                        <>
-                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">social_security</th>
-                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">income_tax</th>
-                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">insurance</th>
-                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">loan_payment</th>
-                          <th className="th-deduction p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">other_deductions</th>
-                        </>
-                      )}
-
-                      <th className="th-total-ded p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">total_deductions</th>
-                      <th className="th-net p-3.5 border-r border-slate-700 whitespace-nowrap font-black tracking-wide">net_salary</th>
-                      <th className="th-action p-3.5 text-center whitespace-nowrap font-black">{t('إجراءات', 'Actions')}</th>
+              }`} style={{ willChange: 'transform' }}>
+                <table className="payroll-table w-full text-left text-xs border-collapse" dir="ltr">
+                  <thead className="sticky top-0 z-20 shadow-md" style={{ backgroundColor: '#0284c7' }}>
+                    <tr style={{ backgroundColor: '#0284c7' }} className="select-none font-bold text-white text-xs whitespace-nowrap">
+                      <th className="p-3 text-center border-r border-sky-600/40 w-10 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>No.</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Badge No.</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Branch</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Employee Name_En</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Position</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Department</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Start Date</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Basic Salary</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Basic Salary for This Month</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Phone Allowance</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Incentives</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Transp.</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Other Benefits or Bonus (EOM, Target,…)</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Family Allowance</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Certificate Allowance</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Overtime</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Earned Leaves</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Gross Salary</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }} title={t('الضمان الاجتماعي ثابت سنوياً (من 1 كانون الثاني) ولا يتأثر بالغياب أو التغيير خلال السنة', 'Social Security is fixed annually (from Jan 1) and unaffected by absence or mid-year salary changes')}>Social Security</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Income Tax</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Insurance Deduction</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Loan Payment</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>{t('أيام الغياب', 'Absence (Days)')}</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Other Deductions</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Total Deduction</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Net Salary</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Employee Name _ar</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold text-center" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>No. of Children</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 1</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 2</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 3</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 4</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 5</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>DOB Child 6</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold text-center" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Marital Status</th>
+                      <th className="p-3 border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Spouse Allowance</th>
+                      <th className="p-3 text-center border-r border-sky-600/40 text-white font-bold" style={{ backgroundColor: '#0284c7', color: '#ffffff' }}>Actions</th>
                     </tr>
                   </thead>
 
-                  <tbody className={`divide-y text-xs sm:text-sm font-normal ${
+                  <tbody className={`divide-y text-xs font-normal ${
                     isDark ? 'divide-white/5 text-slate-200' : 'divide-slate-200 text-slate-900'
                   }`}>
-                    {filteredPayrollRows.map((row, idx) => (
-                      <tr key={row.id} className={`transition-colors font-sans font-normal ${
-                        isDark ? 'hover:bg-teal-500/10' : 'hover:bg-slate-100 bg-white text-slate-900'
-                      }`}>
-                        <td className={`p-3 text-center border-r font-mono font-normal ${
-                          isDark ? 'border-white/5 text-slate-400 bg-slate-900/50' : 'border-slate-200 text-slate-700 bg-slate-100'
+                    {paginatedPayrollRows.map((row, idx) => {
+                      const rowNum = (pageSize === -1 ? 0 : (currentPage - 1) * pageSize) + idx + 1;
+                      return (
+                        <tr key={row.id} className={`transition-colors font-sans text-xs ${
+                          isDark ? 'hover:bg-teal-500/10' : 'hover:bg-slate-100 bg-white text-slate-900'
                         }`}>
-                          {idx + 1}
-                        </td>
+                          {/* 1. No. */}
+                          <td className={`p-3 text-center border-r font-mono ${
+                            isDark ? 'border-white/5 text-slate-400 bg-slate-900/50' : 'border-slate-200 text-slate-700 bg-slate-100'
+                          }`}>{rowNum}</td>
 
-                        <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
-                          isDark ? 'border-white/5 text-amber-300' : 'border-slate-200 text-slate-900'
-                        }`}>
-                          {row.badge_no}
-                        </td>
+                          {/* 2. Badge No. */}
+                          <td className={`p-3 border-r whitespace-nowrap font-mono font-bold ${
+                            isDark ? 'border-white/5 text-amber-300' : 'border-slate-200 text-amber-800'
+                          }`}>{row.badge_no}</td>
 
-                        <td className={`p-3 border-r whitespace-nowrap font-normal ${
-                          isDark ? 'border-white/5 text-sky-200' : 'border-slate-200 text-slate-900'
-                        }`}>
-                          {language === 'en' ? row.location_en : row.location_ar}
-                        </td>
+                          {/* 3. Branch */}
+                          <td className={`p-3 border-r whitespace-nowrap ${
+                            isDark ? 'border-white/5 text-sky-200' : 'border-slate-200 text-slate-900'
+                          }`}>{language === 'en' ? (row.location_en || row.branch) : (row.location_ar || row.branch)}</td>
 
-                        <td className={`p-3 border-r whitespace-nowrap font-normal ${
-                          isDark ? 'border-white/5 text-white bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100'
-                        }`}>
-                          <div className="flex items-center gap-1.5">
-                            <span>{language === 'en' ? row.employee_name_en : row.employee_name_ar}</span>
-                            {row.is_on_hold && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30 flex items-center gap-0.5">
-                                <span className="material-symbols-outlined text-[10px]">front_hand</span>
-                                <span>{language === 'en' ? 'On Hold' : 'موقوف'}</span>
-                              </span>
-                            )}
-                            {Number(row.is_ss_tax_exempt) === 1 && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30">
-                                {language === 'en' ? 'Exempt' : 'معفى'}
-                              </span>
-                            )}
-                          </div>
-                        </td>
+                          {/* 4. Employee Name_En */}
+                          <td className={`p-3 border-r whitespace-nowrap font-semibold ${
+                            isDark ? 'border-white/5 text-white bg-[#1e293b]/60' : 'border-slate-200 text-slate-900 bg-slate-50'
+                          }`}>
+                            <div className="flex items-center gap-1.5">
+                              <span>{row.employee_name_en || row.employee_name_ar}</span>
+                              {row.is_on_hold && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30 flex items-center gap-0.5">
+                                  <span className="material-symbols-outlined text-[10px]">front_hand</span>
+                                  <span>On Hold</span>
+                                </span>
+                              )}
+                              {Number(row.is_ss_tax_exempt) === 1 && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30">
+                                  Exempt
+                                </span>
+                              )}
+                            </div>
+                          </td>
 
-                        <td className={`p-3 border-r whitespace-nowrap font-normal text-xs ${
-                          isDark ? 'border-white/5 text-purple-200' : 'border-slate-200 text-slate-800'
-                        }`}>
-                          {language === 'en' ? row.position_en : row.position_ar}
-                        </td>
+                          {/* 5. Position */}
+                          <td className={`p-3 border-r whitespace-nowrap text-xs ${
+                            isDark ? 'border-white/5 text-purple-200' : 'border-slate-200 text-slate-800'
+                          }`}>{row.position_en || row.position_ar || row.position}</td>
 
-                        {viewMode === 'summary' ? (
-                          renderEditableCell(row, 'current_month_basic', 'Current Month Basic', 'الراتب الاسمي للشهر', row.current_month_basic || 0, isDark ? 'border-white/5 text-cyan-300 bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100')
-                        ) : (
-                          renderEditableCell(row, 'basic_salary', 'Basic Salary', 'الراتب الاسمي', row.basic_salary || 0, isDark ? 'border-white/5 text-cyan-300 bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100')
-                        )}
+                          {/* 6. Department */}
+                          <td className={`p-3 border-r whitespace-nowrap text-xs font-medium ${
+                            isDark ? 'border-white/5 text-teal-200' : 'border-slate-200 text-teal-800'
+                          }`}>{row.department || '-'}</td>
 
-                        {viewMode === 'summary' && (
-                          <>
-                            {renderEditableCell(row, 'incentives', 'Incentives', 'الحوافز', row.incentives || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'transportation', 'Transportation', 'بدل النقل', row.transportation || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'bonus', 'Bonus', 'المكافآت', row.bonus || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'overtime', 'Overtime', 'أجر إضافي', row.overtime || 0, isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'earned_leave', 'Earned Leave', 'إجازة مستحقة', row.earned_leave || 0, isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800')}
-                            <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
-                              isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800'
+                          {/* 7. Start Date */}
+                          <td className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                            isDark ? 'border-white/5 text-slate-300' : 'border-slate-200 text-slate-600'
+                          }`}>{row.original_start_date || '-'}</td>
+
+                          {/* 8. Basic Salary */}
+                          {renderEditableCell(row, 'basic_salary', 'Basic Salary', 'الراتب الاسمي', row.basic_salary || 0, isDark ? 'border-white/5 text-cyan-300 bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100')}
+
+                          {/* 9. Basic Salary for This Month */}
+                          {renderEditableCell(row, 'current_month_basic', 'Basic Salary for This Month', 'الراتب الاسمي للشهر', row.current_month_basic || 0, isDark ? 'border-white/5 text-white bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100')}
+
+                          {/* 10. Phone Allowance */}
+                          {renderEditableCell(row, 'phone_allowance', 'Phone Allowance', 'مخصصات الهاتف', row.phone_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+
+                          {/* 11. Incentives */}
+                          {renderEditableCell(row, 'incentives', 'Incentives', 'الحوافز', row.incentives || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+
+                          {/* 12. Transp. */}
+                          {renderEditableCell(row, 'transportation', 'Transportation', 'بدل النقل', row.transportation || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+
+                          {/* 13. Other Benefits or Bonus (EOM, Target,…) */}
+                          {renderEditableCell(row, 'bonus', 'Bonus & Benefits', 'المكافآت والبدلات الأخرى', row.bonus || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+
+                          {/* 14. Family Allowance */}
+                          {renderEditableCell(row, 'family_allowance', 'Family Allowance', 'المخصصات العائلية', row.family_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+
+                          {/* 15. Certificate Allowance */}
+                          {renderEditableCell(row, 'cert_allowance', 'Certificate Allowance', 'مخصصات الشهادة', row.cert_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
+
+                          {/* 16. Overtime */}
+                          {renderEditableCell(row, 'overtime', 'Overtime', 'أجر إضافي', row.overtime || 0, isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800')}
+
+                          {/* 17. Earned Leaves */}
+                          {renderEditableCell(row, 'earned_leave', 'Earned Leaves', 'إجازات مستحقة', row.earned_leave || 0, isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800')}
+
+                          {/* 18. Gross Salary */}
+                          <td className={`p-3 border-r whitespace-nowrap font-mono font-bold ${
+                            isDark ? 'border-white/5 text-cyan-200 bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100'
+                          }`}>
+                            {(row.gross_salary || 0).toLocaleString('en-US')}
+                          </td>
+
+                          {/* 19. Social Security */}
+                          {Number(row.is_ss_tax_exempt) === 1 ? (
+                            <td className={`p-3 border-r whitespace-nowrap font-mono ${
+                              isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800'
                             }`}>
-                              +{(row.allowances_total || 0).toLocaleString('en-US')}
+                              <span className="text-amber-400 font-bold text-[11px]">0 (معفى)</span>
                             </td>
-                          </>
-                        )}
+                          ) : (
+                            renderEditableCell(row, 'social_security', 'Social Security', 'الضمان الاجتماعي', row.social_security || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)
+                          )}
 
-                        {viewMode === 'detailed' && (
-                          <>
-                            {renderEditableCell(row, 'current_month_basic', 'Current Month Basic', 'الراتب الاسمي للشهر', row.current_month_basic || 0, isDark ? 'border-white/5 text-white bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100')}
-                            {renderEditableCell(row, 'phone_allowance', 'Phone Allowance', 'بدل هاتف', row.phone_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'family_allowance', 'Family Allowance', 'مخصصات عائلية', row.family_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'cert_allowance', 'Certificate Allowance', 'مخصصات شهادة', row.cert_allowance || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'incentives', 'Incentives', 'الحوافز', row.incentives || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'transportation', 'Transportation', 'بدل النقل', row.transportation || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'bonus', 'Bonus', 'المكافآت', row.bonus || 0, isDark ? 'border-white/5 text-emerald-300' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'overtime', 'Overtime', 'أجر إضافي', row.overtime || 0, isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800')}
-                            {renderEditableCell(row, 'earned_leave', 'Earned Leave', 'إجازة مستحقة', row.earned_leave || 0, isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800')}
-                          </>
-                        )}
+                          {/* 20. Income Tax */}
+                          {Number(row.is_ss_tax_exempt) === 1 ? (
+                            <td className={`p-3 border-r whitespace-nowrap font-mono ${
+                              isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800'
+                            }`}>
+                              <span className="text-amber-400 font-bold text-[11px]">0 (معفى)</span>
+                            </td>
+                          ) : (
+                            renderEditableCell(row, 'income_tax', 'Income Tax', 'ضريبة الدخل', row.income_tax || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)
+                          )}
 
-                        <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
-                          isDark ? 'border-white/5 text-cyan-200 bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100'
-                        }`}>
-                          {(row.gross_salary || 0).toLocaleString('en-US')}
-                        </td>
+                          {/* 21. Insurance Deduction */}
+                          {renderEditableCell(row, 'insurance', 'Insurance Deduction', 'استقطاع التأمين', row.insurance || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)}
 
-                        {viewMode === 'detailed' && (
-                          <>
-                            {Number(row.is_ss_tax_exempt) === 1 ? (
-                              <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
-                                isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800'
-                              }`}>
-                                <span className="text-amber-400 font-bold text-[11px]">0 (معفى)</span>
-                              </td>
-                            ) : (
-                              renderEditableCell(row, 'social_security', 'Social Security', 'الضمان الاجتماعي', row.social_security || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', '-')
-                            )}
+                          {/* 22. Loan Payment */}
+                          {renderEditableCell(row, 'loan_payment', 'Loan Payment', 'تسديد القروض', row.loan_payment || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)}
 
-                            {Number(row.is_ss_tax_exempt) === 1 ? (
-                              <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
-                                isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800'
-                              }`}>
-                                <span className="text-amber-400 font-bold text-[11px]">0 (معفى)</span>
-                              </td>
-                            ) : (
-                              renderEditableCell(row, 'income_tax', 'Income Tax', 'ضريبة الدخل', row.income_tax || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', '-')
-                            )}
+                          {/* 23. Absence (Days) */}
+                          {renderEditableCell(row, 'absence_days', 'Absence Days', 'أيام الغياب', row.absence_days || 0, isDark ? 'border-white/5 text-amber-300' : 'border-slate-200 text-amber-800', false, '')}
 
-                            {renderEditableCell(row, 'insurance', 'Insurance', 'التأمين الصحي', row.insurance || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', '-')}
-                            {renderEditableCell(row, 'loan_payment', 'Loan Payment', 'تسديد القروض', row.loan_payment || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', '-')}
-                            {renderEditableCell(row, 'other_deductions', 'Other Deductions', 'استقطاعات أخرى', row.other_deductions || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', '-')}
-                          </>
-                        )}
+                          {/* 24. Other Deductions */}
+                          {renderEditableCell(row, 'other_deductions', 'Other Deductions', 'استقطاعات أخرى', row.other_deductions || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)}
 
-                        <td className={`p-3 border-r whitespace-nowrap font-mono font-normal ${
-                          isDark ? 'border-white/5 text-rose-400' : 'border-slate-200 text-rose-800'
-                        }`}>
-                          -{(row.total_deductions || 0).toLocaleString('en-US')}
-                        </td>
+                          {/* 25. Total Deduction */}
+                          <td className={`p-3 border-r whitespace-nowrap font-mono font-bold ${
+                            isDark ? 'border-white/5 text-rose-400' : 'border-slate-200 text-rose-800'
+                          }`}>
+                            {formatDeduction(row.total_deductions || 0)}
+                          </td>
 
-                        <td className={`p-3 border-r whitespace-nowrap font-mono font-normal text-base ${
-                          isDark ? 'border-white/5 text-white bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100'
-                        }`}>
-                          {(row.net_salary || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}
-                        </td>
+                          {/* 26. Net Salary */}
+                          <td className={`p-3 border-r whitespace-nowrap font-mono font-bold text-sm ${
+                            isDark ? 'border-white/5 text-white bg-[#1e293b]' : 'border-slate-200 text-slate-900 bg-slate-100'
+                          }`}>
+                            {(row.net_salary || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}
+                          </td>
 
-                        <td className="p-3 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-2">
-                            {/* View Tax & Security Trace Button (Section 7) */}
-                            <button
-                              onClick={() => handleOpenTraceModal(row)}
-                              className="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm bg-teal-800 hover:bg-teal-700 text-white border border-teal-600"
-                              style={{ color: '#ffffff' }}
-                              title={t('معاينة تفاصيل ومعادلة الضمان والضريبة (18 عنصراً)', 'View Tax & SS Calculation Trace')}
-                            >
-                              <span className="material-symbols-outlined text-sm text-white" style={{ color: '#ffffff' }}>receipt_long</span>
-                              <span className="text-white" style={{ color: '#ffffff' }}>{t('المعادلة', 'Trace')}</span>
-                            </button>
+                          {/* 27. Employee Name _ar */}
+                          <td className={`p-3 border-r whitespace-nowrap font-semibold ${
+                            isDark ? 'border-white/5 text-white' : 'border-slate-200 text-slate-900'
+                          }`} dir="rtl">
+                            {row.employee_name_ar}
+                          </td>
 
-                            {/* Release / On Hold Toggle Button */}
-                            <button
-                              disabled={isPeriodLocked}
-                              onClick={() => handleToggleOnHold(row.id)}
-                              className={`btn-payroll-release px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm border ${
-                                isPeriodLocked
-                                  ? 'bg-slate-700/50 text-slate-400 border-slate-600 cursor-not-allowed'
-                                  : row.is_on_hold
-                                    ? 'bg-amber-600 hover:bg-amber-500 text-white border-amber-500'
-                                    : 'bg-emerald-700 hover:bg-emerald-600 text-white border-emerald-600'
-                              }`}
-                              style={{ color: isPeriodLocked ? '#94a3b8' : '#ffffff' }}
-                              title={row.is_on_hold ? t(`الراتب موقوف (${row.on_hold_reason}) - انقر للإطلاق (Release)`, 'Payroll On Hold - Click to Release') : t('الراتب مطلق ونشط - انقر للإيقاف (Hold)', 'Payroll Released - Click to put On Hold')}
-                            >
-                              <span className="material-symbols-outlined text-sm text-white" style={{ color: isPeriodLocked ? '#94a3b8' : '#ffffff' }}>
-                                {row.is_on_hold ? 'front_hand' : 'check_circle'}
-                              </span>
-                              <span className="text-white" style={{ color: isPeriodLocked ? '#94a3b8' : '#ffffff' }}>
-                                {row.is_on_hold ? t('موقوف (On Hold)', 'On Hold') : t('مطلق (Release)', 'Release')}
-                              </span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          {/* 28. No. of Children */}
+                          <td
+                            className="p-3 border-r whitespace-nowrap font-mono text-center font-bold text-slate-900 dark:text-white"
+                            style={{ color: isDark ? '#ffffff' : '#000000' }}
+                          >
+                            {row.children_count || 0}
+                          </td>
+
+                          {/* 29. DOB Child 1 */}
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
+                              row.child_over18_1
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
+                            }`}
+                            style={row.child_over18_1 ? { color: '#dc2626' } : undefined}
+                          >
+                            {row.child_dob_1 || '-'}
+                          </td>
+
+                          {/* 30. DOB Child 2 */}
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
+                              row.child_over18_2
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
+                            }`}
+                            style={row.child_over18_2 ? { color: '#dc2626' } : undefined}
+                          >
+                            {row.child_dob_2 || '-'}
+                          </td>
+
+                          {/* 31. DOB Child 3 */}
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
+                              row.child_over18_3
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
+                            }`}
+                            style={row.child_over18_3 ? { color: '#dc2626' } : undefined}
+                          >
+                            {row.child_dob_3 || '-'}
+                          </td>
+
+                          {/* 32. DOB Child 4 */}
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
+                              row.child_over18_4
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
+                            }`}
+                            style={row.child_over18_4 ? { color: '#dc2626' } : undefined}
+                          >
+                            {row.child_dob_4 || '-'}
+                          </td>
+
+                          {/* 33. DOB Child 5 */}
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
+                              row.child_over18_5
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
+                            }`}
+                            style={row.child_over18_5 ? { color: '#dc2626' } : undefined}
+                          >
+                            {row.child_dob_5 || '-'}
+                          </td>
+
+                          {/* 34. DOB Child 6 */}
+                          <td
+                            className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                              isDark ? 'border-white/5' : 'border-slate-200'
+                            } ${
+                              row.child_over18_6
+                                ? 'child-over-18'
+                                : (isDark ? 'text-slate-300' : 'text-slate-700')
+                            }`}
+                            style={row.child_over18_6 ? { color: '#dc2626' } : undefined}
+                          >
+                            {row.child_dob_6 || '-'}
+                          </td>
+
+                          {/* 35. Marital Status */}
+                          <td className={`p-3 border-r whitespace-nowrap text-center text-xs font-semibold ${
+                            isDark ? 'border-white/5 text-slate-200' : 'border-slate-200 text-slate-800'
+                          }`}>
+                            {row.marital_status === 'married' ? t('متأهل', 'Married') : (row.marital_status === 'divorced' ? t('مطلق', 'Divorced') : (row.marital_status === 'widow' ? t('أرمل', 'Widowed') : t('أعزب', 'Single')))}
+                          </td>
+
+                          {/* 36. Spouse Allowance */}
+                          <td className={`p-3 border-r whitespace-nowrap font-mono text-xs ${
+                            isDark ? 'border-white/5 text-emerald-400' : 'border-slate-200 text-emerald-800'
+                          }`}>
+                            {(row.spouse_allowance || 0).toLocaleString('en-US')}
+                          </td>
+
+                          {/* 37. Actions (Trace & Release) */}
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-2">
+                              {/* Trace Button */}
+                              <button
+                                onClick={() => handleOpenTraceModal(row)}
+                                className="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm bg-teal-800 hover:bg-teal-700 text-white border border-teal-600 cursor-pointer"
+                                style={{ color: '#ffffff' }}
+                                title={t('معاينة تفاصيل ومعادلة الضمان والضريبة (18 عنصراً)', 'View Tax & SS Calculation Trace')}
+                              >
+                                <span className="material-symbols-outlined text-sm text-white" style={{ color: '#ffffff' }}>receipt_long</span>
+                                <span className="text-white" style={{ color: '#ffffff' }}>Trace</span>
+                              </button>
+
+                              {/* Release / On Hold Toggle Button */}
+                              <button
+                                disabled={isPeriodLocked}
+                                onClick={() => handleToggleOnHold(row.id)}
+                                className={`btn-payroll-release px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm border cursor-pointer ${
+                                  isPeriodLocked
+                                    ? 'bg-slate-700/50 text-slate-400 border-slate-600 cursor-not-allowed'
+                                    : row.is_on_hold
+                                      ? 'bg-amber-600 hover:bg-amber-500 text-white border-amber-500'
+                                      : 'bg-emerald-700 hover:bg-emerald-600 text-white border-emerald-600'
+                                }`}
+                                style={{ color: isPeriodLocked ? '#94a3b8' : '#ffffff' }}
+                                title={row.is_on_hold ? 'Payroll On Hold - Click to Release' : 'Payroll Released - Click to put On Hold'}
+                              >
+                                <span className="material-symbols-outlined text-sm text-white" style={{ color: isPeriodLocked ? '#94a3b8' : '#ffffff' }}>
+                                  {row.is_on_hold ? 'front_hand' : 'check_circle'}
+                                </span>
+                                <span className="text-white" style={{ color: isPeriodLocked ? '#94a3b8' : '#ffffff' }}>
+                                  {row.is_on_hold ? 'On Hold' : 'Release'}
+                                </span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
 
-                  {/* Summary Totals Footer Row */}
+                  {/* Summary Totals Footer Row (All 35 Columns) */}
                   <tfoot>
                     <tr className={`font-bold border-t-2 text-xs sm:text-sm ${
                       isDark ? 'bg-[#1e293b] text-white border-teal-500/40' : 'bg-slate-100 text-slate-900 border-slate-300'
                     }`}>
-                      <td className={`p-3 text-center border-r font-mono ${
-                        isDark ? 'border-white/10 bg-slate-900 text-teal-400' : 'border-slate-300 bg-slate-200 text-teal-700'
-                      }`}>∑</td>
-                      <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
-                      <td className={`p-3 border-r font-bold ${
-                        isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'
-                      }`}>{language === 'en' ? `${filteredPayrollRows.length} Staff` : `${filteredPayrollRows.length} موظف`}</td>
-                      <td className={`p-3 border-r font-bold ${
-                        isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'
-                      }`}>{t('المجموع الكلي للمسير', 'Total Payroll Summary')}</td>
-                      <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
-                      <td className={`p-3 border-r font-mono font-bold ${
-                        isDark ? 'border-white/10 text-cyan-300 bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'
-                      }`}>
-                        {viewMode === 'summary'
-                          ? `${(totals.current_month_basic || 0).toLocaleString('en-US')} ${t('د.ع', 'IQD')}`
-                          : `${(totals.basic || 0).toLocaleString('en-US')} ${t('د.ع', 'IQD')}`
-                        }
+                      {/* 1 */} <td className={`p-3 text-center border-r font-mono ${isDark ? 'border-white/10 bg-slate-900 text-teal-400' : 'border-slate-300 bg-slate-200 text-teal-700'}`}>∑</td>
+                      {/* 2 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 3 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 4 */} <td className={`p-3 border-r font-bold ${isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'}`}>{language === 'en' ? `${filteredPayrollRows.length} Staff` : `${filteredPayrollRows.length} موظف`}</td>
+                      {/* 5 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 6 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 7 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 8 */} <td className={`p-3 border-r font-mono font-bold ${isDark ? 'border-white/10 text-cyan-300 bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'}`}>{(totals.basic || 0).toLocaleString('en-US')}</td>
+                      {/* 9 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-slate-900 bg-slate-200'}`}>{(totals.current_month_basic || 0).toLocaleString('en-US')}</td>
+                      {/* 10 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.phone_allowance || 0).toLocaleString('en-US')}</td>
+                      {/* 11 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.incentives || 0).toLocaleString('en-US')}</td>
+                      {/* 12 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.transportation || 0).toLocaleString('en-US')}</td>
+                      {/* 13 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.bonus || 0).toLocaleString('en-US')}</td>
+                      {/* 14 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.family_allowance || 0).toLocaleString('en-US')}</td>
+                      {/* 15 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.cert_allowance || 0).toLocaleString('en-US')}</td>
+                      {/* 16 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>{(totals.overtime || 0).toLocaleString('en-US')}</td>
+                      {/* 17 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>{(totals.earned_leave || 0).toLocaleString('en-US')}</td>
+                      {/* 18 */} <td className={`p-3 border-r font-mono font-black ${isDark ? 'border-white/10 text-cyan-200 bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'}`}>{(totals.gross || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</td>
+                      {/* 19 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.social_security)}</td>
+                      {/* 20 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.income_tax)}</td>
+                      {/* 21 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.insurance)}</td>
+                      {/* 22 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.loan_payment)}</td>
+                      {/* 23 */} <td className={`p-3 border-r font-mono font-bold ${isDark ? 'border-white/10 text-amber-300' : 'border-slate-300 text-amber-800'}`}>{totals.absence_days > 0 ? `${totals.absence_days} ${t('يوم', 'days')}` : '0'}</td>
+                      {/* 24 */} <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.other_deductions)}</td>
+                      {/* 25 */} <td className={`p-3 border-r font-mono font-black ${isDark ? 'border-white/10 text-rose-400' : 'border-slate-300 text-rose-800'}`}>{formatDeduction(totals.deductions)}</td>
+                      {/* 26 */} <td className={`p-3 border-r font-mono font-black text-base ${isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'}`}>{(totals.net || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</td>
+                      {/* 27 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 28 */} <td
+                        className="p-3 border-r font-mono text-center font-bold text-slate-900 dark:text-white"
+                        style={{ color: isDark ? '#ffffff' : '#000000' }}
+                      >
+                        {totals.children_count || 0}
                       </td>
-
-                      {viewMode === 'summary' && (
-                        <>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>
-                            {(totals.incentives || 0).toLocaleString('en-US')}
-                          </td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>
-                            {(totals.transportation || 0).toLocaleString('en-US')}
-                          </td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>
-                            {(totals.bonus || 0).toLocaleString('en-US')}
-                          </td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>
-                            {(totals.overtime || 0).toLocaleString('en-US')}
-                          </td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>
-                            {(totals.earned_leave || 0).toLocaleString('en-US')}
-                          </td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>
-                            +{(totals.allowances || 0).toLocaleString('en-US')}
-                          </td>
-                        </>
-                      )}
-
-                      {viewMode === 'detailed' && (
-                        <>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-slate-900 bg-slate-200'}`}>{(totals.current_month_basic || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.phone_allowance || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.family_allowance || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.cert_allowance || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.incentives || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.transportation || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-300' : 'border-slate-300 text-emerald-800'}`}>{(totals.bonus || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>{(totals.overtime || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>{(totals.earned_leave || 0).toLocaleString('en-US')}</td>
-                        </>
-                      )}
-
-                      <td className={`p-3 border-r font-mono font-black ${
-                        isDark ? 'border-white/10 text-cyan-200 bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'
-                      }`}>{(totals.gross || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</td>
-
-                      {viewMode === 'detailed' && (
-                        <>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>-{(totals.social_security || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>-{(totals.income_tax || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>-{(totals.insurance || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>-{(totals.loan_payment || 0).toLocaleString('en-US')}</td>
-                          <td className={`p-3 border-r font-mono ${isDark ? 'border-white/10 text-rose-300' : 'border-slate-300 text-rose-800'}`}>-{(totals.other_deductions || 0).toLocaleString('en-US')}</td>
-                        </>
-                      )}
-
-                      <td className={`p-3 border-r font-mono font-black ${
-                        isDark ? 'border-white/10 text-rose-400' : 'border-slate-300 text-rose-800'
-                      }`}>-{(totals.deductions || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</td>
-                      <td className={`p-3 border-r font-mono font-black text-base ${
-                        isDark ? 'border-white/10 text-white bg-[#1e293b]' : 'border-slate-300 text-black bg-slate-200'
-                      }`}>{(totals.net || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</td>
-                      <td className="p-3 text-center">-</td>
+                      {/* 29 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 30 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 31 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 32 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 33 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 34 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 35 */} <td className={`p-3 border-r ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300 text-slate-500'}`}>-</td>
+                      {/* 36 */} <td className={`p-3 border-r font-mono font-bold ${isDark ? 'border-white/10 text-emerald-400' : 'border-slate-300 text-emerald-800'}`}>{(totals.spouse_allowance || 0).toLocaleString('en-US')}</td>
+                      {/* 37 */} <td className="p-3 text-center">-</td>
                     </tr>
                   </tfoot>
                 </table>
+              </div>
+
+              {/* Bottom Pagination & Navigation Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-white/10 text-xs">
+                <span className="text-slate-600 dark:text-slate-400 text-xs font-semibold">
+                  {t('عرض السجلات', 'Showing')} <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">{paginatedPayrollRows.length}</span> {t('من أصل', 'of')} <span className="font-bold font-mono text-slate-900 dark:text-white">{filteredPayrollRows.length}</span> {t('موظف', 'employees')}
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1 || pageSize === -1}
+                    className="px-3 py-1 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-800 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-bold text-xs shadow-sm flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-xs">chevron_left</span>
+                    <span>{t('السابق', 'Prev')}</span>
+                  </button>
+                  <span className="px-2 font-mono font-bold text-slate-800 dark:text-teal-300">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages || pageSize === -1}
+                    className="px-3 py-1 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-800 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-bold text-xs shadow-sm flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    <span>{t('التالي', 'Next')}</span>
+                    <span className="material-symbols-outlined text-xs">chevron_right</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -3693,11 +3958,13 @@ export const Category5PayrollView: React.FC = () => {
             {/* Cell Value Input */}
             <div className="flex items-center gap-2">
               <label className={`font-bold text-xs sm:text-sm shrink-0 ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-                {t('القيمة:', 'Value:')}
+                {editingCell.fieldKey === 'absence_days' || editingCell.fieldKey === 'absence' || editingCell.fieldKey === 'absence_deduction'
+                  ? t('أيام الغياب:', 'Absence Days:')
+                  : t('القيمة:', 'Value:')}
               </label>
               <input
                 type="number"
-                step="1000"
+                step={editingCell.fieldKey === 'absence_days' || editingCell.fieldKey === 'absence' || editingCell.fieldKey === 'absence_deduction' ? '0.5' : '1000'}
                 value={cellValueInput}
                 onChange={e => setCellValueInput(e.target.value)}
                 className={`flex-1 rounded px-2.5 py-1 text-xs sm:text-sm font-mono font-bold focus:outline-none shadow-xs border ${
@@ -3709,9 +3976,22 @@ export const Category5PayrollView: React.FC = () => {
                 autoFocus
               />
               <span className={`text-xs sm:text-sm font-bold shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-800'}`}>
-                {t('د.ع', 'IQD')}
+                {editingCell.fieldKey === 'absence_days' || editingCell.fieldKey === 'absence' || editingCell.fieldKey === 'absence_deduction'
+                  ? t('يوم', 'Days')
+                  : t('د.ع', 'IQD')}
               </span>
             </div>
+
+            {(editingCell.fieldKey === 'absence_days' || editingCell.fieldKey === 'absence' || editingCell.fieldKey === 'absence_deduction') && (
+              <div className={`p-2 rounded text-[11px] leading-relaxed border ${
+                isDark ? 'bg-amber-950/30 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-900'
+              }`}>
+                {t(
+                  '💡 استقطاع الغياب = (أيام الغياب × الراتب الاسمي / 30) يُستقطع مباشرة من الراتب الاسمي للشهر ويؤثر تلقائياً على خفض الوعاء الضريبي.',
+                  '💡 Absence deduction = (Absence Days × Basic / 30), deducted directly from this month\'s basic salary, automatically reducing the taxable income base.'
+                )}
+              </div>
+            )}
 
             {/* Note Textarea (Excel Note Body) */}
             <div className="space-y-1">

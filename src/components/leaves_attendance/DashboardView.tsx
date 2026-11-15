@@ -401,12 +401,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-slate-400">
               {lang === 'ar' ? `طلبات الإجازة المعلقة حالياً: ${stats.leave_requests.pending}` : `Pending requests: ${stats.leave_requests.pending}`}
             </span>
-            <button
-              onClick={() => onNavigate('leave-directory')}
-              className="text-teal-600 dark:text-teal-400 font-bold hover:underline cursor-pointer"
-            >
-              {lang === 'ar' ? 'سجل إجازاتي الكامل ←' : 'Full Leave History →'}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => onNavigate('leave-balance-report')}
+                className="text-sky-600 dark:text-sky-400 font-bold hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">fact_check</span>
+                <span>{lang === 'ar' ? 'تقرير رصيد الإجازات (Leave Balance Report) ←' : 'Leave Balance Report →'}</span>
+              </button>
+              <button
+                onClick={() => onNavigate('leave-directory')}
+                className="text-teal-600 dark:text-teal-400 font-bold hover:underline cursor-pointer"
+              >
+                {lang === 'ar' ? 'سجل إجازاتي الكامل ←' : 'Full Leave History →'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -577,7 +586,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       )}
 
       {/* Quick Access Tools Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <button
           onClick={() => onNavigate('leave-attendance')}
           className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] hover:border-teal-500/40 shadow-sm transition-all flex items-center gap-3 text-left cursor-pointer group"
@@ -608,6 +617,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </h4>
             <span className="text-[10px] text-slate-400">
               {lang === 'ar' ? 'تجهيز مسير الرواتب' : 'Payroll preparation'}
+            </span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onNavigate('leave-balance-report')}
+          className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] hover:border-sky-500/50 shadow-sm transition-all flex items-center gap-3 text-left cursor-pointer group"
+        >
+          <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 group-hover:bg-sky-500 group-hover:text-white transition-all">
+            <span className="material-symbols-outlined text-xl">fact_check</span>
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              {lang === 'ar' ? 'تقرير رصيد الإجازات' : 'Leave Balance Rep'}
+            </h4>
+            <span className="text-[10px] text-slate-400">
+              {lang === 'ar' ? 'مطابق لملف الإكسل (351)' : 'Official 351 Staff'}
             </span>
           </div>
         </button>
