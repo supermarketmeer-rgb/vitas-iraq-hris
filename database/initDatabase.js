@@ -180,6 +180,16 @@ export async function initDatabase(pool, force = false) {
           // Ensure Microsoft 365 tables & settings exist
           await runM365Migration(query);
 
+          // Ensure uniqueness constraints for Employee ID, Badge No, and National ID
+          try {
+            await query("UPDATE employees SET badge_no = NULL WHERE badge_no IS NOT NULL AND TRIM(badge_no) = ''").catch(() => {});
+            await query("UPDATE employees SET national_id = NULL WHERE national_id IS NOT NULL AND TRIM(national_id) = ''").catch(() => {});
+            await query("ALTER TABLE employees ADD UNIQUE KEY unique_badge_no (badge_no)").catch(() => {});
+            await query("ALTER TABLE employees ADD UNIQUE KEY unique_national_id (national_id)").catch(() => {});
+          } catch (e) {
+            // unique key fallback
+          }
+
           return { success: true, message: 'Core tables already exist', tablesCount: tableNames.length, tables: tableNames };
         }
       } catch (e) {

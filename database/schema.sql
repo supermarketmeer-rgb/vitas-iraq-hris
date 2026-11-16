@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS employees (
     id VARCHAR(50) PRIMARY KEY,
     employee_id VARCHAR(50) UNIQUE NOT NULL,
-    badge_no VARCHAR(50) NULL,
+    badge_no VARCHAR(50) UNIQUE NULL,
     waid VARCHAR(50) NULL,
     full_name_ar VARCHAR(255) NOT NULL,
     full_name_en VARCHAR(255) NULL,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS employees (
     written_basic_salary_ar VARCHAR(255) NULL,
     bank_name VARCHAR(255) NULL,
     iban VARCHAR(100) NULL,
-    national_id VARCHAR(100) NULL,
+    national_id VARCHAR(100) UNIQUE NULL,
     passport_no VARCHAR(100) NULL,
     passport_expiry DATE NULL,
     photo LONGBLOB NULL,

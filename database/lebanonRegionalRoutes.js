@@ -132,6 +132,13 @@ export function registerLebanonRegionalRoutes(app, query, executeCloudQuery) {
       const finalId = data.id || `LBN_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       const empId = data.employee_id || `LBN-${Math.floor(1000 + Math.random() * 9000)}`;
 
+      if (data.badge_no) {
+        const conflict = await query('SELECT name FROM lebanon_employees WHERE badge_no = ?', [data.badge_no]);
+        if (conflict && conflict.length > 0) {
+          return res.status(400).json({ error: `رقم الباج (${data.badge_no}) مستخدم بالفعل للموظف: ${conflict[0].name}` });
+        }
+      }
+
       const sql = `
         INSERT INTO lebanon_employees (
           id, employee_id, badge_no, waid, name, name_en, email, phone,
@@ -181,6 +188,13 @@ export function registerLebanonRegionalRoutes(app, query, executeCloudQuery) {
     try {
       const { id } = req.params;
       const data = req.body;
+
+      if (data.badge_no) {
+        const conflict = await query('SELECT name FROM lebanon_employees WHERE badge_no = ? AND id != ? AND employee_id != ?', [data.badge_no, id, id]);
+        if (conflict && conflict.length > 0) {
+          return res.status(400).json({ error: `رقم الباج (${data.badge_no}) مستخدم بالفعل للموظف: ${conflict[0].name}` });
+        }
+      }
 
       const sql = `
         UPDATE lebanon_employees SET

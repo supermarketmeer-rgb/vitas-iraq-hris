@@ -1904,6 +1904,60 @@ app.post('/api/employees', async (req, res) => {
       }
     }
 
+      // Normalize empty strings to null so UNIQUE index permits multiple unset values
+      if (candidateData.employee_id && typeof candidateData.employee_id === 'string' && candidateData.employee_id.trim() === '') {
+        candidateData.employee_id = null;
+      }
+      if (candidateData.badge_no && typeof candidateData.badge_no === 'string' && candidateData.badge_no.trim() === '') {
+        candidateData.badge_no = null;
+      }
+      if (candidateData.national_id && typeof candidateData.national_id === 'string' && candidateData.national_id.trim() === '') {
+        candidateData.national_id = null;
+      }
+
+      // ── Strict Uniqueness Validation for Employee ID, Badge No, and National ID ──
+      if (candidateData.employee_id) {
+        const conflictEmpId = await query(
+          'SELECT id, full_name_ar, full_name_en, employee_id FROM employees WHERE employee_id = ? AND (? IS NULL OR id != ?)',
+          [candidateData.employee_id, targetDbId, targetDbId]
+        );
+        if (conflictEmpId && conflictEmpId.length > 0) {
+          const empName = conflictEmpId[0].full_name_ar || conflictEmpId[0].full_name_en || conflictEmpId[0].employee_id;
+          return res.status(400).json({
+            error: `الرقم الوظيفي (${candidateData.employee_id}) مستخدم بالفعل للموظف: ${empName}. يجب أن يكون الرقم الوظيفي فريداً ولا يتكرر. | Employee ID (${candidateData.employee_id}) is already in use by: ${empName}`,
+            field: 'employee_id'
+          });
+        }
+      }
+
+      if (candidateData.badge_no) {
+        const conflictBadge = await query(
+          'SELECT id, full_name_ar, full_name_en, badge_no FROM employees WHERE badge_no = ? AND (? IS NULL OR id != ?)',
+          [candidateData.badge_no, targetDbId, targetDbId]
+        );
+        if (conflictBadge && conflictBadge.length > 0) {
+          const empName = conflictBadge[0].full_name_ar || conflictBadge[0].full_name_en || conflictBadge[0].badge_no;
+          return res.status(400).json({
+            error: `رقم الباج (${candidateData.badge_no}) مستخدم بالفعل للموظف: ${empName}. يجب أن يكون رقم الباج فريداً ولا يتكرر. | Badge No (${candidateData.badge_no}) is already in use by: ${empName}`,
+            field: 'badge_no'
+          });
+        }
+      }
+
+      if (candidateData.national_id) {
+        const conflictNational = await query(
+          'SELECT id, full_name_ar, full_name_en, national_id FROM employees WHERE national_id = ? AND (? IS NULL OR id != ?)',
+          [candidateData.national_id, targetDbId, targetDbId]
+        );
+        if (conflictNational && conflictNational.length > 0) {
+          const empName = conflictNational[0].full_name_ar || conflictNational[0].full_name_en || conflictNational[0].national_id;
+          return res.status(400).json({
+            error: `رقم البطاقة الوطنية / الهوية (${candidateData.national_id}) مستخدم بالفعل للموظف: ${empName}. يجب أن يكون رقم الهوية فريداً ولا يتكرر. | National ID (${candidateData.national_id}) is already in use by: ${empName}`,
+            field: 'national_id'
+          });
+        }
+      }
+
       let finalEmpDbId = targetDbId;
       if (existing && existing.length > 0 && targetDbId) {
         console.log('Updating existing employee ID:', targetDbId);
@@ -1927,6 +1981,17 @@ app.post('/api/employees', async (req, res) => {
           console.log('Employee updated successfully');
         } catch (updateErr) {
           console.error('MySQL UPDATE error details:', updateErr);
+          if (updateErr.code === 'ER_DUP_ENTRY') {
+            let msg = 'يوجد حقل مكرر في البيانات';
+            if (updateErr.message.includes('unique_badge_no') || updateErr.message.includes('badge_no')) {
+              msg = 'رقم الباج (Badge No) مسجل بالفعل لموظف آخر. يجب أن يكون فريداً ولا يتكرر.';
+            } else if (updateErr.message.includes('unique_national_id') || updateErr.message.includes('national_id')) {
+              msg = 'رقم البطاقة الوطنية (National ID) مسجل بالفعل لموظف آخر. يجب أن يكون فريداً ولا يتكرر.';
+            } else if (updateErr.message.includes('employee_id')) {
+              msg = 'الرقم الوظيفي (Employee ID) مسجل بالفعل لموظف آخر. يجب أن يكون فريداً ولا يتكرر.';
+            }
+            return res.status(400).json({ error: msg });
+          }
           throw updateErr;
         }
       } else {
@@ -1935,9 +2000,25 @@ app.post('/api/employees', async (req, res) => {
         const insertVals = insertCols.map(col => candidateData[col]);
         const placeholders = insertCols.map(() => '?').join(', ');
 
-        const insertResult = await query(`INSERT INTO employees (${insertCols.join(', ')}) VALUES (${placeholders})`, insertVals);
-        finalEmpDbId = insertResult.insertId;
-        console.log('Employee inserted successfully with auto-increment ID:', finalEmpDbId);
+        try {
+          const insertResult = await query(`INSERT INTO employees (${insertCols.join(', ')}) VALUES (${placeholders})`, insertVals);
+          finalEmpDbId = insertResult.insertId;
+          console.log('Employee inserted successfully with auto-increment ID:', finalEmpDbId);
+        } catch (insertErr) {
+          console.error('MySQL INSERT error details:', insertErr);
+          if (insertErr.code === 'ER_DUP_ENTRY') {
+            let msg = 'يوجد حقل مكرر في البيانات';
+            if (insertErr.message.includes('unique_badge_no') || insertErr.message.includes('badge_no')) {
+              msg = 'رقم الباج (Badge No) مسجل بالفعل لموظف آخر. يجب أن يكون فريداً ولا يتكرر.';
+            } else if (insertErr.message.includes('unique_national_id') || insertErr.message.includes('national_id')) {
+              msg = 'رقم البطاقة الوطنية (National ID) مسجل بالفعل لموظف آخر. يجب أن يكون فريداً ولا يتكرر.';
+            } else if (insertErr.message.includes('employee_id')) {
+              msg = 'الرقم الوظيفي (Employee ID) مسجل بالفعل لموظف آخر. يجب أن يكون فريداً ولا يتكرر.';
+            }
+            return res.status(400).json({ error: msg });
+          }
+          throw insertErr;
+        }
       }
 
       if (finalEmpDbId && Array.isArray(processedChildrenList)) {

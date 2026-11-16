@@ -771,6 +771,40 @@ export const Category3EmployeeView: React.FC = () => {
   const [photoUrl, setPhotoUrl] = useState('');
   const photoFileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Strict Uniqueness Validation for Employee ID, Badge No, and National ID ──
+  const duplicateEmpIdConflict = useMemo(() => {
+    if (!empCode || !empCode.trim()) return null;
+    const cleanVal = empCode.trim().toLowerCase();
+    const found = (employees || []).find(e => {
+      if (selectedEmpId && (String(e.id) === String(selectedEmpId) || String(e.employeeId) === String(selectedEmpId))) return false;
+      const existingCode = String(e.employeeId || e.employee_id || '').trim().toLowerCase();
+      return existingCode && existingCode === cleanVal;
+    });
+    return found ? (found.fullName || found.fullNameAr || found.name || found.name_ar || found.employeeId) : null;
+  }, [empCode, employees, selectedEmpId]);
+
+  const duplicateBadgeConflict = useMemo(() => {
+    if (!badgeNo || !badgeNo.trim()) return null;
+    const cleanVal = badgeNo.trim().toLowerCase();
+    const found = (employees || []).find(e => {
+      if (selectedEmpId && (String(e.id) === String(selectedEmpId) || String(e.employeeId) === String(selectedEmpId))) return false;
+      const existingBadge = String(e.badgeNo || e.badge_no || '').trim().toLowerCase();
+      return existingBadge && existingBadge === cleanVal;
+    });
+    return found ? (found.fullName || found.fullNameAr || found.name || found.name_ar || found.employeeId) : null;
+  }, [badgeNo, employees, selectedEmpId]);
+
+  const duplicateNationalIdConflict = useMemo(() => {
+    if (!nationalId || !nationalId.trim() || nationalId.trim() === 'N/A') return null;
+    const cleanVal = nationalId.trim().toLowerCase();
+    const found = (employees || []).find(e => {
+      if (selectedEmpId && (String(e.id) === String(selectedEmpId) || String(e.employeeId) === String(selectedEmpId))) return false;
+      const existingNat = String(e.nationalId || e.national_id || '').trim().toLowerCase();
+      return existingNat && existingNat !== 'n/a' && existingNat === cleanVal;
+    });
+    return found ? (found.fullName || found.fullNameAr || found.name || found.name_ar || found.employeeId) : null;
+  }, [nationalId, employees, selectedEmpId]);
+
   // Tab 6: Family & Dependents
   const [spouseName, setSpouseName] = useState('');
   const [spouseEmployedHere, setSpouseEmployedHere] = useState<boolean>(false);
@@ -1722,6 +1756,34 @@ export const Category3EmployeeView: React.FC = () => {
       return;
     }
 
+    // ── Uniqueness Validations ──
+    if (duplicateEmpIdConflict) {
+      alert(language === 'ar'
+        ? `عذراً، الرقم الوظيفي (${empCode}) مستخدم بالفعل للموظف: "${duplicateEmpIdConflict}".\nيجب أن يكون الرقم الوظيفي فريداً ولا يتكرر (Unique).`
+        : `Employee ID (${empCode}) is already in use by: "${duplicateEmpIdConflict}".\nIt must be unique.`
+      );
+      setActiveTab(1);
+      return;
+    }
+
+    if (duplicateBadgeConflict) {
+      alert(language === 'ar'
+        ? `عذراً، رقم باج الدخول (${badgeNo}) مستخدم بالفعل للموظف: "${duplicateBadgeConflict}".\nيجب أن يكون رقم الباج فريداً ولا يتكرر (Unique).`
+        : `Badge Number (${badgeNo}) is already in use by: "${duplicateBadgeConflict}".\nIt must be unique.`
+      );
+      setActiveTab(1);
+      return;
+    }
+
+    if (duplicateNationalIdConflict) {
+      alert(language === 'ar'
+        ? `عذراً، رقم البطاقة الوطنية / الهوية (${nationalId}) مستخدم بالفعل للموظف: "${duplicateNationalIdConflict}".\nيجب أن يكون رقم الهوية فريداً ولا يتكرر (Unique).`
+        : `National ID (${nationalId}) is already in use by: "${duplicateNationalIdConflict}".\nIt must be unique.`
+      );
+      setActiveTab(5);
+      return;
+    }
+
     setSaveSuccessMessage(null);
     setShowSaveConfirmModal(true);
   };
@@ -1940,39 +2002,15 @@ export const Category3EmployeeView: React.FC = () => {
       status,
     };
 
-    // Update local state in AppContext and LocalStorage immediately for seamless UX
+    setIsSavingEmployee(true);
     let savedId = targetId;
-    if (isEditMode) {
-      setEmployees(prev => {
-        const updated = prev.map(e => (
-          String(e.id) === String(newEmp.id) ||
-          String(e.employeeId) === String(newEmp.employeeId) ||
-          (e.badgeNo && String(e.badgeNo) === String(newEmp.badgeNo))
-        ) ? { ...e, ...newEmp } : e);
-        try {
-          localStorage.setItem('vitas_employees', JSON.stringify(updated));
-        } catch (err) {}
-        return updated;
-      });
-    } else {
-      setEmployees(prev => {
-        const filtered = prev.filter(e => String(e.id) !== String(newEmp.id));
-        const updated = [newEmp, ...filtered];
-        try {
-          localStorage.setItem('vitas_employees', JSON.stringify(updated));
-        } catch (err) {}
-        return updated;
-      });
-    }
 
-    // Try to sync with backend database asynchronously if server is online
+    // Try to sync with backend database
     try {
       console.log('Attempting to save employee to database:', dbEmployee);
-      const result: any = isEditMode ? await api.updateEmployee(dbEmployee).catch(() => null) : await api.addEmployee(dbEmployee).catch(() => null);
+      const result: any = isEditMode ? await api.updateEmployee(dbEmployee) : await api.addEmployee(dbEmployee);
       if (result?.id) {
         savedId = result.id;
-        const finalEmp = { ...newEmp, id: String(savedId) };
-        setEmployees(prev => prev.map(e => (String(e.id) === String(targetId) || String(e.employeeId) === String(finalEmp.employeeId)) ? finalEmp : e));
       }
 
       // Save status changes & trainings if any
@@ -1991,16 +2029,43 @@ export const Category3EmployeeView: React.FC = () => {
           end_date: training.end_date
         }).catch(() => {});
       }
-    } catch (error) {
-      console.warn('Database sync completed with local state fallback:', error);
+
+      const finalEmp = { ...newEmp, id: String(savedId) };
+      // Update local state in AppContext and LocalStorage on success
+      if (isEditMode) {
+        setEmployees(prev => {
+          const updated = prev.map(e => (
+            String(e.id) === String(newEmp.id) ||
+            String(e.employeeId) === String(newEmp.employeeId) ||
+            (e.badgeNo && String(e.badgeNo) === String(newEmp.badgeNo))
+          ) ? { ...e, ...finalEmp } : e);
+          try {
+            localStorage.setItem('vitas_employees', JSON.stringify(updated));
+          } catch (err) {}
+          return updated;
+        });
+      } else {
+        setEmployees(prev => {
+          const filtered = prev.filter(e => String(e.id) !== String(finalEmp.id) && String(e.employeeId) !== String(finalEmp.employeeId));
+          const updated = [finalEmp, ...filtered];
+          try {
+            localStorage.setItem('vitas_employees', JSON.stringify(updated));
+          } catch (err) {}
+          return updated;
+        });
+      }
+
+      setSaveSuccessMessage(isEditMode 
+        ? (language === 'ar' ? 'تم تحديث بيانات الموظف بنجاح في قاعدة البيانات!' : 'Employee data updated successfully in database!')
+        : (language === 'ar' ? 'تم تسجيل وحفظ الموظف الجديد بنجاح في النظام!' : 'New employee registered and saved successfully!')
+      );
+    } catch (error: any) {
+      console.error('Database save failed:', error);
+      setShowSaveConfirmModal(false);
+      alert(error?.message || (language === 'ar' ? 'حدث خطأ أثناء حفظ بيانات الموظف في قاعدة البيانات' : 'Failed to save employee to database'));
     } finally {
       setIsSavingEmployee(false);
     }
-
-    setSaveSuccessMessage(isEditMode 
-      ? (language === 'ar' ? 'تم تحديث بيانات الموظف بنجاح في قاعدة البيانات!' : 'Employee data updated successfully in database!')
-      : (language === 'ar' ? 'تم تسجيل وحفظ الموظف الجديد بنجاح في النظام!' : 'New employee registered and saved successfully!')
-    );
   };
 
 
@@ -2974,25 +3039,43 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-black font-semibold text-[11px] mb-1">{t('الرقم الوظيفي', 'Employee ID')}</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-black font-semibold text-[11px]">{t('الرقم الوظيفي', 'Employee ID')}</label>
+                      <span className="text-[10px] font-semibold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">{t('فريد (Unique)', 'Unique')}</span>
+                    </div>
                     <input
                       type="text"
                       placeholder={t('تلقائي: VTS-1008', 'Auto: VTS-1008')}
                       value={empCode}
                       onChange={e => setEmpCode(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-blue-400 font-mono focus:outline-none focus:border-teal-500"
+                      className={`w-full bg-[#0a0c10] border ${duplicateEmpIdConflict ? 'border-rose-500 focus:border-rose-500' : 'border-white/10 focus:border-teal-500'} rounded-lg px-3 py-1.5 sm:py-2 text-xs text-blue-400 font-mono focus:outline-none`}
                     />
+                    {duplicateEmpIdConflict && (
+                      <p className="mt-1 text-[11px] font-medium text-rose-500 flex items-center gap-1">
+                        <span>⚠️</span>
+                        <span>{t('مستخدم بالفعل للموظف:', 'Already in use by:')} {duplicateEmpIdConflict}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-black font-semibold text-[11px] mb-1">{t('رقم باج الدخول', 'Badge Number')}</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-black font-semibold text-[11px]">{t('رقم باج الدخول', 'Badge Number')}</label>
+                      <span className="text-[10px] font-semibold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">{t('فريد (Unique)', 'Unique')}</span>
+                    </div>
                     <input
                       type="text"
                       placeholder={t('مثال: B-9042', 'Example: B-9042')}
                       value={badgeNo}
                       onChange={e => setBadgeNo(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
+                      className={`w-full bg-[#0a0c10] border ${duplicateBadgeConflict ? 'border-rose-500 focus:border-rose-500' : 'border-white/10 focus:border-teal-500'} rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none placeholder:text-slate-500`}
                     />
+                    {duplicateBadgeConflict && (
+                      <p className="mt-1 text-[11px] font-medium text-rose-500 flex items-center gap-1">
+                        <span>⚠️</span>
+                        <span>{t('مستخدم بالفعل للموظف:', 'Already in use by:')} {duplicateBadgeConflict}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Preserved Incentives WAID field: hidden from UI display per user instruction, but state and value are strictly maintained */}
@@ -3965,14 +4048,23 @@ export const Category3EmployeeView: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
                   <div>
-                    <label className="block text-black font-semibold text-[11px] mb-1">{t('رقم البطاقة الوطنية الموحدة / الهوية', 'National ID / Identity Card Number')}</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-black font-semibold text-[11px]">{t('رقم البطاقة الوطنية الموحدة / الهوية', 'National ID / Identity Card Number')}</label>
+                      <span className="text-[10px] font-semibold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">{t('فريد (Unique)', 'Unique')}</span>
+                    </div>
                     <input
                       type="text"
                       placeholder={t('199012345678', '199012345678')}
                       value={nationalId}
                       onChange={e => setNationalId(e.target.value)}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-teal-500"
+                      className={`w-full bg-[#0a0c10] border ${duplicateNationalIdConflict ? 'border-rose-500 focus:border-rose-500' : 'border-white/10 focus:border-teal-500'} rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none`}
                     />
+                    {duplicateNationalIdConflict && (
+                      <p className="mt-1 text-[11px] font-medium text-rose-500 flex items-center gap-1">
+                        <span>⚠️</span>
+                        <span>{t('مستخدم بالفعل للموظف:', 'Already in use by:')} {duplicateNationalIdConflict}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
