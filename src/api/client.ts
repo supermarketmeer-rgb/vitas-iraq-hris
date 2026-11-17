@@ -116,6 +116,17 @@ export const api = {
   deleteEmployeePhoto: (id: string) => apiClient.delete(`/employees/${id}/photo`),
   deleteAllEmployees: () => apiClient.delete('/employees/all'),
 
+  // Performance Appraisals & Campaigns
+  getAppraisals: (params?: { campaign_id?: any; employee_id?: any; status?: string }) => {
+    const qs = params ? new URLSearchParams(params as any).toString() : '';
+    return apiClient.get(`/appraisals${qs ? '?' + qs : ''}`);
+  },
+  getAppraisal: (id: string | number) => apiClient.get(`/appraisals/${id}`),
+  saveAppraisal: (data: any) => apiClient.post('/appraisals', data),
+  getAppraisalStats: () => apiClient.get('/appraisals-stats'),
+  getCampaigns: () => apiClient.get('/campaigns'),
+  saveCampaign: (data: any) => apiClient.post('/campaigns', data),
+
   // Leave Requests
   getLeaveRequests: () => apiClient.get('/leave-requests'),
   addLeaveRequest: (request: any) => apiClient.post('/leave-requests', request),

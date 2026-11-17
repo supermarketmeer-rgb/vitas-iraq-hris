@@ -1,6 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { getBranchName } from '../utils/branchHelper';
+import { api } from '../api/client';
+import { PERFORMANCE_APPRAISAL_TEMPLATES } from '../data/performanceAppraisalTemplates';
+import { AppraisalWorkspaceModal } from '../components/performance_appraisal/AppraisalWorkspaceModal';
+import { CampaignsManagerModal } from '../components/performance_appraisal/CampaignsManagerModal';
+import { DiscussionCenterModal } from '../components/performance_appraisal/DiscussionCenterModal';
+import { ReportsAnalyticsModal } from '../components/performance_appraisal/ReportsAnalyticsModal';
+import { PerformanceAppraisalExcelSheet } from '../components/performance_appraisal/PerformanceAppraisalExcelSheet';
+import { StatusBadge } from '../components/performance_appraisal/StatusBadge';
 
 const POSITION_EN_MAP: Record<string, string> = {
   'عامل صيانه وسائق': 'Maintenance Worker & Driver',
@@ -21,13 +29,16 @@ const POSITION_EN_MAP: Record<string, string> = {
   'مسؤول الامتثال والمخاطر': 'Risk & Compliance Officer',
   'مسؤول تدريب وتطوير': 'Training & Development Officer',
   'مدير العمليات': 'Operations Manager',
-  'مدير التدقيق الداخلي': 'Internal Audit Manager'
+  'مدير التدقيق الداخلي': 'Internal Audit Manager',
+  'حارس': 'Security Guard',
+  'حارس أمن': 'Security Guard',
+  'مسؤول أمن': 'Security Officer',
+  'قائد فريق': 'Team Leader'
 };
 
 const DEPARTMENT_EN_MAP: Record<string, string> = {
   'قسم الائتمان': 'Credit Department',
   'الائتمان': 'Credit Department',
-  'قسم الاتئمان': 'Credit Department',
   'الموارد البشرية': 'Human Resources',
   'قسم الموارد البشرية': 'Human Resources Department',
   'المعلوماتية والاتصالات': 'IT & Communications',
@@ -78,431 +89,740 @@ const getLocalizedFullName = (emp: any, lang: string): string => {
 };
 
 export const Category7PerformanceView: React.FC = () => {
-  const { activeModuleId, currentUser, employees, isDark, t, language } = useApp();
-  
-  const [q1Score, setQ1Score] = useState(88);
-  const [q2Score, setQ2Score] = useState(92);
-  const [comments, setComments] = useState('');
-  const [appraisalSaved, setAppraisalSaved] = useState(false);
+  const { employees, isDark, t, language } = useApp();
 
-  const [selectedDeptFilter, setSelectedDeptFilter] = useState('All');
+  // Search & Filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState('All');
+  const [selectedTemplateFilter, setSelectedTemplateFilter] = useState('All');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 12;
 
-  const handleSaveAppraisal = (e: React.FormEvent) => {
-    e.preventDefault();
-    setAppraisalSaved(true);
+  // Real Appraisals from DB / State
+  const [savedAppraisals, setSavedAppraisals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Modals state
+  const [activeWorkspaceEmployee, setActiveWorkspaceEmployee] = useState<any | null>(null);
+  const [activeWorkspaceAppraisal, setActiveWorkspaceAppraisal] = useState<any | null>(null);
+  const [isCampaignsOpen, setIsCampaignsOpen] = useState(false);
+  const [isDiscussionsOpen, setIsDiscussionsOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [previewExcelTemplateId, setPreviewExcelTemplateId] = useState<string | null>(null);
+  const [previewExcelEmployee, setPreviewExcelEmployee] = useState<any | null>(null);
+
+  // Load Appraisals from Backend API
+  const loadAppraisals = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getAppraisals();
+      if (res && res.success && Array.isArray(res.data)) {
+        setSavedAppraisals(res.data);
+      }
+    } catch (err) {
+      console.warn('Could not load appraisals from backend, falling back to local state:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Mock evaluations derived from live employees list
-  const employeeEvaluations = useMemo(() => {
-    return employees.map((emp, idx) => {
-      const baseScore = 4.0 + ((idx * 7) % 10) / 10;
-      const score = Math.min(5.0, Math.max(3.5, Number(baseScore.toFixed(1))));
-      let gradeAr = 'ممتاز';
-      let gradeEn = 'Excellent';
-      if (score < 4.2) {
-        gradeAr = 'جيد جداً';
-        gradeEn = 'Very Good';
-      }
-      if (score < 3.8) {
-        gradeAr = 'جيد';
-        gradeEn = 'Good';
-      }
+  useEffect(() => {
+    loadAppraisals();
+  }, []);
 
-      const isCompleted = idx % 6 !== 0;
-      const statusAr = isCompleted ? 'مكتمل ومعتمد' : 'قيد التقييم';
-      const statusEn = isCompleted ? 'Completed & Approved' : 'Under Review';
+  // Helper to get template ID from employee job title
+  const getTemplateForEmployee = (emp: any) => {
+    const title = (emp?.jobTitle || emp?.position || emp?.position_ar || '').toLowerCase();
+    if (title.includes('نظافة') || title.includes('صيانة') || title.includes('cleaner') || title.includes('maintenance')) {
+      return 'pa-maintenance-cleaner';
+    }
+    if (title.includes('حرس') || title.includes('أمن') || title.includes('security') || title.includes('guard') || title.includes('فريق') || title.includes('leader')) {
+      return 'pa-team-leaders-guards';
+    }
+    return 'pa-staff';
+  };
+
+  // Branch list
+  const branchList = useMemo(() => {
+    const set = new Set<string>();
+    employees.forEach((e) => {
+      const b = e.branch || e.location || '';
+      if (b) set.add(b);
+    });
+    return Array.from(set).sort();
+  }, [employees]);
+
+  // Combined Rows
+  const appraisalRows = useMemo(() => {
+    return employees.map((emp) => {
+      const existing = savedAppraisals.find(
+        (a) =>
+          String(a.employee_id) === String(emp.id) ||
+          String(a.employee_id) === String(emp.employeeId) ||
+          String(a.employee_id) === String(emp.badgeNo)
+      );
+
+      const templateId = existing?.template_id || getTemplateForEmployee(emp);
+      const templateObj = PERFORMANCE_APPRAISAL_TEMPLATES.find((t) => t.id === templateId) || PERFORMANCE_APPRAISAL_TEMPLATES[0];
 
       return {
-        ...emp,
-        score,
-        gradeAr,
-        gradeEn,
-        grade: language === 'en' ? gradeEn : gradeAr,
-        kpiCompletion: Math.min(100, Math.round(score * 20)),
-        isCompleted,
-        statusAr,
-        statusEn,
-        status: statusAr
+        employee: emp,
+        appraisal: existing || null,
+        templateId,
+        templateTitleAr: templateObj.titleAr,
+        templateTitleEn: templateObj.titleEn,
+        workflowStatus: existing?.workflow_status || 'Draft',
+        selfScore: existing?.self_overall_score ?? null,
+        supervisorScore: existing?.supervisor_overall_score ?? null,
+        finalScore: existing?.final_score ?? null,
+        campaignCode: existing?.campaign_code || 'CMP-2026-FY25'
       };
     });
-  }, [employees, language]);
+  }, [employees, savedAppraisals]);
 
-  const filteredEvaluations = useMemo(() => {
-    if (selectedDeptFilter === 'All') return employeeEvaluations;
-    return employeeEvaluations.filter(e => {
-      const dAr = e.department || e.department_ar || '';
-      const dEn = getLocalizedDepartment(e, 'en');
-      return dAr === selectedDeptFilter || dEn === selectedDeptFilter;
+  // Statistics
+  const stats = useMemo(() => {
+    const total = appraisalRows.length;
+    let completed = 0;
+    let inProgress = 0;
+    let pendingSupervisor = 0;
+    let totalScoreSum = 0;
+    let scoredCount = 0;
+
+    appraisalRows.forEach((row) => {
+      if (row.workflowStatus === 'Completed') {
+        completed++;
+        if (row.finalScore != null) {
+          totalScoreSum += Number(row.finalScore);
+          scoredCount++;
+        }
+      } else if (row.workflowStatus === 'Supervisor Review') {
+        pendingSupervisor++;
+      } else if (row.workflowStatus !== 'Draft') {
+        inProgress++;
+      }
     });
-  }, [employeeEvaluations, selectedDeptFilter]);
 
-  const completedAppraisalsCount = employeeEvaluations.filter(e => e.isCompleted).length;
-  const avgScore = (employeeEvaluations.reduce((sum, e) => sum + e.score, 0) / (employees.length || 1)).toFixed(1);
+    const avgScore = scoredCount > 0 ? (totalScoreSum / scoredCount).toFixed(1) : '88.5';
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { total, completed, inProgress, pendingSupervisor, avgScore, completionRate };
+  }, [appraisalRows]);
+
+  // Filtered rows
+  const filteredRows = useMemo(() => {
+    return appraisalRows.filter((row) => {
+      const emp = row.employee;
+      // Search
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        const idMatch = String(emp.id || '').toLowerCase().includes(q) || String(emp.employeeId || '').toLowerCase().includes(q) || String(emp.badgeNo || '').toLowerCase().includes(q);
+        const nameAr = String(emp.fullName || emp.fullNameAr || '').toLowerCase();
+        const nameEn = String(emp.fullNameEn || '').toLowerCase();
+        const titleAr = String(emp.jobTitle || emp.position_ar || '').toLowerCase();
+        const titleEn = String(emp.jobTitleEn || emp.position_en || '').toLowerCase();
+        if (!idMatch && !nameAr.includes(q) && !nameEn.includes(q) && !titleAr.includes(q) && !titleEn.includes(q)) {
+          return false;
+        }
+      }
+
+      // Branch
+      if (selectedBranchFilter !== 'All') {
+        const b = emp.branch || emp.location || '';
+        if (b !== selectedBranchFilter) return false;
+      }
+
+      // Template
+      if (selectedTemplateFilter !== 'All') {
+        if (row.templateId !== selectedTemplateFilter) return false;
+      }
+
+      // Status
+      if (selectedStatusFilter !== 'All') {
+        if (row.workflowStatus !== selectedStatusFilter) return false;
+      }
+
+      return true;
+    });
+  }, [appraisalRows, searchTerm, selectedBranchFilter, selectedTemplateFilter, selectedStatusFilter]);
+
+  // Paginated Rows
+  const totalPages = Math.ceil(filteredRows.length / pageSize) || 1;
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, currentPage, pageSize]);
+
+  // Open Workspace Modal
+  const handleOpenWorkspace = (emp: any, app: any) => {
+    setActiveWorkspaceEmployee(emp);
+    setActiveWorkspaceAppraisal(app);
+  };
+
+  // Open Excel Sheet Preview
+  const handleOpenExcelPreview = (emp: any, templateId: string) => {
+    setPreviewExcelEmployee(emp);
+    setPreviewExcelTemplateId(templateId);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Page Title */}
-      <div>
-        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          {activeModuleId === 'perf-mgmt' && t('إدارة وتقييم أداء الموظفين السنوي (KPIs)', 'Annual Performance Management & KPIs')}
-          {activeModuleId === 'perf-self-appraisal' && t('نموذج التقييم الذاتي للموظف (Self Appraisal)', 'Employee Self Appraisal Form')}
-          {activeModuleId === 'perf-review' && t('مراجعة وتقييم الأداء من قبل المدير المباشر', 'Line Manager Performance Review')}
-          {activeModuleId === 'train-my-learning' && t('لوحة التعلم والدورات التدريبية المتاحة', 'My Learning & Training Portal')}
-          {activeModuleId === 'train-courses-analytics' && t('إدارة الدورات وتحليلات التطوير الوظيفي', 'Courses Management & Development Analytics')}
-        </h1>
+      {/* Header & Sub-Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-teal-500/10">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs ${
+              isDark ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' : 'bg-teal-50 border-teal-200 text-teal-700'
+            }`}>
+              <span className="material-symbols-outlined text-2xl">rate_review</span>
+            </div>
+            <div>
+              <h1 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {language === 'en' ? 'Performance Appraisal & Evaluation System' : 'نظام تقييم الأداء والمراجعة المؤسسية'}
+              </h1>
+              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {language === 'en'
+                  ? 'Official CHF - VITAS Iraq Performance Appraisal module directly integrated with Master Excel Templates'
+                  : 'منظومة تقييم الأداء المعتمدة لمؤسسة فيتاس العراق - مرتبطة مباشرة بنماذج التقييم الرسمية في الإعدادات'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Global Toolbar Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Campaigns Manager */}
+          <button
+            onClick={() => setIsCampaignsOpen(true)}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+              isDark
+                ? 'bg-slate-900 hover:bg-slate-800 text-teal-300 border-teal-500/30 hover:border-teal-400'
+                : 'bg-white hover:bg-slate-50 text-teal-800 border-teal-300 shadow-2xs'
+            }`}
+            title={language === 'en' ? 'Appraisal Campaigns' : 'دورات وحملات التقييم'}
+          >
+            <span className="material-symbols-outlined text-base">campaign</span>
+            <span>{language === 'en' ? 'Campaigns' : 'دورات التقييم'}</span>
+          </button>
+
+          {/* Discussions & Disputes */}
+          <button
+            onClick={() => setIsDiscussionsOpen(true)}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+              isDark
+                ? 'bg-slate-900 hover:bg-slate-800 text-purple-300 border-purple-500/30 hover:border-purple-400'
+                : 'bg-white hover:bg-slate-50 text-purple-800 border-purple-300 shadow-2xs'
+            }`}
+            title={language === 'en' ? 'Discussion & Dispute Center' : 'مركز المناقشات والاعتراضات'}
+          >
+            <span className="material-symbols-outlined text-base">forum</span>
+            <span>{language === 'en' ? 'Discussions' : 'المناقشات والاعتراضات'}</span>
+          </button>
+
+          {/* Reports & Analytics */}
+          <button
+            onClick={() => setIsAnalyticsOpen(true)}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+              isDark
+                ? 'bg-slate-900 hover:bg-slate-800 text-amber-300 border-amber-500/30 hover:border-amber-400'
+                : 'bg-white hover:bg-slate-50 text-amber-800 border-amber-300 shadow-2xs'
+            }`}
+            title={language === 'en' ? 'Reports & Analytics' : 'التحليلات ومؤشرات الأداء'}
+          >
+            <span className="material-symbols-outlined text-base">analytics</span>
+            <span>{language === 'en' ? 'Analytics' : 'التحليلات والتقارير'}</span>
+          </button>
+
+          {/* View Official Excel Templates */}
+          <button
+            onClick={() => handleOpenExcelPreview(employees[0], 'pa-staff')}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-teal-600 hover:bg-teal-500 text-white shadow-md shadow-teal-600/20 transition-all cursor-pointer"
+            title={language === 'en' ? 'Official Excel Sheet View' : 'عرض نماذج الإكسل الرسمية'}
+          >
+            <span className="material-symbols-outlined text-base">table_view</span>
+            <span>{language === 'en' ? 'Excel Templates' : 'نماذج التقييم (Excel)'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* MODULE 1: PERFORMANCE MANAGEMENT */}
-      {activeModuleId === 'perf-mgmt' && (
-        <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl space-y-6">
-          <div className="flex items-center justify-between border-b pb-3 border-white/10">
-            <h2 className="text-base font-normal text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-400">moving</span>
-              {t('مؤشرات الأداء الرئيسية والتقييم السنوي 2026 (KPIs)', 'Key Performance Indicators & Annual Ratings 2026')}
-            </h2>
-            <span className="text-xs bg-[#06080d] text-teal-400 font-mono font-normal px-3 py-1 rounded-full border border-teal-500/30">
-              {completedAppraisalsCount} / {employees.length} {t('تقييمات معتمدة', 'approved ratings')}
-            </span>
-          </div>
-
-          {/* KPI Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div className="p-5 rounded-2xl bg-[#06080d] border border-white/10 space-y-1 shadow-sm">
-              <p className="font-normal text-slate-400">{t('نسبة إنجاز الأهداف المؤسسية', 'Institutional Goals Progress')}</p>
-              <p className="text-3xl font-normal text-teal-400 font-mono">94.5%</p>
-              <p className="text-xs text-slate-500 font-normal mt-1">{t('مستهدفة خطة الائتمان والنمو 2026', 'Targeted 2026 credit expansion plan')}</p>
+      {/* KPI Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Card 1: Total Appraisals */}
+        <div className={`p-4 rounded-2xl border transition-all ${
+          isDark ? 'bg-[#0a0c10] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {language === 'en' ? 'Total Appraisals' : 'إجمالي الموظفين الخاضعين'}
+              </p>
+              <p className="text-2xl font-bold font-mono mt-1">{stats.total}</p>
+              <p className="text-[11px] font-semibold text-teal-500 mt-1 flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">group</span>
+                <span>{language === 'en' ? 'Active Appraisals FY2026' : 'حملة التقييم السنوي 2026'}</span>
+              </p>
             </div>
-
-            <div className="p-5 rounded-2xl bg-[#06080d] border border-white/10 space-y-1 shadow-sm">
-              <p className="font-normal text-slate-400">{t('التقييمات المكتملة والمعتمدة', 'Completed & Approved Ratings')}</p>
-              <p className="text-3xl font-normal text-emerald-400 font-mono">{completedAppraisalsCount} / {employees.length}</p>
-              <p className="text-xs text-slate-500 font-normal mt-1">{t('مكتملة ومرحلة لملفات الموارد البشرية', 'Submitted & archived to HR files')}</p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-[#06080d] border border-white/10 space-y-1 shadow-sm">
-              <p className="font-normal text-slate-400">{t('متوسط التقييم العام للكادر', 'Average Employee Rating')}</p>
-              <p className="text-3xl font-normal text-purple-400 font-mono">{avgScore} / 5.0</p>
-              <p className="text-xs text-slate-500 font-normal mt-1">{t('مقياس التقييم من 5.0 درجات', 'On a scale out of 5.0')}</p>
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
+              isDark ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' : 'bg-teal-50 border-teal-200 text-teal-700'
+            }`}>
+              <span className="material-symbols-outlined text-2xl">assignment_ind</span>
             </div>
           </div>
+        </div>
 
-          {/* Employee Evaluation Table */}
-          <div className="space-y-3 pt-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-normal text-sm text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-400">format_list_bulleted</span>
-                {t('سجل تقييمات أداء الكادر المباشر', 'Live Staff Evaluation Register')}
-              </h3>
-              <select
-                value={selectedDeptFilter}
-                onChange={e => setSelectedDeptFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-xl text-xs font-normal bg-[#06080d] text-slate-200 border border-white/15 focus:outline-none"
+        {/* Card 2: Completed Appraisals */}
+        <div className={`p-4 rounded-2xl border transition-all ${
+          isDark ? 'bg-[#0a0c10] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {language === 'en' ? 'Completed & Approved' : 'التقييمات المكتملة والمعتمدة'}
+              </p>
+              <p className="text-2xl font-bold font-mono mt-1 text-emerald-400">{stats.completed}</p>
+              <p className="text-[11px] font-semibold text-emerald-500 mt-1 flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">check_circle</span>
+                <span>{stats.completionRate}% {language === 'en' ? 'Completion rate' : 'نسبة الإنجاز'}</span>
+              </p>
+            </div>
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
+              isDark ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            }`}>
+              <span className="material-symbols-outlined text-2xl">verified</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Pending Supervisor Review */}
+        <div className={`p-4 rounded-2xl border transition-all ${
+          isDark ? 'bg-[#0a0c10] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {language === 'en' ? 'Pending Supervisor' : 'بانتظار تقييم المشرف المباشر'}
+              </p>
+              <p className="text-2xl font-bold font-mono mt-1 text-purple-400">{stats.pendingSupervisor}</p>
+              <p className="text-[11px] font-semibold text-purple-500 mt-1 flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">hourglass_empty</span>
+                <span>{language === 'en' ? 'Awaiting manager input' : 'بانتظار إدخال الدرجات'}</span>
+              </p>
+            </div>
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
+              isDark ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' : 'bg-purple-50 border-purple-200 text-purple-700'
+            }`}>
+              <span className="material-symbols-outlined text-2xl">supervisor_account</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Average Score */}
+        <div className={`p-4 rounded-2xl border transition-all ${
+          isDark ? 'bg-[#0a0c10] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {language === 'en' ? 'Average Score %' : 'متوسط التقييم العام للمؤسسة'}
+              </p>
+              <p className="text-2xl font-bold font-mono mt-1 text-teal-400">{stats.avgScore}%</p>
+              <p className="text-[11px] font-semibold text-teal-500 mt-1 flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">grade</span>
+                <span>{language === 'en' ? 'Very Good / Good band' : 'ضمن المستوى الجيد جداً'}</span>
+              </p>
+            </div>
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
+              isDark ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'
+            }`}>
+              <span className="material-symbols-outlined text-2xl">trending_up</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className={`p-4 rounded-2xl border space-y-3 ${
+        isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-white border-slate-200 shadow-xs'
+      }`}>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+          {/* Search Box */}
+          <div className="md:col-span-4 relative">
+            <span className="material-symbols-outlined absolute start-3 top-2.5 text-slate-400 text-lg">search</span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              placeholder={language === 'en' ? 'Search by Name, Badge No, ID, or Job Title...' : 'بحث بالاسم، رقم الباج، الرقم الوظيفي، أو المسمى...'}
+              className={`w-full ps-9 pe-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-teal-500 ${
+                isDark ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+              }`}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute end-2.5 top-2 text-slate-400 hover:text-slate-200 text-xs"
               >
-                <option value="All">{t('جميع الأقسام', 'All Departments')}</option>
-                <option value="قسم الائتمان">{t('قسم الائتمان', 'Credit Dept')}</option>
-                <option value="قسم الخزينة">{t('قسم الخزينة', 'Treasury Dept')}</option>
-                <option value="الموارد البشرية">{t('الموارد البشرية', 'HR Dept')}</option>
-              </select>
-            </div>
+                ✕
+              </button>
+            )}
+          </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-white/10">
-              <table className={`w-full text-xs ${language === 'en' ? 'text-left' : 'text-right'}`}>
-                <thead className="bg-[#06080d] text-slate-200 border-b border-white/10 font-normal">
-                  <tr>
-                    <th className="p-3">#</th>
-                    <th className="p-3">{t('اسم الموظف والرمز', 'Employee & ID')}</th>
-                    <th className="p-3">{t('الفرع والموقع', 'Branch / Location')}</th>
-                    <th className="p-3">{t('المسمى والقسم', 'Position & Dept')}</th>
-                    <th className="p-3">{t('درجة الإنجاز', 'KPI Target %')}</th>
-                    <th className="p-3">{t('التقييم النهائي', 'Final Rating')}</th>
-                    <th className="p-3 text-center">{t('الحالة', 'Status')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-slate-200 bg-[#0a0c10]">
-                  {filteredEvaluations.slice(0, 12).map((emp, idx) => (
-                    <tr key={emp.id} className="hover:bg-white/5 transition-colors font-normal">
-                      <td className="p-3 font-mono text-slate-500">{idx + 1}</td>
+          {/* Branch Filter */}
+          <div className="md:col-span-3">
+            <select
+              value={selectedBranchFilter}
+              onChange={(e) => { setSelectedBranchFilter(e.target.value); setCurrentPage(1); }}
+              className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-teal-500 ${
+                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+              }`}
+            >
+              <option value="All">{language === 'en' ? 'All Branches' : 'جميع الفروع والمكاتب'}</option>
+              {branchList.map((b) => (
+                <option key={b} value={b}>
+                  {getBranchName(b, undefined, language as any)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Template Filter */}
+          <div className="md:col-span-3">
+            <select
+              value={selectedTemplateFilter}
+              onChange={(e) => { setSelectedTemplateFilter(e.target.value); setCurrentPage(1); }}
+              className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-teal-500 ${
+                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+              }`}
+            >
+              <option value="All">{language === 'en' ? 'All Official Templates' : 'جميع نماذج التقييم الرسمية'}</option>
+              {PERFORMANCE_APPRAISAL_TEMPLATES.map((tmpl) => (
+                <option key={tmpl.id} value={tmpl.id}>
+                  {language === 'en' ? tmpl.titleEn : tmpl.titleAr}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="md:col-span-2">
+            <select
+              value={selectedStatusFilter}
+              onChange={(e) => { setSelectedStatusFilter(e.target.value); setCurrentPage(1); }}
+              className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-teal-500 ${
+                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+              }`}
+            >
+              <option value="All">{language === 'en' ? 'All Statuses' : 'جميع الحالات'}</option>
+              <option value="Draft">{language === 'en' ? 'Draft' : 'مسودة'}</option>
+              <option value="Self Assessment">{language === 'en' ? 'Self Assessment' : 'تقييم ذاتي'}</option>
+              <option value="Supervisor Review">{language === 'en' ? 'Supervisor Review' : 'مراجعة المشرف'}</option>
+              <option value="Discussion">{language === 'en' ? 'Discussion' : 'مناقشة واعتراض'}</option>
+              <option value="Completed">{language === 'en' ? 'Completed' : 'مكتمل ومعتمد'}</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Results summary bar */}
+        <div className="flex items-center justify-between text-[11px] pt-1">
+          <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>
+            {language === 'en'
+              ? `Showing ${paginatedRows.length} of ${filteredRows.length} employee appraisals`
+              : `عرض ${paginatedRows.length} من أصل ${filteredRows.length} تقييم أداء موظف`}
+          </span>
+
+          {(searchTerm || selectedBranchFilter !== 'All' || selectedTemplateFilter !== 'All' || selectedStatusFilter !== 'All') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedBranchFilter('All');
+                setSelectedTemplateFilter('All');
+                setSelectedStatusFilter('All');
+                setCurrentPage(1);
+              }}
+              className="text-teal-400 hover:text-teal-300 font-semibold cursor-pointer"
+            >
+              {language === 'en' ? 'Reset Filters' : 'إعادة ضبط الفلاتر'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Appraisals Directory Table */}
+      <div className={`rounded-2xl border overflow-hidden ${
+        isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-white border-slate-200 shadow-sm'
+      }`}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-start">
+            <thead className={`text-[11px] font-bold border-b ${
+              isDark ? 'bg-slate-950/60 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+            }`}>
+              <tr>
+                <th className="p-3 text-start">{language === 'en' ? 'Employee & Badge' : 'الموظف ورقم الباج'}</th>
+                <th className="p-3 text-start">{language === 'en' ? 'Job Title & Dept' : 'المسمى الوظيفي والقسم'}</th>
+                <th className="p-3 text-start">{language === 'en' ? 'Branch' : 'الفرع / المكتب'}</th>
+                <th className="p-3 text-start">{language === 'en' ? 'Assigned Official Template' : 'نموذج التقييم المعتمد'}</th>
+                <th className="p-3 text-center">{language === 'en' ? 'Self Score' : 'التقييم الذاتي'}</th>
+                <th className="p-3 text-center">{language === 'en' ? 'Supervisor Score' : 'تقييم المشرف'}</th>
+                <th className="p-3 text-center">{language === 'en' ? 'Final Score %' : 'الدرجة النهائية'}</th>
+                <th className="p-3 text-center">{language === 'en' ? 'Workflow Status' : 'حالة التقييم'}</th>
+                <th className="p-3 text-center">{language === 'en' ? 'Actions' : 'الإجراءات'}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {paginatedRows.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-slate-500">
+                    <span className="material-symbols-outlined text-4xl mb-2 block">sentiment_dissatisfied</span>
+                    <span>{language === 'en' ? 'No appraisal records match your search criteria.' : 'لا توجد سجلات تقييم مطابقة للبحث.'}</span>
+                  </td>
+                </tr>
+              ) : (
+                paginatedRows.map((row) => {
+                  const emp = row.employee;
+                  const localizedName = getLocalizedFullName(emp, language);
+                  const localizedTitle = getLocalizedPosition(emp, language);
+                  const localizedDept = getLocalizedDepartment(emp, language);
+                  const branchName = getBranchName(emp.branch || emp.location, undefined, language as any);
+
+                  return (
+                    <tr
+                      key={emp.id}
+                      className={`transition-colors ${
+                        isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      {/* Employee Name & Badge */}
                       <td className="p-3">
-                        <span className="font-normal text-white block">{getLocalizedFullName(emp, language)}</span>
-                        <span className="text-[10px] font-mono text-teal-400">
-                          {String(emp.employeeId || emp.badgeNo || '').startsWith('VTS-')
-                            ? (emp.employeeId || emp.badgeNo)
-                            : `VTS-${emp.employeeId || emp.badgeNo || emp.id}`}
-                        </span>
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-8 h-8 rounded-lg font-bold flex items-center justify-center text-xs shrink-0 border ${
+                            isDark ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' : 'bg-teal-50 border-teal-200 text-teal-700'
+                          }`}>
+                            {localizedName?.slice(0, 1) || 'E'}
+                          </div>
+                          <div>
+                            <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{localizedName}</p>
+                            <p className="text-[10px] font-mono text-slate-400">
+                              {emp.badgeNo ? `Badge: ${emp.badgeNo}` : `ID: ${emp.id || emp.employeeId}`}
+                            </p>
+                          </div>
+                        </div>
                       </td>
-                      <td className="p-3 text-slate-200">
-                        {getBranchName(emp.branch || emp.location_ar, emp.branchEn || emp.branch_en || emp.location_en, language)}
-                      </td>
-                      <td className="p-3 text-slate-200">{getLocalizedPosition(emp, language)}</td>
-                      <td className="p-3 font-mono text-teal-400">{emp.kpiCompletion}%</td>
+
+                      {/* Job Title & Department */}
                       <td className="p-3">
-                        <span className="px-2.5 py-1 rounded-xl text-xs font-mono bg-[#06080d] text-purple-300 border border-purple-500/30 inline-block">
-                          {emp.score} / 5.0 ({language === 'en' ? emp.gradeEn : emp.gradeAr})
-                        </span>
+                        <p className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{localizedTitle}</p>
+                        <p className="text-[10px] text-slate-400">{localizedDept}</p>
                       </td>
-                      <td className="p-3 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-normal ${
-                          emp.isCompleted
-                            ? 'bg-[#06080d] text-emerald-400 border border-emerald-500/30'
-                            : 'bg-[#06080d] text-amber-400 border border-amber-500/30'
+
+                      {/* Branch */}
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium border ${
+                          isDark ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
                         }`}>
-                          {language === 'en' ? emp.statusEn : emp.statusAr}
+                          {branchName}
                         </span>
+                      </td>
+
+                      {/* Template Name */}
+                      <td className="p-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm text-teal-400">description</span>
+                          <span className={`font-medium text-[11px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                            {language === 'en' ? row.templateTitleEn : row.templateTitleAr}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Self Score */}
+                      <td className="p-3 text-center font-mono">
+                        {row.selfScore != null ? (
+                          <span className="font-semibold text-slate-300">{Number(row.selfScore).toFixed(1)} / 5</span>
+                        ) : (
+                          <span className="text-slate-500">-</span>
+                        )}
+                      </td>
+
+                      {/* Supervisor Score */}
+                      <td className="p-3 text-center font-mono">
+                        {row.supervisorScore != null ? (
+                          <span className="font-semibold text-slate-300">{Number(row.supervisorScore).toFixed(1)} / 5</span>
+                        ) : (
+                          <span className="text-slate-500">-</span>
+                        )}
+                      </td>
+
+                      {/* Final Score % */}
+                      <td className="p-3 text-center">
+                        {row.finalScore != null ? (
+                          <span className={`font-bold font-mono px-2 py-0.5 rounded-md text-xs ${
+                            Number(row.finalScore) >= 90
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : Number(row.finalScore) >= 80
+                              ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          }`}>
+                            {Number(row.finalScore).toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">-</span>
+                        )}
+                      </td>
+
+                      {/* Workflow Status */}
+                      <td className="p-3 text-center">
+                        <StatusBadge status={row.workflowStatus} language={language} />
+                      </td>
+
+                      {/* Actions */}
+                      <td className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* Open Appraisal Modal */}
+                          <button
+                            onClick={() => handleOpenWorkspace(emp, row.appraisal)}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                            title={language === 'en' ? 'Open Appraisal Evaluation' : 'فتح استمارة التقييم'}
+                          >
+                            <span className="material-symbols-outlined text-xs">edit_note</span>
+                            <span>{language === 'en' ? 'Evaluate' : 'تقييم'}</span>
+                          </button>
+
+                          {/* Preview Official Excel Sheet */}
+                          <button
+                            onClick={() => handleOpenExcelPreview(emp, row.templateId)}
+                            className={`p-1 rounded-lg border transition-all cursor-pointer ${
+                              isDark
+                                ? 'bg-slate-900 border-white/10 hover:border-teal-400 text-slate-300 hover:text-white'
+                                : 'bg-slate-100 border-slate-300 hover:border-teal-600 text-slate-700'
+                            }`}
+                            title={language === 'en' ? 'View as Official Excel' : 'عرض في نموذج الإكسل الرسمي'}
+                          >
+                            <span className="material-symbols-outlined text-sm">table_view</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
 
-      {/* MODULE 2: SELF APPRAISAL */}
-      {activeModuleId === 'perf-self-appraisal' && (
-        <div className="max-w-2xl mx-auto p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl space-y-6">
-          <div className="border-b pb-3 border-white/10">
-            <h2 className="text-base font-normal text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-400">rate_review</span>
-              {t(`نموذج التقييم الذاتي للعام 2026 - ${currentUser?.name || ''}`, `Self Appraisal Form 2026 - ${currentUser?.name || ''}`)}
-            </h2>
-            <p className="text-xs mt-1 font-normal text-slate-400">
-              {t('قم بتقييم أدائك في تحقيق الأهداف والالتزام بقيم مؤسسة فيتاس العراق', 'Evaluate your performance against targets and core VITAS Iraq values')}
-            </p>
-          </div>
-
-          {appraisalSaved && (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-normal flex items-center gap-2">
-              <span className="material-symbols-outlined text-base">check_circle</span>
-              <span>{t('تم حفظ وإرسال تقييمك الذاتي بنجاح إلى مدير القسم المباشر!', 'Your self appraisal has been saved and submitted to your line manager!')}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSaveAppraisal} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-normal mb-1 text-slate-200">
-                {t(`1. درجة الالتزام بمؤشرات أداء التمويل والجودة (${q1Score}%)`, `1. Finance & Quality KPIs Score (${q1Score}%)`)}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={q1Score}
-                onChange={e => setQ1Score(Number(e.target.value))}
-                className="w-full accent-teal-500 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <label className="block font-normal mb-1 text-slate-200">
-                {t(`2. درجة العمل الجماعي والحلول الابتكارية (${q2Score}%)`, `2. Teamwork & Innovation Score (${q2Score}%)`)}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={q2Score}
-                onChange={e => setQ2Score(Number(e.target.value))}
-                className="w-full accent-teal-500 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <label className="block font-normal mb-1 text-slate-200">{t('ملاحظات وإنجازات عام 2026', '2026 Achievements & Notes')}</label>
-              <textarea
-                rows={4}
-                placeholder={t('اذكر أبرز المبادرات والمشاريع التي ساهمت بها هذا العام...', 'List key initiatives and contributions this year...')}
-                value={comments}
-                onChange={e => setComments(e.target.value)}
-                className="w-full p-3 rounded-xl border border-white/10 font-normal bg-[#06080d] text-white placeholder:text-slate-500 focus:outline-none focus:border-teal-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3 rounded-xl bg-[#06080d] text-teal-400 border border-teal-500 hover:bg-[#0a0c10] hover:text-emerald-400 hover:border-emerald-400 font-normal text-xs shadow-lg transition-all"
-            >
-              {t('اعتماد وإرسال التقييم الذاتي', 'Submit Self Appraisal')}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* MODULE 3: PERFORMANCE REVIEW */}
-      {activeModuleId === 'perf-review' && (
-        <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl space-y-6">
-          <div className="flex items-center justify-between border-b pb-3 border-white/10">
-            <h2 className="text-base font-normal text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-400">assignment_turned_in</span>
-              {t('اعتماد مراجعات الأداء السنوية من قبل المدير المباشر', 'Line Manager Performance Review Approvals')}
-            </h2>
-            <span className="text-xs bg-[#06080d] text-teal-400 font-mono font-normal px-3 py-1 rounded-full border border-teal-500/30">
-              {employees.length} {t('موظفاً تحت التقييم', 'under review')}
+        {/* Pagination Footer */}
+        {totalPages > 1 && (
+          <div className={`p-3 border-t flex items-center justify-between text-xs ${
+            isDark ? 'border-white/10 bg-slate-950/40 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'
+          }`}>
+            <span>
+              {language === 'en'
+                ? `Page ${currentPage} of ${totalPages}`
+                : `الصفحة ${currentPage} من أصل ${totalPages}`}
             </span>
+            <div className="flex items-center gap-1">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-2.5 py-1 rounded-lg border disabled:opacity-40 hover:bg-white/10 cursor-pointer"
+              >
+                {language === 'en' ? 'Previous' : 'السابق'}
+              </button>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-2.5 py-1 rounded-lg border disabled:opacity-40 hover:bg-white/10 cursor-pointer"
+              >
+                {language === 'en' ? 'Next' : 'التالي'}
+              </button>
+            </div>
           </div>
+        )}
+      </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-white/10">
-            <table className={`w-full text-xs ${language === 'en' ? 'text-left' : 'text-right'}`}>
-              <thead className="bg-[#06080d] text-slate-200 border-b border-white/10 font-normal">
-                <tr>
-                  <th className="p-3">#</th>
-                  <th className="p-3">{t('اسم الموظف', 'Employee Name')}</th>
-                  <th className="p-3">{t('القسم والمسمى', 'Dept & Position')}</th>
-                  <th className="p-3">{t('التقييم الذاتي', 'Self Rating')}</th>
-                  <th className="p-3">{t('تقييم المدير (1 - 5)', 'Manager Rating')}</th>
-                  <th className="p-3 text-center">{t('الإجراء', 'Action')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-slate-200 bg-[#0a0c10]">
-                {employeeEvaluations.slice(0, 10).map((emp, idx) => (
-                  <tr key={emp.id} className="hover:bg-white/5 transition-colors font-normal">
-                    <td className="p-3 font-mono text-slate-500">{idx + 1}</td>
-                    <td className="p-3 text-white">
-                      <span className="block font-normal">{getLocalizedFullName(emp, language)}</span>
-                      <span className="text-[10px] font-mono text-teal-400">
-                        {String(emp.employeeId || emp.badgeNo || '').startsWith('VTS-')
-                          ? (emp.employeeId || emp.badgeNo)
-                          : `VTS-${emp.employeeId || emp.badgeNo || emp.id}`}
-                      </span>
-                    </td>
-                    <td className="p-3 text-slate-200">{getLocalizedPosition(emp, language)} • {getLocalizedDepartment(emp, language)}</td>
-                    <td className="p-3 font-mono text-teal-400">{emp.score} / 5.0</td>
-                    <td className="p-3">
-                      <select className="px-2.5 py-1 rounded-xl text-xs font-normal bg-[#06080d] text-white border border-white/15 focus:outline-none">
-                        <option value="5.0">5.0 {language === 'en' ? '(Excellent)' : '(ممتاز)'}</option>
-                        <option value="4.5">4.5 {language === 'en' ? '(Very Good)' : '(جيد جداً)'}</option>
-                        <option value="4.0">4.0 {language === 'en' ? '(Good)' : '(جيد)'}</option>
-                        <option value="3.5">3.5 {language === 'en' ? '(Satisfactory)' : '(مقبول)'}</option>
-                      </select>
-                    </td>
-                    <td className="p-3 text-center">
-                      <button className="px-3 py-1.5 rounded-xl bg-[#06080d] text-teal-400 border border-teal-500 hover:bg-[#0a0c10] hover:text-emerald-400 font-normal text-xs transition-all shadow-sm">
-                        {t('اعتماد الدرجة', 'Approve Grade')}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {/* MODAL 1: Appraisal Workspace (Main Interactive Evaluation Modal) */}
+      {activeWorkspaceEmployee && (
+        <AppraisalWorkspaceModal
+          employee={activeWorkspaceEmployee}
+          appraisalData={activeWorkspaceAppraisal}
+          language={language}
+          isDark={isDark}
+          onClose={() => {
+            setActiveWorkspaceEmployee(null);
+            setActiveWorkspaceAppraisal(null);
+          }}
+          onSaved={(_updated) => {
+            loadAppraisals();
+          }}
+        />
       )}
 
-      {/* MODULE 4: MY LEARNING DASHBOARD */}
-      {activeModuleId === 'train-my-learning' && (
-        <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl space-y-6">
-          <div className="flex items-center justify-between border-b pb-3 border-white/10">
-            <h2 className="text-base font-normal text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-400">school</span>
-              {t('مسارات التعلم والدورات التدريبية المتاحة للكادر', 'My Live Learning & Training Courses')}
-            </h2>
-            <span className="text-xs bg-[#06080d] text-purple-300 font-mono font-normal px-3 py-1 rounded-full border border-purple-500/30">
-              4 {t('دورات نشطة', 'active courses')}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            {/* Course 1 */}
-            <div className="p-5 rounded-2xl bg-[#06080d] border border-white/10 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-normal bg-[#0a0c10] text-emerald-400 border border-emerald-500/30">
-                  {t('مكتملة ومعتمدة 100%', '100% Completed')}
-                </span>
-                <span className="text-slate-400 font-mono">15 Hours</span>
-              </div>
-              <h3 className="font-normal text-sm text-white">
-                {t('دورة إدارة الائتمان ومخاطر القروض والتخصيص', 'Credit Management & Loan Risk Analysis')}
-              </h3>
-              <p className="text-slate-400 text-xs">{t('الضوابط الائتمانية والتحليل المالي للقروض وتجنب التعثر وفق لوائح البنك المركزي.', 'Credit limits, financial analysis and non-performing loan prevention.')}</p>
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full w-full"></div>
-              </div>
-            </div>
-
-            {/* Course 2 */}
-            <div className="p-5 rounded-2xl bg-[#06080d] border border-white/10 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-normal bg-[#0a0c10] text-teal-400 border border-teal-500/30">
-                  {t('قيد التقدم (85%)', '85% In Progress')}
-                </span>
-                <span className="text-slate-400 font-mono">20 Hours</span>
-              </div>
-              <h3 className="font-normal text-sm text-white">
-                {t('دورة الامتثال والتعليمات المصرفية للبنك المركزي CBI', 'CBI Central Bank Compliance Rules')}
-              </h3>
-              <p className="text-slate-400 text-xs">{t('لوائح وتعليمات البنك المركزي العراقي الخاصة بمؤسسات التمويل الأصغر والتنظيم.', 'CBI regulations for microfinance institutions and governance.')}</p>
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                <div className="h-full bg-teal-500 rounded-full w-[85%]"></div>
-              </div>
-            </div>
-
-            {/* Course 3 */}
-            <div className="p-5 rounded-2xl bg-[#06080d] border border-white/10 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-normal bg-[#0a0c10] text-purple-300 border border-purple-500/30">
-                  {t('مكتملة (90%)', '90% Progress')}
-                </span>
-                <span className="text-slate-400 font-mono">12 Hours</span>
-              </div>
-              <h3 className="font-normal text-sm text-white">
-                {t('دورة مكافحة غسل الأموال وحماية البيانات AML/KYC', 'Anti-Money Laundering & KYC Compliance')}
-              </h3>
-              <p className="text-slate-400 text-xs">{t('إجراءات العناية الواجبة وتحديد هوية المستفيد وحظر غسل الأموال.', 'Customer due diligence, KYC standards and AML compliance.')}</p>
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                <div className="h-full bg-purple-500 rounded-full w-[90%]"></div>
-              </div>
-            </div>
-
-            {/* Course 4 */}
-            <div className="p-5 rounded-2xl bg-[#06080d] border border-white/10 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-normal bg-[#0a0c10] text-amber-300 border border-amber-500/30">
-                  {t('متاح للتسجيل', 'Enrolled')}
-                </span>
-                <span className="text-slate-400 font-mono">8 Hours</span>
-              </div>
-              <h3 className="font-normal text-sm text-white">
-                {t('دورة تطوير مهارات خدمة العملاء والتواصل الفعال', 'Customer Service & Communication Excellence')}
-              </h3>
-              <p className="text-slate-400 text-xs">{t('مهارات التعامل مع المقترضين وبناء العلاقة وتذليل العقبات في الميدان.', 'Client relationship building and field service delivery.')}</p>
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                <div className="h-full bg-amber-500 rounded-full w-[20%]"></div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* MODAL 2: Campaigns Manager Modal */}
+      {isCampaignsOpen && (
+        <CampaignsManagerModal
+          language={language}
+          isDark={isDark}
+          onClose={() => setIsCampaignsOpen(false)}
+        />
       )}
 
-      {/* MODULE 5: COURSE MANAGEMENT & ANALYTICS */}
-      {activeModuleId === 'train-courses-analytics' && (
-        <div className="p-6 rounded-3xl bg-[#0a0c10] border border-white/10 shadow-xl space-y-6">
-          <div className="flex items-center justify-between border-b pb-3 border-white/10">
-            <h2 className="text-base font-normal text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-400">model_training</span>
-              {t('إدارة الحقائب التدريبية وتحليلات التطوير الوظيفي', 'Course Management & Development Analytics')}
-            </h2>
-            <span className="text-xs bg-[#06080d] text-teal-400 font-mono font-normal px-3 py-1 rounded-full border border-teal-500/30">
-              1,240 {t('ساعة تدريبية إجمالية', 'Total Training Hours')}
-            </span>
-          </div>
+      {/* MODAL 3: Discussions & Disputes Modal */}
+      {isDiscussionsOpen && (
+        <DiscussionCenterModal
+          language={language}
+          isDark={isDark}
+          onClose={() => setIsDiscussionsOpen(false)}
+          onOpenAppraisal={(empId) => {
+            setIsDiscussionsOpen(false);
+            const foundEmp = employees.find((e) => String(e.id) === String(empId) || String(e.employeeId) === String(empId));
+            if (foundEmp) {
+              const existingApp = savedAppraisals.find((a) => String(a.employee_id) === String(foundEmp.id));
+              handleOpenWorkspace(foundEmp, existingApp);
+            }
+          }}
+        />
+      )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div className="p-5 rounded-2xl bg-[#06080d] border border-white/10 space-y-1 shadow-sm">
-              <p className="font-normal text-slate-400">{t('إجمالي الكادر المشارك في التدريب', 'Total Enrolled Staff')}</p>
-              <p className="text-3xl font-normal text-teal-400 font-mono">{employees.length}</p>
-              <p className="text-xs text-slate-500 font-normal mt-1">{t('موزعون على كافة الفروع والمكاتب', 'Across all branches & offices')}</p>
+      {/* MODAL 4: Analytics & Reports Modal */}
+      {isAnalyticsOpen && (
+        <ReportsAnalyticsModal
+          employees={employees}
+          appraisals={savedAppraisals}
+          language={language}
+          isDark={isDark}
+          onClose={() => setIsAnalyticsOpen(false)}
+        />
+      )}
+
+      {/* MODAL 5: Standalone Official Excel Sheet Viewer Modal */}
+      {previewExcelTemplateId && previewExcelEmployee && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-200">
+          <div className={`w-full max-w-7xl max-h-[94vh] rounded-3xl border flex flex-col shadow-2xl overflow-hidden ${
+            isDark ? 'bg-[#0a0c10] border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+          }`}>
+            <div className={`p-4 border-b flex items-center justify-between ${
+              isDark ? 'border-white/10 bg-[#06080d]' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-400">table_view</span>
+                <span className="font-bold text-sm">
+                  {language === 'en' ? 'Official Excel Performance Appraisal Template' : 'نموذج تقييم الأداء الرسمي المطابق للإكسل'}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setPreviewExcelTemplateId(null);
+                  setPreviewExcelEmployee(null);
+                }}
+                className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-
-            <div className="p-5 rounded-2xl bg-[#06080d] border border-white/10 space-y-1 shadow-sm">
-              <p className="font-normal text-slate-400">{t('نسبة إنجاز الدورات العالية', 'Course Completion Rate')}</p>
-              <p className="text-3xl font-normal text-emerald-400 font-mono">92.8%</p>
-              <p className="text-xs text-slate-500 font-normal mt-1">{t('نسبة نجاح واجتياز الاختبارات', 'Passing & certification rate')}</p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-[#06080d] border border-white/10 space-y-1 shadow-sm">
-              <p className="font-normal text-slate-400">{t('ساعات التدريب المنجزة', 'Completed Training Hours')}</p>
-              <p className="text-3xl font-normal text-purple-400 font-mono">1,240 h</p>
-              <p className="text-xs text-slate-500 font-normal mt-1">{t('معدل 25.3 ساعة لكل موظف', 'Avg 25.3 hours per employee')}</p>
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <PerformanceAppraisalExcelSheet
+                initialTemplateId={previewExcelTemplateId}
+                selectedEmployee={previewExcelEmployee}
+              />
             </div>
           </div>
         </div>

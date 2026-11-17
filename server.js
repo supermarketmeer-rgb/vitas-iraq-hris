@@ -46,6 +46,7 @@ import { registerTaxModuleRoutes } from './src/tax_module/server/taxRoutes.js';
 import { registerLebanonRegionalRoutes } from './database/lebanonRegionalRoutes.js';
 import { registerM365Routes } from './database/m365Routes.js';
 import { registerLocalServerSetupRoutes } from './database/localServerSetupRoutes.js';
+import { registerAppraisalRoutes } from './database/appraisalRoutes.js';
 
 import http from 'http';
 import https from 'https';
@@ -7005,6 +7006,9 @@ registerLebanonRegionalRoutes(app, query, executeCloudQuery);
 
 // Register Microsoft 365 & Outlook Email Integration Routes
 registerM365Routes(app, query, db);
+
+// Register Performance Appraisal Module Routes
+registerAppraisalRoutes(app, query, executeCloudQuery);
 
 // ============================================================
 // BIOMETRIC ATTENDANCE & SQL SERVER SYNC API ROUTES
