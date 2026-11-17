@@ -1660,6 +1660,7 @@ export const Category7PerformanceView: React.FC = () => {
               <PerformanceAppraisalExcelSheet
                 initialTemplateId={previewExcelTemplateId}
                 selectedEmployee={previewExcelEmployee}
+                employees={employees}
                 evaluationYear={currentEvaluationYear}
               />
             </div>

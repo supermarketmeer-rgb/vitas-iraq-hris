@@ -8,6 +8,7 @@ import { PerformanceAppraisalExcelSheet } from './PerformanceAppraisalExcelSheet
 import { StatusBadge } from './StatusBadge';
 import { SignaturePad } from './SignaturePad';
 import { api } from '../../api/client';
+import { useApp } from '../../context/AppContext';
 
 interface AppraisalWorkspaceModalProps {
   appraisalData?: any;
@@ -28,6 +29,7 @@ export const AppraisalWorkspaceModal: React.FC<AppraisalWorkspaceModalProps> = (
   onClose,
   onSaved,
 }) => {
+  const { employees = [] } = useApp();
   const evalYear = useMemo(() => {
     const val = evaluationYear || appraisalData?.evaluation_year;
     const parsed = typeof val === 'number' ? val : parseInt(String(val).replace(/\D/g, ''), 10);
@@ -340,8 +342,14 @@ export const AppraisalWorkspaceModal: React.FC<AppraisalWorkspaceModalProps> = (
               <PerformanceAppraisalExcelSheet 
                 initialTemplateId={selectedTemplateId}
                 selectedEmployee={employee}
-                employees={[employee]}
+                employees={employees.length > 0 ? employees : [employee]}
                 evaluationYear={evalYear}
+                initialScores={scores}
+                initialGoals={goals}
+                initialTrainings={trainings}
+                initialContractDecision={contractDecision}
+                initialRecommendations={recommendations}
+                onScoresChange={(newScores) => setScores(newScores)}
                 language={language}
               />
             </div>

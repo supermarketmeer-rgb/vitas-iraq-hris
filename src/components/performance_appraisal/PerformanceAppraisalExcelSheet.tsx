@@ -11,20 +11,58 @@ interface PerformanceAppraisalExcelSheetProps {
   selectedEmployee?: any;
   employees?: any[];
   evaluationYear?: number | string;
+  initialScores?: Record<string, { emp: number; mgr: number }>;
+  initialGoals?: Array<{ goal: string; weight: number; party: string }>;
+  initialTrainings?: Array<{ title: string; type: string; party: string }>;
+  initialContractDecision?: 'renew' | 'terminate' | null;
+  initialRecommendations?: string;
+  onScoresChange?: (scores: Record<string, { emp: number; mgr: number }>) => void;
   language?: string;
   onClose?: () => void;
 }
+
+const extractEmployeeData = (emp: any, allEmps: any[] = []) => {
+  if (!emp) return { name: '', pos: '', start: '', br: '', sup: '' };
+  const name = emp.fullNameAr || emp.fullName || emp.full_name_ar || emp.name || emp.name_ar || emp.full_name_en || '';
+  const pos = emp.jobTitle || emp.position_ar || emp.position || emp.job_title || emp.position_title || emp.position_en || '';
+  
+  const rawDate = emp.contractStartDate || emp.hireDate || emp.original_start_date || emp.contract_original_start || emp.hire_date || emp.contract_start_date || emp.startDate || emp.start_date || '';
+  const start = rawDate ? String(rawDate).split('T')[0] : '';
+  
+  const br = emp.branch || emp.location_ar || emp.location || emp.office_name || '';
+  
+  let sup = emp.supervisorName || emp.supervisor_name || emp.supervisor || emp.manager || emp.direct_manager || '';
+  if (!sup && Array.isArray(allEmps) && allEmps.length > 0 && br) {
+    const mgr = allEmps.find(e => 
+      (e.branch === br || e.location_ar === br || e.location === br) &&
+      (String(e.jobTitle || e.position || e.position_ar || '').includes('مدير') || String(e.jobTitle || e.position || '').toLowerCase().includes('manager')) &&
+      String(e.id) !== String(emp.id)
+    );
+    if (mgr) {
+      sup = `${mgr.fullName || mgr.fullNameAr || mgr.name} (${mgr.jobTitle || mgr.position || 'مدير الفرع'})`;
+    }
+  }
+  return { name, pos, start, br, sup };
+};
 
 export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelSheetProps> = ({
   initialTemplateId = 'pa-staff',
   selectedEmployee,
   employees = [],
   evaluationYear = 2026,
+  initialScores,
+  initialGoals,
+  initialTrainings,
+  initialContractDecision,
+  initialRecommendations,
+  onScoresChange,
   language = 'ar',
   onClose
 }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialTemplateId);
-  const [selectedEmpId, setSelectedEmpId] = useState<string>('');
+  const [selectedEmpId, setSelectedEmpId] = useState<string>(() => {
+    return String(selectedEmployee?.id || selectedEmployee?.employeeId || selectedEmployee?.employee_id || '');
+  });
   const [evalYear, setEvalYear] = useState<number>(() => {
     const parsed = typeof evaluationYear === 'number' ? evaluationYear : parseInt(String(evaluationYear).replace(/\D/g, ''), 10);
     return parsed || 2026;
@@ -47,37 +85,90 @@ export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelS
     return getFormattedAppraisalTitles(currentTemplate, evalYear);
   }, [currentTemplate, evalYear]);
 
-  // Employee Header fields
-  const [employeeName, setEmployeeName] = useState<string>('');
-  const [position, setPosition] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [branch, setBranch] = useState<string>('');
-  const [supervisorName, setSupervisorName] = useState<string>('');
+  // Employee Header fields auto-extracted from selectedEmployee
+  const initialEmpInfo = useMemo(() => extractEmployeeData(selectedEmployee, employees), [selectedEmployee, employees]);
+
+  const [employeeName, setEmployeeName] = useState<string>(initialEmpInfo.name);
+  const [position, setPosition] = useState<string>(initialEmpInfo.pos);
+  const [startDate, setStartDate] = useState<string>(initialEmpInfo.start);
+  const [branch, setBranch] = useState<string>(initialEmpInfo.br);
+  const [supervisorName, setSupervisorName] = useState<string>(initialEmpInfo.sup);
+
+  // Sync when selectedEmployee prop updates
+  useEffect(() => {
+    if (selectedEmployee) {
+      const info = extractEmployeeData(selectedEmployee, employees);
+      setEmployeeName(info.name);
+      setPosition(info.pos);
+      setStartDate(info.start);
+      setBranch(info.br);
+      setSupervisorName(info.sup);
+      setSelectedEmpId(String(selectedEmployee.id || selectedEmployee.employeeId || selectedEmployee.employee_id || ''));
+    }
+  }, [selectedEmployee, employees]);
 
   // Scores state: key = `${sectionIndex}_${itemIndex}`, value = { emp: number, mgr: number }
-  const [scores, setScores] = useState<Record<string, { emp: number; mgr: number }>>({});
+  const [scores, setScores] = useState<Record<string, { emp: number; mgr: number }>>(initialScores || {});
+
+  useEffect(() => {
+    if (initialScores && Object.keys(initialScores).length > 0) {
+      setScores(initialScores);
+    }
+  }, [initialScores]);
 
   // Contract recommendation
-  const [contractDecision, setContractDecision] = useState<'renew' | 'terminate' | null>('renew');
+  const [contractDecision, setContractDecision] = useState<'renew' | 'terminate' | null>(initialContractDecision || 'renew');
+
+  useEffect(() => {
+    if (initialContractDecision) {
+      setContractDecision(initialContractDecision);
+    }
+  }, [initialContractDecision]);
 
   // Goals
-  const [goals, setGoals] = useState<Array<{ goal: string; weight: number; party: string }>>([
-    { goal: '', weight: 0, party: 'الموظف:' },
-    { goal: '', weight: 0, party: 'المشرف المباشر:' },
-    { goal: '', weight: 0, party: 'الموظف:' },
-    { goal: '', weight: 0, party: 'المشرف المباشر:' }
-  ]);
+  const [goals, setGoals] = useState<Array<{ goal: string; weight: number; party: string }>>(
+    initialGoals && initialGoals.length > 0
+      ? initialGoals
+      : [
+          { goal: '', weight: 0, party: 'الموظف:' },
+          { goal: '', weight: 0, party: 'المشرف المباشر:' },
+          { goal: '', weight: 0, party: 'الموظف:' },
+          { goal: '', weight: 0, party: 'المشرف المباشر:' }
+        ]
+  );
+
+  useEffect(() => {
+    if (initialGoals && initialGoals.length > 0) {
+      setGoals(initialGoals);
+    }
+  }, [initialGoals]);
 
   // Trainings
-  const [trainings, setTrainings] = useState<Array<{ title: string; type: string; party: string }>>([
-    { title: '', type: 'له علاقة بالعمل', party: 'الموظف:' },
-    { title: '', type: 'له علاقة بالمهارات', party: 'المشرف المباشر:' },
-    { title: '', type: 'له علاقة بالمسار الوظيفي', party: 'الموظف:' },
-    { title: '', type: 'له علاقة بالعمل', party: 'المشرف المباشر:' }
-  ]);
+  const [trainings, setTrainings] = useState<Array<{ title: string; type: string; party: string }>>(
+    initialTrainings && initialTrainings.length > 0
+      ? initialTrainings
+      : [
+          { title: '', type: 'له علاقة بالعمل', party: 'الموظف:' },
+          { title: '', type: 'له علاقة بالمهارات', party: 'المشرف المباشر:' },
+          { title: '', type: 'له علاقة بالمسار الوظيفي', party: 'الموظف:' },
+          { title: '', type: 'له علاقة بالعمل', party: 'المشرف المباشر:' }
+        ]
+  );
+
+  useEffect(() => {
+    if (initialTrainings && initialTrainings.length > 0) {
+      setTrainings(initialTrainings);
+    }
+  }, [initialTrainings]);
 
   // Supervisor Recommendations
-  const [recommendations, setRecommendations] = useState<string>('');
+  const [recommendations, setRecommendations] = useState<string>(initialRecommendations || '');
+
+  useEffect(() => {
+    if (initialRecommendations) {
+      setRecommendations(initialRecommendations);
+    }
+  }, [initialRecommendations]);
 
   // Signatures
   const [empSignatureDate, setEmpSignatureDate] = useState<string>('');
@@ -88,26 +179,31 @@ export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelS
   const handleSelectEmployee = (empId: string) => {
     setSelectedEmpId(empId);
     if (!empId) return;
-    const emp = employees.find(e => String(e.id) === String(empId) || String(e.employeeId) === String(empId));
+    const emp = employees.find(e => String(e.id) === String(empId) || String(e.employeeId) === String(empId) || String(e.employee_id) === String(empId));
     if (emp) {
-      setEmployeeName(emp.fullName || emp.fullNameAr || emp.name || emp.name_ar || '');
-      setPosition(emp.jobTitle || emp.position || emp.position_ar || '');
-      setStartDate(emp.hireDate || emp.contractStartDate || emp.start_date || '');
-      setBranch(emp.branch || emp.location || '');
-      setSupervisorName(emp.supervisorName || emp.supervisor_name || '');
+      const info = extractEmployeeData(emp, employees);
+      setEmployeeName(info.name);
+      setPosition(info.pos);
+      setStartDate(info.start);
+      setBranch(info.br);
+      setSupervisorName(info.sup);
     }
   };
 
   // Score updater
   const updateScore = (secIdx: number, itemIdx: number, role: 'emp' | 'mgr', val: number) => {
     const key = `${secIdx}_${itemIdx}`;
-    setScores(prev => ({
-      ...prev,
-      [key]: {
-        emp: role === 'emp' ? val : (prev[key]?.emp || 0),
-        mgr: role === 'mgr' ? val : (prev[key]?.mgr || 0)
-      }
-    }));
+    setScores(prev => {
+      const next = {
+        ...prev,
+        [key]: {
+          emp: role === 'emp' ? val : (prev[key]?.emp || 0),
+          mgr: role === 'mgr' ? val : (prev[key]?.mgr || 0)
+        }
+      };
+      onScoresChange?.(next);
+      return next;
+    });
   };
 
   // Compute Section Scores & Totals
