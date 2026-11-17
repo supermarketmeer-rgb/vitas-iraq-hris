@@ -1,28 +1,51 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   PERFORMANCE_APPRAISAL_TEMPLATES, 
-  PerformanceAppraisalTemplate 
+  PerformanceAppraisalTemplate,
+  getFormattedAppraisalTitles
 } from '../../data/performanceAppraisalTemplates';
 import ExcelJS from 'exceljs';
 
 interface PerformanceAppraisalExcelSheetProps {
+  initialTemplateId?: string;
+  selectedEmployee?: any;
   employees?: any[];
+  evaluationYear?: number | string;
   language?: string;
   onClose?: () => void;
 }
 
 export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelSheetProps> = ({
+  initialTemplateId = 'pa-staff',
+  selectedEmployee,
   employees = [],
+  evaluationYear = 2026,
   language = 'ar',
   onClose
 }) => {
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('pa-staff');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialTemplateId);
   const [selectedEmpId, setSelectedEmpId] = useState<string>('');
+  const [evalYear, setEvalYear] = useState<number>(() => {
+    const parsed = typeof evaluationYear === 'number' ? evaluationYear : parseInt(String(evaluationYear).replace(/\D/g, ''), 10);
+    return parsed || 2026;
+  });
+
+  useEffect(() => {
+    if (evaluationYear) {
+      const parsed = typeof evaluationYear === 'number' ? evaluationYear : parseInt(String(evaluationYear).replace(/\D/g, ''), 10);
+      if (parsed) setEvalYear(parsed);
+    }
+  }, [evaluationYear]);
 
   // Active template
   const currentTemplate = useMemo(() => {
     return PERFORMANCE_APPRAISAL_TEMPLATES.find(t => t.id === selectedTemplateId) || PERFORMANCE_APPRAISAL_TEMPLATES[0];
   }, [selectedTemplateId]);
+
+  // Dynamic formatted titles based on evaluation year
+  const dynamicTitles = useMemo(() => {
+    return getFormattedAppraisalTitles(currentTemplate, evalYear);
+  }, [currentTemplate, evalYear]);
 
   // Employee Header fields
   const [employeeName, setEmployeeName] = useState<string>('');
@@ -229,6 +252,9 @@ export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelS
       await wb.xlsx.load(arrayBuffer);
       const ws = wb.worksheets[0];
 
+      // Update Header Title in Excel sheet (A1 merged) with dynamic evaluation year
+      ws.getCell('A1').value = `${dynamicTitles.titleEn}\n ${dynamicTitles.titleAr}`;
+
       // Populate employee details
       if (employeeName) ws.getCell('E3').value = employeeName;
       if (position) ws.getCell('E4').value = position;
@@ -394,7 +420,7 @@ export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelS
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-mono">
-                      {tmpl.defaultYear}
+                      {dynamicTitles.fyTag}
                     </span>
                     {isSelected && (
                       <span className="text-teal-600 dark:text-teal-400 flex items-center text-xs font-bold gap-0.5">
@@ -404,7 +430,7 @@ export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelS
                     )}
                   </div>
                   <h4 className="text-xs font-black text-slate-900 dark:text-white mt-1 truncate">
-                    {tmpl.titleAr}
+                    {getFormattedAppraisalTitles(tmpl, evalYear).titleAr}
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-mono">
                     {tmpl.filename}
@@ -415,8 +441,39 @@ export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelS
           })}
         </div>
 
+        {/* Dynamic Evaluation Year Selector Bar */}
+        <div className="mt-4 pt-3.5 border-t border-slate-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-3 bg-teal-500/5 p-3 rounded-xl border border-teal-500/20">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-lg">event</span>
+            <div>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                {language === 'ar' ? 'سنة إطلاق التقييم (Evaluation Year):' : 'Appraisal Launch Year:'}
+              </span>
+              <span className="text-xs text-teal-600 dark:text-teal-400 font-bold font-mono ms-2 px-2 py-0.5 rounded-md bg-teal-500/10 border border-teal-500/30">
+                {dynamicTitles.fyTag} ({evalYear})
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {[2024, 2025, 2026, 2027].map((yr) => (
+              <button
+                key={yr}
+                type="button"
+                onClick={() => setEvalYear(yr)}
+                className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                  evalYear === yr
+                    ? 'bg-teal-600 text-white shadow-xs scale-105'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 hover:border-teal-400'
+                }`}
+              >
+                FY-{String(yr).slice(-2)} ({yr})
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Employee Auto-fill Bar */}
-        <div className="mt-4 pt-3.5 border-t border-slate-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-white/[0.02] p-3 rounded-xl">
+        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-white/[0.02] p-3 rounded-xl border border-slate-200 dark:border-white/10">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-base">person_search</span>
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
@@ -452,10 +509,10 @@ export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelS
         {/* ROW 1: EXCEL TITLE BOX */}
         <div className="border-2 border-blue-800 p-2.5 text-center mb-3 bg-white">
           <h1 className="text-blue-700 font-bold text-sm sm:text-base leading-snug">
-            {currentTemplate.titleEn}
+            {dynamicTitles.titleEn}
           </h1>
           <h2 className="text-blue-700 font-bold text-sm sm:text-base leading-snug mt-0.5">
-            {currentTemplate.titleAr}
+            {dynamicTitles.titleAr}
           </h2>
         </div>
 

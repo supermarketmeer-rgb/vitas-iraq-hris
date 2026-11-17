@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   PERFORMANCE_APPRAISAL_TEMPLATES, 
-  PerformanceAppraisalTemplate 
+  PerformanceAppraisalTemplate,
+  getFormattedAppraisalTitles
 } from '../../data/performanceAppraisalTemplates';
 import { PerformanceAppraisalExcelSheet } from './PerformanceAppraisalExcelSheet';
 import { StatusBadge } from './StatusBadge';
@@ -11,6 +12,7 @@ import { api } from '../../api/client';
 interface AppraisalWorkspaceModalProps {
   appraisalData?: any;
   employee: any;
+  evaluationYear?: number | string;
   language?: string;
   isDark?: boolean;
   onClose: () => void;
@@ -20,11 +22,17 @@ interface AppraisalWorkspaceModalProps {
 export const AppraisalWorkspaceModal: React.FC<AppraisalWorkspaceModalProps> = ({
   appraisalData,
   employee,
+  evaluationYear = 2026,
   language = 'ar',
   isDark = true,
   onClose,
   onSaved,
 }) => {
+  const evalYear = useMemo(() => {
+    const val = evaluationYear || appraisalData?.evaluation_year;
+    const parsed = typeof val === 'number' ? val : parseInt(String(val).replace(/\D/g, ''), 10);
+    return parsed || 2026;
+  }, [evaluationYear, appraisalData]);
   // Determine default template based on job title / category
   const defaultTemplateId = useMemo(() => {
     if (appraisalData?.template_id) return appraisalData.template_id;
@@ -330,7 +338,10 @@ export const AppraisalWorkspaceModal: React.FC<AppraisalWorkspaceModalProps> = (
                 <span className="text-teal-400 font-mono font-bold">{currentTemplate.filename}</span>
               </div>
               <PerformanceAppraisalExcelSheet 
+                initialTemplateId={selectedTemplateId}
+                selectedEmployee={employee}
                 employees={[employee]}
+                evaluationYear={evalYear}
                 language={language}
               />
             </div>
@@ -344,21 +355,17 @@ export const AppraisalWorkspaceModal: React.FC<AppraisalWorkspaceModalProps> = (
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-sm">assignment</span>
-                      {language === 'ar' ? 'نموذج التقييم المعتمد (مرتبط بصفحة الإعدادات Templates):' : 'Appraisal Template (Linked to Settings Templates):'}
+                      {language === 'ar' ? 'نموذج التقييم وسنة الإطلاق المعتمدة:' : 'Appraisal Template & Launch Year:'}
                     </span>
-                    <a
-                      href={currentTemplate.downloadUrl}
-                      download={currentTemplate.filename}
-                      className="text-[11px] font-bold text-teal-500 hover:text-teal-400 flex items-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-sm">download</span>
-                      <span>{language === 'ar' ? 'تنزيل الإكسل الأصلي' : 'Download Original Excel'}</span>
-                    </a>
+                    <span className="text-xs font-bold font-mono px-2.5 py-0.5 rounded-md bg-teal-500/10 text-teal-400 border border-teal-500/30">
+                      FY-{String(evalYear).slice(-2)} ({evalYear})
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {PERFORMANCE_APPRAISAL_TEMPLATES.map((tmpl) => {
                       const isSelected = tmpl.id === selectedTemplateId;
+                      const formatted = getFormattedAppraisalTitles(tmpl, evalYear);
                       return (
                         <button
                           key={tmpl.id}
@@ -370,8 +377,8 @@ export const AppraisalWorkspaceModal: React.FC<AppraisalWorkspaceModalProps> = (
                               : 'bg-white dark:bg-[#06080d] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                           }`}
                         >
-                          <div className="text-[11px] font-bold truncate">{tmpl.titleAr}</div>
-                          <div className="text-[10px] font-mono text-slate-500 truncate">{tmpl.defaultYear}</div>
+                          <div className="text-[11px] font-bold truncate">{formatted.titleAr}</div>
+                          <div className="text-[10px] font-mono text-slate-500 truncate">{formatted.fyTag} ({evalYear})</div>
                         </button>
                       );
                     })}

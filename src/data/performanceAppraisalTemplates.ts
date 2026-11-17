@@ -43,6 +43,19 @@ export interface PerformanceAppraisalTemplate {
   defaultTrainings: TrainingRow[];
 }
 
+export function getFormattedAppraisalTitles(template: PerformanceAppraisalTemplate, year: number | string = 2026) {
+  const yrNum = typeof year === 'number' ? year : (parseInt(String(year).replace(/\D/g, ''), 10) || 2026);
+  const shortYear = String(yrNum).slice(-2);
+  const fyTag = `FY-${shortYear}`;
+  
+  // Cleanly replace any legacy FY tags (e.g. FY-24, FY-25, (FY-24), etc.)
+  const titleEn = template.titleEn.replace(/\(?FY-?\d+\s*\)?/gi, `(${fyTag})`).trim();
+  const titleAr = template.titleAr.replace(/\(?FY-?\d+\s*\)?/gi, `(${fyTag})`).trim();
+  const fullTitle = `${titleEn}\n ${fyTag} ${titleAr.replace(`(${fyTag})`, '').trim()} (${fyTag})`;
+  
+  return { titleEn, titleAr, fullTitle, fyTag, year: yrNum };
+}
+
 export const PERFORMANCE_APPRAISAL_TEMPLATES: PerformanceAppraisalTemplate[] = [
   {
     "id": "pa-maintenance-cleaner",

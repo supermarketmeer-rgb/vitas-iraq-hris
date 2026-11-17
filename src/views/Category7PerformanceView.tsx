@@ -2,7 +2,11 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { getBranchName } from '../utils/branchHelper';
 import { api } from '../api/client';
-import { PERFORMANCE_APPRAISAL_TEMPLATES, PerformanceAppraisalTemplate } from '../data/performanceAppraisalTemplates';
+import { 
+  PERFORMANCE_APPRAISAL_TEMPLATES, 
+  PerformanceAppraisalTemplate,
+  getFormattedAppraisalTitles
+} from '../data/performanceAppraisalTemplates';
 import { AppraisalWorkspaceModal } from '../components/performance_appraisal/AppraisalWorkspaceModal';
 import { CampaignsManagerModal } from '../components/performance_appraisal/CampaignsManagerModal';
 import { DiscussionCenterModal } from '../components/performance_appraisal/DiscussionCenterModal';
@@ -102,6 +106,7 @@ export const Category7PerformanceView: React.FC = () => {
   // Real Appraisals from DB / State
   const [savedAppraisals, setSavedAppraisals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentEvaluationYear, setCurrentEvaluationYear] = useState<number>(2026);
 
   // Modals state
   const [activeWorkspaceEmployee, setActiveWorkspaceEmployee] = useState<any | null>(null);
@@ -192,10 +197,17 @@ export const Category7PerformanceView: React.FC = () => {
     targetDept: 'الكل'
   });
 
-  // Load Appraisals from Backend API
+  // Load Appraisals & Active Campaigns from Backend API
   const loadAppraisals = async () => {
     try {
       setLoading(true);
+      const campRes: any = await api.getCampaigns();
+      if (Array.isArray(campRes) && campRes.length > 0) {
+        const activeCamp = campRes.find((c: any) => c.status === 'Active') || campRes[0];
+        if (activeCamp?.evaluation_year) {
+          setCurrentEvaluationYear(Number(activeCamp.evaluation_year));
+        }
+      }
       const res = await api.getAppraisals();
       if (res && res.success && Array.isArray(res.data)) {
         setSavedAppraisals(res.data);
@@ -245,22 +257,24 @@ export const Category7PerformanceView: React.FC = () => {
 
       const templateId = existing?.template_id || getTemplateForEmployee(emp);
       const templateObj = PERFORMANCE_APPRAISAL_TEMPLATES.find((t) => t.id === templateId) || PERFORMANCE_APPRAISAL_TEMPLATES[0];
+      const dynamicTitles = getFormattedAppraisalTitles(templateObj, currentEvaluationYear);
 
       return {
         employee: emp,
         appraisal: existing || null,
         templateId,
-        templateTitleAr: templateObj.titleAr,
-        templateTitleEn: templateObj.titleEn,
+        templateTitleAr: dynamicTitles.titleAr,
+        templateTitleEn: dynamicTitles.titleEn,
+        fyTag: dynamicTitles.fyTag,
         templateObj,
         workflowStatus: existing?.workflow_status || 'Draft',
         selfScore: existing?.self_overall_score ?? null,
         supervisorScore: existing?.supervisor_overall_score ?? null,
         finalScore: existing?.final_score ?? null,
-        campaignCode: existing?.campaign_code || 'CMP-2026-FY25'
+        campaignCode: existing?.campaign_code || `CMP-${currentEvaluationYear}-FY${String(currentEvaluationYear).slice(-2)}`
       };
     });
-  }, [employees, savedAppraisals]);
+  }, [employees, savedAppraisals, currentEvaluationYear]);
 
   // Current logged in employee record for Self Appraisal
   const currentSelfEmployee = useMemo(() => {
@@ -950,7 +964,7 @@ export const Category7PerformanceView: React.FC = () => {
                   isDark ? 'bg-teal-950/30 border-teal-500/30 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-800'
                 }`}>
                   <span className="material-symbols-outlined text-sm">verified</span>
-                  <span>{language === 'en' ? currentSelfTemplate.titleEn : currentSelfTemplate.titleAr}</span>
+                  <span>{language === 'en' ? getFormattedAppraisalTitles(currentSelfTemplate, currentEvaluationYear).titleEn : getFormattedAppraisalTitles(currentSelfTemplate, currentEvaluationYear).titleAr}</span>
                 </div>
 
                 <button
@@ -1567,6 +1581,7 @@ export const Category7PerformanceView: React.FC = () => {
         <AppraisalWorkspaceModal
           employee={activeWorkspaceEmployee}
           appraisalData={activeWorkspaceAppraisal}
+          evaluationYear={currentEvaluationYear}
           language={language}
           isDark={isDark}
           onClose={() => {
@@ -1645,6 +1660,7 @@ export const Category7PerformanceView: React.FC = () => {
               <PerformanceAppraisalExcelSheet
                 initialTemplateId={previewExcelTemplateId}
                 selectedEmployee={previewExcelEmployee}
+                evaluationYear={currentEvaluationYear}
               />
             </div>
           </div>
