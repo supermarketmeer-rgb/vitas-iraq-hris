@@ -14,6 +14,7 @@ import { TrainingTable } from '../components/TrainingTable';
 import { WarningTable } from '../components/WarningTable';
 import { Microsoft365Settings } from '../components/m365/Microsoft365Settings';
 import { numberToArabicWords } from '../utils/numberToArabicWords';
+import { PerformanceAppraisalExcelSheet } from '../components/performance_appraisal/PerformanceAppraisalExcelSheet';
 
 interface TabConfig {
   id: string;
@@ -2527,6 +2528,7 @@ export const SettingsSecurityView: React.FC = () => {
             clausesToast={clausesToast}
             language={language}
             t={t}
+            employees={employees}
             onAddContractType={() => {
               modalTargetTab.current = 'contract-types';
               setShowAddModal(true);
@@ -3193,6 +3195,7 @@ interface TemplatesSectionProps {
   onAddContractType: () => void;
   onEditContractType: (item: DataItem) => void;
   onDeleteContractType: (id: number | string) => void;
+  employees?: any[];
 }
 
 const TemplatesSection: React.FC<TemplatesSectionProps> = ({
@@ -3210,16 +3213,62 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
   t,
   onAddContractType,
   onEditContractType,
-  onDeleteContractType
+  onDeleteContractType,
+  employees = []
 }) => {
+  const [templateSubTab, setTemplateSubTab] = useState<'appraisals' | 'contracts'>('appraisals');
+
   return (
     <div className="space-y-6">
-      {clausesToast && (
-        <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
-          <span className="material-symbols-outlined text-base">check_circle</span>
-          <span>{clausesToast}</span>
-        </div>
-      )}
+      {/* Category Sub-Tabs Navigation */}
+      <div className="flex items-center gap-3 border-b border-slate-200 dark:border-white/10 pb-3 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setTemplateSubTab('appraisals')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+            templateSubTab === 'appraisals'
+              ? 'bg-gradient-to-r from-teal-600 to-teal-500 text-white shadow-md shadow-teal-500/25 ring-2 ring-teal-500/30'
+              : 'bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
+          }`}
+        >
+          <span className="material-symbols-outlined text-base">rate_review</span>
+          <span>{language === 'ar' ? 'نماذج تقييم الأداء السنوي (Performance Appraisal)' : 'Performance Appraisal Templates'}</span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+            templateSubTab === 'appraisals' ? 'bg-white/20 text-white' : 'bg-teal-500/20 text-teal-700 dark:text-teal-400'
+          }`}>
+            3 {language === 'ar' ? 'نماذج إكسل' : 'Excel Templates'}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTemplateSubTab('contracts')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+            templateSubTab === 'contracts'
+              ? 'bg-gradient-to-r from-teal-600 to-teal-500 text-white shadow-md shadow-teal-500/25 ring-2 ring-teal-500/30'
+              : 'bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
+          }`}
+        >
+          <span className="material-symbols-outlined text-base">gavel</span>
+          <span>{language === 'ar' ? 'قوالب العقود والبنود القانونية (Contracts)' : 'Employment Contract Templates'}</span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+            templateSubTab === 'contracts' ? 'bg-white/20 text-white' : 'bg-slate-500/20 text-slate-700 dark:text-slate-400'
+          }`}>
+            {contractTypes.length}
+          </span>
+        </button>
+      </div>
+
+      {templateSubTab === 'appraisals' ? (
+        <PerformanceAppraisalExcelSheet employees={employees} language={language} />
+      ) : (
+        <>
+          {clausesToast && (
+            <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
+              <span className="material-symbols-outlined text-base">check_circle</span>
+              <span>{clausesToast}</span>
+            </div>
+          )}
       <h3 className="text-sm font-bold text-slate-900 dark:text-[#e2e8f0] flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-teal-700 dark:text-teal-400">description</span>
@@ -3601,6 +3650,8 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
             </button>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
