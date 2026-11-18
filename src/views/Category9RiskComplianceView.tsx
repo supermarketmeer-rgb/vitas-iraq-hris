@@ -179,36 +179,54 @@ export const Category9RiskComplianceView: React.FC = () => {
   const systemPolicies = useMemo(() => {
     const s = appSettings || {};
 
-    const annualLeaveDays = s.annual_leave_days_default || s.annual_leave_balance || '20';
-    const sickLeaveDays = s.sick_leave_days_default || s.max_sick_leave || '30';
+    const annualLeaveDays = s.annual_leave_days_default || s.annual_leave_balance || '21';
+    const sickLeaveDays = s.sick_leave_days_default || s.max_sick_leave || '14';
     const marriageLeave = s.marriage_leave_limit || '5';
-    const maternityLeave = s.maternity_leave_limit || '72';
-    const emergencyLeave = s.emergency_leave_limit || '4';
-    const bereavementLeave = s.bereavement_indirect_leave_limit || '3';
-    const unpaidLeave = s.unpaid_leave_limit || '30';
+    const maternityLeave = s.maternity_leave_limit || '98';
+    const emergencyLeave = s.emergency_leave_limit || '0';
+    const bereavementLeave = s.bereavement_indirect_leave_limit || '1';
+    const unpaidLeave = s.unpaid_leave_limit || '0';
 
     const workingHours = s.working_hours_per_day || '8';
     const workingDays = s.working_days_per_month || '22';
-    const thursdayEnd = s.thursday_work_hours_end || '15:00';
+    const thursdayEnd = s.thursday_work_hours_end || '13:00';
     const overtimeRate = s.overtime_rate_multiplier || '1.5';
-    const weekendFri = s.weekend_friday === '0' ? 'عمل' : 'عطلة رسمية';
-    const weekendSat = s.weekend_saturday === '0' ? 'عمل' : 'عطلة رسمية';
+    const weekendFri = (s.weekend_friday === '0' || s.weekend_friday === 'false') ? 'عمل' : 'عطلة رسمية';
+    const weekendSat = (s.weekend_saturday === '0' || s.weekend_saturday === 'false') ? 'عمل' : 'عطلة رسمية';
 
-    const transAllowance = s.transportation_allowance_default ? `${Number(s.transportation_allowance_default).toLocaleString()} د.ع` : '100,000 د.ع';
-    const houseAllowance = s.housing_allowance_default ? `${Number(s.housing_allowance_default).toLocaleString()} د.ع` : '150,000 د.ع';
-    const childAllowance = s.child_allowance_default ? `${Number(s.child_allowance_default).toLocaleString()} د.ع` : '25,000 د.ع';
-    const marriageAllowance = s.marriage_allowance_default ? `${Number(s.marriage_allowance_default).toLocaleString()} د.ع` : '50,000 د.ع';
-    const certMaster = s.certificate_allowance_master ? `${Number(s.certificate_allowance_master).toLocaleString()} د.ع` : '150,000 د.ع';
-    const certBach = s.certificate_allowance_bachelar ? `${Number(s.certificate_allowance_bachelar).toLocaleString()} د.ع` : '100,000 د.ع';
-    const certDip = s.certificate_allowance_diplome ? `${Number(s.certificate_allowance_diplome).toLocaleString()} د.ع` : '50,000 د.ع';
+    const fxRate = Number(s.usd_to_iqd_rate) || 1500;
+    const curr = s.currency || 'IQD';
+
+    // Helper to format allowances dynamically checking configured currency and converting USD to IQD
+    const formatAllowance = (rawVal: any, currencySetting: string | undefined, defaultCurrency = 'IQD') => {
+      const num = parseFloat(rawVal !== undefined && rawVal !== null && rawVal !== '' ? String(rawVal) : '0') || 0;
+      const currency = (currencySetting || defaultCurrency).toUpperCase();
+
+      if (num === 0) {
+        return '0 د.ع';
+      }
+
+      if (currency === 'USD') {
+        const iqdEq = Math.round(num * fxRate).toLocaleString();
+        return `$${num} (${iqdEq} د.ع)`;
+      } else {
+        return `${num.toLocaleString()} د.ع`;
+      }
+    };
+
+    const transAllowance = formatAllowance(s.transportation_allowance_default, s.transportation_allowance_currency, 'IQD');
+    const houseAllowance = formatAllowance(s.housing_allowance_default, s.housing_allowance_currency, 'IQD');
+    const childAllowance = formatAllowance(s.child_allowance_default, s.child_allowance_currency, 'USD');
+    const childLoanOfficerAllowance = formatAllowance(s.child_allowance_loan_officer_default, s.child_allowance_loan_officer_currency, 'USD');
+    const marriageAllowance = formatAllowance(s.marriage_allowance_default, s.marriage_allowance_currency, 'USD');
+    const certMaster = formatAllowance(s.certificate_allowance_master, s.certificate_allowance_currency, 'USD');
+    const certBach = formatAllowance(s.certificate_allowance_bachelar, s.certificate_allowance_currency, 'USD');
+    const certDip = formatAllowance(s.certificate_allowance_diplome, s.certificate_allowance_currency, 'USD');
 
     const ssCompany = s.social_security_company_share || '12';
     const ssEmployee = s.social_security_employee_share || '5';
-    const ssTotal = s.social_security_rate_default || '17';
+    const ssTotal = (Number(ssCompany) + Number(ssEmployee)) || Number(s.social_security_rate_default) || 17;
     const insDeduction = s.insurance_deduction_default ? `${Number(s.insurance_deduction_default).toLocaleString()} د.ع` : '10,000 د.ع';
-
-    const fxRate = s.usd_to_iqd_rate || '1310';
-    const curr = s.currency || 'IQD';
 
     const builtIn: any[] = [
       {
@@ -279,7 +297,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         chapters: [
           {
             title: 'الفصل الأول: الهيكل العام للبدلات المعتمدة',
-            content: `تعتمد مؤسسة فيتاس العراق جدولاً موحداً للبدلات الشهرية الثابتة تشمل بدل النقل والانتقال (${transAllowance}) وبدل السكن (${houseAllowance}) وبدل الإعالة للأطفال (${childAllowance}) لكل طفل مستحق.`
+            content: `تعتمد مؤسسة فيتاس العراق جدولاً موحداً للبدلات الشهرية الثابتة تشمل بدل النقل والانتقال (${transAllowance}) وبدل السكن (${houseAllowance}) وبدل الإعالة للأطفال (${childAllowance}) لكل طفل مستحق (ولمسؤولي الإقراض: ${childLoanOfficerAllowance || childAllowance}).`
           },
           {
             title: 'الفصل الثاني: مخصصات التحصيل الدراسي والشهادات',
@@ -291,7 +309,7 @@ export const Category9RiskComplianceView: React.FC = () => {
           },
           {
             title: 'الفصل الرابع: مواعيد الصرف والتسوية المالية',
-            content: 'تدرج كافة البدلات المستحقة آلياً ضمن كشف الراتب الإجمالي وتصرف مع نهاية كل شهر ميلادي عبر الحسابات المصرفية الموطنة للموظفين.'
+            content: `تدرج كافة البدلات المستحقة آلياً ضمن كشف الراتب الإجمالي وتصرف مع نهاية كل شهر ميلادي عبر الحسابات المصرفية الموطنة للموظفين بسعر الصرف المعتمد (${fxRate.toLocaleString()} د.ع / دولار).`
           }
         ]
       },
@@ -331,11 +349,11 @@ export const Category9RiskComplianceView: React.FC = () => {
         pages: '6 صفحات',
         category: 'مالية ومصرفية',
         isBuiltIn: true,
-        desc: `سعر الصرف المعتمد لصرف الرواتب والمطالبات المالية: (${fxRate}) د.ع لكل 1 دولار أمريكي، العملة الأساسية للحسابات (${curr}) مع سجل تاريخي لحركات الصرف.`,
+        desc: `سعر الصرف المعتمد لصرف الرواتب والمطالبات المالية: (${fxRate.toLocaleString()}) د.ع لكل 1 دولار أمريكي، العملة الأساسية للحسابات (${curr}) مع سجل تاريخي لحركات الصرف.`,
         chapters: [
           {
             title: 'الفصل الأول: العملة المعتمدة وسعر الصرف الإداري',
-            content: `تعتمد مؤسسة فيتاس العراق سعر صرف رسمي محدد في النظام بواقع (${fxRate}) دينار عراقي لكل دولار أمريكي لصرف المستحقات والرواتب والمطالبات المالية لضمان استقرار الدخل.`
+            content: `تعتمد مؤسسة فيتاس العراق سعر صرف رسمي محدد في النظام بواقع (${fxRate.toLocaleString()}) دينار عراقي لكل دولار أمريكي لصرف المستحقات والرواتب والمطالبات المالية لضمان استقرار الدخل.`
           },
           {
             title: 'الفصل الثاني: تحديث سعر الصرف وسجل التغييرات',
