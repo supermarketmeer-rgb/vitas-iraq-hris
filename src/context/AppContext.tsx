@@ -97,7 +97,9 @@ interface AppContextType {
   addAssetRecord: (asset: Omit<AssetRecord, 'id'>) => void;
 
   riskRecords: RiskRecord[];
+  setRiskRecords?: React.Dispatch<React.SetStateAction<RiskRecord[]>>;
   addRiskRecord: (risk: Omit<RiskRecord, 'id'>) => void;
+  updateRiskRecord?: (id: string, updates: Partial<RiskRecord>) => Promise<void>;
 
   documentRecords: DocumentRecord[];
   addDocumentRecord: (doc: Omit<DocumentRecord, 'id' | 'uploadDate'>) => void;
@@ -1228,6 +1230,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateRiskRecord = async (id: string, updates: Partial<RiskRecord>) => {
+    try {
+      await (api as any).updateRisk?.(id, updates);
+    } catch (e) {
+      console.warn('API updateRisk error:', e);
+    }
+    setRiskRecords(prev => prev.map(r => (r.id === id || r.riskCode === id ? { ...r, ...updates } : r)));
+  };
+
   const addDocumentRecord = async (doc: Omit<DocumentRecord, 'id' | 'uploadDate'>) => {
     try {
       const newDoc = await api.addDocument(doc);
@@ -1494,7 +1505,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         assetRecords,
         addAssetRecord,
         riskRecords,
+        setRiskRecords,
         addRiskRecord,
+        updateRiskRecord,
         documentRecords,
         addDocumentRecord,
         notifications,

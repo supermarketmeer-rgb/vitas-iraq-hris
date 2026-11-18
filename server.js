@@ -3489,7 +3489,23 @@ app.post('/api/assets', async (req, res) => {
 app.get('/api/risks', async (req, res) => {
   try {
     const results = await query('SELECT * FROM risk_records ORDER BY identified_date DESC');
-    res.json(results);
+    const mapped = (results || []).map(r => ({
+      ...r,
+      riskCode: r.id,
+      title: r.risk_title || r.title,
+      riskTitle: r.risk_title || r.title,
+      category: r.risk_category || r.category,
+      riskCategory: r.risk_category || r.category,
+      level: r.risk_level || r.level,
+      riskLevel: r.risk_level || r.level,
+      mitigationPlan: r.mitigation_strategy || r.mitigationPlan,
+      mitigationStrategy: r.mitigation_strategy || r.mitigationPlan,
+      probability: r.likelihood || r.probability || 'متوسط',
+      impact: r.impact || 'عالي',
+      identifiedDate: r.identified_date ? (typeof r.identified_date === 'string' ? r.identified_date.split('T')[0] : new Date(r.identified_date).toISOString().split('T')[0]) : (r.identifiedDate || '2026-01-01'),
+      targetDate: r.target_date ? (typeof r.target_date === 'string' ? r.target_date.split('T')[0] : new Date(r.target_date).toISOString().split('T')[0]) : (r.targetDate || '2026-12-31')
+    }));
+    res.json(mapped);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -3498,12 +3514,91 @@ app.get('/api/risks', async (req, res) => {
 app.post('/api/risks', async (req, res) => {
   try {
     const data = req.body;
-    const riskId = `RISK-${Date.now()}`;
+    const riskId = data.riskCode || data.id || `RSK-${Math.floor(1000 + Math.random() * 9000)}`;
+    const title = data.title || data.riskTitle || data.risk_title || '';
+    const cat = data.category || data.riskCategory || data.risk_category || 'أمن المعلومات';
+    const lvl = data.level || data.riskLevel || data.risk_level || data.impact || 'عالي';
+    const desc = data.description || title;
+    const likelihood = data.probability || data.likelihood || 'متوسط';
+    const impact = data.impact || 'عالي';
+    const mitigation = data.mitigationPlan || data.mitigationStrategy || data.mitigation_strategy || '';
+    const owner = data.owner || 'مدير المخاطر والامتثال';
+    const status = data.status || 'مفتوح';
+    const identified = data.identifiedDate || data.identified_date || new Date().toISOString().split('T')[0];
+    const target = data.targetDate || data.target_date || new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0];
+
     await query(
-      `INSERT INTO risk_records (id, risk_title, risk_category, risk_level, description, likelihood, impact, mitigation_strategy, owner, status, identified_date, target_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [riskId, data.riskTitle, data.riskCategory, data.riskLevel, data.description, data.likelihood, data.impact, data.mitigationStrategy, data.owner, 'Open', data.identifiedDate, data.targetDate]
+      `INSERT INTO risk_records (id, risk_title, risk_category, risk_level, description, likelihood, impact, mitigation_strategy, owner, status, identified_date, target_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE 
+         risk_title = VALUES(risk_title),
+         risk_category = VALUES(risk_category),
+         risk_level = VALUES(risk_level),
+         description = VALUES(description),
+         likelihood = VALUES(likelihood),
+         impact = VALUES(impact),
+         mitigation_strategy = VALUES(mitigation_strategy),
+         owner = VALUES(owner),
+         status = VALUES(status),
+         target_date = VALUES(target_date)`,
+      [riskId, title, cat, lvl, desc, likelihood, impact, mitigation, owner, status, identified, target]
     );
-    res.json({ success: true, id: riskId });
+
+    res.json({
+      success: true,
+      id: riskId,
+      riskCode: riskId,
+      title,
+      riskTitle: title,
+      category: cat,
+      riskCategory: cat,
+      level: lvl,
+      riskLevel: lvl,
+      description: desc,
+      likelihood,
+      probability: likelihood,
+      impact,
+      mitigationPlan: mitigation,
+      mitigationStrategy: mitigation,
+      owner,
+      status,
+      identifiedDate: identified,
+      targetDate: target
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/risks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    const updates = [];
+    const values = [];
+
+    if (data.status !== undefined) {
+      updates.push('status = ?');
+      values.push(data.status);
+    }
+    if (data.mitigationPlan !== undefined || data.mitigationStrategy !== undefined) {
+      updates.push('mitigation_strategy = ?');
+      values.push(data.mitigationPlan || data.mitigationStrategy);
+    }
+    if (data.impact !== undefined) {
+      updates.push('impact = ?');
+      values.push(data.impact);
+    }
+    if (data.likelihood !== undefined || data.probability !== undefined) {
+      updates.push('likelihood = ?');
+      values.push(data.likelihood || data.probability);
+    }
+
+    if (updates.length > 0) {
+      values.push(id);
+      await query(`UPDATE risk_records SET ${updates.join(', ')} WHERE id = ?`, values);
+    }
+    res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

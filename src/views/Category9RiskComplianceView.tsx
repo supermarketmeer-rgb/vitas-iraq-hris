@@ -9,12 +9,143 @@ import * as XLSX from 'xlsx';
 import { PoliciesSection } from '../components/PoliciesSection';
 import { isSubordinateOf } from '../utils/branchHelper';
 
+// Official Audit Reports Data
+const AUDIT_REPORTS_DATA = [
+  {
+    id: 'AUD-2026-01',
+    title: 'تقرير تدقيق الامتثال السنوي للبنك المركزي CBI',
+    date: '2026-02-15',
+    auditor: 'إدارة الامتثال والمخاطر',
+    status: 'معتمد رسمياً',
+    desc: 'تقرير مفصل حول التزام مؤسسة فيتاس العراق بكافة الضوابط الرقابية والحوكمة المؤسسية.',
+    scope: 'شمل الفحص الدوري السنوي الشامل لفرع الإدارة العامة وفروع بغداد، البصرة، الحلة، أربيل، وكربلاء لمطابقة التعليمات الرقابية رقم 4 الصادرة عن البنك المركزي العراقي للمؤسسات المالية غير المصرفية.',
+    executiveSummary: 'أظهرت نتائج التدقيق الميداني والتقني التزاماً مؤسسياً بنسبة 99.4% بمتطلبات الحوكمة، السياسات الائتمانية، ونظام الرقابة الداخلية وإجراءات اعرف عميلك (KYC) ومكافحة غسل الأموال (AML).',
+    findings: [
+      { area: 'الحوكمة وإدارة المخاطر', status: 'مطابق 100%', notes: 'تم تشكيل لجان الحوكمة والتدقيق والامتثال وفق هيكلية معتمدة من مجلس الإدارة.' },
+      { area: 'مكافحة غسل الأموال (AML/CFT)', status: 'مطابق 100%', notes: 'فحص آلي لجميع العملاء والموظفين على القوائم الدولية والمحلية المحظورة.' },
+      { area: 'أمان البيانات والأنظمة الرقمية', status: 'مطابق 98.8%', notes: 'تطبيق التشفير الشامل AES-256 وسجل العمليات WORM دون أي اختراق أو تسريب.' },
+      { area: 'إفصاحات الرواتب والضمان', status: 'مطابق 100%', notes: 'مطابقة تامة لرواتب العاملين وسداد اشتراكات الضمان الاجتماعي بموجب قانون 18 لسنة 2023.' }
+    ],
+    recommendation: 'الحفاظ على وتيرة التدريب السنوي الإلزامي للكوادر الميدانية وإجراء فحص دوري لنقاط التكامل البرمجية API.'
+  },
+  {
+    id: 'AUD-2026-02',
+    title: 'تقرير مراجعة وتدقيق كشوفات الرواتب ومطابقة الضمان',
+    date: '2026-02-01',
+    auditor: 'التدقيق الداخلي والمالي',
+    status: 'معتمد رسمياً',
+    desc: 'مطابقة دقيقة لكشوفات الرواتب، استقطاعات الضمان الاجتماعي رقم 18 لسنة 2023 وضريبة الدخل.',
+    scope: 'مراجعة قيود صرف الرواتب الشهرية والبدلات لجميع ملاكات فيتاس العراق (472 موظفاً) عن الأشهر السابقة واحتساب الاستقطاعات الضريبية والتقاعدية.',
+    executiveSummary: 'تم تدقيق صحة معادلات احتساب الراتب الإجمالي والصافي والاستقطاعات الإلزامية بنسبة خطأ 0.00%، وتأكيد صحة توريد الاستقطاعات للجهات الرسمية.',
+    findings: [
+      { area: 'الاستقطاع الضريبي المباشر', status: 'مطابق 100%', notes: 'تطبيق الشرائح والنسب القانونية والسماحات الزوجية بدقة متناهية.' },
+      { area: 'الضمان الاجتماعي (قانون 18/2023)', status: 'مطابق 100%', notes: 'تطبيق نسبة 5% على العامل و12% على رب العمل ورفع القوائم لمنصة الضمان الإلكترونية.' },
+      { area: 'مكافأة نهاية الخدمة', status: 'مطابق 100%', notes: 'حساب مخصصات نهاية الخدمة لجميع العقود المستمرة وفق قانون العمل رقم 37 لسنة 2015.' }
+    ],
+    recommendation: 'الاستمرار في أرشفة إشعارات التحويل المصرفي المباشر لكل دفعة راتب شهرية وربطها برقم المعاملة البنكية.'
+  },
+  {
+    id: 'AUD-2026-03',
+    title: 'تقرير فحص أمان النفاذ وصلاحيات المستخدمين (RBAC Audit)',
+    date: '2026-01-20',
+    auditor: 'أمن المعلومات والسيبراني',
+    status: 'معتمد رسمياً',
+    desc: 'مراجعة دورية لمصفوفة الصلاحيات، الحسابات الإدارية، وسجلات الدخول على مستوى الفروع.',
+    scope: 'فحص مصفوفة التحكم في الوصول المبني على الأدوار (RBAC) لجميع مستخدمي البوابة ومراجعة صلاحيات التعديل والحذف والحسابات غير النشطة.',
+    executiveSummary: 'أثبتت المراجعة عدم وجود أي تضارب في الصلاحيات (Segregation of Duties) بين مدخلي البيانات ومعتمديها، مع تفعيل تسجيل الدخول الآمن والمصادقة الثنائية لكافة الحسابات المميزة.',
+    findings: [
+      { area: 'فصل الصلاحيات (SoD)', status: 'مطابق 100%', notes: 'عزل تام لصلاحيات إنشاء قيد الراتب عن صلاحية اعتماده وصرفه.' },
+      { area: 'الحسابات غير الفعالة', status: 'مطابق 100%', notes: 'تم تعطيل حسابات الموظفين المنتهية خدماتهم تلقائياً فور تسجيل تاريخ الانفكاك.' },
+      { area: 'مفاتيح الربط البرمجي (API Keys)', status: 'مطابق 100%', notes: 'تدوير المفاتيح بانتظام وحظر الوصول من عناوين IP غير المصرح بها.' }
+    ],
+    recommendation: 'تفعيل إشعار فوري لمدير أمن المعلومات عند تغيير صلاحية أي حساب برتبة مدير فرع أو مسؤول رواتب.'
+  },
+  {
+    id: 'AUD-2026-04',
+    title: 'تقرير فحص الأصول والعهد الرقمية واللوائح الداخلية',
+    date: '2026-01-05',
+    auditor: 'لجنة التدقيق الإداري',
+    status: 'معتمد رسمياً',
+    desc: 'حصر العهد الإلكترونية والأجهزة المخصصة للموظفين والتأكد من وثائق التسليم والاسترجاع.',
+    scope: 'جرد ميداني لكافة الأصول الثابتة والعهد الشخصية (أجهزة لابتوب، طابعات، هواتف نقالة، سيارات خدمة) في كافة الفروع ومطابقتها مع السجل المركزي للأصول.',
+    executiveSummary: 'بلغت نسبة تطابق الأصول الميدانية مع السجلات الرقمية 100% مع اكتمال توقيع محاضر الاستلام والتسليم لجميع الموظفين الجدد.',
+    findings: [
+      { area: 'توثيق العهد الشخصية', status: 'مطابق 100%', notes: 'توقيع إلكتروني وورقي على نماذج تسليم العهد متضمناً الرقم التسلسلي.' },
+      { area: 'سياسة الاستخدام المقبول (AUP)', status: 'مطابق 100%', notes: 'التزام تام بعدم تنصيب برمجيات غير مرخصة على حواسيب المؤسسة.' },
+      { area: 'إجراءات تسليم العهد عند الانفكاك', status: 'مطابق 100%', notes: 'ربط براءة الذمة النهائية باسترجاع كامل العهد بحالة تشغيلية سليمة.' }
+    ],
+    recommendation: 'إجراء جرد نصف سنوي مفاجئ للفروع للتأكد من المحافظة على الأجهزة وسلامتها.'
+  }
+];
+
+// Official Company Policies Data
+const COMPANY_POLICIES_DATA = [
+  {
+    code: 'POL-HR-01',
+    title: 'دليل سياسات وإجراءات الموارد البشرية والتوظيف',
+    version: 'v3.2',
+    date: '2026-01-01',
+    pages: '45 صفحة',
+    desc: 'المعايير المعتمدة للتعيين، التقييم، الترقية، الرواتب والبدلات، وإنهاء الخدمة وفق قانون العمل العراقي.',
+    chapters: [
+      { title: 'الفصل الأول: أحكام عامة ونطاق التطبيق', content: 'تسري هذه اللائحة على جميع العاملين بعقود عمل محددة أو غير محددة المدة في مؤسسة فيتاس العراق لتمويل المشاريع الصغيرة والمتوسطة، وتعتبر جزءاً لا يتجزأ من عقد العمل الفردي.' },
+      { title: 'الفصل الثاني: سياسات الاستقطاب والتعيين', content: 'يتم التعيين بناءً على الكفاءة والشفافية وتكافؤ الفرص مع خضوع المرشحين لفحص النزاهة والمطابقة مع القوائم الرقابية المعتمدة من البنك المركزي العراقي وفترة تجربة قانونية لمدة 90 يوماً.' },
+      { title: 'الفصل الثالث: إدارة الأداء والترقيات والبدلات', content: 'تعتمد المؤسسة نظام التقييم السنوي الشامل للأداء المؤسسي والفردي، وتحدد الترقيات والعلاوات السنوية وفقاً لنتائج التقييم المحققة ومؤشرات الأداء الرئيسية (KPIs).' },
+      { title: 'الفصل الرابع: إنهاء الخدمة وبراءة الذمة', content: 'تنتهي خدمة الموظف وفق الحالات المنصوص عليها في قانون العمل العراقي رقم 37 لسنة 2015، وتصرف مكافأة نهاية الخدمة ومستحقات الإجازات المتراكمة فور استكمال إجراءات براءة الذمة واسترجاع العهد.' }
+    ]
+  },
+  {
+    code: 'POL-SEC-02',
+    title: 'سياسة أمان المعلومات وسرية البيانات والأجهزة',
+    version: 'v2.8',
+    date: '2025-12-10',
+    pages: '28 صفحة',
+    desc: 'ضوابط كلمات المرور، استخدام الحواسيب المحمولة، وحظر تسريب بيانات المقترضين وسرية المعاملات المالية.',
+    chapters: [
+      { title: 'الفصل الأول: تصنيف وسرية البيانات', content: 'تُصنف جميع بيانات المقترضين، سجلات الرواتب، القوائم المالية، ومفاتيح النظام كبيانات "سرية للغاية" يُحظر تداولها خارج بيئة العمل المصرح بها أو نسخها على وسائط خارجية غير مشفرة.' },
+      { title: 'الفصل الثاني: ضوابط النفاذ وكلمات المرور', content: 'يجب أن لا تقل كلمات المرور عن 10 خانات مركبة، مع إلزامية التغيير الدوري كل 90 يوماً وتفعيل المصادقة الثنائية (2FA) لجميع مسؤولي النظام وأصحاب الصلاحيات المالية.' },
+      { title: 'الفصل الثالث: الاستخدام الآمن للشبكة والحواسيب', content: 'يُحظر استخدام شبكات Wi-Fi العامة غير المحمية للاتصال بالنظام دون تفعيل شبكة VPN المؤسسية المشفرة، كما يُحظر تنصيب برمجيات أو برامج مشاركة الملفات خارج المتجر المعتمد.' },
+      { title: 'الفصل الرابع: الاستجابة للحوادث والمساءلة', content: 'يتم التبليغ عن أي اشتباه باختراق أو تسريب خلال 60 دقيقة لفريق أمن المعلومات. يُعرض تسريب بيانات العملاء الموظف للمساءلة القانونية والفصل وفق أحكام القانون العراقي.' }
+    ]
+  },
+  {
+    code: 'POL-ETH-03',
+    title: 'ميثاق السلوك المهني والنزاهة ومكافحة الفساد',
+    version: 'v4.0',
+    date: '2026-01-15',
+    pages: '18 صفحة',
+    desc: 'قواعد تجنب تضارب المصالح، قبول الهدايا، وحماية أصول المؤسسة وسمعتها، ومبادئ حماية المستهلك المالي.',
+    chapters: [
+      { title: 'الفصل الأول: النزاهة والأمانة المهنية', content: 'يلتزم موظفو فيتاس العراق بأعلى معايير الصدق والشفافية في كافة المعاملات الائتمانية والتعامل مع المقترضين والزملاء باحترام ومهنية تامة.' },
+      { title: 'الفصل الثاني: حظر قبول الهدايا والرشاوى', content: 'يُحظر حظراً تاماً على أي موظف طلب أو قبول أي مبالغ مالية أو هدايا عينية أو تسهيلات من المقترضين أو الموردين، وتعتبر أي مخالفة لذلك مبرراً للفصل المباشر والإحالة للقضاء.' },
+      { title: 'الفصل الثالث: سياسة منع تضارب المصالح', content: 'يجب على الموظف الإفصاح كتابياً عن أي صلة قرابة حتى الدرجة الرابعة مع أي مقترض أو طالب وظيفة أو مورد، ويمتنع عن المشاركة في أي قرار ائتماني أو مالي يخصهم.' },
+      { title: 'الفصل الرابع: الإبلاغ عن المخالفات (Whistleblowing)', content: 'توفر المؤسسة قناة سرية ومحمية للإبلاغ عن أي ممارسات غير قانونية مع ضمان الحماية الكاملة للمبلغ من أي إجراءات انتقامية.' }
+    ]
+  },
+  {
+    code: 'POL-LEV-04',
+    title: 'لائحة تنظيم الدوام الرسمي والإجازات والانضباط',
+    version: 'v3.0',
+    date: '2025-11-05',
+    pages: '22 صفحة',
+    desc: 'ضوابط الإجازات السنوية، المرضية، الاستثنائية، وساعات العمل المرنة والعطل الرسمية والجزاءات التأديبية.',
+    chapters: [
+      { title: 'الفصل الأول: ساعات العمل وأجهزة البصمة', content: 'ساعات العمل الرسمية 8 ساعات يومياً بمعدل 40 ساعة أسبوعياً. يتم تسجيل الحضور والانصراف عبر أجهزة البصمة البيومترية أو التطبيق الجغرافي المعتمد.' },
+      { title: 'الفصل الثاني: الإجازات الاعتيادية والسنوية', content: 'يستحق الموظف إجازة اعتيادية براتب تام بواقع (20) يوماً عن كل سنة خدمة فعلية، وتزداد إلى (30) يوماً لمن أمضى خمس سنوات في الخدمة، وتُقدم عبر البوابة قبل 72 ساعة على الأقل.' },
+      { title: 'الفصل الثالث: الإجازات المرضية والطارئة', content: 'تمنح الإجازة المرضية بموجب تقرير طبي رسمي معتمد من الجهات الصحية المختصة. ويجوز منح إجازة طارئة لا تتجاوز 4 أيام في السنة لأسباب قاهرة.' },
+      { title: 'الفصل الرابع: المخالفات والجزاءات التأديبية', content: 'تتدرج العقوبات التأديبية من التنبيه، والإنذار، وقطع الراتب بما لا يتجاوز 3 أيام شهرياً، وتأجيل العلاوة، وحتى الفصل في حالات الغياب بدون عذر لأكثر من 10 أيام متصلة.' }
+    ]
+  }
+];
+
 export const Category9RiskComplianceView: React.FC = () => {
   const {
     activeModuleId,
     setActiveModuleId,
     riskRecords,
+    setRiskRecords,
     addRiskRecord,
+    updateRiskRecord,
     currentUser,
     setCurrentUserRole,
     employees,
@@ -77,13 +208,38 @@ export const Category9RiskComplianceView: React.FC = () => {
   const [riskCat, setRiskCat] = useState<'أمن المعلومات' | 'الامتثال التنظيمي' | 'التشغيلي' | 'المالي'>('أمن المعلومات');
   const [impact, setImpact] = useState<'منخفض' | 'متوسط' | 'عالي' | 'حرج'>('عالي');
   const [mitigation, setMitigation] = useState('');
+  const [selectedRiskForDetails, setSelectedRiskForDetails] = useState<any | null>(null);
+  const [editRiskForm, setEditRiskForm] = useState({
+    status: 'مفتوح',
+    mitigationPlan: '',
+    impact: 'عالي',
+    probability: 'متوسط'
+  });
+
+  // --- Official Audit Reports & Policies Modal States ---
+  const [selectedReportForView, setSelectedReportForView] = useState<any | null>(null);
+  const [selectedPolicyForView, setSelectedPolicyForView] = useState<any | null>(null);
+  const [policySearchQuery, setPolicySearchQuery] = useState('');
 
   // --- 2. API Keys State ---
-  const [apiKeys, setApiKeys] = useState<{ id: string; name: string; key: string; created: string; expires?: string; permissions?: string; status: string }[]>([
-    { id: 'KEY-9401', name: 'مفتاح الربط مع بوابة التأمينات والتقاعد', key: 'vts_live_sk_8923fd829a47b10', created: '2026-01-15', expires: '2027-01-15', permissions: 'قراءة وكتابة (Full Access)', status: 'نشط' },
-    { id: 'KEY-4122', name: 'واجهة الربط المصرفي CBI Gateway API', key: 'vts_live_sk_4421aa8720cb551', created: '2026-02-10', expires: '2027-02-10', permissions: 'قراءة وكتابة (Full Access)', status: 'نشط' },
-    { id: 'KEY-2105', name: 'بوابة إرسال إشعارات الرسائل القصيرة SMS Gateway', key: 'vts_live_sk_1198bb9910ac332', created: '2026-03-01', expires: '2026-12-31', permissions: 'إرسال فقط (Send Only)', status: 'نشط' }
-  ]);
+  const [apiKeys, setApiKeys] = useState<{ id: string; name: string; key: string; created: string; expires?: string; permissions?: string; status: string }[]>(() => {
+    try {
+      const stored = localStorage.getItem('vitas_api_keys');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return [
+      { id: 'KEY-9401', name: 'مفتاح الربط مع بوابة التأمينات والتقاعد', key: 'vts_live_sk_8923fd829a47b10', created: '2026-01-15', expires: '2027-01-15', permissions: 'قراءة وكتابة (Full Access)', status: 'نشط' },
+      { id: 'KEY-4122', name: 'واجهة الربط المصرفي CBI Gateway API', key: 'vts_live_sk_4421aa8720cb551', created: '2026-02-10', expires: '2027-02-10', permissions: 'قراءة وكتابة (Full Access)', status: 'نشط' },
+      { id: 'KEY-2105', name: 'بوابة إرسال إشعارات الرسائل القصيرة SMS Gateway', key: 'vts_live_sk_1198bb9910ac332', created: '2026-03-01', expires: '2026-12-31', permissions: 'إرسال فقط (Send Only)', status: 'نشط' }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vitas_api_keys', JSON.stringify(apiKeys));
+    } catch (e) {}
+  }, [apiKeys]);
+
   const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
   const [isAddApiKeyModalOpen, setIsAddApiKeyModalOpen] = useState(false);
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
@@ -465,6 +621,17 @@ export const Category9RiskComplianceView: React.FC = () => {
     setNewApiKeyForm({ name: '', permissions: 'قراءة وكتابة (Full Access)', expires: '2027-10-13', description: '' });
     setAuditToast(language === 'ar' ? `تم إنشاء مفتاح API الجديد (${newId}) بنجاح!` : `New API Key (${newId}) generated!`);
     setTimeout(() => setAuditToast(null), 3500);
+
+    try {
+      (api as any).addAuditLog?.({
+        action: `توليد مفتاح تكامل برمجي جديد (${newId})`,
+        action_type: 'API_KEY_CREATE',
+        severity: 'warning',
+        module: 'الربط البرمجي والأمان (sec-api-keys)',
+        details: `اسم المفتاح: ${newApiKeyForm.name.trim()} | الصلاحية: ${newApiKeyForm.permissions}`,
+        user_name: currentUser?.name || 'مسؤول النظام'
+      }).catch(() => {});
+    } catch (e) {}
   };
 
   const handleDeleteApiKey = (id: string) => {
@@ -472,7 +639,139 @@ export const Category9RiskComplianceView: React.FC = () => {
       setApiKeys(prev => prev.filter(k => k.id !== id));
       setAuditToast(language === 'ar' ? 'تم تعطيل وإلغاء مفتاح الوصول بنجاح.' : 'API Key revoked successfully.');
       setTimeout(() => setAuditToast(null), 3500);
+
+      try {
+        (api as any).addAuditLog?.({
+          action: `إلغاء وتعطيل مفتاح تكامل برمجي (${id})`,
+          action_type: 'API_KEY_REVOKE',
+          severity: 'critical',
+          module: 'الربط البرمجي والأمان (sec-api-keys)',
+          details: `تم إلغاء صلاحية الوصول للمفتاح ${id}`,
+          user_name: currentUser?.name || 'مسؤول النظام'
+        }).catch(() => {});
+      } catch (e) {}
     }
+  };
+
+  // Export Risk Matrix to Excel
+  const handleExportRiskMatrix = () => {
+    try {
+      const dataToExport = riskRecords.map(r => ({
+        'رمز الخطر': r.riskCode || r.id,
+        'عنوان الخطر المحتمل': r.title,
+        'فئة الخطر': r.category,
+        'مستوى التأثير': r.impact,
+        'الاحتمالية': r.probability || 'متوسط',
+        'المسؤول عن المتابعة': r.owner || 'مدير المخاطر والامتثال',
+        'الحالة': r.status || 'مفتوح',
+        'تاريخ الرصد': r.identifiedDate,
+        'خطة التحوط والمعالجة': r.mitigationPlan
+      }));
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'سجل المخاطر');
+      XLSX.writeFile(wb, `VITAS_Risk_Register_${new Date().toISOString().split('T')[0]}.xlsx`);
+      setAuditToast(language === 'ar' ? 'تم تصدير سجل المخاطر بنجاح إلى ملف إكسل' : 'Risk register exported to Excel successfully');
+      setTimeout(() => setAuditToast(null), 3500);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Export CBI Compliance Log to Excel
+  const handleExportComplianceLog = () => {
+    try {
+      const dataToExport = [
+        { 'التعميم / اللائحة الرقابية': 'ضوابط مكافحة غسل الأموال وتمويل الإرهاب (AML/CFT)', 'الجهة المصدرة': 'البنك المركزي العراقي', 'تاريخ الإصدار': '2026-01-10', 'موقف نظام الموارد البشرية': 'تطبيق فحص دوري لكافة الموظفين والمرشحين', 'حالة الامتثال': 'مطابق 100%' },
+        { 'التعميم / اللائحة الرقابية': 'قانون التقاعد والضمان الاجتماعي للعمال رقم (18) لسنة 2023', 'الجهة المصدرة': 'وزارة العمل والشؤون الاجتماعية', 'تاريخ الإصدار': '2025-11-20', 'موقف نظام الموارد البشرية': 'دمج محرك احتساب الضمان والضريبة المباشرة بنجاح', 'حالة الامتثال': 'مطابق 100%' },
+        { 'التعميم / اللائحة الرقابية': 'معايير الحوكمة وإدارة المخاطر التشغيلية والسيبرانية', 'الجهة المصدرة': 'قسم الرقابة والامتثال CBI', 'تاريخ الإصدار': '2026-02-01', 'موقف نظام الموارد البشرية': 'تفعيل سجل التدقيق والمصادقة الثنائية وتشفير البيانات', 'حالة الامتثال': 'مطابق 100%' },
+        { 'التعميم / اللائحة الرقابية': 'حماية بيانات العملاء والموظفين وسرية المعلومات الائتمانية', 'الجهة المصدرة': 'البنك المركزي العراقي', 'تاريخ الإصدار': '2025-12-15', 'موقف نظام الموارد البشرية': 'تشفير كامل لقاعدة البيانات وإدارة صلاحيات RBAC', 'حالة الامتثال': 'مطابق 100%' }
+      ];
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'سجل الامتثال CBI');
+      XLSX.writeFile(wb, `VITAS_CBI_Compliance_Log_${new Date().toISOString().split('T')[0]}.xlsx`);
+      setAuditToast(language === 'ar' ? 'تم تصدير سجل الامتثال للبنك المركزي بنجاح' : 'CBI Compliance Log exported successfully');
+      setTimeout(() => setAuditToast(null), 3500);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Cycle Risk Status
+  const handleCycleRiskStatus = async (risk: any) => {
+    const statuses = ['مفتوح', 'قيد المعالجة', 'تم التخفيف والمعالجة'];
+    const currentIdx = statuses.indexOf(risk.status);
+    const nextStatus = statuses[(currentIdx + 1) % statuses.length];
+
+    if (updateRiskRecord) {
+      await updateRiskRecord(risk.id, { status: nextStatus });
+    } else if (setRiskRecords) {
+      setRiskRecords(prev => prev.map(r => (r.id === risk.id || r.riskCode === risk.riskCode ? { ...r, status: nextStatus } : r)));
+    }
+
+    try {
+      await (api as any).updateRisk?.(risk.id, { status: nextStatus }).catch(() => {});
+      await (api as any).addAuditLog?.({
+        action: `تحديث حالة الخطر (${risk.riskCode || risk.id}) إلى: ${nextStatus}`,
+        action_type: 'RISK_UPDATE',
+        severity: nextStatus === 'تم التخفيف والمعالجة' ? 'success' : 'info',
+        module: 'إدارة المخاطر والامتثال (cat-9-risk)',
+        details: `تم تحديث الموقف الرقابي بواسطة: ${currentUser?.name || 'مدير المخاطر'}`
+      }).catch(() => {});
+    } catch (e) {}
+
+    setAuditToast(language === 'ar' ? `تم تحديث حالة الخطر إلى: ${nextStatus}` : `Risk status updated to: ${nextStatus}`);
+    setTimeout(() => setAuditToast(null), 3500);
+  };
+
+  // Populate edit form when risk is selected
+  useEffect(() => {
+    if (selectedRiskForDetails) {
+      setEditRiskForm({
+        status: selectedRiskForDetails.status || 'مفتوح',
+        mitigationPlan: selectedRiskForDetails.mitigationPlan || selectedRiskForDetails.mitigation_strategy || '',
+        impact: selectedRiskForDetails.impact || 'عالي',
+        probability: selectedRiskForDetails.probability || selectedRiskForDetails.likelihood || 'متوسط'
+      });
+    }
+  }, [selectedRiskForDetails]);
+
+  // Save Risk Details Modal
+  const handleSaveRiskDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRiskForDetails) return;
+    const riskId = selectedRiskForDetails.id || selectedRiskForDetails.riskCode;
+    const updates = {
+      status: editRiskForm.status,
+      mitigationPlan: editRiskForm.mitigationPlan,
+      mitigationStrategy: editRiskForm.mitigationPlan,
+      impact: editRiskForm.impact,
+      probability: editRiskForm.probability,
+      likelihood: editRiskForm.probability
+    };
+
+    if (updateRiskRecord) {
+      await updateRiskRecord(riskId, updates);
+    } else if (setRiskRecords) {
+      setRiskRecords(prev => prev.map(r => (r.id === riskId || r.riskCode === riskId ? { ...r, ...updates } : r)));
+    }
+
+    try {
+      await (api as any).updateRisk?.(riskId, updates).catch(() => {});
+      await (api as any).addAuditLog?.({
+        action: `تعديل تفاصيل وخطة تحوط الخطر (${riskId})`,
+        action_type: 'RISK_UPDATE',
+        severity: 'info',
+        module: 'إدارة المخاطر والامتثال (cat-9-risk)',
+        details: `الحالة: ${editRiskForm.status} | مستوى التأثير: ${editRiskForm.impact}`,
+        user_name: currentUser?.name || 'مدير المخاطر'
+      }).catch(() => {});
+    } catch (e) {}
+
+    setSelectedRiskForDetails(null);
+    setAuditToast(language === 'ar' ? 'تم حفظ وتحديث بيانات الخطر وخطة المعالجة بنجاح!' : 'Risk details and mitigation plan updated successfully!');
+    setTimeout(() => setAuditToast(null), 3500);
   };
 
   // --- 3. Security Settings State & Persistence ---
@@ -1874,21 +2173,38 @@ export const Category9RiskComplianceView: React.FC = () => {
     }
   };
 
-  const handleAddRisk = (e: React.FormEvent) => {
+  const handleAddRisk = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!riskTitle) return;
-    addRiskRecord({
-      riskCode: `RSK-${Math.floor(1000 + Math.random() * 9000)}`,
-      title: riskTitle,
+    if (!riskTitle.trim()) return;
+    const newCode = `RSK-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newRisk = {
+      riskCode: newCode,
+      title: riskTitle.trim(),
       category: riskCat,
       impact,
       probability: 'متوسط',
       owner: currentUser?.name || currentUser?.email || 'مدير المخاطر والامتثال',
-      mitigationPlan: mitigation || 'سيتم إعداد خطة التعافي والتغطية فوراً',
-      status: 'مفتوح'
-    });
+      mitigationPlan: mitigation.trim() || 'سيتم إعداد خطة التعافي والتغطية فوراً',
+      status: 'مفتوح',
+      identifiedDate: new Date().toISOString().split('T')[0]
+    };
+    await addRiskRecord(newRisk);
+    try {
+      await (api as any).addRisk?.(newRisk).catch(() => {});
+      await (api as any).addAuditLog?.({
+        action: `تسجيل خطر تشغيلي جديد في سجل الحوكمة (${newCode})`,
+        action_type: 'RISK_REGISTER',
+        severity: impact === 'حرج' ? 'critical' : 'warning',
+        module: 'إدارة المخاطر والامتثال (cat-9-risk)',
+        details: `العنوان: ${riskTitle.trim()} | الفئة: ${riskCat} | التأثير: ${impact}`,
+        user_name: currentUser?.name || 'مدير المخاطر والامتثال'
+      }).catch(() => {});
+    } catch (e) {}
+
     setRiskTitle('');
     setMitigation('');
+    setAuditToast(language === 'ar' ? `تم تسجيل الخطر (${newCode}) وتثبيته في سجل الحوكمة بنجاح!` : `Risk (${newCode}) registered successfully!`);
+    setTimeout(() => setAuditToast(null), 3500);
     setActiveModuleId('risk-assessment');
   };
 
@@ -2098,13 +2414,26 @@ export const Category9RiskComplianceView: React.FC = () => {
                 </h2>
                 <p className="text-slate-500 text-[11px] mt-0.5">{t('المؤسسة تخضع لرقابة وإشراف البنك المركزي العراقي للمؤسسات المالية غير المصرفية', 'VITAS Iraq is regulated by the Central Bank of Iraq')}</p>
               </div>
-              <button
-                onClick={() => setActiveModuleId('risk-audit-reports')}
-                className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-sm flex items-center gap-1 text-xs"
-              >
-                <span className="material-symbols-outlined text-sm">print</span>
-                <span>{t('تصدير سجل الامتثال', 'Export Compliance')}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportComplianceLog}
+                  className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-sm flex items-center gap-1 text-xs cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">table_view</span>
+                  <span>{t('تصدير سجل الامتثال (Excel)', 'Export Compliance (Excel)')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveModuleId('risk-audit-reports')}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    isDark ? 'border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20' : 'border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">description</span>
+                  <span>{t('تقارير التدقيق المعتمدة', 'Audit Reports')}</span>
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -2201,12 +2530,7 @@ export const Category9RiskComplianceView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { id: 'AUD-2026-01', title: 'تقرير تدقيق الامتثال السنوي للبنك المركزي CBI', date: '2026-02-15', auditor: 'إدارة الامتثال والمخاطر', status: 'معتمد رسمياً', desc: 'تقرير مفصل حول التزام مؤسسة فيتاس العراق بكافة الضوابط الرقابية والحوكمة المؤسسية.' },
-              { id: 'AUD-2026-02', title: 'تقرير مراجعة وتدقيق كشوفات الرواتب ومطابقة الضمان', date: '2026-02-01', auditor: 'التدقيق الداخلي والمالي', status: 'معتمد رسمياً', desc: 'مطابقة دقيقة لكشوفات الرواتب، استقطاعات الضمان الاجتماعي رقم 18 لسنة 2023 وضريبة الدخل.' },
-              { id: 'AUD-2026-03', title: 'تقرير فحص أمان النفاذ وصلاحيات المستخدمين (RBAC Audit)', date: '2026-01-20', auditor: 'أمن المعلومات والسيبراني', status: 'معتمد رسمياً', desc: 'مراجعة دورية لمصفوفة الصلاحيات، الحسابات الإدارية، وسجلات الدخول على مستوى الفروع.' },
-              { id: 'AUD-2026-04', title: 'تقرير فحص الأصول والعهد الرقمية واللوائح الداخلية', date: '2026-01-05', auditor: 'لجنة التدقيق الإداري', status: 'معتمد رسمياً', desc: 'حصر العهد الإلكترونية والأجهزة المخصصة للموظفين والتأكد من وثائق التسليم والاسترجاع.' }
-            ].map(rep => (
+            {AUDIT_REPORTS_DATA.map(rep => (
               <div key={rep.id} className={`p-4 rounded-2xl border space-y-3 shadow-sm ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex justify-between items-start">
                   <div>
@@ -2220,13 +2544,27 @@ export const Category9RiskComplianceView: React.FC = () => {
                 <p className="text-slate-500 leading-relaxed text-[11px]">{rep.desc}</p>
                 <div className="pt-2 border-t border-slate-200 dark:border-white/5 flex items-center justify-between text-[11px]">
                   <span className="text-slate-400">{t('المدقق:', 'Auditor:')} <b className="text-slate-600 dark:text-slate-200">{rep.auditor}</b></span>
-                  <button
-                    onClick={() => alert(`تم تجهيز ملف التقرير ${rep.id} للطباعة والتصدير.`)}
-                    className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-xs">download</span>
-                    <span>{t('تحميل PDF', 'Download PDF')}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReportForView(rep)}
+                      className="px-3 py-1 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-teal-600 hover:text-white text-slate-800 dark:text-slate-200 font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-xs">visibility</span>
+                      <span>{t('معاينة التقرير', 'Preview Report')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedReportForView(rep);
+                        setTimeout(() => window.print(), 350);
+                      }}
+                      className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-xs">print</span>
+                      <span>{t('طباعة PDF', 'Print / PDF')}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -2290,12 +2628,7 @@ export const Category9RiskComplianceView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { code: 'POL-HR-01', title: 'دليل سياسات وإجراءات الموارد البشرية والتوظيف', version: 'v3.2', date: '2026-01-01', pages: '45 صفحة', desc: 'المعايير المعتمدة للتعيين، التقييم، الترقية، الرواتب والبدلات، وإنهاء الخدمة.' },
-              { code: 'POL-SEC-02', title: 'سياسة أمان المعلومات وسرية البيانات والأجهزة', version: 'v2.8', date: '2025-12-10', pages: '28 صفحة', desc: 'ضوابط كلمات المرور، استخدام الحواسيب المحمولة، وحظر تسريب بيانات المقترضين.' },
-              { code: 'POL-ETH-03', title: 'ميثاق السلوك المهني والنزاهة ومكافحة الفساد', version: 'v4.0', date: '2026-01-15', pages: '18 صفحة', desc: 'قواعد تجنب تضارب المصالح، قبول الهدايا، وحماية أصول المؤسسة وسمعتها.' },
-              { code: 'POL-LEV-04', title: 'لائحة تنظيم الدوام الرسمي والإجازات والانضباط', version: 'v3.0', date: '2025-11-05', pages: '22 صفحة', desc: 'ضوابط الإجازات السنوية، المرضية، الاستثنائية، وساعات العمل المرنة.' }
-            ].map(pol => (
+            {COMPANY_POLICIES_DATA.map(pol => (
               <div key={pol.code} className={`p-4 rounded-2xl border space-y-3 shadow-sm ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex justify-between items-start">
                   <div>
@@ -2310,8 +2643,9 @@ export const Category9RiskComplianceView: React.FC = () => {
                 <div className="pt-2 border-t border-slate-200 dark:border-white/5 flex items-center justify-between text-[11px]">
                   <span className="text-slate-400">{t('تاريخ التحديث:', 'Updated:')} <b className="font-mono text-slate-600 dark:text-slate-200">{pol.date}</b></span>
                   <button
-                    onClick={() => alert(`سيتم فتح واستعراض مستند ${pol.title}`)}
-                    className="px-3 py-1 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-teal-600 hover:text-white text-slate-800 dark:text-slate-200 font-bold text-[11px] transition-all flex items-center gap-1"
+                    type="button"
+                    onClick={() => setSelectedPolicyForView(pol)}
+                    className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-[11px] transition-all flex items-center gap-1 shadow-sm cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-xs">visibility</span>
                     <span>{t('استعراض الدليل', 'View Policy')}</span>
@@ -2337,15 +2671,35 @@ export const Category9RiskComplianceView: React.FC = () => {
           ========================================================================= */}
       {(activeModuleId === 'risk-assessment' || activeModuleId === 'risk-incident') && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-            <span>{t(`سجل المخاطر النشطة (${riskRecords.length})`, `Active Risk Register (${riskRecords.length})`)}</span>
-            <button
-              onClick={() => setActiveModuleId('risk-identify-new')}
-              className="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold hover:bg-teal-500 transition-all shadow-md shadow-teal-600/20 flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-sm">add_alert</span>
-              <span>{t('+ تسجيل خطر جديد', '+ Register New Risk')}</span>
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+            <div className="flex items-center gap-2">
+              <span>{t(`سجل المخاطر النشطة (${riskRecords.length})`, `Active Risk Register (${riskRecords.length})`)}</span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                {riskRecords.filter(r => r.status === 'مفتوح' || r.status === 'Open').length} {t('مفتوح', 'Open')}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                {riskRecords.filter(r => r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated').length} {t('تمت معالجته', 'Mitigated')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportRiskMatrix}
+                className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                  isDark ? 'border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20' : 'border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100'
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">table_view</span>
+                <span>{t('تصدير مصفوفة المخاطر (Excel)', 'Export Matrix (Excel)')}</span>
+              </button>
+              <button
+                onClick={() => setActiveModuleId('risk-identify-new')}
+                className="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold hover:bg-teal-500 transition-all shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">add_alert</span>
+                <span>{t('+ تسجيل خطر جديد', '+ Register New Risk')}</span>
+              </button>
+            </div>
           </div>
 
           {riskRecords.length === 0 ? (
@@ -2359,19 +2713,63 @@ export const Category9RiskComplianceView: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               {riskRecords.map(r => (
-                <div key={r.id} className={`p-5 rounded-2xl border space-y-3 shadow-sm ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-white border-slate-200'}`}>
-                  <div className="flex justify-between font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                    <span className="text-sm">{r.title}</span>
-                    <span className="text-rose-500 dark:text-rose-400 font-mono text-xs">{r.riskCode}</span>
-                  </div>
-                  <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
-                    <b>{t('الفئة:', 'Category:')}</b> {r.category} • <b>{t('خطة المعالجة:', 'Mitigation:')}</b> {r.mitigationPlan}
-                  </p>
-                  <div className="pt-2 border-t border-slate-200 dark:border-white/5 flex justify-between items-center text-[11px]">
-                    <span className="px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold">
+                <div key={r.id || r.riskCode} className={`p-5 rounded-2xl border space-y-3 shadow-sm ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-white border-slate-200'}`}>
+                  <div className="flex justify-between items-start font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-teal-600 dark:text-teal-400 font-mono text-xs">{r.riskCode || r.id}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                            : r.status === 'قيد المعالجة' || r.status === 'In Progress'
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                        }`}>
+                          {r.status || 'مفتوح'}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-bold">{r.title}</h3>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-xl text-[11px] font-bold ${
+                      r.impact === 'حرج' || r.impact === 'Critical'
+                        ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                        : r.impact === 'عالي' || r.impact === 'High'
+                        ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                        : 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                    }`}>
                       {t('التأثير:', 'Impact:')} {r.impact}
                     </span>
+                  </div>
+
+                  <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-xs">
+                    <b>{t('الفئة:', 'Category:')}</b> {r.category} • <b>{t('المسؤول:', 'Owner:')}</b> {r.owner || 'مدير المخاطر والامتثال'}
+                  </p>
+
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-[11px] text-slate-700 dark:text-slate-300">
+                    <b className="text-teal-600 dark:text-teal-400">{t('خطة التحوط والمعالجة:', 'Mitigation Strategy:')}</b> {r.mitigationPlan}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 dark:border-white/5 flex flex-wrap justify-between items-center gap-2 text-[11px]">
                     <span className="text-slate-400 font-mono">{t('تم الرصد:', 'Logged:')} {r.identifiedDate}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCycleRiskStatus(r)}
+                        className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 font-bold transition-all cursor-pointer flex items-center gap-1"
+                        title={t('تغيير حالة الخطر إلى المرحلة التالية', 'Cycle status')}
+                      >
+                        <span className="material-symbols-outlined text-xs">published_with_changes</span>
+                        <span>{t('تغيير الحالة', 'Cycle Status')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRiskForDetails(r)}
+                        className="px-3 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-xs">edit_note</span>
+                        <span>{t('تعديل الخطة', 'Edit Mitigation')}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -5534,6 +5932,390 @@ export const Category9RiskComplianceView: React.FC = () => {
                 >
                   <span className="material-symbols-outlined text-sm">vpn_key</span>
                   <span>{t('توليد المفتاح', 'Generate Key')}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          OFFICIAL AUDIT REPORT PREVIEW & PRINT MODAL
+      ============================================================ */}
+      {selectedReportForView && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${
+            isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            {/* Modal Controls Bar (Hidden during print) */}
+            <div className="print:hidden p-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/5 sticky top-0 z-10 backdrop-blur-md">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 material-symbols-outlined text-lg">verified</span>
+                <div>
+                  <h3 className="font-bold text-sm">{selectedReportForView.title}</h3>
+                  <p className="text-[11px] text-slate-500 font-mono">{selectedReportForView.id} • {selectedReportForView.date}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">print</span>
+                  <span>{t('طباعة التقرير / حفظ PDF', 'Print / Save as PDF')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedReportForView(null)}
+                  className="p-1.5 rounded-xl border border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Report Document Body */}
+            <div className="p-8 sm:p-10 space-y-6 text-xs leading-relaxed">
+              {/* Official Header */}
+              <div className="border-b-2 border-teal-600/60 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-black tracking-tight text-teal-600 dark:text-teal-400">VITAS IRAQ</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/20">CHF International</span>
+                  </div>
+                  <h1 className="text-base font-bold text-slate-900 dark:text-white">
+                    {t('مؤسسة فيتاس العراق للتمويل الأصغر - تقرير التدقيق والامتثال التنظيمي', 'VITAS Iraq Microfinance - Regulatory Compliance & Audit Report')}
+                  </h1>
+                  <p className="text-[11px] text-slate-500">
+                    {t('خاضعة لرقابة وإشراف البنك المركزي العراقي للمؤسسات المالية غير المصرفية', 'Regulated by the Central Bank of Iraq (CBI) for Non-Banking Financial Institutions')}
+                  </p>
+                </div>
+                <div className="sm:text-end font-mono text-[11px] space-y-1 bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-200 dark:border-white/5">
+                  <p><b>{t('رقم الوثيقة:', 'Doc Ref:')}</b> <span className="text-teal-600 dark:text-teal-400 font-bold">{selectedReportForView.id}</span></p>
+                  <p><b>{t('تاريخ الإصدار:', 'Date:')}</b> {selectedReportForView.date}</p>
+                  <p><b>{t('درجة السرية:', 'Classification:')}</b> <span className="text-rose-600 font-bold">رقابي / سري</span></p>
+                  <p><b>{t('الموقف النهائي:', 'Verdict:')}</b> <span className="text-emerald-600 font-bold">{selectedReportForView.status}</span></p>
+                </div>
+              </div>
+
+              {/* Title & Metadata */}
+              <div className="space-y-2">
+                <h2 className="text-lg font-bold text-teal-700 dark:text-teal-300">
+                  {selectedReportForView.title}
+                </h2>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                  <span><b>{t('الجهة المدققة:', 'Auditor:')}</b> {selectedReportForView.auditor}</span>
+                  <span>•</span>
+                  <span><b>{t('دورة الفحص:', 'Cycle:')}</b> الربع السنوي الأول 2026</span>
+                  <span>•</span>
+                  <span><b>{t('المعيار الرقابي:', 'Framework:')}</b> تعليمات البنك المركزي رقم 4 وقانون 18 لسنة 2023</span>
+                </div>
+              </div>
+
+              {/* Scope */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 space-y-1.5">
+                <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-teal-600">travel_explore</span>
+                  <span>{t('1. نطاق الفحص والتدقيق الميداني والتقني (Scope of Audit)', '1. Scope of Audit')}</span>
+                </h4>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs">
+                  {selectedReportForView.scope}
+                </p>
+              </div>
+
+              {/* Executive Summary */}
+              <div className="p-4 rounded-2xl bg-teal-500/5 border border-teal-500/20 space-y-1.5">
+                <h4 className="font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-teal-600">summarize</span>
+                  <span>{t('2. الملخص التنفيذي وموقف الامتثال (Executive Summary)', '2. Executive Summary')}</span>
+                </h4>
+                <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-xs">
+                  {selectedReportForView.executiveSummary}
+                </p>
+              </div>
+
+              {/* Detailed Findings Table */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-teal-600">fact_check</span>
+                  <span>{t('3. مصفوفة التحقق ونتائج الفحص التفصيلية (Audit Findings Matrix)', '3. Audit Findings Matrix')}</span>
+                </h4>
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10">
+                  <table className="w-full text-start">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-white/10 text-[11px]">
+                        <th className="p-3 text-start">{t('محور الفحص الرقابي', 'Audit Area')}</th>
+                        <th className="p-3 text-start">{t('موقف الامتثال', 'Compliance Status')}</th>
+                        <th className="p-3 text-start">{t('أدلة التحقق وملاحظات المدقق', 'Verification Notes')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                      {selectedReportForView.findings?.map((f: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                          <td className="p-3 font-bold text-slate-900 dark:text-white">{f.area}</td>
+                          <td className="p-3">
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
+                              {f.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-600 dark:text-slate-300 text-xs">{f.notes}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Recommendations */}
+              <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-1.5">
+                <h4 className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-amber-600">tips_and_updates</span>
+                  <span>{t('4. التوصيات والإجراءات التحسينية (Recommendations)', '4. Recommendations')}</span>
+                </h4>
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-xs">
+                  {selectedReportForView.recommendation}
+                </p>
+              </div>
+
+              {/* Official Signatures & Seal */}
+              <div className="pt-8 border-t border-slate-300 dark:border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+                <div className="space-y-2 p-3 rounded-xl border border-slate-200 dark:border-white/5">
+                  <p className="text-[10px] text-slate-400 font-bold">{t('مدقق الرقابة والامتثال', 'Compliance Auditor')}</p>
+                  <p className="font-bold text-xs text-slate-800 dark:text-slate-200">{selectedReportForView.auditor}</p>
+                  <div className="text-teal-600 dark:text-teal-400 text-sm italic pt-1 font-bold">Audited & Verified</div>
+                </div>
+
+                <div className="space-y-2 p-3 rounded-xl border border-slate-200 dark:border-white/5">
+                  <p className="text-[10px] text-slate-400 font-bold">{t('رئيس قسم التدقيق الداخلي', 'Head of Internal Audit')}</p>
+                  <p className="font-bold text-xs text-slate-800 dark:text-slate-200">لجنة التدقيق المعتمدة</p>
+                  <div className="text-teal-600 dark:text-teal-400 text-sm italic pt-1 font-bold">Internal Audit Approved</div>
+                </div>
+
+                <div className="space-y-2 p-3 rounded-xl border border-slate-200 dark:border-white/5 flex flex-col items-center justify-center">
+                  <div className="w-16 h-16 rounded-full border-2 border-teal-600 border-dashed flex flex-col items-center justify-center text-[8px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-tighter">
+                    <span>VITAS IRAQ</span>
+                    <span>CBI COMPLIANT</span>
+                    <span>2026</span>
+                  </div>
+                  <p className="text-[9px] text-slate-400 mt-1">{t('خاتم الامتثال الرقابي المعتمد', 'Official Regulatory Seal')}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          OFFICIAL COMPANY POLICY VIEWER & PRINT MODAL
+      ============================================================ */}
+      {selectedPolicyForView && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${
+            isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            {/* Modal Controls Bar */}
+            <div className="print:hidden p-4 border-b border-slate-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/5 sticky top-0 z-10 backdrop-blur-md">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 material-symbols-outlined text-lg">policy</span>
+                <div>
+                  <h3 className="font-bold text-sm">{selectedPolicyForView.title}</h3>
+                  <p className="text-[11px] text-slate-500 font-mono">{selectedPolicyForView.code} • {selectedPolicyForView.version} • {selectedPolicyForView.pages}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={t('بحث داخل اللائحة...', 'Search policy...')}
+                    value={policySearchQuery}
+                    onChange={e => setPolicySearchQuery(e.target.value)}
+                    className={`px-3 py-1.5 rounded-xl text-xs border outline-none pr-8 ${
+                      isDark ? 'bg-slate-800 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                  />
+                  <span className="material-symbols-outlined text-sm absolute right-2.5 top-2 text-slate-400">search</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">print</span>
+                  <span>{t('طباعة اللائحة', 'Print Policy')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPolicyForView(null);
+                    setPolicySearchQuery('');
+                  }}
+                  className="p-1.5 rounded-xl border border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Document Body */}
+            <div className="p-8 sm:p-10 space-y-6 text-xs leading-relaxed">
+              {/* Header */}
+              <div className="border-b-2 border-teal-600 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-black text-teal-600 dark:text-teal-400">VITAS IRAQ</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/15 text-teal-700 dark:text-teal-300">لائحة وسياسة معتمدة</span>
+                  </div>
+                  <h1 className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+                    {selectedPolicyForView.title}
+                  </h1>
+                  <p className="text-[11px] text-slate-500">{selectedPolicyForView.desc}</p>
+                </div>
+                <div className="sm:text-end font-mono text-[11px] space-y-0.5 bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-200 dark:border-white/5">
+                  <p><b>{t('رمز السياسة:', 'Policy Code:')}</b> <span className="text-teal-600 font-bold">{selectedPolicyForView.code}</span></p>
+                  <p><b>{t('الإصدار:', 'Version:')}</b> {selectedPolicyForView.version}</p>
+                  <p><b>{t('تاريخ الاعتماد:', 'Approved Date:')}</b> {selectedPolicyForView.date}</p>
+                  <p><b>{t('جهة الاعتماد:', 'Authority:')}</b> مجلس الإدارة (BoD)</p>
+                </div>
+              </div>
+
+              {/* Chapters & Articles */}
+              <div className="space-y-5">
+                {selectedPolicyForView.chapters
+                  ?.filter((ch: any) => !policySearchQuery || ch.title.includes(policySearchQuery) || ch.content.includes(policySearchQuery))
+                  .map((ch: any, idx: number) => (
+                    <div key={idx} className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 space-y-2">
+                      <h3 className="font-bold text-sm text-teal-700 dark:text-teal-300 flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xs font-mono font-bold">
+                          {idx + 1}
+                        </span>
+                        <span>{ch.title}</span>
+                      </h3>
+                      <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-xs pr-8">
+                        {ch.content}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Institutional Notice */}
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-lg shrink-0 mt-0.5">verified_user</span>
+                <div>
+                  <p className="font-bold">{t('إقرار وإلزام قانوني:', 'Statutory & Policy Mandate:')}</p>
+                  <p className="text-[11px] mt-0.5">
+                    {t('تعتبر هذه اللائحة وثيقة عمل إلزامية لكافة الموظفين في مؤسسة فيتاس العراق ويُعد التوقيع على عقد العمل إقراراً بالاطلاع عليها والالتزام الكامل ببنودها وتعديلاتها.', 'This policy document is mandatory for all employees of VITAS Iraq across all branches.')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          RISK DOSSIER & MITIGATION PLAN EDITOR MODAL
+      ============================================================ */}
+      {selectedRiskForDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-xl rounded-3xl border shadow-2xl p-6 space-y-5 text-xs ${
+            isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 material-symbols-outlined text-lg">edit_note</span>
+                <div>
+                  <h3 className="font-bold text-sm">{t('تعديل وتحديث خطة معالجة الخطر', 'Edit Risk & Mitigation Plan')}</h3>
+                  <p className="text-[11px] text-slate-500 font-mono">{selectedRiskForDetails.riskCode || selectedRiskForDetails.id}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRiskForDetails(null)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRiskDetails} className="space-y-4">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 block">{t('عنوان الخطر:', 'Risk Title:')}</span>
+                <p className="font-bold text-xs text-slate-800 dark:text-slate-100">{selectedRiskForDetails.title}</p>
+                <div className="flex items-center gap-3 text-[10px] text-slate-500 pt-1">
+                  <span><b>{t('الفئة:', 'Category:')}</b> {selectedRiskForDetails.category}</span>
+                  <span>•</span>
+                  <span><b>{t('المسؤول:', 'Owner:')}</b> {selectedRiskForDetails.owner || 'مدير المخاطر'}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold mb-1.5 text-slate-700 dark:text-slate-300">
+                    {t('حالة الخطر الحالية', 'Current Risk Status')}
+                  </label>
+                  <select
+                    value={editRiskForm.status}
+                    onChange={e => setEditRiskForm({ ...editRiskForm, status: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
+                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <option value="مفتوح">{t('مفتوح (Open)', 'Open')}</option>
+                    <option value="قيد المعالجة">{t('قيد المعالجة والتخفيف (In Progress)', 'In Progress')}</option>
+                    <option value="تم التخفيف والمعالجة">{t('تم التخفيف والمعالجة (Mitigated)', 'Mitigated')}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5 text-slate-700 dark:text-slate-300">
+                    {t('درجة التأثير', 'Impact Level')}
+                  </label>
+                  <select
+                    value={editRiskForm.impact}
+                    onChange={e => setEditRiskForm({ ...editRiskForm, impact: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
+                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <option value="منخفض">{t('منخفض (Low)', 'Low')}</option>
+                    <option value="متوسط">{t('متوسط (Medium)', 'Medium')}</option>
+                    <option value="عالي">{t('عالي (High)', 'High')}</option>
+                    <option value="حرج">{t('حرج جداً (Critical)', 'Critical')}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1.5 text-slate-700 dark:text-slate-300">
+                  {t('خطة التحوط والمعالجة (Mitigation Plan)', 'Mitigation Plan')}
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={editRiskForm.mitigationPlan}
+                  onChange={e => setEditRiskForm({ ...editRiskForm, mitigationPlan: e.target.value })}
+                  placeholder={t('أدخل الإجراءات والخطوات المتبعة للحد من الخطر ومعالجته...', 'Enter mitigation actions...')}
+                  className={`w-full p-3 rounded-xl border text-xs outline-none focus:ring-2 focus:ring-teal-500 ${
+                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRiskForDetails(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                >
+                  {t('إلغاء', 'Cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">save</span>
+                  <span>{t('حفظ التعديلات', 'Save Changes')}</span>
                 </button>
               </div>
             </form>

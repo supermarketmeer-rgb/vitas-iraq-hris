@@ -180,6 +180,7 @@ export const api = {
   // Risks
   getRisks: () => apiClient.get('/risks'),
   addRisk: (risk: any) => apiClient.post('/risks', risk),
+  updateRisk: (id: string, risk: any) => apiClient.put(`/risks/${id}`, risk),
 
   // Documents
   getDocuments: () => apiClient.get('/documents'),
