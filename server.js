@@ -250,6 +250,44 @@ db.getConnection(async (err, connection) => {
   await ensureOnHoldColumn();
   await ensureSettingsSeededAndSynced();
 
+  // Ensure audit_logs table and columns exist
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id VARCHAR(100),
+        user_name VARCHAR(255),
+        user_role VARCHAR(100),
+        action VARCHAR(255),
+        action_type VARCHAR(100),
+        severity VARCHAR(50) DEFAULT 'info',
+        module VARCHAR(100) DEFAULT 'الأمان والامتثال',
+        details TEXT,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        status VARCHAR(50) DEFAULT 'نجاح',
+        metadata LONGTEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `).catch(() => {});
+
+    const auditCols = [
+      { name: 'action', type: 'VARCHAR(255)' },
+      { name: 'action_type', type: 'VARCHAR(100)' },
+      { name: 'severity', type: "VARCHAR(50) DEFAULT 'info'" },
+      { name: 'module', type: "VARCHAR(100) DEFAULT 'الأمان والامتثال'" },
+      { name: 'status', type: "VARCHAR(50) DEFAULT 'نجاح'" },
+      { name: 'metadata', type: 'LONGTEXT' },
+      { name: 'details', type: 'TEXT' }
+    ];
+    for (const col of auditCols) {
+      await query(`ALTER TABLE audit_logs ADD COLUMN ${col.name} ${col.type}`).catch(() => {});
+    }
+  } catch (e) {
+    // Ignore schema update notice
+  }
+
   // Ensure image_url column in company_news table
   try {
     const newsCols = await query('SHOW COLUMNS FROM company_news');
