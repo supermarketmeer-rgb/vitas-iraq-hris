@@ -3412,11 +3412,10 @@ export const Category9RiskComplianceView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsLiveAuditStreaming(prev => !prev)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer badge-white-text ${
-                  isLiveAuditStreaming
-                    ? 'bg-amber-600 hover:bg-amber-700 text-white border border-amber-500 shadow-amber-600/20'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 shadow-emerald-600/20'
-                }`}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer badge-white-text ${isLiveAuditStreaming
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white border border-amber-500 shadow-amber-600/20'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 shadow-emerald-600/20'
+                  }`}
                 style={{ color: '#ffffff' }}
                 title={isLiveAuditStreaming ? t('إيقاف التحديث اللحظي مؤقتاً', 'Pause Live Feed') : t('استئناف التحديث اللحظي', 'Resume Live Feed')}
               >
@@ -4038,13 +4037,12 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <span className="text-teal-600 dark:text-teal-400 font-mono text-xs font-bold">{r.riskCode || r.id}</span>
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm badge-white-text !text-white ${
-                            r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated'
-                              ? 'bg-emerald-700'
-                              : r.status === 'قيد المعالجة' || r.status === 'In Progress'
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm badge-white-text !text-white ${r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated'
+                            ? 'bg-emerald-700'
+                            : r.status === 'قيد المعالجة' || r.status === 'In Progress'
                               ? 'bg-amber-600'
                               : 'bg-rose-700'
-                          }`}
+                            }`}
                           style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
                         >
                           {r.status || 'مفتوح'}
@@ -4053,13 +4051,12 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <h3 className="text-sm font-bold">{r.title}</h3>
                     </div>
                     <span
-                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm badge-white-text !text-white ${
-                        r.impact === 'حرج' || r.impact === 'Critical'
-                          ? 'bg-rose-800'
-                          : r.impact === 'عالي' || r.impact === 'High'
+                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm badge-white-text !text-white ${r.impact === 'حرج' || r.impact === 'Critical'
+                        ? 'bg-rose-800'
+                        : r.impact === 'عالي' || r.impact === 'High'
                           ? 'bg-amber-700'
                           : 'bg-blue-700'
-                      }`}
+                        }`}
                       style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
                     >
                       {t('التأثير:', 'Impact:')} {r.impact}
@@ -4243,356 +4240,356 @@ export const Category9RiskComplianceView: React.FC = () => {
         <div className="space-y-6 max-w-4xl mx-auto">
           {/* Card 1: Portal General Security Policies & Parameters */}
           <div className={`p-6 rounded-3xl border shadow-xl space-y-5 text-xs ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
-            <div>
-              <h2 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                {t('إعدادات وسياسات الأمان العامة للبوابة', 'Portal General Security Policies & Parameters')}
-              </h2>
-              <p className="text-slate-500 text-[11px] mt-0.5">{t('تخصيص شروط كلمات المرور، انتهاء الجلسات، والمصادقة المزدوجة', 'Configure password rules, session timeouts, and MFA')}</p>
-            </div>
-            {lastSavedSecuritySettings && (
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-mono">
-                <span className="material-symbols-outlined text-xs">verified</span>
-                <span>{t('محفوظة ومحدثة', 'Synced & Saved')}</span>
-              </div>
-            )}
-          </div>
-
-          <form onSubmit={handleSaveSecuritySettings} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
               <div>
-                <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
-                  {t('الحد الأدنى لطول كلمة المرور (أحرف)', 'Min Password Length')}
-                </label>
-                <input
-                  type="number"
-                  min={4}
-                  max={32}
-                  value={minPasswordLength}
-                  onChange={e => setMinPasswordLength(e.target.value === '' ? '' as any : Number(e.target.value))}
-                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
-                    }`}
-                />
-                <p className="text-[10px] text-slate-400 mt-1">{t('يوصى بـ 8 أحرف على الأقل لحماية الحسابات', 'Recommended 8+ characters')}</p>
+                <h2 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t('إعدادات وسياسات الأمان العامة للبوابة', 'Portal General Security Policies & Parameters')}
+                </h2>
+                <p className="text-slate-500 text-[11px] mt-0.5">{t('تخصيص شروط كلمات المرور، انتهاء الجلسات، والمصادقة المزدوجة', 'Configure password rules, session timeouts, and MFA')}</p>
               </div>
-
-              <div>
-                <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
-                  {t('مهلة انتهاء الجلسة بعد الخمول (بالدقائق)', 'Session Inactivity Timeout (Minutes)')}
-                </label>
-                <input
-                  type="number"
-                  min={5}
-                  max={480}
-                  value={sessionTimeoutMinutes}
-                  onChange={e => setSessionTimeoutMinutes(e.target.value === '' ? '' as any : Number(e.target.value))}
-                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
-                    }`}
-                />
-                <p className="text-[10px] text-slate-400 mt-1">{t('يتم قفل الشاشة تلقائياً بعد عدم التفاعل', 'Auto locks session after inactivity')}</p>
-              </div>
+              {lastSavedSecuritySettings && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-mono">
+                  <span className="material-symbols-outlined text-xs">verified</span>
+                  <span>{t('محفوظة ومحدثة', 'Synced & Saved')}</span>
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
-                  {t('عدد محاولات الدخول الخاطئة قبل القفل المؤقت', 'Max Failed Attempts Before Lockout')}
-                </label>
-                <input
-                  type="number"
-                  min={3}
-                  max={20}
-                  value={maxFailedAttempts}
-                  onChange={e => setMaxFailedAttempts(e.target.value === '' ? '' as any : Number(e.target.value))}
-                  style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
-                    }`}
-                />
-                <p className="text-[10px] text-slate-400 mt-1">{t('حماية من هجمات التخمين والقوة العمياء (Brute Force)', 'Protection against brute force attacks')}</p>
-              </div>
-
-              <div className="flex items-center gap-3 pt-4 sm:pt-6">
-                <input
-                  type="checkbox"
-                  id="req-special"
-                  checked={requireSpecialChars}
-                  onChange={e => setRequireSpecialChars(e.target.checked)}
-                  className="w-4 h-4 rounded text-teal-600 cursor-pointer"
-                />
-                <label htmlFor="req-special" className="font-bold cursor-pointer select-none" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                  {t('إلزامية احتواء كلمة المرور على رموز خاصة وأرقام', 'Require special characters & numbers')}
-                </label>
-              </div>
-            </div>
-
-            {/* Interactive 2FA Switch */}
-            <div
-              onClick={() => setEnable2FA(prev => !prev)}
-              className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer select-none transition-all ${enable2FA
-                ? 'bg-teal-500/10 border-teal-500/40 text-teal-700 dark:text-teal-300'
-                : isDark ? 'bg-slate-800/40 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
-                }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className={`material-symbols-outlined ${enable2FA ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`}>
-                  {enable2FA ? 'verified_user' : 'shield'}
-                </span>
+            <form onSubmit={handleSaveSecuritySettings} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                    {enable2FA
-                      ? t('المصادقة الثنائية (2FA) مُفعّلة', '2-Factor Authentication Enabled')
-                      : t('المصادقة الثنائية (2FA) مُعطّلة', '2-Factor Authentication Disabled')}
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    {enable2FA
-                      ? t('جميع الحسابات الإدارية تستخدم التحقق المزدوج لحماية النظام', 'All admin accounts require dual-step verification')
-                      : t('انقر للتفعيل لفرض التحقق المزدوج لحماية الحسابات الإدارية', 'Click to enforce dual-step verification on admin accounts')}
-                  </p>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('الحد الأدنى لطول كلمة المرور (أحرف)', 'Min Password Length')}
+                  </label>
+                  <input
+                    type="number"
+                    min={4}
+                    max={32}
+                    value={minPasswordLength}
+                    onChange={e => setMinPasswordLength(e.target.value === '' ? '' as any : Number(e.target.value))}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                      }`}
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">{t('يوصى بـ 8 أحرف على الأقل لحماية الحسابات', 'Recommended 8+ characters')}</p>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('مهلة انتهاء الجلسة بعد الخمول (بالدقائق)', 'Session Inactivity Timeout (Minutes)')}
+                  </label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={480}
+                    value={sessionTimeoutMinutes}
+                    onChange={e => setSessionTimeoutMinutes(e.target.value === '' ? '' as any : Number(e.target.value))}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                      }`}
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">{t('يتم قفل الشاشة تلقائياً بعد عدم التفاعل', 'Auto locks session after inactivity')}</p>
                 </div>
               </div>
-              <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enable2FA ? 'bg-teal-600' : 'bg-slate-400 dark:bg-slate-600'}`}>
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${enable2FA ? (language === 'ar' ? '-translate-x-6' : 'translate-x-6') : (language === 'ar' ? '-translate-x-1' : 'translate-x-1')
-                  }`} />
-              </div>
-            </div>
 
-            {settingsSaved && (
-              <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top duration-300">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-base">check_circle</span>
-                  <span>{t('تم حفظ وتطبيق إعدادات الأمان بنجاح في قاعدة البيانات!', 'Security settings saved & applied successfully!')}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold mb-1.5" style={{ color: isDark ? '#cbd5e1' : '#0f172a' }}>
+                    {t('عدد محاولات الدخول الخاطئة قبل القفل المؤقت', 'Max Failed Attempts Before Lockout')}
+                  </label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={20}
+                    value={maxFailedAttempts}
+                    onChange={e => setMaxFailedAttempts(e.target.value === '' ? '' as any : Number(e.target.value))}
+                    style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                      }`}
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">{t('حماية من هجمات التخمين والقوة العمياء (Brute Force)', 'Protection against brute force attacks')}</p>
                 </div>
-                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
-                  {lastSavedSecuritySettings ? new Date(lastSavedSecuritySettings).toLocaleTimeString() : ''}
-                </span>
-              </div>
-            )}
 
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={isSavingSecuritySettings}
-                className={`flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white font-bold text-xs transition-all shadow-lg shadow-teal-600/25 cursor-pointer flex items-center justify-center gap-2 ${isSavingSecuritySettings ? 'opacity-70 cursor-not-allowed' : ''
+                <div className="flex items-center gap-3 pt-4 sm:pt-6">
+                  <input
+                    type="checkbox"
+                    id="req-special"
+                    checked={requireSpecialChars}
+                    onChange={e => setRequireSpecialChars(e.target.checked)}
+                    className="w-4 h-4 rounded text-teal-600 cursor-pointer"
+                  />
+                  <label htmlFor="req-special" className="font-bold cursor-pointer select-none" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                    {t('إلزامية احتواء كلمة المرور على رموز خاصة وأرقام', 'Require special characters & numbers')}
+                  </label>
+                </div>
+              </div>
+
+              {/* Interactive 2FA Switch */}
+              <div
+                onClick={() => setEnable2FA(prev => !prev)}
+                className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer select-none transition-all ${enable2FA
+                  ? 'bg-teal-500/10 border-teal-500/40 text-teal-700 dark:text-teal-300'
+                  : isDark ? 'bg-slate-800/40 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
                   }`}
               >
-                {isSavingSecuritySettings ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
-                    <span>{t('جاري الحفظ في الخادم...', 'Saving to server...')}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-base">save</span>
-                    <span>{t('حفظ إعدادات الأمان', 'Save Security Settings')}</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleResetSecuritySettingsToDefaults}
-                className={`px-4 py-3 rounded-xl border font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 ${isDark ? 'border-slate-700 hover:bg-white/5 text-slate-300' : 'border-slate-300 hover:bg-slate-100 text-slate-700'
-                  }`}
-                title={t('استعادة الإعدادات الافتراضية', 'Reset to Defaults')}
-              >
-                <span className="material-symbols-outlined text-base">restart_alt</span>
-                <span className="hidden sm:inline">{t('الافتراضي', 'Defaults')}</span>
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Card 2: Automated Backups & Disaster Recovery Engine (التطبيق العملي المقترح) */}
-        <div className={`p-6 rounded-3xl border shadow-xl space-y-5 text-xs ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-500 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">cloud_sync</span>
+                <div className="flex items-center gap-3">
+                  <span className={`material-symbols-outlined ${enable2FA ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`}>
+                    {enable2FA ? 'verified_user' : 'shield'}
+                  </span>
+                  <div>
+                    <p className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                      {enable2FA
+                        ? t('المصادقة الثنائية (2FA) مُفعّلة', '2-Factor Authentication Enabled')
+                        : t('المصادقة الثنائية (2FA) مُعطّلة', '2-Factor Authentication Disabled')}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      {enable2FA
+                        ? t('جميع الحسابات الإدارية تستخدم التحقق المزدوج لحماية النظام', 'All admin accounts require dual-step verification')
+                        : t('انقر للتفعيل لفرض التحقق المزدوج لحماية الحسابات الإدارية', 'Click to enforce dual-step verification on admin accounts')}
+                    </p>
+                  </div>
+                </div>
+                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enable2FA ? 'bg-teal-600' : 'bg-slate-400 dark:bg-slate-600'}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${enable2FA ? (language === 'ar' ? '-translate-x-6' : 'translate-x-6') : (language === 'ar' ? '-translate-x-1' : 'translate-x-1')
+                    }`} />
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                  {t('النسخ الاحتياطي التلقائي والتعافي من الكوارث (Automated Backups & Disaster Recovery)', 'Automated Database Backups & Disaster Recovery')}
-                </h3>
-                <p className="text-slate-500 text-[11px] mt-0.5">
-                  {t('توليد نسخ أسبوعية مضغوطة ومشفرة، حفظ محلي 30 يوماً مع الحذف التلقائي للأقدم، ونسخ متطابق للمسار المنفصل', 'Weekly compressed backups, 30-day retention with auto-purge, and secondary mirror storage')}
-                </p>
-              </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={handleRunImmediateBackup}
-              disabled={isExecutingBackup}
-              className="px-4 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50 badge-white-text"
-              style={{ color: '#ffffff' }}
-            >
-              <span className={`material-symbols-outlined text-base ${isExecutingBackup ? 'animate-spin' : ''}`}>
-                {isExecutingBackup ? 'progress_activity' : 'backup'}
-              </span>
-              <span>{isExecutingBackup ? t('جاري إنشاء النسخة...', 'Generating Backup...') : t('إنشاء نسخة احتياطية الآن', 'Run Backup Now')}</span>
-            </button>
-          </div>
+              {settingsSaved && (
+                <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top duration-300">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base">check_circle</span>
+                    <span>{t('تم حفظ وتطبيق إعدادات الأمان بنجاح في قاعدة البيانات!', 'Security settings saved & applied successfully!')}</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+                    {lastSavedSecuritySettings ? new Date(lastSavedSecuritySettings).toLocaleTimeString() : ''}
+                  </span>
+                </div>
+              )}
 
-          {backupSuccessMessage && (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top duration-300">
-              <span className="material-symbols-outlined text-base">check_circle</span>
-              <span>{backupSuccessMessage}</span>
-            </div>
-          )}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSavingSecuritySettings}
+                  className={`flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white font-bold text-xs transition-all shadow-lg shadow-teal-600/25 cursor-pointer flex items-center justify-center gap-2 ${isSavingSecuritySettings ? 'opacity-70 cursor-not-allowed' : ''
+                    }`}
+                >
+                  {isSavingSecuritySettings ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
+                      <span>{t('جاري الحفظ في الخادم...', 'Saving to server...')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-base">save</span>
+                      <span>{t('حفظ إعدادات الأمان', 'Save Security Settings')}</span>
+                    </>
+                  )}
+                </button>
 
-          {/* Settings Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Frequency */}
-            <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
-              <span className="text-[10px] text-slate-400 font-bold block mb-1">{t('دورية النسخ التلقائي:', 'Automated Frequency:')}</span>
-              <select
-                value={backupSettings.frequency}
-                onChange={e => handleUpdateBackupSettings({ frequency: e.target.value })}
-                className={`w-full p-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-800'}`}
-              >
-                <option value="weekly">{t('أسبوعي (كل أحد 02:00 صباحاً)', 'Weekly (Every Sunday 02:00 AM)')}</option>
-                <option value="daily">{t('يومي (كل ليلة 02:00 صباحاً)', 'Daily (Every Night 02:00 AM)')}</option>
-                <option value="monthly">{t('شهري (أول كل شهر)', 'Monthly (1st of month)')}</option>
-              </select>
-            </div>
-
-            {/* Retention Policy */}
-            <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
-              <span className="text-[10px] text-slate-400 font-bold block mb-1">{t('سياسة الحفظ (Retention):', 'Retention Policy:')}</span>
-              <select
-                value={backupSettings.retentionDays}
-                onChange={e => handleUpdateBackupSettings({ retentionDays: Number(e.target.value) })}
-                className={`w-full p-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-800'}`}
-              >
-                <option value={30}>{t('30 يوماً (الموصى به - حذف الأقدم تلقائياً)', '30 Days (Recommended - Auto Purge)')}</option>
-                <option value={60}>{t('60 يوماً', '60 Days')}</option>
-                <option value={90}>{t('90 يوماً (ربع سنوي)', '90 Days')}</option>
-              </select>
-            </div>
-
-            {/* Secondary Storage Toggle */}
-            <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
-              <span className="text-[10px] text-slate-400 font-bold block mb-1">{t('مسار التخزين المنفصل (Mirror):', 'Secondary Mirror Storage:')}</span>
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-xs font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                  {backupSettings.enableSecondaryMirror ? t('مُفعّل (نشط)', 'Mirror Active') : t('معطل', 'Disabled')}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={backupSettings.enableSecondaryMirror}
-                  onChange={e => handleUpdateBackupSettings({ enableSecondaryMirror: e.target.checked })}
-                  className="w-4 h-4 rounded text-teal-600 cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Storage Locations Summary */}
-          <div className={`p-3.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-slate-900/40 border-white/5' : 'bg-slate-50/70 border-slate-200'}`}>
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-500 font-medium">{t('مسار الحفظ المحلي الأساسي:', 'Primary Local Directory:')}</span>
-              <span className="font-mono text-teal-600 dark:text-teal-400 font-bold text-[10px] dir-ltr">{backupSettings.primaryDir}</span>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] pt-1.5 border-t border-slate-200 dark:border-white/5">
-              <span className="text-slate-500 font-medium">{t('مسار النسخ المنفصل (حاسبة أو سيرفر شبكي):', 'Secondary Mirror Directory (PC / Server):')}</span>
-              <div className="flex items-center gap-2 flex-1 max-w-md">
-                <input
-                  type="text"
-                  value={backupSettings.secondaryDir || ''}
-                  onChange={e => setBackupSettings((prev: any) => ({ ...prev, secondaryDir: e.target.value }))}
-                  placeholder="مثال: \\192.168.1.100\HRIS_Backups أو E:\Backups"
-                  className={`w-full px-2.5 py-1 rounded-lg border font-mono text-[10px] outline-none dir-ltr ${isDark ? 'bg-slate-800 border-slate-700 text-teal-300' : 'bg-white border-slate-300 text-teal-800'}`}
-                />
                 <button
                   type="button"
-                  onClick={() => handleUpdateBackupSettings({ secondaryDir: backupSettings.secondaryDir })}
-                  className="px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold text-[10px] whitespace-nowrap cursor-pointer shadow-sm badge-white-text"
-                  style={{ color: '#ffffff' }}
+                  onClick={handleResetSecuritySettingsToDefaults}
+                  className={`px-4 py-3 rounded-xl border font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 ${isDark ? 'border-slate-700 hover:bg-white/5 text-slate-300' : 'border-slate-300 hover:bg-slate-100 text-slate-700'
+                    }`}
+                  title={t('استعادة الإعدادات الافتراضية', 'Reset to Defaults')}
                 >
-                  {t('حفظ', 'Save')}
+                  <span className="material-symbols-outlined text-base">restart_alt</span>
+                  <span className="hidden sm:inline">{t('الافتراضي', 'Defaults')}</span>
                 </button>
               </div>
-            </div>
-            {backupSettings.lastRunDetails && (
-              <div className="pt-2 border-t border-slate-200 dark:border-white/5 text-[10px] text-slate-500 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-xs text-emerald-500">task_alt</span>
-                <span><b>{t('آخر عملية:', 'Last Run:')}</b> {backupSettings.lastRunDetails}</span>
-              </div>
-            )}
+            </form>
           </div>
 
-          {/* Backups Table / Archive List */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                {t(`أرشيف النسخ الاحتياطية المتوفرة (${backupsList.length})`, `Available Backup Archives (${backupsList.length})`)}
-              </span>
+          {/* Card 2: Automated Backups & Disaster Recovery Engine (التطبيق العملي المقترح) */}
+          <div className={`p-6 rounded-3xl border shadow-xl space-y-5 text-xs ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-500 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-2xl">cloud_sync</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                    {t('النسخ الاحتياطي التلقائي والتعافي من الكوارث (Automated Backups & Disaster Recovery)', 'Automated Database Backups & Disaster Recovery')}
+                  </h3>
+                  <p className="text-slate-500 text-[11px] mt-0.5">
+                    {t('توليد نسخ أسبوعية مضغوطة ومشفرة، حفظ محلي 30 يوماً مع الحذف التلقائي للأقدم، ونسخ متطابق للمسار المنفصل', 'Weekly compressed backups, 30-day retention with auto-purge, and secondary mirror storage')}
+                  </p>
+                </div>
+              </div>
+
               <button
                 type="button"
-                onClick={fetchBackupsList}
-                className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 cursor-pointer"
+                onClick={handleRunImmediateBackup}
+                disabled={isExecutingBackup}
+                className="px-4 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50 badge-white-text"
+                style={{ color: '#ffffff' }}
               >
-                <span className={`material-symbols-outlined text-xs ${isLoadingBackups ? 'animate-spin' : ''}`}>refresh</span>
-                <span>{t('تحديث القائمة', 'Refresh')}</span>
+                <span className={`material-symbols-outlined text-base ${isExecutingBackup ? 'animate-spin' : ''}`}>
+                  {isExecutingBackup ? 'progress_activity' : 'backup'}
+                </span>
+                <span>{isExecutingBackup ? t('جاري إنشاء النسخة...', 'Generating Backup...') : t('إنشاء نسخة احتياطية الآن', 'Run Backup Now')}</span>
               </button>
             </div>
 
-            {backupsList.length === 0 ? (
-              <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-slate-400 text-xs">
-                {t('لا توجد نسخ احتياطية مسجلة بعد. انقر على "إنشاء نسخة احتياطية الآن" لتوليد أول نسخة.', 'No backup archives found. Click "Run Backup Now" to create your first archive.')}
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
-                <table className="w-full text-start text-[11px]">
-                  <thead className={isDark ? 'bg-slate-900 text-slate-400' : 'bg-slate-100 text-slate-600'}>
-                    <tr>
-                      <th className="py-2.5 px-3 text-start font-bold">{t('اسم ملف الأرشيف', 'Archive Filename')}</th>
-                      <th className="py-2.5 px-3 text-start font-bold">{t('تاريخ الإنشاء', 'Created At')}</th>
-                      <th className="py-2.5 px-3 text-start font-bold">{t('الحجم (مضغوط)', 'Size')}</th>
-                      <th className="py-2.5 px-3 text-start font-bold">{t('التطابق الثانوي', 'Secondary Mirror')}</th>
-                      <th className="py-2.5 px-3 text-center font-bold">{t('تحميل', 'Download')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                    {backupsList.map((b, idx) => (
-                      <tr key={idx} className="hover:bg-slate-500/5 transition-colors">
-                        <td className="py-2.5 px-3 font-mono font-bold text-slate-800 dark:text-slate-200">{b.filename}</td>
-                        <td className="py-2.5 px-3 font-mono text-slate-500">{new Date(b.createdAt).toLocaleString()}</td>
-                        <td className="py-2.5 px-3 font-bold text-teal-600 dark:text-teal-400">{b.sizeFormatted}</td>
-                        <td className="py-2.5 px-3">
-                          {b.existsInSecondary ? (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                              {t('مطابق 100%', 'Mirrored')}
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-500/15 text-slate-500 border border-slate-500/20">
-                              {t('محلي فقط', 'Local Only')}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <a
-                            href={`/api/backup/download/${encodeURIComponent(b.filename)}`}
-                            download={b.filename}
-                            className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold text-[10px] inline-flex items-center gap-1 shadow-sm transition-all cursor-pointer badge-white-text"
-                            style={{ color: '#ffffff' }}
-                          >
-                            <span className="material-symbols-outlined text-xs">download</span>
-                            <span>{t('تنزيل', 'Download')}</span>
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {backupSuccessMessage && (
+              <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top duration-300">
+                <span className="material-symbols-outlined text-base">check_circle</span>
+                <span>{backupSuccessMessage}</span>
               </div>
             )}
+
+            {/* Settings Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Frequency */}
+              <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                <span className="text-[10px] text-slate-400 font-bold block mb-1">{t('دورية النسخ التلقائي:', 'Automated Frequency:')}</span>
+                <select
+                  value={backupSettings.frequency}
+                  onChange={e => handleUpdateBackupSettings({ frequency: e.target.value })}
+                  className={`w-full p-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-800'}`}
+                >
+                  <option value="weekly">{t('أسبوعي (كل أحد 02:00 صباحاً)', 'Weekly (Every Sunday 02:00 AM)')}</option>
+                  <option value="daily">{t('يومي (كل ليلة 02:00 صباحاً)', 'Daily (Every Night 02:00 AM)')}</option>
+                  <option value="monthly">{t('شهري (أول كل شهر)', 'Monthly (1st of month)')}</option>
+                </select>
+              </div>
+
+              {/* Retention Policy */}
+              <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                <span className="text-[10px] text-slate-400 font-bold block mb-1">{t('سياسة الحفظ (Retention):', 'Retention Policy:')}</span>
+                <select
+                  value={backupSettings.retentionDays}
+                  onChange={e => handleUpdateBackupSettings({ retentionDays: Number(e.target.value) })}
+                  className={`w-full p-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-800'}`}
+                >
+                  <option value={30}>{t('30 يوماً (الموصى به - حذف الأقدم تلقائياً)', '30 Days (Recommended - Auto Purge)')}</option>
+                  <option value={60}>{t('60 يوماً', '60 Days')}</option>
+                  <option value={90}>{t('90 يوماً (ربع سنوي)', '90 Days')}</option>
+                </select>
+              </div>
+
+              {/* Secondary Storage Toggle */}
+              <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                <span className="text-[10px] text-slate-400 font-bold block mb-1">{t('مسار التخزين المنفصل (Mirror):', 'Secondary Mirror Storage:')}</span>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                    {backupSettings.enableSecondaryMirror ? t('مُفعّل (نشط)', 'Mirror Active') : t('معطل', 'Disabled')}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={backupSettings.enableSecondaryMirror}
+                    onChange={e => handleUpdateBackupSettings({ enableSecondaryMirror: e.target.checked })}
+                    className="w-4 h-4 rounded text-teal-600 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Storage Locations Summary */}
+            <div className={`p-3.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-slate-900/40 border-white/5' : 'bg-slate-50/70 border-slate-200'}`}>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">{t('مسار الحفظ المحلي الأساسي:', 'Primary Local Directory:')}</span>
+                <span className="font-mono text-teal-600 dark:text-teal-400 font-bold text-[10px] dir-ltr">{backupSettings.primaryDir}</span>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] pt-1.5 border-t border-slate-200 dark:border-white/5">
+                <span className="text-slate-500 font-medium">{t('مسار النسخ المنفصل (حاسبة أو سيرفر شبكي):', 'Secondary Mirror Directory (PC / Server):')}</span>
+                <div className="flex items-center gap-2 flex-1 max-w-md">
+                  <input
+                    type="text"
+                    value={backupSettings.secondaryDir || ''}
+                    onChange={e => setBackupSettings((prev: any) => ({ ...prev, secondaryDir: e.target.value }))}
+                    placeholder="مثال: \\192.168.1.100\HRIS_Backups أو E:\Backups"
+                    className={`w-full px-2.5 py-1 rounded-lg border font-mono text-[10px] outline-none dir-ltr ${isDark ? 'bg-slate-800 border-slate-700 text-teal-300' : 'bg-white border-slate-300 text-teal-800'}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateBackupSettings({ secondaryDir: backupSettings.secondaryDir })}
+                    className="px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold text-[10px] whitespace-nowrap cursor-pointer shadow-sm badge-white-text"
+                    style={{ color: '#ffffff' }}
+                  >
+                    {t('حفظ', 'Save')}
+                  </button>
+                </div>
+              </div>
+              {backupSettings.lastRunDetails && (
+                <div className="pt-2 border-t border-slate-200 dark:border-white/5 text-[10px] text-slate-500 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-xs text-emerald-500">task_alt</span>
+                  <span><b>{t('آخر عملية:', 'Last Run:')}</b> {backupSettings.lastRunDetails}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Backups Table / Archive List */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t(`أرشيف النسخ الاحتياطية المتوفرة (${backupsList.length})`, `Available Backup Archives (${backupsList.length})`)}
+                </span>
+                <button
+                  type="button"
+                  onClick={fetchBackupsList}
+                  className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span className={`material-symbols-outlined text-xs ${isLoadingBackups ? 'animate-spin' : ''}`}>refresh</span>
+                  <span>{t('تحديث القائمة', 'Refresh')}</span>
+                </button>
+              </div>
+
+              {backupsList.length === 0 ? (
+                <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-slate-400 text-xs">
+                  {t('لا توجد نسخ احتياطية مسجلة بعد. انقر على "إنشاء نسخة احتياطية الآن" لتوليد أول نسخة.', 'No backup archives found. Click "Run Backup Now" to create your first archive.')}
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
+                  <table className="w-full text-start text-[11px]">
+                    <thead className={isDark ? 'bg-slate-900 text-slate-400' : 'bg-slate-100 text-slate-600'}>
+                      <tr>
+                        <th className="py-2.5 px-3 text-start font-bold">{t('اسم ملف الأرشيف', 'Archive Filename')}</th>
+                        <th className="py-2.5 px-3 text-start font-bold">{t('تاريخ الإنشاء', 'Created At')}</th>
+                        <th className="py-2.5 px-3 text-start font-bold">{t('الحجم (مضغوط)', 'Size')}</th>
+                        <th className="py-2.5 px-3 text-start font-bold">{t('التطابق الثانوي', 'Secondary Mirror')}</th>
+                        <th className="py-2.5 px-3 text-center font-bold">{t('تحميل', 'Download')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                      {backupsList.map((b, idx) => (
+                        <tr key={idx} className="hover:bg-slate-500/5 transition-colors">
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-800 dark:text-slate-200">{b.filename}</td>
+                          <td className="py-2.5 px-3 font-mono text-slate-500">{new Date(b.createdAt).toLocaleString()}</td>
+                          <td className="py-2.5 px-3 font-bold text-teal-600 dark:text-teal-400">{b.sizeFormatted}</td>
+                          <td className="py-2.5 px-3">
+                            {b.existsInSecondary ? (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                {t('مطابق 100%', 'Mirrored')}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-500/15 text-slate-500 border border-slate-500/20">
+                                {t('محلي فقط', 'Local Only')}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <a
+                              href={`/api/backup/download/${encodeURIComponent(b.filename)}`}
+                              download={b.filename}
+                              className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold text-[10px] inline-flex items-center gap-1 shadow-sm transition-all cursor-pointer badge-white-text"
+                              style={{ color: '#ffffff' }}
+                            >
+                              <span className="material-symbols-outlined text-xs">download</span>
+                              <span>{t('تنزيل', 'Download')}</span>
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* =========================================================================
@@ -4883,24 +4880,36 @@ export const Category9RiskComplianceView: React.FC = () => {
                           {/* Severity Badge */}
                           <td className="py-3 px-4 whitespace-nowrap">
                             {isCritical ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
-                                <span>{t('حرج', 'Critical')}</span>
+                              <span
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-rose-700 text-white border border-rose-800 shadow-sm badge-white-text"
+                                style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                                <span style={{ color: '#ffffff' }}>{t('حرج', 'Critical')}</span>
                               </span>
                             ) : isWarning ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                <span>{t('تحذير', 'Warning')}</span>
+                              <span
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-600 text-white border border-amber-700 shadow-sm badge-white-text"
+                                style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                                <span style={{ color: '#ffffff' }}>{t('تحذير', 'Warning')}</span>
                               </span>
                             ) : isSuccess ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                <span>{t('ناجح', 'Success')}</span>
+                              <span
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-700 text-white border border-emerald-800 shadow-sm badge-white-text"
+                                style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                                <span style={{ color: '#ffffff' }}>{t('ناجح', 'Success')}</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                <span>{t('معلومات', 'Info')}</span>
+                              <span
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-700 text-white border border-blue-800 shadow-sm badge-white-text"
+                                style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                                <span style={{ color: '#ffffff' }}>{t('معلومات', 'Info')}</span>
                               </span>
                             )}
                           </td>
@@ -4914,13 +4923,13 @@ export const Category9RiskComplianceView: React.FC = () => {
                           {/* Status */}
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold badge-white-text ${log.status === 'محظور'
-                                ? 'bg-rose-500 text-white'
+                              className={`px-2.5 py-1 rounded-md text-[10px] font-bold badge-white-text ${log.status === 'محظور'
+                                ? 'bg-rose-600 text-white'
                                 : log.status === 'تحذير'
-                                  ? 'bg-amber-500 text-white'
+                                  ? 'bg-amber-600 text-white'
                                   : 'bg-emerald-600 text-white'
                                 }`}
-                              style={{ color: '#ffffff' }}
+                              style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
                             >
                               {log.status}
                             </span>
@@ -4931,11 +4940,12 @@ export const Category9RiskComplianceView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setSelectedAuditLog(log)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-bold text-teal-600 dark:text-teal-400 hover:bg-teal-500/10 transition-all flex items-center justify-center gap-1 mx-auto cursor-pointer"
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white transition-all shadow-sm flex items-center justify-center gap-1.5 mx-auto cursor-pointer badge-white-text border border-teal-600 hover:scale-[1.02] active:scale-[0.98]"
+                              style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
                               title={t('عرض التفاصيل الفنية للحدث', 'Inspect Event Details')}
                             >
-                              <span className="material-symbols-outlined text-sm">visibility</span>
-                              <span>{t('تفاصيل', 'Inspect')}</span>
+                              <span className="material-symbols-outlined text-sm" style={{ color: '#ffffff' }}>visibility</span>
+                              <span style={{ color: '#ffffff' }}>{t('تفاصيل', 'Inspect')}</span>
                             </button>
                           </td>
                         </tr>
