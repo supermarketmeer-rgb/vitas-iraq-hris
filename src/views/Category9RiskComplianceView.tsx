@@ -1769,7 +1769,73 @@ export const Category9RiskComplianceView: React.FC = () => {
       }
     };
     loadRemoteSecuritySettings();
+    fetchBackupsList();
   }, []);
+
+  // --- 3.1 Automated Backup & Disaster Recovery State ---
+  const [backupsList, setBackupsList] = useState<any[]>([]);
+  const [backupSettings, setBackupSettings] = useState<any>({
+    enabled: true,
+    frequency: 'weekly',
+    retentionDays: 30,
+    enableSecondaryMirror: true,
+    primaryDir: 'D:\\My Apps\\vitas-iraq-hris\\backups',
+    secondaryDir: 'D:\\My Apps\\vitas-iraq-hris\\backups\\external_mirror',
+    lastRunTime: null,
+    lastRunDetails: null,
+    lastRunStatus: null
+  });
+  const [isLoadingBackups, setIsLoadingBackups] = useState(false);
+  const [isExecutingBackup, setIsExecutingBackup] = useState(false);
+  const [backupSuccessMessage, setBackupSuccessMessage] = useState<string | null>(null);
+
+  const fetchBackupsList = async () => {
+    try {
+      setIsLoadingBackups(true);
+      const res: any = await (api as any).getBackupList?.();
+      if (res?.success) {
+        if (Array.isArray(res.backups)) setBackupsList(res.backups);
+        if (res.settings) setBackupSettings(res.settings);
+      }
+    } catch (e) {
+      console.warn('Could not fetch backups list:', e);
+    } finally {
+      setIsLoadingBackups(false);
+    }
+  };
+
+  const handleRunImmediateBackup = async () => {
+    try {
+      setIsExecutingBackup(true);
+      setBackupSuccessMessage(null);
+      const res: any = await (api as any).runBackupNow?.(currentUser?.name || 'مدير النظام والامتثال');
+      if (res?.success) {
+        setBackupSuccessMessage(
+          language === 'ar'
+            ? `تم إنشاء النسخة بنجاح: ${res.filename} (${res.formattedSize})`
+            : `Backup created successfully: ${res.filename} (${res.formattedSize})`
+        );
+        fetchBackupsList();
+        setTimeout(() => setBackupSuccessMessage(null), 6000);
+      }
+    } catch (err: any) {
+      alert(language === 'ar' ? `خطأ أثناء إنشاء النسخة الاحتياطية: ${err.message}` : `Error creating backup: ${err.message}`);
+    } finally {
+      setIsExecutingBackup(false);
+    }
+  };
+
+  const handleUpdateBackupSettings = async (updates: Record<string, any>) => {
+    try {
+      const merged = { ...backupSettings, ...updates };
+      setBackupSettings(merged);
+      await (api as any).saveBackupSettings?.(merged);
+      setBackupSuccessMessage(language === 'ar' ? 'تم تحديث سياسة وإعدادات النسخ الاحتياطي بنجاح!' : 'Backup settings updated successfully!');
+      setTimeout(() => setBackupSuccessMessage(null), 4000);
+    } catch (err: any) {
+      alert(language === 'ar' ? `فشل تحديث الإعدادات: ${err.message}` : `Failed to update settings: ${err.message}`);
+    }
+  };
 
   // --- 4. Role Permission Editor State ---
   const [selectedRoleForEdit, setSelectedRoleForEdit] = useState<string>('HR Manager');
@@ -2771,6 +2837,9 @@ export const Category9RiskComplianceView: React.FC = () => {
   React.useEffect(() => {
     if (activeModuleId === 'sec-roles-permissions') {
       setRbacSubTab('custom_employees');
+    }
+    if (activeModuleId === 'sec-general-settings') {
+      fetchBackupsList();
     }
   }, [activeModuleId]);
 
@@ -3994,10 +4063,12 @@ export const Category9RiskComplianceView: React.FC = () => {
       )}
 
       {/* =========================================================================
-          MODULE 8: General Security Settings (sec-general-settings)
+          MODULE 8: General Security Settings & Automated Backup (sec-general-settings)
           ========================================================================= */}
       {activeModuleId === 'sec-general-settings' && (
-        <div className={`max-w-2xl mx-auto p-6 rounded-3xl border shadow-xl space-y-5 text-xs ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {/* Card 1: Portal General Security Policies & Parameters */}
+          <div className={`p-6 rounded-3xl border shadow-xl space-y-5 text-xs ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
             <div>
               <h2 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
@@ -4158,6 +4229,180 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
           </form>
         </div>
+
+        {/* Card 2: Automated Backups & Disaster Recovery Engine (التطبيق العملي المقترح) */}
+        <div className={`p-6 rounded-3xl border shadow-xl space-y-5 text-xs ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-500 flex items-center justify-center font-bold">
+                <span className="material-symbols-outlined text-2xl">cloud_sync</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t('النسخ الاحتياطي التلقائي والتعافي من الكوارث (Automated Backups & Disaster Recovery)', 'Automated Database Backups & Disaster Recovery')}
+                </h3>
+                <p className="text-slate-500 text-[11px] mt-0.5">
+                  {t('توليد نسخ أسبوعية مضغوطة ومشفرة، حفظ محلي 30 يوماً مع الحذف التلقائي للأقدم، ونسخ متطابق للمسار المنفصل', 'Weekly compressed backups, 30-day retention with auto-purge, and secondary mirror storage')}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleRunImmediateBackup}
+              disabled={isExecutingBackup}
+              className="px-4 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50 badge-white-text"
+              style={{ color: '#ffffff' }}
+            >
+              <span className={`material-symbols-outlined text-base ${isExecutingBackup ? 'animate-spin' : ''}`}>
+                {isExecutingBackup ? 'progress_activity' : 'backup'}
+              </span>
+              <span>{isExecutingBackup ? t('جاري إنشاء النسخة...', 'Generating Backup...') : t('إنشاء نسخة احتياطية الآن', 'Run Backup Now')}</span>
+            </button>
+          </div>
+
+          {backupSuccessMessage && (
+            <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top duration-300">
+              <span className="material-symbols-outlined text-base">check_circle</span>
+              <span>{backupSuccessMessage}</span>
+            </div>
+          )}
+
+          {/* Settings Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Frequency */}
+            <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+              <span className="text-[10px] text-slate-400 font-bold block mb-1">{t('دورية النسخ التلقائي:', 'Automated Frequency:')}</span>
+              <select
+                value={backupSettings.frequency}
+                onChange={e => handleUpdateBackupSettings({ frequency: e.target.value })}
+                className={`w-full p-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-800'}`}
+              >
+                <option value="weekly">{t('أسبوعي (كل أحد 02:00 صباحاً)', 'Weekly (Every Sunday 02:00 AM)')}</option>
+                <option value="daily">{t('يومي (كل ليلة 02:00 صباحاً)', 'Daily (Every Night 02:00 AM)')}</option>
+                <option value="monthly">{t('شهري (أول كل شهر)', 'Monthly (1st of month)')}</option>
+              </select>
+            </div>
+
+            {/* Retention Policy */}
+            <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+              <span className="text-[10px] text-slate-400 font-bold block mb-1">{t('سياسة الحفظ (Retention):', 'Retention Policy:')}</span>
+              <select
+                value={backupSettings.retentionDays}
+                onChange={e => handleUpdateBackupSettings({ retentionDays: Number(e.target.value) })}
+                className={`w-full p-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-800'}`}
+              >
+                <option value={30}>{t('30 يوماً (الموصى به - حذف الأقدم تلقائياً)', '30 Days (Recommended - Auto Purge)')}</option>
+                <option value={60}>{t('60 يوماً', '60 Days')}</option>
+                <option value={90}>{t('90 يوماً (ربع سنوي)', '90 Days')}</option>
+              </select>
+            </div>
+
+            {/* Secondary Storage Toggle */}
+            <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+              <span className="text-[10px] text-slate-400 font-bold block mb-1">{t('مسار التخزين المنفصل (Mirror):', 'Secondary Mirror Storage:')}</span>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-xs font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {backupSettings.enableSecondaryMirror ? t('مُفعّل (نشط)', 'Mirror Active') : t('معطل', 'Disabled')}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={backupSettings.enableSecondaryMirror}
+                  onChange={e => handleUpdateBackupSettings({ enableSecondaryMirror: e.target.checked })}
+                  className="w-4 h-4 rounded text-teal-600 cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Storage Locations Summary */}
+          <div className={`p-3.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-slate-900/40 border-white/5' : 'bg-slate-50/70 border-slate-200'}`}>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-500 font-medium">{t('مسار الحفظ المحلي الأساسي:', 'Primary Local Directory:')}</span>
+              <span className="font-mono text-teal-600 dark:text-teal-400 font-bold text-[10px] dir-ltr">{backupSettings.primaryDir}</span>
+            </div>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-500 font-medium">{t('مسار النسخ المنفصل (قرص/سيرفر ثانوي):', 'Secondary Mirror Directory:')}</span>
+              <span className="font-mono text-blue-600 dark:text-blue-400 font-bold text-[10px] dir-ltr">{backupSettings.secondaryDir || 'Not configured'}</span>
+            </div>
+            {backupSettings.lastRunDetails && (
+              <div className="pt-2 border-t border-slate-200 dark:border-white/5 text-[10px] text-slate-500 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-xs text-emerald-500">task_alt</span>
+                <span><b>{t('آخر عملية:', 'Last Run:')}</b> {backupSettings.lastRunDetails}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Backups Table / Archive List */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                {t(`أرشيف النسخ الاحتياطية المتوفرة (${backupsList.length})`, `Available Backup Archives (${backupsList.length})`)}
+              </span>
+              <button
+                type="button"
+                onClick={fetchBackupsList}
+                className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span className={`material-symbols-outlined text-xs ${isLoadingBackups ? 'animate-spin' : ''}`}>refresh</span>
+                <span>{t('تحديث القائمة', 'Refresh')}</span>
+              </button>
+            </div>
+
+            {backupsList.length === 0 ? (
+              <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-slate-400 text-xs">
+                {t('لا توجد نسخ احتياطية مسجلة بعد. انقر على "إنشاء نسخة احتياطية الآن" لتوليد أول نسخة.', 'No backup archives found. Click "Run Backup Now" to create your first archive.')}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
+                <table className="w-full text-start text-[11px]">
+                  <thead className={isDark ? 'bg-slate-900 text-slate-400' : 'bg-slate-100 text-slate-600'}>
+                    <tr>
+                      <th className="py-2.5 px-3 text-start font-bold">{t('اسم ملف الأرشيف', 'Archive Filename')}</th>
+                      <th className="py-2.5 px-3 text-start font-bold">{t('تاريخ الإنشاء', 'Created At')}</th>
+                      <th className="py-2.5 px-3 text-start font-bold">{t('الحجم (مضغوط)', 'Size')}</th>
+                      <th className="py-2.5 px-3 text-start font-bold">{t('التطابق الثانوي', 'Secondary Mirror')}</th>
+                      <th className="py-2.5 px-3 text-center font-bold">{t('تحميل', 'Download')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                    {backupsList.map((b, idx) => (
+                      <tr key={idx} className="hover:bg-slate-500/5 transition-colors">
+                        <td className="py-2.5 px-3 font-mono font-bold text-slate-800 dark:text-slate-200">{b.filename}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-500">{new Date(b.createdAt).toLocaleString()}</td>
+                        <td className="py-2.5 px-3 font-bold text-teal-600 dark:text-teal-400">{b.sizeFormatted}</td>
+                        <td className="py-2.5 px-3">
+                          {b.existsInSecondary ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                              {t('مطابق 100%', 'Mirrored')}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-500/15 text-slate-500 border border-slate-500/20">
+                              {t('محلي فقط', 'Local Only')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <a
+                            href={`/api/backup/download/${encodeURIComponent(b.filename)}`}
+                            download={b.filename}
+                            className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold text-[10px] inline-flex items-center gap-1 shadow-sm transition-all cursor-pointer badge-white-text"
+                            style={{ color: '#ffffff' }}
+                          >
+                            <span className="material-symbols-outlined text-xs">download</span>
+                            <span>{t('تنزيل', 'Download')}</span>
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       )}
 
       {/* =========================================================================

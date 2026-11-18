@@ -409,5 +409,10 @@ export const api = {
   },
   getM365AuditLogById: (id: string) => apiClient.get(`/m365/logs/${encodeURIComponent(id)}`),
   runM365AcceptanceTests: () => apiClient.post('/m365/run-acceptance-tests', {}, 60000),
+
+  // Automated Backup & Disaster Recovery APIs
+  getBackupList: () => apiClient.get<{ success: boolean; settings: any; backups: any[] }>('/backup/list'),
+  runBackupNow: (user?: string) => apiClient.post<{ success: boolean; filename: string; formattedSize: string; details: string }>('/backup/run', { user }),
+  saveBackupSettings: (settings: any) => apiClient.post<{ success: boolean; settings: any }>('/backup/settings', settings),
 };
 

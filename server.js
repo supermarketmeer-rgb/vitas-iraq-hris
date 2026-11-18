@@ -47,6 +47,13 @@ import { registerLebanonRegionalRoutes } from './database/lebanonRegionalRoutes.
 import { registerM365Routes } from './database/m365Routes.js';
 import { registerLocalServerSetupRoutes } from './database/localServerSetupRoutes.js';
 import { registerAppraisalRoutes } from './database/appraisalRoutes.js';
+import {
+  initBackupScheduler,
+  executeBackup,
+  listBackups,
+  loadBackupSettings,
+  saveBackupSettings
+} from './database/backupService.js';
 
 import http from 'http';
 import https from 'https';
@@ -232,6 +239,9 @@ db.getConnection(async (err, connection) => {
 
   // Launch persistent Real-Time Bridge from Cloud to Local
   startCloudRealtimeListener(db);
+
+  // Initialize automated periodic database backups & disaster recovery engine
+  initBackupScheduler(db);
 
   await loadEmployeeColumns();
   await ensureCandidateColumns();
@@ -7996,6 +8006,59 @@ app.get('/api/reports/live-dataset', async (req, res) => {
   } catch (err) {
     console.error('Error generating live reports dataset:', err);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── Automated Backup & Disaster Recovery Endpoints ─────────────────────
+app.get('/api/backup/list', async (req, res) => {
+  try {
+    const settings = await loadBackupSettings(db);
+    const backups = listBackups();
+    res.json({ success: true, settings, backups });
+  } catch (err) {
+    console.error('Error in GET /api/backup/list:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/backup/run', async (req, res) => {
+  try {
+    const user = req.body?.user || 'مدير النظام';
+    const result = await executeBackup(db, { triggerType: 'manual', user });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('Error in POST /api/backup/run:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/backup/settings', async (req, res) => {
+  try {
+    const updated = await saveBackupSettings(db, req.body);
+    res.json({ success: true, settings: updated });
+  } catch (err) {
+    console.error('Error in POST /api/backup/settings:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/backup/download/:filename', async (req, res) => {
+  try {
+    const filename = path.basename(req.params.filename);
+    const settings = await loadBackupSettings(db);
+    const filePath = path.join(settings.primaryDir, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'ملف النسخة الاحتياطية غير موجود' });
+    }
+
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/gzip');
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  } catch (err) {
+    console.error('Error downloading backup:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
