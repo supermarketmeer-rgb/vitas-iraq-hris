@@ -528,7 +528,7 @@ app.get('/api/system/endpoints-status', async (req, res) => {
       const t0 = Date.now();
       let status = 200;
       let count = 0;
-      let state: 'healthy' | 'warning' | 'error' = 'healthy';
+      let state = 'healthy';
       try {
         const rows = await query(ep.querySql).catch(() => []);
         count = rows[0]?.cnt !== undefined ? rows[0].cnt : 1;
@@ -717,7 +717,7 @@ app.get('/api/system/db-tables', async (req, res) => {
       ORDER BY DATA_LENGTH DESC
     `).catch(() => []);
 
-    const formatted = rows.map((r: any) => ({
+    const formatted = rows.map((r) => ({
       tableName: r.tableName,
       rows: Number(r.tableRows || 0),
       dataSizeKB: Math.round((Number(r.dataLength || 0)) / 1024),
@@ -728,8 +728,8 @@ app.get('/api/system/db-tables', async (req, res) => {
       updatedAt: r.updateTime || r.createTime || new Date().toISOString()
     }));
 
-    const totalDatabaseSizeMB = Number((formatted.reduce((acc: number, cur: any) => acc + cur.totalSizeKB, 0) / 1024).toFixed(2));
-    const totalDatabaseRows = formatted.reduce((acc: number, cur: any) => acc + cur.rows, 0);
+    const totalDatabaseSizeMB = Number((formatted.reduce((acc, cur) => acc + cur.totalSizeKB, 0) / 1024).toFixed(2));
+    const totalDatabaseRows = formatted.reduce((acc, cur) => acc + cur.rows, 0);
 
     res.json({
       success: true,
