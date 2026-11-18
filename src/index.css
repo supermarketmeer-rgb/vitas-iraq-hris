@@ -732,9 +732,38 @@ html:not(.dark) h5:not(.dark-banner *):not(button *):not(.btn *):not([class*="bg
   color: #0f766e !important;
 }
 
-html.light .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(th):not(th *):not(thead *):not(aside *):not(header *),
-html:not(.dark) .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not(th):not(th *):not(thead *):not(aside *):not(header *) {
+html.light .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-slate"]):not([class*="bg-indigo"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-red"]):not([class*="bg-black"]):not([class*="badge"]):not(.badge-white-text):not(th):not(th *):not(thead *):not(aside *):not(header *),
+html:not(.dark) .text-white:not(.dark-banner *):not(button):not(button *):not(.btn):not(.btn *):not([class*="bg-teal"]):not([class*="from-teal"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-slate"]):not([class*="bg-indigo"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-red"]):not([class*="bg-black"]):not([class*="badge"]):not(.badge-white-text):not(th):not(th *):not(thead *):not(aside *):not(header *) {
   color: #0f766e !important;
+}
+
+/* All solid badges and chips with dark backgrounds MUST have pure white text */
+.badge-white-text,
+html.light [class*="bg-blue-"].text-white,
+html.light [class*="bg-blue-"] .text-white,
+html.light [class*="bg-amber-"].text-white,
+html.light [class*="bg-amber-"] .text-white,
+html.light [class*="bg-emerald-"].text-white,
+html.light [class*="bg-emerald-"] .text-white,
+html.light [class*="bg-rose-"].text-white,
+html.light [class*="bg-rose-"] .text-white,
+html.light [class*="bg-teal-"].text-white,
+html.light [class*="bg-teal-"] .text-white,
+html.light [class*="bg-slate-"].text-white,
+html.light [class*="bg-slate-"] .text-white,
+html:not(.dark) [class*="bg-blue-"].text-white,
+html:not(.dark) [class*="bg-blue-"] .text-white,
+html:not(.dark) [class*="bg-amber-"].text-white,
+html:not(.dark) [class*="bg-amber-"] .text-white,
+html:not(.dark) [class*="bg-emerald-"].text-white,
+html:not(.dark) [class*="bg-emerald-"] .text-white,
+html:not(.dark) [class*="bg-rose-"].text-white,
+html:not(.dark) [class*="bg-rose-"] .text-white,
+html:not(.dark) [class*="bg-teal-"].text-white,
+html:not(.dark) [class*="bg-teal-"] .text-white,
+html:not(.dark) [class*="bg-slate-"].text-white,
+html:not(.dark) [class*="bg-slate-"] .text-white {
+  color: #ffffff !important;
 }
 
 /* ============================================================
@@ -1072,10 +1101,17 @@ html:not(.dark) table td:not(:has(button)) {
   font-weight: 400 !important;
 }
 
-html.light table td:not(:has(button)) > *:not(button),
-html:not(.dark) table td:not(:has(button)) > *:not(button) {
+html.light table td:not(:has(button)) > *:not(button):not(.text-white):not(.text-white *):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-rose"]):not([class*="bg-slate"]):not(.badge-white-text),
+html:not(.dark) table td:not(:has(button)) > *:not(button):not(.text-white):not(.text-white *):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-rose"]):not([class*="bg-slate"]):not(.badge-white-text) {
   color: #0f172a !important;
   font-weight: 400 !important;
+}
+
+html.light table td .text-white,
+html.light table td span.text-white,
+html:not(.dark) table td .text-white,
+html:not(.dark) table td span.text-white {
+  color: #ffffff !important;
 }
 
 html.light table td span.text-teal-400,

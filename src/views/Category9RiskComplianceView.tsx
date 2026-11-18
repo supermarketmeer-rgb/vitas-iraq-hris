@@ -3360,7 +3360,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <td className="py-3 font-mono text-slate-500">{row.date}</td>
                       <td className="py-3 text-slate-600 dark:text-slate-300">{row.status}</td>
                       <td className="py-3">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-800 text-white font-bold text-[10px] shadow-sm">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-800 text-white font-bold text-[10px] shadow-sm badge-white-text" style={{ color: '#ffffff' }}>
                           {row.comp}
                         </span>
                       </td>
@@ -3743,10 +3743,10 @@ export const Category9RiskComplianceView: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
             <div className="flex items-center gap-2">
               <span className="font-bold">{t(`سجل المخاطر النشطة (${riskRecords.length})`, `Active Risk Register (${riskRecords.length})`)}</span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-700 text-white shadow-sm">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-700 text-white shadow-sm badge-white-text" style={{ color: '#ffffff' }}>
                 {riskRecords.filter(r => r.status === 'مفتوح' || r.status === 'Open').length} {t('مفتوح', 'Open')}
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-700 text-white shadow-sm">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-700 text-white shadow-sm badge-white-text" style={{ color: '#ffffff' }}>
                 {riskRecords.filter(r => r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated').length} {t('تمت معالجته', 'Mitigated')}
               </span>
             </div>
@@ -3794,23 +3794,31 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-teal-600 dark:text-teal-400 font-mono text-xs font-bold">{r.riskCode || r.id}</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated'
-                          ? 'bg-emerald-700 text-white'
-                          : r.status === 'قيد المعالجة' || r.status === 'In Progress'
-                            ? 'bg-amber-600 text-white'
-                            : 'bg-rose-700 text-white'
-                          }`}>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm badge-white-text ${
+                            r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated'
+                              ? 'bg-emerald-700 text-white'
+                              : r.status === 'قيد المعالجة' || r.status === 'In Progress'
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-rose-700 text-white'
+                          }`}
+                          style={{ color: '#ffffff' }}
+                        >
                           {r.status || 'مفتوح'}
                         </span>
                       </div>
                       <h3 className="text-sm font-bold">{r.title}</h3>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm ${r.impact === 'حرج' || r.impact === 'Critical'
-                      ? 'bg-rose-800 text-white'
-                      : r.impact === 'عالي' || r.impact === 'High'
-                        ? 'bg-amber-700 text-white'
-                        : 'bg-blue-700 text-white'
-                      }`}>
+                    <span
+                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm badge-white-text ${
+                        r.impact === 'حرج' || r.impact === 'Critical'
+                          ? 'bg-rose-800 text-white'
+                          : r.impact === 'عالي' || r.impact === 'High'
+                          ? 'bg-amber-700 text-white'
+                          : 'bg-blue-700 text-white'
+                      }`}
+                      style={{ color: '#ffffff' }}
+                    >
                       {t('التأثير:', 'Impact:')} {r.impact}
                     </span>
                   </div>
@@ -4548,12 +4556,15 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                           {/* Status */}
                           <td className="py-3 px-4 whitespace-nowrap">
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${log.status === 'محظور'
-                              ? 'bg-rose-500 text-white'
-                              : log.status === 'تحذير'
-                                ? 'bg-amber-500 text-white'
-                                : 'bg-emerald-600 text-white'
-                              }`}>
+                            <span
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold badge-white-text ${log.status === 'محظور'
+                                ? 'bg-rose-500 text-white'
+                                : log.status === 'تحذير'
+                                  ? 'bg-amber-500 text-white'
+                                  : 'bg-emerald-600 text-white'
+                                }`}
+                              style={{ color: '#ffffff' }}
+                            >
                               {log.status}
                             </span>
                           </td>
@@ -6572,12 +6583,15 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <h4 className="font-bold text-sm text-slate-900 dark:text-white">
                     {selectedAuditLog.action}
                   </h4>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${selectedAuditLog.status === 'محظور'
-                    ? 'bg-rose-600 text-white'
-                    : selectedAuditLog.status === 'تحذير'
-                      ? 'bg-amber-600 text-white'
-                      : 'bg-emerald-600 text-white'
-                    }`}>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold badge-white-text ${selectedAuditLog.status === 'محظور'
+                      ? 'bg-rose-600 text-white'
+                      : selectedAuditLog.status === 'تحذير'
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-emerald-600 text-white'
+                      }`}
+                    style={{ color: '#ffffff' }}
+                  >
                     {selectedAuditLog.status}
                   </span>
                 </div>
