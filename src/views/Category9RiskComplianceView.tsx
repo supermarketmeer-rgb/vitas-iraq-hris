@@ -971,6 +971,573 @@ export const Category9RiskComplianceView: React.FC = () => {
     }
   };
 
+  // Pure Monochrome Black & White A4 Printing Utility (1cm Margins)
+  const printHtmlViaIframe = (html: string) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(html);
+      doc.close();
+      iframe.contentWindow?.focus();
+      setTimeout(() => {
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            document.body.removeChild(iframe);
+          }
+        }, 1500);
+      }, 350);
+    }
+  };
+
+  // Print Official Audit Report in pure black on A4 (1cm margin)
+  const printAuditReport = (rep: any) => {
+    if (!rep) return;
+    const findingsRows = (rep.findings || [])
+      .map(
+        (f: any) => `
+        <tr>
+          <td style="font-weight: bold; border: 1px solid #000; padding: 6px 10px;">${f.area}</td>
+          <td style="border: 1px solid #000; padding: 6px 10px; text-align: center; font-weight: bold;">
+            <span style="display: inline-block; border: 1px solid #000; padding: 2px 8px; border-radius: 4px;">${f.status}</span>
+          </td>
+          <td style="border: 1px solid #000; padding: 6px 10px;">${f.notes}</td>
+        </tr>
+      `
+      )
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8">
+        <title>${rep.title} - ${rep.id}</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          body {
+            font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+            color: #000000;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+            font-size: 10pt;
+            line-height: 1.5;
+            direction: rtl;
+          }
+          .header-box {
+            border-bottom: 2px solid #000000;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+          }
+          .title-section h1 {
+            font-size: 13pt;
+            margin: 4px 0;
+            color: #000000;
+            font-weight: 800;
+          }
+          .title-section p {
+            margin: 2px 0;
+            font-size: 8.5pt;
+            color: #222222;
+          }
+          .meta-box {
+            border: 1px solid #000000;
+            padding: 8px 12px;
+            font-size: 8.5pt;
+            min-width: 210px;
+            text-align: right;
+            border-radius: 4px;
+            line-height: 1.6;
+          }
+          .report-title {
+            font-size: 12pt;
+            font-weight: 800;
+            margin: 12px 0 6px 0;
+            color: #000000;
+          }
+          .sub-meta {
+            font-size: 8.5pt;
+            color: #333333;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #666666;
+          }
+          .section-card {
+            border: 1px solid #000000;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            border-radius: 4px;
+            background: #ffffff;
+          }
+          .section-card h4 {
+            margin: 0 0 6px 0;
+            font-size: 9.5pt;
+            font-weight: 800;
+            color: #000000;
+          }
+          .section-card p {
+            margin: 0;
+            font-size: 9pt;
+            line-height: 1.5;
+            color: #000000;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            border: 1px solid #000000;
+          }
+          th {
+            background-color: #f3f4f6;
+            color: #000000;
+            font-weight: bold;
+            border: 1px solid #000000;
+            padding: 6px 10px;
+            font-size: 9pt;
+            text-align: right;
+          }
+          td {
+            border: 1px solid #000000;
+            padding: 6px 10px;
+            font-size: 8.5pt;
+            color: #000000;
+          }
+          .sign-grid {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #000000;
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            text-align: center;
+          }
+          .sign-box {
+            flex: 1;
+            border: 1px solid #000000;
+            padding: 10px;
+            border-radius: 4px;
+          }
+          .seal-box {
+            width: 75px;
+            height: 75px;
+            border: 2px dashed #000000;
+            border-radius: 50%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 7pt;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header-box">
+          <div class="title-section">
+            <div style="font-size: 14pt; font-weight: 900; letter-spacing: 0.5px;">VITAS IRAQ • CHF International</div>
+            <h1>مؤسسة فيتاس العراق للتمويل الأصغر - تقرير التدقيق والامتثال التنظيمي</h1>
+            <p>خاضعة لرقابة وإشراف البنك المركزي العراقي للمؤسسات المالية غير المصرفية (CBI Regulated)</p>
+          </div>
+          <div class="meta-box">
+            <div><b>رقم الوثيقة:</b> ${rep.id}</div>
+            <div><b>تاريخ الإصدار:</b> ${rep.date}</div>
+            <div><b>درجة السرية:</b> رقابي / سري ومعتمد</div>
+            <div><b>الموقف النهائي:</b> ${rep.status}</div>
+          </div>
+        </div>
+
+        <div class="report-title">${rep.title}</div>
+        <div class="sub-meta">
+          <b>الجهة المدققة:</b> ${rep.auditor} &nbsp;•&nbsp;
+          <b>دورة الفحص:</b> الربع السنوي الأول 2026 &nbsp;•&nbsp;
+          <b>المعيار الرقابي:</b> تعليمات البنك المركزي العراقي رقم 4 وقانون العمل والضمان
+        </div>
+
+        <div class="section-card">
+          <h4>1. نطاق الفحص والتدقيق الميداني والتقني (Scope of Audit)</h4>
+          <p>${rep.scope}</p>
+        </div>
+
+        <div class="section-card">
+          <h4>2. الملخص التنفيذي وموقف الامتثال (Executive Summary)</h4>
+          <p>${rep.executiveSummary}</p>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <h4 style="margin: 0 0 6px 0; font-size: 9.5pt; font-weight: 800;">3. مصفوفة التحقق ونتائج الفحص التفصيلية (Audit Findings Matrix)</h4>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%;">محور الفحص الرقابي</th>
+                <th style="width: 20%; text-align: center;">موقف الامتثال</th>
+                <th style="width: 50%;">أدلة التحقق وملاحظات المدقق</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${findingsRows}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section-card">
+          <h4>4. التوصيات والإجراءات التحسينية (Recommendations)</h4>
+          <p>${rep.recommendation}</p>
+        </div>
+
+        <div class="sign-grid">
+          <div class="sign-box">
+            <div style="font-size: 8pt; color: #444; font-weight: bold;">مدقق الرقابة والامتثال</div>
+            <div style="font-weight: bold; font-size: 9.5pt; margin-top: 4px;">${rep.auditor}</div>
+            <div style="font-size: 8pt; margin-top: 6px; font-weight: bold;">Audited & Verified ✓</div>
+          </div>
+          <div class="sign-box">
+            <div style="font-size: 8pt; color: #444; font-weight: bold;">رئيس قسم التدقيق الداخلي</div>
+            <div style="font-weight: bold; font-size: 9.5pt; margin-top: 4px;">لجنة التدقيق المعتمدة</div>
+            <div style="font-size: 8pt; margin-top: 6px; font-weight: bold;">Approved & Endorsed ✓</div>
+          </div>
+          <div class="sign-box" style="display: flex; justify-content: center; align-items: center;">
+            <div class="seal-box">
+              <span>VITAS IRAQ</span>
+              <span>CBI AUDIT</span>
+              <span>معتمد رسمي</span>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    printHtmlViaIframe(html);
+  };
+
+  // Print Policy in pure black on A4 (1cm margin)
+  const printCompanyPolicy = (pol: any) => {
+    if (!pol) return;
+    const chaptersHtml = (pol.chapters || [])
+      .map(
+        (ch: any, idx: number) => `
+        <div class="chapter-card">
+          <h4>الفصل ${idx + 1}: ${ch.title}</h4>
+          <p>${ch.content}</p>
+        </div>
+      `
+      )
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8">
+        <title>${pol.title} - ${pol.code}</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          body {
+            font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+            color: #000000;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+            font-size: 10pt;
+            line-height: 1.6;
+            direction: rtl;
+          }
+          .header-box {
+            border-bottom: 2px solid #000000;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+          }
+          .title-section h1 {
+            font-size: 13pt;
+            margin: 4px 0;
+            color: #000000;
+            font-weight: 800;
+          }
+          .title-section p {
+            margin: 2px 0;
+            font-size: 8.5pt;
+            color: #222222;
+          }
+          .meta-box {
+            border: 1px solid #000000;
+            padding: 8px 12px;
+            font-size: 8.5pt;
+            min-width: 200px;
+            text-align: right;
+            border-radius: 4px;
+            line-height: 1.6;
+          }
+          .chapter-card {
+            border: 1px solid #000000;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            border-radius: 4px;
+            background: #ffffff;
+            page-break-inside: avoid;
+          }
+          .chapter-card h4 {
+            margin: 0 0 8px 0;
+            font-size: 10pt;
+            font-weight: 800;
+            color: #000000;
+            border-bottom: 1px solid #cccccc;
+            padding-bottom: 4px;
+          }
+          .chapter-card p {
+            margin: 0;
+            font-size: 9.5pt;
+            line-height: 1.6;
+            color: #000000;
+          }
+          .sign-grid {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #000000;
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            text-align: center;
+          }
+          .sign-box {
+            flex: 1;
+            border: 1px solid #000000;
+            padding: 10px;
+            border-radius: 4px;
+          }
+          .seal-box {
+            width: 75px;
+            height: 75px;
+            border: 2px dashed #000000;
+            border-radius: 50%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 7pt;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header-box">
+          <div class="title-section">
+            <div style="font-size: 14pt; font-weight: 900; letter-spacing: 0.5px;">VITAS IRAQ • مؤسسة فيتاس العراق</div>
+            <h1>${pol.title}</h1>
+            <p>${pol.desc || 'لائحة وسياسة معتمدة وملزمة لكافة الإدارات والفروع'}</p>
+          </div>
+          <div class="meta-box">
+            <div><b>رمز اللائحة:</b> ${pol.code}</div>
+            <div><b>الإصدار:</b> ${pol.version}</div>
+            <div><b>تاريخ الاعتماد:</b> ${pol.date}</div>
+            <div><b>جهة الاعتماد:</b> مجلس الإدارة (BoD)</div>
+          </div>
+        </div>
+
+        <div class="chapters-container">
+          ${chaptersHtml}
+        </div>
+
+        <div class="sign-grid">
+          <div class="sign-box">
+            <div style="font-size: 8pt; color: #444; font-weight: bold;">إدارة الموارد البشرية والسياسات</div>
+            <div style="font-weight: bold; font-size: 9.5pt; margin-top: 4px;">مدير الموارد البشرية</div>
+            <div style="font-size: 8pt; margin-top: 6px; font-weight: bold;">HR Verified ✓</div>
+          </div>
+          <div class="sign-box">
+            <div style="font-size: 8pt; color: #444; font-weight: bold;">المصادقة القانونية والرقابية</div>
+            <div style="font-weight: bold; font-size: 9.5pt; margin-top: 4px;">المدير العام ومجلس الإدارة</div>
+            <div style="font-size: 8pt; margin-top: 6px; font-weight: bold;">Approved & Endorsed ✓</div>
+          </div>
+          <div class="sign-box" style="display: flex; justify-content: center; align-items: center;">
+            <div class="seal-box">
+              <span>VITAS IRAQ</span>
+              <span>APPROVED</span>
+              <span>لائحة رسمية</span>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    printHtmlViaIframe(html);
+  };
+
+  // Print Risk Register in pure black on A4 landscape (1cm margin)
+  const printRiskRegister = () => {
+    const rows = riskRecords
+      .map(
+        r => `
+      <tr>
+        <td style="border: 1px solid #000; padding: 6px 8px; font-weight: bold; font-family: monospace;">${r.riskCode || r.id}</td>
+        <td style="border: 1px solid #000; padding: 6px 8px; font-weight: bold;">${r.title}</td>
+        <td style="border: 1px solid #000; padding: 6px 8px;">${r.category}</td>
+        <td style="border: 1px solid #000; padding: 6px 8px;">${r.owner || 'مدير المخاطر'}</td>
+        <td style="border: 1px solid #000; padding: 6px 8px; text-align: center;">${r.impact}</td>
+        <td style="border: 1px solid #000; padding: 6px 8px; text-align: center; font-weight: bold;">${r.status || 'مفتوح'}</td>
+        <td style="border: 1px solid #000; padding: 6px 8px; font-size: 8.5pt;">${r.mitigationPlan}</td>
+      </tr>
+    `
+      )
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8">
+        <title>سجل المخاطر المؤسسي - فيتاس العراق</title>
+        <style>
+          @page { size: A4 landscape; margin: 10mm; }
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; color: #000; background: #fff; margin: 0; padding: 0; font-size: 9pt; direction: rtl; }
+          .header-box { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+          h1 { font-size: 13pt; margin: 2px 0; font-weight: 800; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th { background-color: #f3f4f6; color: #000; font-weight: bold; border: 1px solid #000; padding: 6px 8px; font-size: 8.5pt; text-align: right; }
+          td { border: 1px solid #000; font-size: 8pt; }
+        </style>
+      </head>
+      <body>
+        <div class="header-box">
+          <div>
+            <div style="font-weight: 900; font-size: 13pt;">VITAS IRAQ • مؤسسة فيتاس العراق</div>
+            <h1>سجل ونظرة عامة على تقييم المخاطر المؤسسية والتشغيلية</h1>
+            <div style="font-size: 8pt; color: #333;">خاضعة لإشراف البنك المركزي العراقي (CBI) • إجمالي المخاطر: ${riskRecords.length}</div>
+          </div>
+          <div style="border: 1px solid #000; padding: 6px 12px; font-size: 8pt; text-align: right; border-radius: 4px;">
+            <div><b>تاريخ التقرير:</b> ${new Date().toISOString().split('T')[0]}</div>
+            <div><b>الموقف العام:</b> معتمد ومحدث</div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 10%;">كود الخطر</th>
+              <th style="width: 22%;">عنوان الخطر</th>
+              <th style="width: 10%;">الفئة</th>
+              <th style="width: 12%;">المسؤول</th>
+              <th style="width: 8%; text-align: center;">التأثير</th>
+              <th style="width: 10%; text-align: center;">الحالة</th>
+              <th style="width: 28%;">خطة التحوط والمعالجة</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+    printHtmlViaIframe(html);
+  };
+
+  // Print CBI Compliance Log in pure black on A4 (1cm margin)
+  const printComplianceLog = () => {
+    const data = [
+      { title: 'ضوابط مكافحة غسل الأموال وتمويل الإرهاب (AML/CFT)', auth: 'البنك المركزي العراقي', date: '2026-01-10', status: 'تطبيق فحص دوري لكافة الموظفين والمرشحين', comp: 'مطابق 100%' },
+      { title: 'قانون التقاعد والضمان الاجتماعي للعمال رقم (18) لسنة 2023', auth: 'وزارة العمل والشؤون الاجتماعية', date: '2025-11-20', status: 'دمج محرك احتساب الضمان والضريبة المباشرة بنجاح', comp: 'مطابق 100%' },
+      { title: 'معايير الحوكمة وإدارة المخاطر التشغيلية والسيبرانية', auth: 'قسم الرقابة والامتثال CBI', date: '2026-02-01', status: 'تفعيل سجل التدقيق والمصادقة الثنائية وتشفير البيانات', comp: 'مطابق 100%' },
+      { title: 'حماية بيانات العملاء والموظفين وسرية المعلومات الائتمانية', auth: 'البنك المركزي العراقي', date: '2025-12-15', status: 'تشفير كامل لقاعدة البيانات وإدارة صلاحيات RBAC', comp: 'مطابق 100%' }
+    ];
+
+    const rows = data
+      .map(
+        row => `
+      <tr>
+        <td style="border: 1px solid #000; padding: 8px 10px; font-weight: bold;">${row.title}</td>
+        <td style="border: 1px solid #000; padding: 8px 10px;">${row.auth}</td>
+        <td style="border: 1px solid #000; padding: 8px 10px; font-family: monospace;">${row.date}</td>
+        <td style="border: 1px solid #000; padding: 8px 10px;">${row.status}</td>
+        <td style="border: 1px solid #000; padding: 8px 10px; text-align: center; font-weight: bold;">
+          <span style="border: 1px solid #000; padding: 2px 8px; border-radius: 4px; display: inline-block;">${row.comp}</span>
+        </td>
+      </tr>
+    `
+      )
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8">
+        <title>سجل الامتثال لضوابط البنك المركزي العراقي - فيتاس العراق</title>
+        <style>
+          @page { size: A4 portrait; margin: 10mm; }
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; color: #000; background: #fff; margin: 0; padding: 0; font-size: 10pt; direction: rtl; }
+          .header-box { border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+          h1 { font-size: 13pt; margin: 2px 0; font-weight: 800; }
+          table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+          th { background-color: #f3f4f6; color: #000; font-weight: bold; border: 1px solid #000; padding: 8px 10px; font-size: 9pt; text-align: right; }
+          td { border: 1px solid #000; font-size: 9pt; }
+        </style>
+      </head>
+      <body>
+        <div class="header-box">
+          <div>
+            <div style="font-weight: 900; font-size: 14pt;">VITAS IRAQ • مؤسسة فيتاس العراق</div>
+            <h1>سجل التوافق مع تعاميم وضوابط البنك المركزي العراقي (CBI Compliance Log)</h1>
+            <div style="font-size: 8.5pt; color: #333;">خاضعة لإشراف البنك المركزي العراقي للمؤسسات المالية غير المصرفية</div>
+          </div>
+          <div style="border: 1px solid #000; padding: 8px 12px; font-size: 8.5pt; text-align: right; border-radius: 4px;">
+            <div><b>تاريخ التقرير:</b> ${new Date().toISOString().split('T')[0]}</div>
+            <div><b>الموقف الرقابي:</b> مطابق 100%</div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 30%;">التعميم / اللائحة الرقابية</th>
+              <th style="width: 20%;">الجهة المصدرة</th>
+              <th style="width: 12%;">تاريخ الإصدار</th>
+              <th style="width: 26%;">موقف نظام الموارد البشرية</th>
+              <th style="width: 12%; text-align: center;">حالة الامتثال</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+    printHtmlViaIframe(html);
+  };
+
   // Cycle Risk Status
   const handleCycleRiskStatus = async (risk: any) => {
     const statuses = ['مفتوح', 'قيد المعالجة', 'تم التخفيف والمعالجة'];
@@ -2742,8 +3309,17 @@ export const Category9RiskComplianceView: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={printComplianceLog}
+                  className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold transition-all shadow-sm flex items-center gap-1 text-xs cursor-pointer"
+                  title={t('طباعة سجل الامتثال بالأسود A4', 'Print Compliance Log')}
+                >
+                  <span className="material-symbols-outlined text-sm">print</span>
+                  <span>{t('طباعة (A4)', 'Print (A4)')}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleExportComplianceLog}
-                  className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-sm flex items-center gap-1 text-xs cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold transition-all shadow-sm flex items-center gap-1 text-xs cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">table_view</span>
                   <span>{t('تصدير سجل الامتثال (Excel)', 'Export Compliance (Excel)')}</span>
@@ -2984,10 +3560,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedReportForView(rep);
-                        setTimeout(() => window.print(), 350);
-                      }}
+                      onClick={() => printAuditReport(rep)}
                       className="px-3.5 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 cursor-pointer transition-all"
                     >
                       <span className="material-symbols-outlined text-xs">print</span>
@@ -3130,6 +3703,15 @@ export const Category9RiskComplianceView: React.FC = () => {
                     )}
                     <button
                       type="button"
+                      onClick={() => printCompanyPolicy(pol)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 cursor-pointer transition-all"
+                      title={t('طباعة اللائحة بالأسود A4', 'Print Policy A4')}
+                    >
+                      <span className="material-symbols-outlined text-xs">print</span>
+                      <span>{t('طباعة', 'Print')}</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setSelectedPolicyForView(pol)}
                       className="px-3.5 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] transition-all flex items-center gap-1 shadow-sm cursor-pointer"
                     >
@@ -3171,9 +3753,17 @@ export const Category9RiskComplianceView: React.FC = () => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={printRiskRegister}
+                className="px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                title={t('طباعة سجل ومصفوفة المخاطر بالأسود A4', 'Print Risk Register A4')}
+              >
+                <span className="material-symbols-outlined text-sm">print</span>
+                <span>{t('طباعة السجل (A4)', 'Print Register (A4)')}</span>
+              </button>
+              <button
+                type="button"
                 onClick={handleExportRiskMatrix}
-                className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${isDark ? 'border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20' : 'border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100'
-                  }`}
+                className="px-3.5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">table_view</span>
                 <span>{t('تصدير مصفوفة المخاطر (Excel)', 'Export Matrix (Excel)')}</span>
@@ -3204,10 +3794,9 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-teal-600 dark:text-teal-400 font-mono text-xs font-bold">{r.riskCode || r.id}</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${
-                          r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated'
-                            ? 'bg-emerald-700 text-white'
-                            : r.status === 'قيد المعالجة' || r.status === 'In Progress'
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated'
+                          ? 'bg-emerald-700 text-white'
+                          : r.status === 'قيد المعالجة' || r.status === 'In Progress'
                             ? 'bg-amber-600 text-white'
                             : 'bg-rose-700 text-white'
                           }`}>
@@ -3216,10 +3805,9 @@ export const Category9RiskComplianceView: React.FC = () => {
                       </div>
                       <h3 className="text-sm font-bold">{r.title}</h3>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm ${
-                      r.impact === 'حرج' || r.impact === 'Critical'
-                        ? 'bg-rose-800 text-white'
-                        : r.impact === 'عالي' || r.impact === 'High'
+                    <span className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm ${r.impact === 'حرج' || r.impact === 'Critical'
+                      ? 'bg-rose-800 text-white'
+                      : r.impact === 'عالي' || r.impact === 'High'
                         ? 'bg-amber-700 text-white'
                         : 'bg-blue-700 text-white'
                       }`}>
@@ -6326,8 +6914,8 @@ export const Category9RiskComplianceView: React.FC = () => {
           OFFICIAL AUDIT REPORT PREVIEW & PRINT MODAL
       ============================================================ */}
       {selectedReportForView && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+        <div className="audit-printable-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`audit-printable-modal w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
             {/* Modal Controls Bar (Hidden during print) */}
             <div className="print:hidden p-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/5 sticky top-0 z-10 backdrop-blur-md">
@@ -6341,8 +6929,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => printAuditReport(selectedReportForView)}
+                  className="px-3.5 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow-md shadow-teal-700/20 flex items-center gap-1.5 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">print</span>
                   <span>{t('طباعة التقرير / حفظ PDF', 'Print / Save as PDF')}</span>
@@ -6358,7 +6946,7 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             {/* Printable Report Document Body */}
-            <div className="p-8 sm:p-10 space-y-6 text-xs leading-relaxed">
+            <div className="audit-printable-content p-8 sm:p-10 space-y-6 text-xs leading-relaxed">
               {/* Official Header */}
               <div className="border-b-2 border-teal-600/60 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
@@ -6492,8 +7080,8 @@ export const Category9RiskComplianceView: React.FC = () => {
           OFFICIAL COMPANY POLICY VIEWER & PRINT MODAL
       ============================================================ */}
       {selectedPolicyForView && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+        <div className="audit-printable-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`audit-printable-modal w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
             {/* Modal Controls Bar */}
             <div className="print:hidden p-4 border-b border-slate-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/5 sticky top-0 z-10 backdrop-blur-md">
@@ -6518,8 +7106,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => printCompanyPolicy(selectedPolicyForView)}
+                  className="px-3.5 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow-md shadow-teal-700/20 flex items-center gap-1.5 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">print</span>
                   <span>{t('طباعة اللائحة', 'Print Policy')}</span>
@@ -6538,7 +7126,7 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             {/* Document Body */}
-            <div className="p-8 sm:p-10 space-y-6 text-xs leading-relaxed">
+            <div className="audit-printable-content p-8 sm:p-10 space-y-6 text-xs leading-relaxed">
               {/* Header */}
               <div className="border-b-2 border-teal-600 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>

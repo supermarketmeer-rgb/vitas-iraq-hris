@@ -827,21 +827,23 @@ html.light .text-slate-100:not(aside *):not(header *) {
 
 /* ================================================================
    PRINT MEDIA RULES (Official Payslip & Document Print Optimization)
+   A4 Monochrome Clean Black Printing with 10mm Margins
    ================================================================ */
 @media print {
   @page {
-    size: A4 portrait;
-    margin: 10mm 12mm;
+    size: A4 portrait !important;
+    margin: 10mm !important; /* Exactly 1 cm margin from all sides */
   }
 
   /* Completely suppress header, sidebar, navigation, search, top controls */
   header,
   aside,
   nav,
+  footer,
   .print\:hidden,
   .no-print,
   button:not(.print-visible),
-  form,
+  form:not(.print-visible),
   input,
   select,
   textarea {
@@ -856,9 +858,58 @@ html.light .text-slate-100:not(aside *):not(header *) {
     padding: 0 !important;
     width: 100% !important;
     height: auto !important;
-    font-family: 'Cairo', sans-serif !important;
+    font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* When printing from within a modal, hide background app chrome and page contents */
+  body:has(.fixed.inset-0) main > div:not(:has(.fixed.inset-0)),
+  body:has(.fixed.inset-0) #root > div > *:not(:has(.fixed.inset-0)) {
+    display: none !important;
+  }
+
+  /* Completely strip dark backdrops & blur overlays from modals during print */
+  .fixed.inset-0,
+  div[class*="backdrop-blur"],
+  div[class*="bg-black/"],
+  .audit-printable-backdrop {
+    position: static !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    inset: auto !important;
+    z-index: auto !important;
+    display: block !important;
+  }
+
+  /* Flatten modal containers into full-width document flow on A4 paper */
+  .max-w-4xl,
+  .max-w-2xl,
+  .max-w-xl,
+  .audit-printable-modal,
+  div[class*="max-w-4xl"],
+  div[class*="max-w-2xl"] {
+    position: static !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
   }
 
   /* Reset application main wrapper bounds */
@@ -872,12 +923,59 @@ html.light .text-slate-100:not(aside *):not(header *) {
     overflow: visible !important;
   }
 
-  /* Outer card container formatting */
-  .max-w-4xl {
-    max-width: 100% !important;
+  /* Crisp monochrome black-and-white typography and borders */
+  .audit-printable-content,
+  .audit-printable-content *,
+  div:has(> .audit-printable-content) {
+    color: #000000 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  .audit-printable-content h1,
+  .audit-printable-content h2,
+  .audit-printable-content h3,
+  .audit-printable-content h4,
+  .audit-printable-content b,
+  .audit-printable-content strong {
+    color: #000000 !important;
+    font-weight: 700 !important;
+  }
+
+  .audit-printable-content p,
+  .audit-printable-content span,
+  .audit-printable-content td,
+  .audit-printable-content th {
+    color: #000000 !important;
+  }
+
+  .audit-printable-content table {
     width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    border-collapse: collapse !important;
+    border: 1px solid #000000 !important;
+    margin: 10px 0 !important;
+  }
+
+  .audit-printable-content th {
+    background-color: #f3f4f6 !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+    padding: 6px 10px !important;
+    font-size: 9.5pt !important;
+  }
+
+  .audit-printable-content td {
+    border: 1px solid #000000 !important;
+    padding: 6px 10px !important;
+    color: #000000 !important;
+    font-size: 9pt !important;
+  }
+
+  .audit-printable-content .badge,
+  .audit-printable-content span[class*="rounded"] {
+    background: transparent !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
   }
 
   /* Batch print page break */
