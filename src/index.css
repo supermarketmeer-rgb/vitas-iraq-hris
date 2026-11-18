@@ -3186,3 +3186,25 @@ html:not(.dark) td.report-cell-terminated * {
   -webkit-text-fill-color: #ffffff !important;
   font-weight: bold !important;
 }
+
+/* ================================================================
+   FORCE PURE WHITE TEXT ON ALL BADGES AND STATUS PILLS (LIGHT & DARK MODE)
+   ================================================================ */
+.badge-white-text,
+.badge-white-text *,
+span.badge-white-text,
+span.badge-white-text *,
+div.badge-white-text,
+div.badge-white-text *,
+html.light .badge-white-text,
+html.light .badge-white-text *,
+html.light span.badge-white-text,
+html.light span.badge-white-text *,
+html:not(.dark) .badge-white-text,
+html:not(.dark) .badge-white-text *,
+html:not(.dark) span.badge-white-text,
+html:not(.dark) span.badge-white-text * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+

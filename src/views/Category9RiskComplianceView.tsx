@@ -3301,25 +3301,221 @@ export const Category9RiskComplianceView: React.FC = () => {
     }));
   };
 
+  const handleOpenAddUserModal = () => {
+    setNewUserForm({
+      username: '',
+      password: '',
+      fullNameAr: '',
+      fullNameEn: '',
+      employeeId: '',
+      jobTitle: 'مدخل بيانات موارد بشرية',
+      department: 'الموارد البشرية والشؤون الإدارية',
+      branch: 'الإدارة العامة - بغداد',
+      email: '',
+      phone: '',
+      modules: {
+        employees: true,
+        attendance: false,
+        payroll: false,
+        recruitment: false,
+        risk: false,
+        settings: false,
+        reports: true
+      },
+      level: 'full',
+      canManageUsers: false,
+      role: 'Employee' as UserRole,
+      notes: 'مخول بالعمل على الموديولات المحددة'
+    });
+    setBadgeSearchQuery('');
+    setMatchedEmployee(null);
+    setMatchedEmpSubCount(0);
+    setIsAddUserModalOpen(true);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Page Title */}
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-          {(activeModuleId === 'risk-audit-reports' || activeModuleId === 'risk-audit') && t('مركز تقارير التدقيق والامتثال التنظيمي', 'Audit & Regulatory Compliance Reports Center')}
-          {(activeModuleId === 'risk-governance' || activeModuleId === 'risk-dashboard' || activeModuleId === 'cat-9-risk') && t('لوحة حوكمة الامتثال وسجلات الرقابة المصرفية', 'Compliance Governance & Banking Supervision Logs')}
-          {activeModuleId === 'risk-process-map' && t('خريطة العمليات المؤسسية وإطار الرقابة الإدارية', 'Enterprise Process Map & Management Control Framework')}
-          {activeModuleId === 'risk-tracker' && t('متتبع التوافق والتشريعات واللوائح المصرفية', 'Regulatory Compliance & Statutory Tracker')}
-          {(activeModuleId === 'risk-policies' || activeModuleId === 'risk-training') && t('سجل اللوائح والسياسات الداخلية المعتمدة', 'Approved Internal Policies & Regulations Register')}
-          {(activeModuleId === 'risk-assessment' || activeModuleId === 'risk-incident') && t('سجل ونظرة عامة على تقييم المخاطر', 'Risk Assessment Register & Overview')}
-          {activeModuleId === 'risk-identify-new' && t('تسجيل وتحديد خطر تشغيلي / سيبراني جديد', 'Register New Operational / Cyber Risk')}
-          {activeModuleId === 'risk-details-privacy' && t('إطار حماية الخصوصية والبيانات الشخصية', 'Data Privacy & Protection Framework')}
-          {activeModuleId === 'sec-general-settings' && t('إعدادات وسياسات الأمان العامة', 'General Security Settings & Policies')}
-          {activeModuleId === 'sec-audit-logs' && t('سجلات تدقيق الأمان وأحداث النظام (Audit Trail)', 'Security Audit Logs & System Events')}
-          {activeModuleId === 'sec-roles-permissions' && t('إدارة أدوار وصلاحيات المستخدمين (RBAC)', 'Role-Based Access Control & Permissions (RBAC)')}
-          {activeModuleId === 'sec-edit-role' && t('محرر ومخصص الصلاحيات البرمجية للأدوار', 'Role Permissions Editor')}
-          {activeModuleId === 'sec-api-keys' && t('إدارة مفاتيح وتصاريح الربط البرمجي (API Keys)', 'API Keys & Integration Management')}
-        </h1>
+      {/* Page Title & Header Actions Bar */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+              {(activeModuleId === 'risk-audit-reports' || activeModuleId === 'risk-audit') && t('مركز تقارير التدقيق والامتثال التنظيمي', 'Audit & Regulatory Compliance Reports Center')}
+              {(activeModuleId === 'risk-governance' || activeModuleId === 'risk-dashboard' || activeModuleId === 'cat-9-risk') && t('لوحة حوكمة الامتثال وسجلات الرقابة المصرفية', 'Compliance Governance & Banking Supervision Logs')}
+              {activeModuleId === 'risk-process-map' && t('خريطة العمليات المؤسسية وإطار الرقابة الإدارية', 'Enterprise Process Map & Management Control Framework')}
+              {activeModuleId === 'risk-tracker' && t('متتبع التوافق والتشريعات واللوائح المصرفية', 'Regulatory Compliance & Statutory Tracker')}
+              {(activeModuleId === 'risk-policies' || activeModuleId === 'risk-training') && t('سجل اللوائح والسياسات الداخلية المعتمدة', 'Approved Internal Policies & Regulations Register')}
+              {(activeModuleId === 'risk-assessment' || activeModuleId === 'risk-incident') && t('سجل ونظرة عامة على تقييم المخاطر', 'Risk Assessment Register & Overview')}
+              {activeModuleId === 'risk-identify-new' && t('تسجيل وتحديد خطر تشغيلي / سيبراني جديد', 'Register New Operational / Cyber Risk')}
+              {activeModuleId === 'risk-details-privacy' && t('إطار حماية الخصوصية والبيانات الشخصية', 'Data Privacy & Protection Framework')}
+              {activeModuleId === 'sec-general-settings' && t('إعدادات وسياسات الأمان العامة', 'General Security Settings & Policies')}
+              {activeModuleId === 'sec-audit-logs' && t('سجلات تدقيق الأمان وأحداث النظام (Audit Trail)', 'Security Audit Logs & System Events')}
+              {(activeModuleId === 'sec-roles-permissions' || activeModuleId === 'sec-edit-role') && (
+                rolePermissionsSubTab === 'policies'
+                  ? t('شاشة مصغرة للإعدادات والسياسات', 'Mini Settings & Central Policies')
+                  : t('إدارة أدوار وصلاحيات المستخدمين (RBAC)', 'Role-Based Access Control & Permissions (RBAC)')
+              )}
+              {activeModuleId === 'sec-api-keys' && t('إدارة مفاتيح وتصاريح الربط البرمجي (API Keys)', 'API Keys & Integration Management')}
+            </h1>
+
+            {/* Live stream badge for sec-audit-logs */}
+            {activeModuleId === 'sec-audit-logs' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                <span className="relative flex h-2 w-2">
+                  {isLiveAuditStreaming && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  )}
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>{isLiveAuditStreaming ? t('بث مباشر نشط', 'Live Stream Active') : t('البث متوقف', 'Stream Paused')}</span>
+              </div>
+            )}
+
+            {/* Approved Framework Badge for risk-process-map */}
+            {activeModuleId === 'risk-process-map' && (
+              <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                {t('إطار رقابي معتمد 2026', 'Approved Framework 2026')}
+              </span>
+            )}
+          </div>
+
+          {/* Contextual Subtitles */}
+          {activeModuleId === 'sec-audit-logs' && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              {t('سجل رقابي غير قابل للتعديل (WORM Tamper-Evident) متوافق مع لوائح البنك المركزي العراقي CBI ومعايير ISO 27001.', 'Tamper-evident immutable audit log compliant with Central Bank of Iraq (CBI) regulations & ISO 27001.')}
+            </p>
+          )}
+          {activeModuleId === 'risk-process-map' && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              {t('بوابة الإدارة العامة: مصفوفة RACI، مؤشرات كفاءة العمليات، ومسارات العمل المؤسسية المعتمدة', 'Corporate Governance: RACI Matrix, Operational Workflows & Management Controls')}
+            </p>
+          )}
+          {(activeModuleId === 'sec-roles-permissions' || activeModuleId === 'sec-edit-role') && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              {rolePermissionsSubTab === 'policies'
+                ? t('السياسات والضوابط، وتعديل تواريخ العقود الدائمية بكبسة زر واحدة', 'Central policies & one-click permanent contract dates batch update')
+                : t('أضف مستخدمين جدد وحدد الموديولات المصرح بها عبر علامات ✓ (Tick)', 'Add new users and assign permitted modules via ✓ checkboxes')}
+            </p>
+          )}
+          {activeModuleId === 'sec-api-keys' && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              {t('توليد وإدارة مفاتيح الربط البرمجي للتكامل الآمن مع بوابة البنك المركزي العراقي CBI والأنظمة الخارجية المصرفية.', 'Generate and manage API keys for secure integration with CBI gateway and financial systems.')}
+            </p>
+          )}
+        </div>
+
+        {/* Action Buttons Aligned with Page Title */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {/* 1. sec-audit-logs Actions */}
+          {activeModuleId === 'sec-audit-logs' && (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsLiveAuditStreaming(prev => !prev)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${isLiveAuditStreaming
+                  ? isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20' : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                  : isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20' : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                  }`}
+                title={isLiveAuditStreaming ? t('إيقاف التحديث اللحظي مؤقتاً', 'Pause Live Feed') : t('استئناف التحديث اللحظي', 'Resume Live Feed')}
+              >
+                <span className="material-symbols-outlined text-sm">
+                  {isLiveAuditStreaming ? 'pause_circle' : 'play_circle'}
+                </span>
+                <span>{isLiveAuditStreaming ? t('إيقاف مؤقت', 'Pause') : t('استئناف', 'Resume')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAddAuditModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white transition-all shadow-md flex items-center gap-1.5 cursor-pointer badge-white-text"
+                style={{ color: '#ffffff' }}
+              >
+                <span className="material-symbols-outlined text-sm">add_moderator</span>
+                <span>{t('تسجيل فحص تدقيق يدوي', 'Log Manual Audit')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportAuditLogsExcel}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white transition-all shadow-md flex items-center gap-1.5 cursor-pointer badge-white-text"
+                style={{ color: '#ffffff' }}
+                title={t('تصدير السجلات إلى إكسل', 'Export to Excel')}
+              >
+                <span className="material-symbols-outlined text-sm">table_view</span>
+                <span>{t('تصدير إكسل', 'Export Excel')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrintCbiAuditReport}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-700 hover:bg-slate-800 text-white transition-all shadow-md flex items-center gap-1.5 cursor-pointer badge-white-text"
+                style={{ color: '#ffffff' }}
+                title={t('طباعة تقرير التدقيق الرقابي الرسمي', 'Print CBI Compliance Report')}
+              >
+                <span className="material-symbols-outlined text-sm">print</span>
+                <span>{t('تقرير رقابي', 'CBI Report')}</span>
+              </button>
+            </>
+          )}
+
+          {/* 2. sec-roles-permissions Actions */}
+          {(activeModuleId === 'sec-roles-permissions' || activeModuleId === 'sec-edit-role') && (
+            <>
+              {/* Tab Switcher Pills */}
+              <div className={`p-1 rounded-2xl border flex items-center gap-1 ${isDark ? 'bg-slate-900 border-white/10' : 'bg-slate-100 border-slate-300'}`}>
+                <button
+                  type="button"
+                  onClick={() => setRolePermissionsSubTab('users')}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${rolePermissionsSubTab === 'users'
+                    ? 'bg-teal-700 text-white shadow-md badge-white-text'
+                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  style={rolePermissionsSubTab === 'users' ? { color: '#ffffff' } : undefined}
+                >
+                  <span className="material-symbols-outlined text-sm">manage_accounts</span>
+                  <span>{t('مستخدمي النظام (RBAC)', 'User Roles (RBAC)')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRolePermissionsSubTab('policies')}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${rolePermissionsSubTab === 'policies'
+                    ? 'bg-teal-700 text-white shadow-md badge-white-text'
+                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  style={rolePermissionsSubTab === 'policies' ? { color: '#ffffff' } : undefined}
+                >
+                  <span className="material-symbols-outlined text-sm">policy</span>
+                  <span>{t('سياسات وضوابط المركزية', 'Central Policies')}</span>
+                </button>
+              </div>
+
+              {rolePermissionsSubTab === 'users' && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddUserModal}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white transition-all shadow-md flex items-center gap-1.5 cursor-pointer badge-white-text"
+                  style={{ color: '#ffffff' }}
+                >
+                  <span className="material-symbols-outlined text-sm">person_add</span>
+                  <span>{t('+ مستخدم جديد', '+ New User')}</span>
+                </button>
+              )}
+            </>
+          )}
+
+          {/* 3. sec-api-keys Actions */}
+          {activeModuleId === 'sec-api-keys' && (
+            <button
+              type="button"
+              onClick={() => setIsAddApiKeyModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer whitespace-nowrap badge-white-text"
+              style={{ color: '#ffffff' }}
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              <span>{t('إنشاء مفتاح ربط جديد', 'Create New API Key')}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* =========================================================================
@@ -3447,30 +3643,6 @@ export const Category9RiskComplianceView: React.FC = () => {
           ========================================================================= */}
       {activeModuleId === 'risk-process-map' && (
         <div className="space-y-6 text-xs">
-          {/* Header Banner */}
-          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-            }`}>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
-                <span className="material-symbols-outlined text-2xl">account_tree</span>
-              </div>
-              <div>
-                <h2 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                  {t('خريطة العمليات المؤسسية وإطار الرقابة الإدارية (Enterprise Process Map)', 'HRIS Enterprise Process Map & Management Control Framework')}
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {t('بوابة الإدارة العامة: مصفوفة RACI، مؤشرات كفاءة العمليات، ومسارات العمل المؤسسية المعتمدة', 'Corporate Governance: RACI Matrix, Operational Workflows & Management Controls')}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                {t('إطار رقابي معتمد 2026', 'Approved Framework 2026')}
-              </span>
-            </div>
-          </div>
-
           {/* 5 Enterprise Core Workflows Cards */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5">
             {[
@@ -3864,14 +4036,14 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <span className="text-teal-600 dark:text-teal-400 font-mono text-xs font-bold">{r.riskCode || r.id}</span>
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm badge-white-text ${
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm badge-white-text !text-white ${
                             r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated'
-                              ? 'bg-emerald-700 text-white'
+                              ? 'bg-emerald-700'
                               : r.status === 'قيد المعالجة' || r.status === 'In Progress'
-                              ? 'bg-amber-600 text-white'
-                              : 'bg-rose-700 text-white'
+                              ? 'bg-amber-600'
+                              : 'bg-rose-700'
                           }`}
-                          style={{ color: '#ffffff' }}
+                          style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
                         >
                           {r.status || 'مفتوح'}
                         </span>
@@ -3879,14 +4051,14 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <h3 className="text-sm font-bold">{r.title}</h3>
                     </div>
                     <span
-                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm badge-white-text ${
+                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm badge-white-text !text-white ${
                         r.impact === 'حرج' || r.impact === 'Critical'
-                          ? 'bg-rose-800 text-white'
+                          ? 'bg-rose-800'
                           : r.impact === 'عالي' || r.impact === 'High'
-                          ? 'bg-amber-700 text-white'
-                          : 'bg-blue-700 text-white'
+                          ? 'bg-amber-700'
+                          : 'bg-blue-700'
                       }`}
-                      style={{ color: '#ffffff' }}
+                      style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
                     >
                       {t('التأثير:', 'Impact:')} {r.impact}
                     </span>
@@ -4440,84 +4612,6 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
           )}
 
-          {/* Top Control Bar & Live Surveillance Banner */}
-          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-            }`}>
-            <div className="flex items-start sm:items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
-                <span className="material-symbols-outlined text-2xl">history</span>
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                    {t('سجل تدقيق الأمان ومراقبة أحداث النظام المباشرة', 'Security Audit Trail & Real-time System Surveillance')}
-                  </h2>
-                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
-                    <span className="relative flex h-2 w-2">
-                      {isLiveAuditStreaming && (
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      )}
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <span>{isLiveAuditStreaming ? t('بث مباشر نشط', 'Live Stream Active') : t('البث متوقف', 'Stream Paused')}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {t('سجل رقابي غير قابل للتعديل (WORM Tamper-Evident) متوافق مع لوائح البنك المركزي العراقي CBI ومعايير ISO 27001.', 'Tamper-evident immutable audit log compliant with Central Bank of Iraq (CBI) regulations & ISO 27001.')}
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => setIsLiveAuditStreaming(prev => !prev)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${isLiveAuditStreaming
-                  ? isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20' : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                  : isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20' : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                  }`}
-                title={isLiveAuditStreaming ? t('إيقاف التحديث اللحظي مؤقتاً', 'Pause Live Feed') : t('استئناف التحديث اللحظي', 'Resume Live Feed')}
-              >
-                <span className="material-symbols-outlined text-sm">
-                  {isLiveAuditStreaming ? 'pause_circle' : 'play_circle'}
-                </span>
-                <span>{isLiveAuditStreaming ? t('إيقاف مؤقت', 'Pause') : t('استئناف', 'Resume')}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsAddAuditModalOpen(true)}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white transition-all shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">add_moderator</span>
-                <span>{t('تسجيل فحص تدقيق يدوي', 'Log Manual Audit')}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExportAuditLogsExcel}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${isDark ? 'border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300' : 'border-teal-300 bg-teal-50 hover:bg-teal-100 text-teal-800'
-                  }`}
-                title={t('تصدير السجلات إلى إكسل', 'Export to Excel')}
-              >
-                <span className="material-symbols-outlined text-sm">table_view</span>
-                <span>{t('تصدير إكسل', 'Export Excel')}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePrintCbiAuditReport}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${isDark ? 'border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200' : 'border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
-                title={t('طباعة تقرير التدقيق الرقابي الرسمي', 'Print CBI Compliance Report')}
-              >
-                <span className="material-symbols-outlined text-sm">print</span>
-                <span>{t('تقرير رقابي', 'CBI Report')}</span>
-              </button>
-            </div>
-          </div>
-
           {/* 5 KPI Metric Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
             {/* Total */}
@@ -4870,105 +4964,6 @@ export const Category9RiskComplianceView: React.FC = () => {
           ========================================================================= */}
       {(activeModuleId === 'sec-roles-permissions' || activeModuleId === 'sec-edit-role') && (
         <div className="space-y-4">
-          {/* Unified Header & Actions Bar (Tabs Switcher + Status + Add User Button) */}
-          <div className={`p-4 rounded-3xl border shadow-lg flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${isDark ? 'bg-teal-950/30 border-teal-500/40' : 'bg-teal-50 border-teal-400'
-            }`}>
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-600/30 shrink-0">
-                <span className="material-symbols-outlined text-2xl">
-                  {rolePermissionsSubTab === 'policies' ? 'policy' : 'manage_accounts'}
-                </span>
-              </div>
-              <div>
-                <h2 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                  {rolePermissionsSubTab === 'policies'
-                    ? t('شاشة مصغرة للإعدادات والسياسات', 'Mini Settings & Central Policies')
-                    : t('إدارة المستخدمين وصلاحيات الموديولات', 'User Management & Module Permissions')}
-                </h2>
-                <p className="text-teal-700 dark:text-teal-300 text-xs font-medium">
-                  {rolePermissionsSubTab === 'policies'
-                    ? t('السياسات والضوابط، وتعديل تواريخ العقود الدائمية بكبسة زر واحدة', 'Central policies & one-click permanent contract dates batch update')
-                    : t('أضف مستخدمين جدد وحدد الموديولات المصرح بها عبر علامات ✓ (Tick)', 'Add new users and assign permitted modules via ✓ checkboxes')}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
-              {/* 1. Navigation Tabs Switcher */}
-              <div className="flex items-center p-1 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-teal-500/20 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setRolePermissionsSubTab('users')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${rolePermissionsSubTab === 'users'
-                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
-                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                >
-                  <span className="material-symbols-outlined text-base">manage_accounts</span>
-                  <span>{t('أدوار وصلاحيات المستخدمين (RBAC)', 'User Roles & Permissions')}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setRolePermissionsSubTab('policies')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${rolePermissionsSubTab === 'policies'
-                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
-                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                >
-                  <span className="material-symbols-outlined text-base">policy</span>
-                  <span>{t('الإعدادات والسياسات', 'Mini Settings & Policies')}</span>
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/30">
-                    {t('تعديل تواريخ العقود', 'Contracts')}
-                  </span>
-                </button>
-              </div>
-
-              {/* 2. Add New User Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setRolePermissionsSubTab('users');
-                  setSelectedRolePreset('manual');
-                  setNewUserForm({
-                    id: undefined,
-                    originalUsername: '',
-                    username: '',
-                    password: 'Password123!',
-                    fullNameAr: '',
-                    fullNameEn: '',
-                    jobTitle: 'مدخل بيانات موارد بشرية',
-                    department: 'الموارد البشرية والشؤون الإدارية',
-                    branch: 'الإدارة العامة - بغداد',
-                    email: '',
-                    phone: '',
-                    modules: {
-                      employees: true,
-                      attendance: false,
-                      payroll: false,
-                      recruitment: false,
-                      risk: false,
-                      settings: false,
-                      reports: true
-                    },
-                    level: 'full',
-                    canManageUsers: false,
-                    role: 'Employee' as UserRole,
-                    notes: 'مخول بالعمل على الموديولات المحددة'
-                  });
-                  setBadgeSearchQuery('');
-                  setMatchedEmployee(null);
-                  setMatchedEmpSubCount(0);
-                  setIsAddUserModalOpen(true);
-                }}
-                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-teal-600/30 transition-all cursor-pointer shrink-0 border border-teal-400/40 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <span className="material-symbols-outlined text-base">person_add</span>
-                <span>{t('+ مستخدم جديد', '+ New User')}</span>
-              </button>
-            </div>
-          </div>
-
           {/* Policies & Mini-Settings Tab Content */}
           {rolePermissionsSubTab === 'policies' && (
             <PoliciesSection
@@ -5341,33 +5336,6 @@ export const Category9RiskComplianceView: React.FC = () => {
           ========================================================================= */}
       {activeModuleId === 'sec-api-keys' && (
         <div className="space-y-6">
-          {/* Top Banner */}
-          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-            }`}>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
-                <span className="material-symbols-outlined text-2xl">key</span>
-              </div>
-              <div>
-                <h2 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                  {t('إدارة مفاتيح الربط البرمجي وواجهات التكامل (API Keys)', 'API Keys & Integration Management')}
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {t('توليد وإدارة مفاتيح الربط البرمجي للتكامل الآمن مع بوابة البنك المركزي العراقي CBI والأنظمة الخارجية المصرفية.', 'Generate and manage API keys for secure integration with CBI gateway and financial systems.')}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsAddApiKeyModalOpen(true)}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white transition-all shadow-md shadow-teal-600/25 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
-            >
-              <span className="material-symbols-outlined text-sm">add</span>
-              <span>{t('إنشاء مفتاح ربط جديد', 'Generate New Key')}</span>
-            </button>
-          </div>
-
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
