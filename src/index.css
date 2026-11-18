@@ -615,6 +615,25 @@ html.light .text-slate-300:not(aside *):not(header *) {
 html.light .text-slate-400:not(aside *):not(header *) {
   color: #64748b !important;
 }
+
+/* Code Snippets & Pre Blocks in Light Mode: Pure White Background with Clear Dark Text */
+html.light pre,
+html:not(.dark) pre,
+html.light pre code,
+html:not(.dark) pre code,
+html.light [class*="bg-black/60"]:not(aside *):not(header *),
+html:not(.dark) [class*="bg-black/60"]:not(aside *):not(header *),
+html.light [class*="bg-black/50"]:not(aside *):not(header *),
+html:not(.dark) [class*="bg-black/50"]:not(aside *):not(header *) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light pre span,
+html:not(.dark) pre span {
+  color: #0f172a !important;
+}
 /* ================================================================
    PAYROLL TABLE HEADER (Solid High Contrast in All Modes)
    ================================================================ */

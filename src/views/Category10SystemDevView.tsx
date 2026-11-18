@@ -924,8 +924,8 @@ export const Category10SystemDevView: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="max-h-96 overflow-y-auto p-3 rounded-xl bg-black/60 border border-white/5 text-teal-300 text-[11px] leading-relaxed">
-                  <pre>{JSON.stringify(apiExplorerResult.data, null, 2)}</pre>
+                <div className="max-h-96 overflow-y-auto p-4 rounded-xl bg-white text-slate-900 border border-slate-200 dark:bg-black/60 dark:text-teal-300 dark:border-white/10 text-[11px] leading-relaxed shadow-sm font-mono">
+                  <pre className="bg-transparent text-inherit">{JSON.stringify(apiExplorerResult.data, null, 2)}</pre>
                 </div>
               </div>
             )}
@@ -967,21 +967,21 @@ export const Category10SystemDevView: React.FC = () => {
 
             {/* Code Snippets Accordion */}
             <div className="space-y-4">
-              <h3 className="text-sm font-bold text-white">{t('أمثلة استدعاء واختبار الـ API بلغات البرمجة:', 'Code Snippets:')}</h3>
+              <h3 className="text-sm font-bold text-teal-700 dark:text-white">{t('أمثلة استدعاء واختبار الـ API بلغات البرمجة:', 'Code Snippets:')}</h3>
 
               {/* cURL */}
               <div className="p-4 rounded-2xl bg-[#0a0c10] border border-white/10 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-teal-400 font-mono">cURL Command</span>
+                  <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">cURL Command</span>
                   <button
                     type="button"
                     onClick={() => handleCopyCode(`curl -X GET "http://localhost:5000/api/system/health-telemetry" \\\n  -H "Accept: application/json" \\\n  -H "Authorization: Bearer YOUR_API_KEY"`, 'cURL')}
-                    className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                    className="p-1 rounded-lg text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-white cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm">content_copy</span>
                   </button>
                 </div>
-                <pre className="p-3 rounded-xl bg-black/60 text-slate-300 font-mono text-[11px] overflow-x-auto">
+                <pre className="p-4 rounded-xl bg-white text-slate-900 border border-slate-200 dark:bg-[#0a0c10] dark:text-teal-300 dark:border-white/10 font-mono text-xs leading-relaxed overflow-x-auto shadow-sm select-all">
 {`curl -X GET "http://localhost:5000/api/system/health-telemetry" \\
   -H "Accept: application/json" \\
   -H "Authorization: Bearer YOUR_API_KEY"`}
@@ -991,21 +991,42 @@ export const Category10SystemDevView: React.FC = () => {
               {/* JavaScript */}
               <div className="p-4 rounded-2xl bg-[#0a0c10] border border-white/10 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-emerald-400 font-mono">JavaScript / Node.js (fetch)</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">JavaScript / Node.js (fetch)</span>
                   <button
                     type="button"
                     onClick={() => handleCopyCode(`const response = await fetch('http://localhost:5000/api/employees', {\n  headers: { 'Authorization': 'Bearer YOUR_API_KEY' }\n});\nconst data = await response.json();\nconsole.log(data);`, 'JavaScript')}
-                    className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                    className="p-1 rounded-lg text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-white cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm">content_copy</span>
                   </button>
                 </div>
-                <pre className="p-3 rounded-xl bg-black/60 text-slate-300 font-mono text-[11px] overflow-x-auto">
+                <pre className="p-4 rounded-xl bg-white text-slate-900 border border-slate-200 dark:bg-[#0a0c10] dark:text-emerald-300 dark:border-white/10 font-mono text-xs leading-relaxed overflow-x-auto shadow-sm select-all">
 {`const response = await fetch('http://localhost:5000/api/employees', {
   headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
 });
 const data = await response.json();
 console.log(data);`}
+                </pre>
+              </div>
+
+              {/* Python */}
+              <div className="p-4 rounded-2xl bg-[#0a0c10] border border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-600 dark:text-amber-400 font-mono">Python (requests)</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyCode(`import requests\n\nheaders = {'Authorization': 'Bearer YOUR_API_KEY', 'Accept': 'application/json'}\nresponse = requests.get('http://localhost:5000/api/system/health-telemetry', headers=headers)\nprint(response.json())`, 'Python')}
+                    className="p-1 rounded-lg text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-white cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">content_copy</span>
+                  </button>
+                </div>
+                <pre className="p-4 rounded-xl bg-white text-slate-900 border border-slate-200 dark:bg-[#0a0c10] dark:text-amber-300 dark:border-white/10 font-mono text-xs leading-relaxed overflow-x-auto shadow-sm select-all">
+{`import requests
+
+headers = {'Authorization': 'Bearer YOUR_API_KEY', 'Accept': 'application/json'}
+response = requests.get('http://localhost:5000/api/system/health-telemetry', headers=headers)
+print(response.json())`}
                 </pre>
               </div>
             </div>
@@ -1189,12 +1210,12 @@ console.log(data);`}
                 <p className="text-slate-400 leading-relaxed">
                   {t('يعمل النظام عبر خادم Express على المنفذ 5000 مع مراقبة حية للمزامنة السحابية. في حال الحاجة لإعادة التشغيل بعد التعديلات:', 'The server runs on port 5000 with real-time sync. Use these commands to restart processes:')}
                 </p>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-black/60 font-mono text-slate-300">
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-white text-slate-900 border border-slate-200 dark:bg-black/60 dark:text-slate-300 dark:border-white/10 font-mono text-xs shadow-sm">
                   <code>npm run server # تشغيل مباشر / أو pm2 restart vitas-hrms</code>
                   <button
                     type="button"
                     onClick={() => handleCopyCode('pm2 restart vitas-hrms', 'PM2')}
-                    className="p-1 rounded text-slate-400 hover:text-white cursor-pointer"
+                    className="p-1 rounded text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-white cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm">content_copy</span>
                   </button>
@@ -1210,12 +1231,12 @@ console.log(data);`}
                 <p className="text-slate-400 leading-relaxed">
                   {t('يقوم النظام تلقائياً بإنشاء نسخ .sql.gz كل جمعة الساعة 02:00 صباحاً مع تدوير 30 يوماً. للأخذ اليدوي الفوري:', 'Automated compressed backups run weekly with 30-day retention. Manual dump command:')}
                 </p>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-black/60 font-mono text-slate-300">
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-white text-slate-900 border border-slate-200 dark:bg-black/60 dark:text-slate-300 dark:border-white/10 font-mono text-xs shadow-sm">
                   <code>mysqldump -u root -p vitas_iraq_hris &gt; backup_emergency_$(date +%F).sql</code>
                   <button
                     type="button"
                     onClick={() => handleCopyCode('mysqldump -u root -p vitas_iraq_hris > backup_emergency_$(date +%F).sql', 'Dump')}
-                    className="p-1 rounded text-slate-400 hover:text-white cursor-pointer"
+                    className="p-1 rounded text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-white cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm">content_copy</span>
                   </button>
