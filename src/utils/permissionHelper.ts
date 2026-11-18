@@ -289,21 +289,20 @@ export function isModuleAuthorized(
 
   // Category 3: Supervisors, Exceptions & HODs Management
   if (moduleId === 'emp-management-tables') {
+    if (perms.hasExplicitPerms) {
+      const val = perms.rawModules?.[moduleId];
+      if (val === 'write' || val === 'read' || val === true) return true;
+      if (val === 'none' || val === false) return false;
+      const catVal = perms.rawModules?.['cat-3-emp'] || perms.rawModules?.['employees'];
+      if (catVal === 'write' || catVal === 'read' || catVal === true) return true;
+      return false;
+    }
     if (
       perms.isSuperAdmin ||
       currentRole === 'Admin' ||
       currentRole === 'Super Admin' ||
       currentRole.includes('HR') ||
-      currentRole.includes('Manager') ||
-      !perms.hasExplicitPerms ||
-      (perms.rawModules && (
-        perms.rawModules['emp-management-tables'] ||
-        perms.rawModules['emp-hr-directory'] ||
-        perms.rawModules['emp-profile'] ||
-        perms.rawModules['emp-branches'] ||
-        perms.rawModules['cat-3-emp'] ||
-        perms.rawModules['employees']
-      ))
+      currentRole.includes('Manager')
     ) {
       return true;
     }
@@ -379,9 +378,19 @@ export function isModuleAuthorized(
   if (currentRole === 'Iraq_Admin' && moduleId === 'emp-regional-lebanon') {
     return false;
   }
-  // 3. HR Director & Super Admin see both countries
-  if ((currentRole === 'Admin' || currentRole === 'Super Admin' || currentRole === 'HR_Director' || perms.isSuperAdmin) && moduleId === 'emp-regional-lebanon') {
-    return true;
+  // 3. HR Director & Super Admin see both countries (must respect explicit granular permissions when configured)
+  if (moduleId === 'emp-regional-lebanon') {
+    if (perms.hasExplicitPerms) {
+      const val = perms.rawModules?.[moduleId];
+      if (val === 'write' || val === 'read' || val === true) return true;
+      if (val === 'none' || val === false) return false;
+      const catVal = perms.rawModules?.['cat-3-emp'] || perms.rawModules?.['employees'];
+      if (catVal === 'write' || catVal === 'read' || catVal === true) return true;
+      return false;
+    }
+    if (currentRole === 'Admin' || currentRole === 'Super Admin' || currentRole === 'HR_Director' || perms.isSuperAdmin) {
+      return true;
+    }
   }
 
   // Category 1: Authentication & Security (login/demo screens) is NEVER shown to regular operational users
