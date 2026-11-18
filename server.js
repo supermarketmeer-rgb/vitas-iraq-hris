@@ -3577,13 +3577,25 @@ app.put('/api/risks/:id', async (req, res) => {
     const updates = [];
     const values = [];
 
+    if (data.title !== undefined || data.risk_title !== undefined || data.riskTitle !== undefined) {
+      updates.push('risk_title = ?');
+      values.push(data.title || data.risk_title || data.riskTitle);
+    }
+    if (data.category !== undefined || data.risk_category !== undefined || data.riskCategory !== undefined) {
+      updates.push('risk_category = ?');
+      values.push(data.category || data.risk_category || data.riskCategory);
+    }
+    if (data.owner !== undefined) {
+      updates.push('owner = ?');
+      values.push(data.owner);
+    }
     if (data.status !== undefined) {
       updates.push('status = ?');
       values.push(data.status);
     }
-    if (data.mitigationPlan !== undefined || data.mitigationStrategy !== undefined) {
+    if (data.mitigationPlan !== undefined || data.mitigationStrategy !== undefined || data.mitigation_strategy !== undefined) {
       updates.push('mitigation_strategy = ?');
-      values.push(data.mitigationPlan || data.mitigationStrategy);
+      values.push(data.mitigationPlan || data.mitigationStrategy || data.mitigation_strategy);
     }
     if (data.impact !== undefined) {
       updates.push('impact = ?');
@@ -3593,12 +3605,26 @@ app.put('/api/risks/:id', async (req, res) => {
       updates.push('likelihood = ?');
       values.push(data.likelihood || data.probability);
     }
+    if (data.targetDate !== undefined || data.target_date !== undefined) {
+      updates.push('target_date = ?');
+      values.push(data.targetDate || data.target_date);
+    }
 
     if (updates.length > 0) {
       values.push(id);
       await query(`UPDATE risk_records SET ${updates.join(', ')} WHERE id = ?`, values);
     }
     res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/risks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM risk_records WHERE id = ?', [id]);
+    res.json({ success: true, id, message: 'Risk record deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

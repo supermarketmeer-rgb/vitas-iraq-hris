@@ -86,6 +86,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     setRiskRecords,
     addRiskRecord,
     updateRiskRecord,
+    deleteRiskRecord,
     currentUser,
     setCurrentUserRole,
     employees,
@@ -151,6 +152,9 @@ export const Category9RiskComplianceView: React.FC = () => {
   const [mitigation, setMitigation] = useState('');
   const [selectedRiskForDetails, setSelectedRiskForDetails] = useState<any | null>(null);
   const [editRiskForm, setEditRiskForm] = useState({
+    title: '',
+    category: 'المالي',
+    owner: '',
     status: 'مفتوح',
     mitigationPlan: '',
     impact: 'عالي',
@@ -998,8 +1002,11 @@ export const Category9RiskComplianceView: React.FC = () => {
   useEffect(() => {
     if (selectedRiskForDetails) {
       setEditRiskForm({
+        title: selectedRiskForDetails.title || selectedRiskForDetails.risk_title || selectedRiskForDetails.riskTitle || '',
+        category: selectedRiskForDetails.category || selectedRiskForDetails.risk_category || selectedRiskForDetails.riskCategory || 'المالي',
+        owner: selectedRiskForDetails.owner || 'مدير العمليات والائتمان',
         status: selectedRiskForDetails.status || 'مفتوح',
-        mitigationPlan: selectedRiskForDetails.mitigationPlan || selectedRiskForDetails.mitigation_strategy || '',
+        mitigationPlan: selectedRiskForDetails.mitigationPlan || selectedRiskForDetails.mitigationStrategy || selectedRiskForDetails.mitigation_strategy || '',
         impact: selectedRiskForDetails.impact || 'عالي',
         probability: selectedRiskForDetails.probability || selectedRiskForDetails.likelihood || 'متوسط'
       });
@@ -1012,9 +1019,17 @@ export const Category9RiskComplianceView: React.FC = () => {
     if (!selectedRiskForDetails) return;
     const riskId = selectedRiskForDetails.id || selectedRiskForDetails.riskCode;
     const updates = {
+      title: editRiskForm.title.trim(),
+      riskTitle: editRiskForm.title.trim(),
+      risk_title: editRiskForm.title.trim(),
+      category: editRiskForm.category,
+      riskCategory: editRiskForm.category,
+      risk_category: editRiskForm.category,
+      owner: editRiskForm.owner.trim(),
       status: editRiskForm.status,
-      mitigationPlan: editRiskForm.mitigationPlan,
-      mitigationStrategy: editRiskForm.mitigationPlan,
+      mitigationPlan: editRiskForm.mitigationPlan.trim(),
+      mitigationStrategy: editRiskForm.mitigationPlan.trim(),
+      mitigation_strategy: editRiskForm.mitigationPlan.trim(),
       impact: editRiskForm.impact,
       probability: editRiskForm.probability,
       likelihood: editRiskForm.probability
@@ -1029,18 +1044,59 @@ export const Category9RiskComplianceView: React.FC = () => {
     try {
       await (api as any).updateRisk?.(riskId, updates).catch(() => {});
       await (api as any).addAuditLog?.({
-        action: `تعديل تفاصيل وخطة تحوط الخطر (${riskId})`,
+        action: `تعديل وتحديث بيانات وخطة تحوط الخطر (${riskId} - ${editRiskForm.title})`,
         action_type: 'RISK_UPDATE',
         severity: 'info',
         module: 'إدارة المخاطر والامتثال (cat-9-risk)',
-        details: `الحالة: ${editRiskForm.status} | مستوى التأثير: ${editRiskForm.impact}`,
-        user_name: currentUser?.name || 'مدير المخاطر'
+        details: `العنوان: ${editRiskForm.title} | الفئة: ${editRiskForm.category} | الحالة: ${editRiskForm.status} | التأثير: ${editRiskForm.impact}`,
+        user_name: currentUser?.name || 'مدير المخاطر والامتثال'
       }).catch(() => {});
     } catch (e) {}
 
     setSelectedRiskForDetails(null);
-    setAuditToast(language === 'ar' ? 'تم حفظ وتحديث بيانات الخطر وخطة المعالجة بنجاح!' : 'Risk details and mitigation plan updated successfully!');
+    setAuditToast(language === 'ar' ? 'تم حفظ وتحديث بيانات الخطر لتتوافق مع عمل المؤسسة بنجاح!' : 'Risk details updated to match institution operations successfully!');
     setTimeout(() => setAuditToast(null), 3500);
+  };
+
+  // Delete risk record from Register
+  const handleDeleteRisk = async (riskOrId: any) => {
+    const risk = typeof riskOrId === 'object' ? riskOrId : riskRecords.find(r => r.id === riskOrId || r.riskCode === riskOrId);
+    const riskId = risk?.id || risk?.riskCode || riskOrId;
+    const riskTitle = risk?.title || riskId;
+
+    if (!window.confirm(
+      language === 'ar' 
+        ? `هل أنت متأكد من حذف بطاقة الخطر (${riskTitle}) نهائياً من سجل المخاطر؟`
+        : `Are you sure you want to delete risk card (${riskTitle}) from the register?`
+    )) {
+      return;
+    }
+
+    try {
+      if (deleteRiskRecord) {
+        await deleteRiskRecord(riskId);
+      } else if (setRiskRecords) {
+        setRiskRecords(prev => prev.filter(r => r.id !== riskId && r.riskCode !== riskId));
+      }
+      await (api as any).deleteRisk?.(riskId).catch(() => {});
+      await (api as any).addAuditLog?.({
+        action: `حذف بطاقة خطر من سجل المخاطر (${riskId} - ${riskTitle})`,
+        action_type: 'RISK_DELETE',
+        severity: 'warning',
+        module: 'إدارة المخاطر والامتثال (cat-9-risk)',
+        details: `تم الحذف بواسطة: ${currentUser?.name || 'مدير المخاطر والامتثال'}`,
+        user_name: currentUser?.name || 'مدير المخاطر والامتثال'
+      }).catch(() => {});
+
+      if (selectedRiskForDetails && (selectedRiskForDetails.id === riskId || selectedRiskForDetails.riskCode === riskId)) {
+        setSelectedRiskForDetails(null);
+      }
+
+      setAuditToast(language === 'ar' ? `تم حذف بطاقة الخطر (${riskId}) بنجاح.` : `Risk card (${riskId}) deleted successfully.`);
+      setTimeout(() => setAuditToast(null), 3500);
+    } catch (err) {
+      console.error('Error deleting risk:', err);
+    }
   };
 
   // --- 3. Security Settings State & Persistence ---
@@ -3203,9 +3259,19 @@ export const Category9RiskComplianceView: React.FC = () => {
                         type="button"
                         onClick={() => setSelectedRiskForDetails(r)}
                         className="px-3 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                        title={t('تعديل وتخصيص بيانات الخطر والخطة', 'Edit Risk Details')}
                       >
                         <span className="material-symbols-outlined text-xs">edit_note</span>
-                        <span>{t('تعديل الخطة', 'Edit Mitigation')}</span>
+                        <span>{t('تعديل الخطر', 'Edit Risk')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRisk(r)}
+                        className="px-2 py-1 rounded-lg border border-rose-300 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 font-bold transition-all cursor-pointer flex items-center gap-1"
+                        title={t('حذف بطاقة الخطر نهائياً من السجل', 'Delete Risk Card')}
+                      >
+                        <span className="material-symbols-outlined text-xs">delete</span>
+                        <span className="hidden sm:inline">{t('حذف', 'Delete')}</span>
                       </button>
                     </div>
                   </div>
@@ -6677,19 +6743,62 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveRiskDetails} className="space-y-4">
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 block">{t('عنوان الخطر:', 'Risk Title:')}</span>
-                <p className="font-bold text-xs text-slate-800 dark:text-slate-100">{selectedRiskForDetails.title}</p>
-                <div className="flex items-center gap-3 text-[10px] text-slate-500 pt-1">
-                  <span><b>{t('الفئة:', 'Category:')}</b> {selectedRiskForDetails.category}</span>
-                  <span>•</span>
-                  <span><b>{t('المسؤول:', 'Owner:')}</b> {selectedRiskForDetails.owner || 'مدير المخاطر'}</span>
+              <div className="space-y-3">
+                <div>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300 text-[11px]">
+                    {t('عنوان ووصف الخطر *', 'Risk Title & Description *')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editRiskForm.title}
+                    onChange={e => setEditRiskForm({ ...editRiskForm, title: e.target.value })}
+                    placeholder={t('أدخل عنوان الخطر المخصص للمؤسسة...', 'Enter custom risk title...')}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                      isDark ? 'bg-slate-900 border-white/10 text-white focus:border-teal-400' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-teal-600'
+                    }`}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300 text-[11px]">
+                      {t('فئة الخطر المؤسسي', 'Risk Category')}
+                    </label>
+                    <select
+                      value={editRiskForm.category}
+                      onChange={e => setEditRiskForm({ ...editRiskForm, category: e.target.value })}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
+                        isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
+                    >
+                      <option value="المالي">{t('المالي (Financial)', 'Financial')}</option>
+                      <option value="التشغيلي">{t('التشغيلي (Operational)', 'Operational')}</option>
+                      <option value="الامتثال التنظيمي">{t('الامتثال التنظيمي (Compliance)', 'Regulatory Compliance')}</option>
+                      <option value="أمن المعلومات">{t('أمن المعلومات (Information Security)', 'InfoSec')}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300 text-[11px]">
+                      {t('المسؤول / الدائرة المعنية', 'Risk Owner / Department')}
+                    </label>
+                    <input
+                      type="text"
+                      value={editRiskForm.owner}
+                      onChange={e => setEditRiskForm({ ...editRiskForm, owner: e.target.value })}
+                      placeholder={t('مثال: مدير العمليات والائتمان', 'e.g. Credit Operations Director')}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
+                        isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-bold mb-1.5 text-slate-700 dark:text-slate-300">
+                  <label className="block font-bold mb-1.5 text-slate-700 dark:text-slate-300 text-[11px]">
                     {t('حالة الخطر الحالية', 'Current Risk Status')}
                   </label>
                   <select
@@ -6706,7 +6815,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold mb-1.5 text-slate-700 dark:text-slate-300">
+                  <label className="block font-bold mb-1.5 text-slate-700 dark:text-slate-300 text-[11px]">
                     {t('درجة التأثير', 'Impact Level')}
                   </label>
                   <select
@@ -6722,39 +6831,68 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <option value="حرج">{t('حرج جداً (Critical)', 'Critical')}</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="block font-bold mb-1.5 text-slate-700 dark:text-slate-300 text-[11px]">
+                    {t('الاحتمالية / التكرار', 'Likelihood')}
+                  </label>
+                  <select
+                    value={editRiskForm.probability}
+                    onChange={e => setEditRiskForm({ ...editRiskForm, probability: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
+                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <option value="منخفض">{t('نادر / منخفض (Low)', 'Low')}</option>
+                    <option value="متوسط">{t('محتمل / متوسط (Medium)', 'Medium')}</option>
+                    <option value="عالي">{t('مرتفع / متكرر (High)', 'High')}</option>
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block font-bold mb-1.5 text-slate-700 dark:text-slate-300">
-                  {t('خطة التحوط والمعالجة (Mitigation Plan)', 'Mitigation Plan')}
+                <label className="block font-bold mb-1.5 text-slate-700 dark:text-slate-300 text-[11px]">
+                  {t('خطة التحوط والمعالجة (Mitigation Strategy)', 'Mitigation Strategy')}
                 </label>
                 <textarea
                   rows={4}
                   required
                   value={editRiskForm.mitigationPlan}
                   onChange={e => setEditRiskForm({ ...editRiskForm, mitigationPlan: e.target.value })}
-                  placeholder={t('أدخل الإجراءات والخطوات المتبعة للحد من الخطر ومعالجته...', 'Enter mitigation actions...')}
+                  placeholder={t('أدخل الإجراءات والخطوات المتبعة للحد من الخطر بما يلائم سياسات المؤسسة...', 'Enter mitigation actions...')}
                   className={`w-full p-3 rounded-xl border text-xs outline-none focus:ring-2 focus:ring-teal-500 ${
                     isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedRiskForDetails(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                  onClick={() => handleDeleteRisk(selectedRiskForDetails)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 flex items-center gap-1.5 cursor-pointer transition-all"
+                  title={t('حذف هذا الخطر نهائياً من قاعدة البيانات', 'Delete Risk Permanently')}
                 >
-                  {t('إلغاء', 'Cancel')}
+                  <span className="material-symbols-outlined text-sm">delete_forever</span>
+                  <span>{t('حذف الخطر نهائياً', 'Delete Risk Permanently')}</span>
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-sm">save</span>
-                  <span>{t('حفظ التعديلات', 'Save Changes')}</span>
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRiskForDetails(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-all"
+                  >
+                    {t('إلغاء', 'Cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <span className="material-symbols-outlined text-sm">save</span>
+                    <span>{t('حفظ التعديلات', 'Save Changes')}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

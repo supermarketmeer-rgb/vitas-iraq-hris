@@ -181,6 +181,7 @@ export const api = {
   getRisks: () => apiClient.get('/risks'),
   addRisk: (risk: any) => apiClient.post('/risks', risk),
   updateRisk: (id: string, risk: any) => apiClient.put(`/risks/${id}`, risk),
+  deleteRisk: (id: string) => apiClient.delete(`/risks/${id}`),
 
   // Documents
   getDocuments: () => apiClient.get('/documents'),

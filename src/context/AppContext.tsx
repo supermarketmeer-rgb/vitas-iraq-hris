@@ -100,6 +100,7 @@ interface AppContextType {
   setRiskRecords?: React.Dispatch<React.SetStateAction<RiskRecord[]>>;
   addRiskRecord: (risk: Omit<RiskRecord, 'id'>) => void;
   updateRiskRecord?: (id: string, updates: Partial<RiskRecord>) => Promise<void>;
+  deleteRiskRecord?: (id: string) => Promise<void>;
 
   documentRecords: DocumentRecord[];
   addDocumentRecord: (doc: Omit<DocumentRecord, 'id' | 'uploadDate'>) => void;
@@ -1236,7 +1237,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.warn('API updateRisk error:', e);
     }
-    setRiskRecords(prev => prev.map(r => (r.id === id || r.riskCode === id ? { ...r, ...updates } : r)));
+    setRiskRecords(prev => prev.map(r => (r.id === id || r.riskCode === id ? { ...r, ...updates, title: updates.title || (updates as any).riskTitle || r.title } : r)));
+  };
+
+  const deleteRiskRecord = async (id: string) => {
+    try {
+      await (api as any).deleteRisk?.(id);
+    } catch (e) {
+      console.warn('API deleteRisk error:', e);
+    }
+    setRiskRecords(prev => prev.filter(r => r.id !== id && r.riskCode !== id));
   };
 
   const addDocumentRecord = async (doc: Omit<DocumentRecord, 'id' | 'uploadDate'>) => {
@@ -1508,6 +1518,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRiskRecords,
         addRiskRecord,
         updateRiskRecord,
+        deleteRiskRecord,
         documentRecords,
         addDocumentRecord,
         notifications,
