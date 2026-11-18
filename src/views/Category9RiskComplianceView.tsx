@@ -379,7 +379,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         customPolicies = JSON.parse(raw);
         if (!Array.isArray(customPolicies)) customPolicies = [];
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return [...builtIn, ...customPolicies];
   }, [appSettings]);
@@ -424,7 +424,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     try {
       const raw = appSettings?.vitas_custom_company_policies || localStorage.getItem('vitas_custom_company_policies');
       if (raw) currentCustom = JSON.parse(raw);
-    } catch (e) {}
+    } catch (e) { }
 
     const updatedCustom = [newPolicyObj, ...currentCustom];
     const stringified = JSON.stringify(updatedCustom);
@@ -440,7 +440,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         severity: 'info',
         module: 'اللوائح والسياسات (risk-policies)',
         details: `تمت إضافة سياسة جديدة بواسطة: ${currentUser?.name || 'مسؤول النظام'}`
-      }).catch(() => {});
+      }).catch(() => { });
     } catch (err) {
       console.error(err);
     }
@@ -466,12 +466,12 @@ export const Category9RiskComplianceView: React.FC = () => {
   // Delete custom policy
   const handleDeleteCustomPolicy = async (code: string) => {
     if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذه السياسة من سجل السياسات المعتمدة؟' : 'Are you sure you want to delete this policy?')) return;
-    
+
     let currentCustom: any[] = [];
     try {
       const raw = appSettings?.vitas_custom_company_policies || localStorage.getItem('vitas_custom_company_policies');
       if (raw) currentCustom = JSON.parse(raw);
-    } catch (e) {}
+    } catch (e) { }
 
     const updatedCustom = currentCustom.filter(p => p.code !== code);
     const stringified = JSON.stringify(updatedCustom);
@@ -487,8 +487,8 @@ export const Category9RiskComplianceView: React.FC = () => {
         severity: 'warning',
         module: 'اللوائح والسياسات (risk-policies)',
         details: `تم حذف السياسة بواسطة: ${currentUser?.name || 'مسؤول النظام'}`
-      }).catch(() => {});
-    } catch (err) {}
+      }).catch(() => { });
+    } catch (err) { }
 
     setAuditToast(language === 'ar' ? 'تم حذف السياسة بنجاح.' : 'Policy deleted successfully.');
     setTimeout(() => setAuditToast(null), 3500);
@@ -499,7 +499,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     try {
       const stored = localStorage.getItem('vitas_api_keys');
       if (stored) return JSON.parse(stored);
-    } catch (e) {}
+    } catch (e) { }
     return [
       { id: 'KEY-9401', name: 'مفتاح الربط مع بوابة التأمينات والتقاعد', key: 'vts_live_sk_8923fd829a47b10', created: '2026-01-15', expires: '2027-01-15', permissions: 'قراءة وكتابة (Full Access)', status: 'نشط' },
       { id: 'KEY-4122', name: 'واجهة الربط المصرفي CBI Gateway API', key: 'vts_live_sk_4421aa8720cb551', created: '2026-02-10', expires: '2027-02-10', permissions: 'قراءة وكتابة (Full Access)', status: 'نشط' },
@@ -510,7 +510,7 @@ export const Category9RiskComplianceView: React.FC = () => {
   useEffect(() => {
     try {
       localStorage.setItem('vitas_api_keys', JSON.stringify(apiKeys));
-    } catch (e) {}
+    } catch (e) { }
   }, [apiKeys]);
 
   const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
@@ -859,7 +859,7 @@ export const Category9RiskComplianceView: React.FC = () => {
       module: newRecord.module,
       details: newRecord.details,
       status: newRecord.status
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   // API Key handlers
@@ -871,7 +871,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     navigator.clipboard.writeText(keyVal).then(() => {
       setCopiedKeyId(id);
       setTimeout(() => setCopiedKeyId(null), 3000);
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   const handleGenerateApiKeySubmit = (e: React.FormEvent) => {
@@ -903,8 +903,8 @@ export const Category9RiskComplianceView: React.FC = () => {
         module: 'الربط البرمجي والأمان (sec-api-keys)',
         details: `اسم المفتاح: ${newApiKeyForm.name.trim()} | الصلاحية: ${newApiKeyForm.permissions}`,
         user_name: currentUser?.name || 'مسؤول النظام'
-      }).catch(() => {});
-    } catch (e) {}
+      }).catch(() => { });
+    } catch (e) { }
   };
 
   const handleDeleteApiKey = (id: string) => {
@@ -921,8 +921,8 @@ export const Category9RiskComplianceView: React.FC = () => {
           module: 'الربط البرمجي والأمان (sec-api-keys)',
           details: `تم إلغاء صلاحية الوصول للمفتاح ${id}`,
           user_name: currentUser?.name || 'مسؤول النظام'
-        }).catch(() => {});
-      } catch (e) {}
+        }).catch(() => { });
+      } catch (e) { }
     }
   };
 
@@ -984,15 +984,15 @@ export const Category9RiskComplianceView: React.FC = () => {
     }
 
     try {
-      await (api as any).updateRisk?.(risk.id, { status: nextStatus }).catch(() => {});
+      await (api as any).updateRisk?.(risk.id, { status: nextStatus }).catch(() => { });
       await (api as any).addAuditLog?.({
         action: `تحديث حالة الخطر (${risk.riskCode || risk.id}) إلى: ${nextStatus}`,
         action_type: 'RISK_UPDATE',
         severity: nextStatus === 'تم التخفيف والمعالجة' ? 'success' : 'info',
         module: 'إدارة المخاطر والامتثال (cat-9-risk)',
         details: `تم تحديث الموقف الرقابي بواسطة: ${currentUser?.name || 'مدير المخاطر'}`
-      }).catch(() => {});
-    } catch (e) {}
+      }).catch(() => { });
+    } catch (e) { }
 
     setAuditToast(language === 'ar' ? `تم تحديث حالة الخطر إلى: ${nextStatus}` : `Risk status updated to: ${nextStatus}`);
     setTimeout(() => setAuditToast(null), 3500);
@@ -1042,7 +1042,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     }
 
     try {
-      await (api as any).updateRisk?.(riskId, updates).catch(() => {});
+      await (api as any).updateRisk?.(riskId, updates).catch(() => { });
       await (api as any).addAuditLog?.({
         action: `تعديل وتحديث بيانات وخطة تحوط الخطر (${riskId} - ${editRiskForm.title})`,
         action_type: 'RISK_UPDATE',
@@ -1050,8 +1050,8 @@ export const Category9RiskComplianceView: React.FC = () => {
         module: 'إدارة المخاطر والامتثال (cat-9-risk)',
         details: `العنوان: ${editRiskForm.title} | الفئة: ${editRiskForm.category} | الحالة: ${editRiskForm.status} | التأثير: ${editRiskForm.impact}`,
         user_name: currentUser?.name || 'مدير المخاطر والامتثال'
-      }).catch(() => {});
-    } catch (e) {}
+      }).catch(() => { });
+    } catch (e) { }
 
     setSelectedRiskForDetails(null);
     setAuditToast(language === 'ar' ? 'تم حفظ وتحديث بيانات الخطر لتتوافق مع عمل المؤسسة بنجاح!' : 'Risk details updated to match institution operations successfully!');
@@ -1065,7 +1065,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     const riskTitle = risk?.title || riskId;
 
     if (!window.confirm(
-      language === 'ar' 
+      language === 'ar'
         ? `هل أنت متأكد من حذف بطاقة الخطر (${riskTitle}) نهائياً من سجل المخاطر؟`
         : `Are you sure you want to delete risk card (${riskTitle}) from the register?`
     )) {
@@ -1078,7 +1078,7 @@ export const Category9RiskComplianceView: React.FC = () => {
       } else if (setRiskRecords) {
         setRiskRecords(prev => prev.filter(r => r.id !== riskId && r.riskCode !== riskId));
       }
-      await (api as any).deleteRisk?.(riskId).catch(() => {});
+      await (api as any).deleteRisk?.(riskId).catch(() => { });
       await (api as any).addAuditLog?.({
         action: `حذف بطاقة خطر من سجل المخاطر (${riskId} - ${riskTitle})`,
         action_type: 'RISK_DELETE',
@@ -1086,7 +1086,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         module: 'إدارة المخاطر والامتثال (cat-9-risk)',
         details: `تم الحذف بواسطة: ${currentUser?.name || 'مدير المخاطر والامتثال'}`,
         user_name: currentUser?.name || 'مدير المخاطر والامتثال'
-      }).catch(() => {});
+      }).catch(() => { });
 
       if (selectedRiskForDetails && (selectedRiskForDetails.id === riskId || selectedRiskForDetails.riskCode === riskId)) {
         setSelectedRiskForDetails(null);
@@ -1107,7 +1107,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         const parsed = JSON.parse(saved);
         if (parsed.minPasswordLength) return Number(parsed.minPasswordLength);
       }
-    } catch (e) {}
+    } catch (e) { }
     return 8;
   });
   const [requireSpecialChars, setRequireSpecialChars] = useState<boolean>(() => {
@@ -1117,7 +1117,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         const parsed = JSON.parse(saved);
         if (typeof parsed.requireSpecialChars === 'boolean') return parsed.requireSpecialChars;
       }
-    } catch (e) {}
+    } catch (e) { }
     return true;
   });
   const [enable2FA, setEnable2FA] = useState<boolean>(() => {
@@ -1127,7 +1127,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         const parsed = JSON.parse(saved);
         if (typeof parsed.enable2FA === 'boolean') return parsed.enable2FA;
       }
-    } catch (e) {}
+    } catch (e) { }
     return true;
   });
   const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState<number>(() => {
@@ -1137,7 +1137,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         const parsed = JSON.parse(saved);
         if (parsed.sessionTimeoutMinutes) return Number(parsed.sessionTimeoutMinutes);
       }
-    } catch (e) {}
+    } catch (e) { }
     return 30;
   });
   const [maxFailedAttempts, setMaxFailedAttempts] = useState<number>(() => {
@@ -1147,7 +1147,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         const parsed = JSON.parse(saved);
         if (parsed.maxFailedAttempts) return Number(parsed.maxFailedAttempts);
       }
-    } catch (e) {}
+    } catch (e) { }
     return 5;
   });
   const [isSavingSecuritySettings, setIsSavingSecuritySettings] = useState(false);
@@ -1159,7 +1159,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         const parsed = JSON.parse(saved);
         if (parsed.updatedAt) return parsed.updatedAt;
       }
-    } catch (e) {}
+    } catch (e) { }
     return null;
   });
 
@@ -1288,7 +1288,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     setIsSavingQuickPassword(true);
     try {
       const cleanPass = quickNewPassword.trim();
-      
+
       // 1. Call server change-password API with administrative reset flag
       await api.changePassword({
         id: passwordModalUser.id,
@@ -1328,8 +1328,8 @@ export const Category9RiskComplianceView: React.FC = () => {
         localStorage.setItem('vitas_custom_users', JSON.stringify(parsed));
         api.updateAppSettingsBulk({
           vitas_custom_users: JSON.stringify(parsed)
-        }).catch(() => {});
-      } catch (e) {}
+        }).catch(() => { });
+      } catch (e) { }
 
       // 4. Update local dbUsers state
       setDbUsers(prev => prev.map(u => {
@@ -1356,7 +1356,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         details: `تم تغيير كلمة المرور للمستخدم (${passwordModalUser.username || passwordModalUser.employee_id}) بنجاح.`
       };
       setAuditLogs(prev => [auditEntry, ...prev]);
-      api.addAuditLog?.(auditEntry).catch(() => {});
+      api.addAuditLog?.(auditEntry).catch(() => { });
 
       // 6. Refresh users list & broadcast
       fetchUsersFromDb();
@@ -1392,7 +1392,7 @@ export const Category9RiskComplianceView: React.FC = () => {
       const targetIdent = u.id != null ? u.id : (u.username || u.employee_id);
       await api.deleteUser(targetIdent).catch(async () => {
         if (u.username && u.username !== targetIdent) {
-          await api.deleteUser(u.username).catch(() => {});
+          await api.deleteUser(u.username).catch(() => { });
         }
       });
 
@@ -1412,7 +1412,7 @@ export const Category9RiskComplianceView: React.FC = () => {
           keys.forEach(k => delete parsed[k]);
           localStorage.setItem('vitas_custom_users', JSON.stringify(parsed));
         }
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         const rawPerms = localStorage.getItem('vitas_custom_employee_permissions');
@@ -1427,7 +1427,7 @@ export const Category9RiskComplianceView: React.FC = () => {
           keys.forEach(k => delete parsed[k]);
           localStorage.setItem('vitas_custom_employee_permissions', JSON.stringify(parsed));
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // 4. Broadcast change event
       window.dispatchEvent(new CustomEvent('vitas:users_changed'));
@@ -1449,7 +1449,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         details: `تم حذف حساب المستخدم (${fullName} - ${u.username}) نهائياً من قاعدة البيانات.`
       };
       setAuditLogs(prev => [auditEntry, ...prev]);
-      api.addAuditLog?.(auditEntry).catch(() => {});
+      api.addAuditLog?.(auditEntry).catch(() => { });
 
       // 6. Refresh from DB
       fetchUsersFromDb();
@@ -1958,7 +1958,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     const q = moduleFilterQuery.toLowerCase().trim();
     return operational.map(cat => {
       const catMatches = cat.title.toLowerCase().includes(q) || cat.titleEn.toLowerCase().includes(q);
-      const matchedModules = cat.modules.filter(m => 
+      const matchedModules = cat.modules.filter(m =>
         catMatches ||
         m.title.toLowerCase().includes(q) ||
         m.titleEn.toLowerCase().includes(q) ||
@@ -2061,7 +2061,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     setMatchedEmpSubCount(directSubordinates.length);
 
     const badge = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id || '';
-    
+
     // Robust Arabic and English full name resolution with 100% guarantee
     const fullNameAr = extractArabicName(emp);
     const fullNameEn = extractEnglishName(emp) || fullNameAr;
@@ -2070,7 +2070,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     const branch = emp.branch || emp.location_ar || emp.location || 'الإدارة العامة - بغداد';
     const email = emp.email || emp.org_email || emp.personal_email || (badge ? `${String(badge).toLowerCase().replace(/[^a-z0-9]/g, '')}@vitasiraq.iq` : '');
     const phone = emp.phone || emp.mobile || '';
-    
+
     // Clean suggested username without spaces
     const rawUser = emp.username || (emp.employee_id ? String(emp.employee_id).toLowerCase() : (badge ? String(badge).toLowerCase() : (email ? email.split('@')[0] : '')));
     const suggestedUsername = rawUser.replace(/\s+/g, '');
@@ -2152,7 +2152,7 @@ export const Category9RiskComplianceView: React.FC = () => {
           setDbUsers(nonAdminUsers);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   useEffect(() => {
@@ -2166,7 +2166,7 @@ export const Category9RiskComplianceView: React.FC = () => {
           })));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     fetchUsersFromDb();
     const handleUsersChanged = () => { fetchUsersFromDb(); };
@@ -2240,7 +2240,7 @@ export const Category9RiskComplianceView: React.FC = () => {
             : (newUserForm.role === 'Branch Manager' || newUserForm.jobTitle.includes('مدير فرع') || jobTitleLower.includes('branch manager'))
               ? 'Branch Manager'
               : (newUserForm.role || 'Employee');
-    
+
     try {
       // NOTE: Creating a User NEVER adds or modifies records in the employees table!
 
@@ -2255,14 +2255,14 @@ export const Category9RiskComplianceView: React.FC = () => {
         reports: { catId: 'cat-2-dash', subIds: ['sys-dynamic-reports', 'dash-overview', 'dash-exec-1', 'dash-exec-2', 'dash-ess', 'dash-search'] },
         risk: { catId: 'cat-9-risk', subIds: ['risk-matrix', 'risk-audit-logs', 'risk-policies', 'risk-incidents', 'risk-compliance-checklist', 'sec-roles', 'risk-assessment', 'sec-roles-permissions', 'sec-general-settings', 'sec-audit-logs', 'sec-api-keys'] },
         settings: { catId: 'cat-10-sys', subIds: ['sys-code-view', 'sys-schema', 'sys-api-logs', 'sys-deploy-status', 'sys-sql-console', 'sys-env', 'auth-secure', 'auth-sso', 'auth-biometric'] },
-        support: { 
-          catId: 'cat-11-support', 
+        support: {
+          catId: 'cat-11-support',
           subIds: [
-            'supp-emp-portal', 'supp-agent-desk', 'supp-knowledge-base', 'supp-guide-center', 
-            'supp-emp-handbook', 'supp-news-admin', 'supp-notif-settings', 'supp-notif-center', 
+            'supp-emp-portal', 'supp-agent-desk', 'supp-knowledge-base', 'supp-guide-center',
+            'supp-emp-handbook', 'supp-news-admin', 'supp-notif-settings', 'supp-notif-center',
             'supp-profile-settings', 'supp-internal-chat', 'supp-mobile-app', 'supp-enterprise-nexus',
             'support-tickets', 'support-faq', 'support-contact', 'support-guides'
-          ] 
+          ]
         },
         drivers: { catId: 'cat-drivers', subIds: ['drivers-list', 'drivers-assignments', 'drivers-trips', 'drivers-maintenance', 'drivers-fuel', 'drivers-kpi'] },
         performance: { catId: 'cat-7-perf', subIds: ['perf-appraisals', 'perf-goals', 'perf-kpi', 'perf-training-plans', 'perf-courses'] },
@@ -2450,11 +2450,11 @@ export const Category9RiskComplianceView: React.FC = () => {
       setCustomEmpSavedToast(
         language === 'ar'
           ? (isEditingUser
-              ? `تم تحديث بيانات المستخدم (${newUserForm.fullNameAr}) وكلمة المرور والصلاحيات بنجاح!`
-              : `تم حفظ وإنشاء حساب المستخدم (${newUserForm.fullNameAr}) بنجاح!`)
+            ? `تم تحديث بيانات المستخدم (${newUserForm.fullNameAr}) وكلمة المرور والصلاحيات بنجاح!`
+            : `تم حفظ وإنشاء حساب المستخدم (${newUserForm.fullNameAr}) بنجاح!`)
           : (isEditingUser
-              ? `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}), password and permissions updated successfully!`
-              : `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}) saved successfully!`)
+            ? `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}), password and permissions updated successfully!`
+            : `User account (${newUserForm.fullNameEn || newUserForm.fullNameAr}) saved successfully!`)
       );
       setTimeout(() => setCustomEmpSavedToast(null), 5000);
 
@@ -2462,7 +2462,7 @@ export const Category9RiskComplianceView: React.FC = () => {
       api.updateAppSettingsBulk({
         vitas_custom_employee_permissions: JSON.stringify(updatedDelegations),
         vitas_custom_users: JSON.stringify(existingUsers)
-      }).catch(() => {});
+      }).catch(() => { });
 
       fetchUsersFromDb();
       window.dispatchEvent(new CustomEvent('vitas:users_changed'));
@@ -2515,7 +2515,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     };
     await addRiskRecord(newRisk);
     try {
-      await (api as any).addRisk?.(newRisk).catch(() => {});
+      await (api as any).addRisk?.(newRisk).catch(() => { });
       await (api as any).addAuditLog?.({
         action: `تسجيل خطر تشغيلي جديد في سجل الحوكمة (${newCode})`,
         action_type: 'RISK_REGISTER',
@@ -2523,8 +2523,8 @@ export const Category9RiskComplianceView: React.FC = () => {
         module: 'إدارة المخاطر والامتثال (cat-9-risk)',
         details: `العنوان: ${riskTitle.trim()} | الفئة: ${riskCat} | التأثير: ${impact}`,
         user_name: currentUser?.name || 'مدير المخاطر والامتثال'
-      }).catch(() => {});
-    } catch (e) {}
+      }).catch(() => { });
+    } catch (e) { }
 
     setRiskTitle('');
     setMitigation('');
@@ -2573,7 +2573,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         parsedApp.security_enable_2fa = String(payload.enable2FA);
         parsedApp.security_settings_updated_at = nowIso;
         localStorage.setItem('vitas_app_settings', JSON.stringify(parsedApp));
-      } catch (e) {}
+      } catch (e) { }
 
       // 3. Persist to backend MySQL database via bulk settings endpoint
       const backendPayload: Record<string, string> = {
@@ -2624,7 +2624,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         module: auditEntry.module,
         details: auditEntry.details,
         status: auditEntry.status
-      }).catch(() => {});
+      }).catch(() => { });
 
       // 6. UI Feedbacks
       setLastSavedSecuritySettings(nowIso);
@@ -2751,9 +2751,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveModuleId('risk-audit-reports')}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                    isDark ? 'border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20' : 'border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100'
-                  }`}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${isDark ? 'border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20' : 'border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100'
+                    }`}
                 >
                   <span className="material-symbols-outlined text-sm">description</span>
                   <span>{t('تقارير التدقيق المعتمدة', 'Audit Reports')}</span>
@@ -2785,7 +2784,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <td className="py-3 font-mono text-slate-500">{row.date}</td>
                       <td className="py-3 text-slate-600 dark:text-slate-300">{row.status}</td>
                       <td className="py-3">
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-800 text-white font-bold text-[10px] shadow-sm">
                           {row.comp}
                         </span>
                       </td>
@@ -2804,9 +2803,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       {activeModuleId === 'risk-process-map' && (
         <div className="space-y-6 text-xs">
           {/* Header Banner */}
-          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-          }`}>
+          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+            }`}>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
                 <span className="material-symbols-outlined text-2xl">account_tree</span>
@@ -2837,9 +2835,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               { id: 4, title: 'التقييم والترقيات', en: 'Performance & Appraisal', step: 'تقييم ذاتي ← تقييم مشرف ← مراجعة مدير الفرع ← اعتماد نهائي', color: 'amber', icon: 'trending_up' },
               { id: 5, title: 'نهاية الخدمة والذمة', en: 'Offboarding & Clearance', step: 'طلب انفكاك ← استرجاع العهد ← براءة ذمة ← صرف مكافأة نهاية الخدمة', color: 'rose', icon: 'exit_to_app' }
             ].map(w => (
-              <div key={w.id} className={`p-4 rounded-2xl border shadow-sm space-y-2 ${
-                isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
-              }`}>
+              <div key={w.id} className={`p-4 rounded-2xl border shadow-sm space-y-2 ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
+                }`}>
                 <div className="flex items-center justify-between">
                   <span className="w-7 h-7 rounded-lg bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-xs font-mono">
                     {w.id}
@@ -2856,9 +2853,8 @@ export const Category9RiskComplianceView: React.FC = () => {
           </div>
 
           {/* RACI Matrix Table */}
-          <div className={`p-6 rounded-3xl border shadow-xl space-y-4 ${
-            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-          }`}>
+          <div className={`p-6 rounded-3xl border shadow-xl space-y-4 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+            }`}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-3">
               <div>
                 <h3 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
@@ -2880,9 +2876,8 @@ export const Category9RiskComplianceView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-start">
                 <thead>
-                  <tr className={`border-b text-[11px] font-bold ${
-                    isDark ? 'border-slate-800 text-slate-400 bg-slate-900/50' : 'border-slate-200 text-slate-600 bg-slate-50'
-                  }`}>
+                  <tr className={`border-b text-[11px] font-bold ${isDark ? 'border-slate-800 text-slate-400 bg-slate-900/50' : 'border-slate-200 text-slate-600 bg-slate-50'
+                    }`}>
                     <th className="p-3 text-start">{t('العملية الإدارية / النشاط الرقابي', 'Process Activity')}</th>
                     <th className="p-3 text-center">{t('الموظف', 'Employee')}</th>
                     <th className="p-3 text-center">{t('المشرف المباشر', 'Supervisor')}</th>
@@ -2916,9 +2911,8 @@ export const Category9RiskComplianceView: React.FC = () => {
 
           {/* SLAs & Performance Control Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className={`p-4 rounded-2xl border space-y-1.5 ${
-              isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
+              }`}>
               <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 font-bold">
                 <span className="material-symbols-outlined text-lg">timer</span>
                 <span>{t('اتفاقية معالجة الإجازات (SLA)', 'Leave Processing SLA')}</span>
@@ -2927,9 +2921,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               <p className="text-[10px] text-slate-500">{t('اعتماد فوري من المشرف المباشر وتحديث الرصيد', 'Instant supervisor sign-off')}</p>
             </div>
 
-            <div className={`p-4 rounded-2xl border space-y-1.5 ${
-              isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
+              }`}>
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold">
                 <span className="material-symbols-outlined text-lg">verified_user</span>
                 <span>{t('إقفال كشوفات الرواتب', 'Payroll Closure Deadline')}</span>
@@ -2938,9 +2931,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               <p className="text-[10px] text-slate-500">{t('مطابقة التايم شيت ورفع ملف التوطين للبنك', 'Timesheet freeze & bank upload')}</p>
             </div>
 
-            <div className={`p-4 rounded-2xl border space-y-1.5 ${
-              isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
+              }`}>
               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
                 <span className="material-symbols-outlined text-lg">policy</span>
                 <span>{t('توريد اشتراكات الضمان', 'Social Security Filing')}</span>
@@ -2974,7 +2966,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <span className="font-mono text-[10px] text-teal-600 dark:text-teal-400 font-bold">{rep.id}</span>
                     <h3 className="font-bold text-sm mt-0.5" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{rep.title}</h3>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-800 text-white text-[10px] font-bold shadow-sm">
                     {rep.status}
                   </span>
                 </div>
@@ -2985,7 +2977,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setSelectedReportForView(rep)}
-                      className="px-3 py-1 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-teal-600 hover:text-white text-slate-800 dark:text-slate-200 font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] shadow-sm transition-all flex items-center gap-1 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-xs">visibility</span>
                       <span>{t('معاينة التقرير', 'Preview Report')}</span>
@@ -2996,7 +2988,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                         setSelectedReportForView(rep);
                         setTimeout(() => window.print(), 350);
                       }}
-                      className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 cursor-pointer transition-all"
                     >
                       <span className="material-symbols-outlined text-xs">print</span>
                       <span>{t('طباعة PDF', 'Print / PDF')}</span>
@@ -3040,7 +3032,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <span className="text-[10px] text-slate-400 block">{t('المراجعة القادمة', 'Next Review')}</span>
                     <span className="font-mono font-bold text-slate-600 dark:text-slate-300">{item.nextReview}</span>
                   </div>
-                  <span className="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+                  <span className="px-3 py-1 rounded-xl bg-emerald-800 text-white font-bold shadow-sm text-[11px]">
                     {item.comp}
                   </span>
                 </div>
@@ -3123,22 +3115,23 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                 <div className="pt-2 border-t border-slate-200 dark:border-white/5 flex items-center justify-between text-[11px]">
                   <span className="text-slate-400">{t('تاريخ التحديث:', 'Updated:')} <b className="font-mono text-slate-600 dark:text-slate-200">{pol.date}</b></span>
-                  
+
                   <div className="flex items-center gap-2">
                     {!pol.isBuiltIn && (
                       <button
                         type="button"
                         onClick={() => handleDeleteCustomPolicy(pol.code)}
-                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 cursor-pointer transition-all"
                         title={t('حذف السياسة', 'Delete Policy')}
                       >
-                        <span className="material-symbols-outlined text-sm">delete</span>
+                        <span className="material-symbols-outlined text-xs">delete</span>
+                        <span>{t('حذف', 'Delete')}</span>
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => setSelectedPolicyForView(pol)}
-                      className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-[11px] transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] transition-all flex items-center gap-1 shadow-sm cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-xs">visibility</span>
                       <span>{t('استعراض الدليل', 'View Policy')}</span>
@@ -3167,11 +3160,11 @@ export const Category9RiskComplianceView: React.FC = () => {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
             <div className="flex items-center gap-2">
-              <span>{t(`سجل المخاطر النشطة (${riskRecords.length})`, `Active Risk Register (${riskRecords.length})`)}</span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              <span className="font-bold">{t(`سجل المخاطر النشطة (${riskRecords.length})`, `Active Risk Register (${riskRecords.length})`)}</span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-700 text-white shadow-sm">
                 {riskRecords.filter(r => r.status === 'مفتوح' || r.status === 'Open').length} {t('مفتوح', 'Open')}
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-700 text-white shadow-sm">
                 {riskRecords.filter(r => r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated').length} {t('تمت معالجته', 'Mitigated')}
               </span>
             </div>
@@ -3179,16 +3172,15 @@ export const Category9RiskComplianceView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleExportRiskMatrix}
-                className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
-                  isDark ? 'border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20' : 'border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100'
-                }`}
+                className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${isDark ? 'border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20' : 'border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100'
+                  }`}
               >
                 <span className="material-symbols-outlined text-sm">table_view</span>
                 <span>{t('تصدير مصفوفة المخاطر (Excel)', 'Export Matrix (Excel)')}</span>
               </button>
               <button
                 onClick={() => setActiveModuleId('risk-identify-new')}
-                className="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold hover:bg-teal-500 transition-all shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-teal-700 text-white font-bold hover:bg-teal-800 transition-all shadow-md shadow-teal-700/20 flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">add_alert</span>
                 <span>{t('+ تسجيل خطر جديد', '+ Register New Risk')}</span>
@@ -3211,26 +3203,26 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <div className="flex justify-between items-start font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-teal-600 dark:text-teal-400 font-mono text-xs">{r.riskCode || r.id}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        <span className="text-teal-600 dark:text-teal-400 font-mono text-xs font-bold">{r.riskCode || r.id}</span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${
                           r.status === 'تم التخفيف والمعالجة' || r.status === 'Mitigated'
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                            ? 'bg-emerald-700 text-white'
                             : r.status === 'قيد المعالجة' || r.status === 'In Progress'
-                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
-                        }`}>
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-rose-700 text-white'
+                          }`}>
                           {r.status || 'مفتوح'}
                         </span>
                       </div>
                       <h3 className="text-sm font-bold">{r.title}</h3>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-xl text-[11px] font-bold ${
+                    <span className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-sm ${
                       r.impact === 'حرج' || r.impact === 'Critical'
-                        ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                        ? 'bg-rose-800 text-white'
                         : r.impact === 'عالي' || r.impact === 'High'
-                        ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                        : 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
-                    }`}>
+                        ? 'bg-amber-700 text-white'
+                        : 'bg-blue-700 text-white'
+                      }`}>
                       {t('التأثير:', 'Impact:')} {r.impact}
                     </span>
                   </div>
@@ -3249,7 +3241,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleCycleRiskStatus(r)}
-                        className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 font-bold transition-all cursor-pointer flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold transition-all shadow-sm cursor-pointer flex items-center gap-1 text-[11px]"
                         title={t('تغيير حالة الخطر إلى المرحلة التالية', 'Cycle status')}
                       >
                         <span className="material-symbols-outlined text-xs">published_with_changes</span>
@@ -3258,7 +3250,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setSelectedRiskForDetails(r)}
-                        className="px-3 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer text-[11px]"
                         title={t('تعديل وتخصيص بيانات الخطر والخطة', 'Edit Risk Details')}
                       >
                         <span className="material-symbols-outlined text-xs">edit_note</span>
@@ -3267,11 +3259,11 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleDeleteRisk(r)}
-                        className="px-2 py-1 rounded-lg border border-rose-300 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 font-bold transition-all cursor-pointer flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold transition-all shadow-sm cursor-pointer flex items-center gap-1 text-[11px]"
                         title={t('حذف بطاقة الخطر نهائياً من السجل', 'Delete Risk Card')}
                       >
                         <span className="material-symbols-outlined text-xs">delete</span>
-                        <span className="hidden sm:inline">{t('حذف', 'Delete')}</span>
+                        <span>{t('حذف', 'Delete')}</span>
                       </button>
                     </div>
                   </div>
@@ -3302,9 +3294,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                 value={riskTitle}
                 onChange={e => setRiskTitle(e.target.value)}
                 style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                className={`w-full px-4 py-2.5 rounded-xl border text-xs font-normal outline-none transition-all ${
-                  isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
-                }`}
+                className={`w-full px-4 py-2.5 rounded-xl border text-xs font-normal outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                  }`}
               />
             </div>
 
@@ -3317,9 +3308,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   value={riskCat}
                   onChange={e => setRiskCat(e.target.value as any)}
                   style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-bold outline-none ${
-                    isDark ? 'bg-[#0a0c10] border-slate-700' : 'bg-slate-50 border-slate-300'
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-bold outline-none ${isDark ? 'bg-[#0a0c10] border-slate-700' : 'bg-slate-50 border-slate-300'
+                    }`}
                 >
                   <option value="أمن المعلومات">{t('أمن المعلومات والسيبراني', 'Information & Cyber Security')}</option>
                   <option value="الامتثال التنظيمي">{t('الامتثال للبنك المركزي CBI', 'Central Bank Compliance')}</option>
@@ -3335,9 +3325,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                 <select
                   value={impact}
                   onChange={e => setImpact(e.target.value as any)}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-bold text-rose-500 outline-none ${
-                    isDark ? 'bg-[#0a0c10] border-slate-700' : 'bg-slate-50 border-slate-300'
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-bold text-rose-500 outline-none ${isDark ? 'bg-[#0a0c10] border-slate-700' : 'bg-slate-50 border-slate-300'
+                    }`}
                 >
                   <option value="منخفض">{t('منخفض (Low)', 'Low')}</option>
                   <option value="متوسط">{t('متوسط (Medium)', 'Medium')}</option>
@@ -3357,9 +3346,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                 value={mitigation}
                 onChange={e => setMitigation(e.target.value)}
                 style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                className={`w-full p-3 rounded-xl border text-xs font-normal outline-none transition-all ${
-                  isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
-                }`}
+                className={`w-full p-3 rounded-xl border text-xs font-normal outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                  }`}
               />
             </div>
 
@@ -3442,9 +3430,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   value={minPasswordLength}
                   onChange={e => setMinPasswordLength(e.target.value === '' ? '' as any : Number(e.target.value))}
                   style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${
-                    isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
                 />
                 <p className="text-[10px] text-slate-400 mt-1">{t('يوصى بـ 8 أحرف على الأقل لحماية الحسابات', 'Recommended 8+ characters')}</p>
               </div>
@@ -3460,9 +3447,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   value={sessionTimeoutMinutes}
                   onChange={e => setSessionTimeoutMinutes(e.target.value === '' ? '' as any : Number(e.target.value))}
                   style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${
-                    isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
                 />
                 <p className="text-[10px] text-slate-400 mt-1">{t('يتم قفل الشاشة تلقائياً بعد عدم التفاعل', 'Auto locks session after inactivity')}</p>
               </div>
@@ -3480,9 +3466,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   value={maxFailedAttempts}
                   onChange={e => setMaxFailedAttempts(e.target.value === '' ? '' as any : Number(e.target.value))}
                   style={{ color: isDark ? '#ffffff' : '#0f172a' }}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${
-                    isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 focus:border-teal-400' : 'bg-slate-50 border-slate-300 focus:border-teal-600'
+                    }`}
                 />
                 <p className="text-[10px] text-slate-400 mt-1">{t('حماية من هجمات التخمين والقوة العمياء (Brute Force)', 'Protection against brute force attacks')}</p>
               </div>
@@ -3502,13 +3487,12 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             {/* Interactive 2FA Switch */}
-            <div 
+            <div
               onClick={() => setEnable2FA(prev => !prev)}
-              className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer select-none transition-all ${
-                enable2FA 
-                  ? 'bg-teal-500/10 border-teal-500/40 text-teal-700 dark:text-teal-300' 
-                  : isDark ? 'bg-slate-800/40 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
-              }`}
+              className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer select-none transition-all ${enable2FA
+                ? 'bg-teal-500/10 border-teal-500/40 text-teal-700 dark:text-teal-300'
+                : isDark ? 'bg-slate-800/40 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                }`}
             >
               <div className="flex items-center gap-3">
                 <span className={`material-symbols-outlined ${enable2FA ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`}>
@@ -3516,21 +3500,20 @@ export const Category9RiskComplianceView: React.FC = () => {
                 </span>
                 <div>
                   <p className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                    {enable2FA 
+                    {enable2FA
                       ? t('المصادقة الثنائية (2FA) مُفعّلة', '2-Factor Authentication Enabled')
                       : t('المصادقة الثنائية (2FA) مُعطّلة', '2-Factor Authentication Disabled')}
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    {enable2FA 
+                    {enable2FA
                       ? t('جميع الحسابات الإدارية تستخدم التحقق المزدوج لحماية النظام', 'All admin accounts require dual-step verification')
                       : t('انقر للتفعيل لفرض التحقق المزدوج لحماية الحسابات الإدارية', 'Click to enforce dual-step verification on admin accounts')}
                   </p>
                 </div>
               </div>
               <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enable2FA ? 'bg-teal-600' : 'bg-slate-400 dark:bg-slate-600'}`}>
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${
-                  enable2FA ? (language === 'ar' ? '-translate-x-6' : 'translate-x-6') : (language === 'ar' ? '-translate-x-1' : 'translate-x-1')
-                }`} />
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${enable2FA ? (language === 'ar' ? '-translate-x-6' : 'translate-x-6') : (language === 'ar' ? '-translate-x-1' : 'translate-x-1')
+                  }`} />
               </div>
             </div>
 
@@ -3550,9 +3533,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSavingSecuritySettings}
-                className={`flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white font-bold text-xs transition-all shadow-lg shadow-teal-600/25 cursor-pointer flex items-center justify-center gap-2 ${
-                  isSavingSecuritySettings ? 'opacity-70 cursor-not-allowed' : ''
-                }`}
+                className={`flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white font-bold text-xs transition-all shadow-lg shadow-teal-600/25 cursor-pointer flex items-center justify-center gap-2 ${isSavingSecuritySettings ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}
               >
                 {isSavingSecuritySettings ? (
                   <>
@@ -3570,9 +3552,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResetSecuritySettingsToDefaults}
-                className={`px-4 py-3 rounded-xl border font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-                  isDark ? 'border-slate-700 hover:bg-white/5 text-slate-300' : 'border-slate-300 hover:bg-slate-100 text-slate-700'
-                }`}
+                className={`px-4 py-3 rounded-xl border font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 ${isDark ? 'border-slate-700 hover:bg-white/5 text-slate-300' : 'border-slate-300 hover:bg-slate-100 text-slate-700'
+                  }`}
                 title={t('استعادة الإعدادات الافتراضية', 'Reset to Defaults')}
               >
                 <span className="material-symbols-outlined text-base">restart_alt</span>
@@ -3603,9 +3584,8 @@ export const Category9RiskComplianceView: React.FC = () => {
           )}
 
           {/* Top Control Bar & Live Surveillance Banner */}
-          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
-            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-          }`}>
+          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+            }`}>
             <div className="flex items-start sm:items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
                 <span className="material-symbols-outlined text-2xl">history</span>
@@ -3636,11 +3616,10 @@ export const Category9RiskComplianceView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsLiveAuditStreaming(prev => !prev)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isLiveAuditStreaming
-                    ? isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20' : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                    : isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20' : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                }`}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${isLiveAuditStreaming
+                  ? isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20' : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                  : isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20' : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                  }`}
                 title={isLiveAuditStreaming ? t('إيقاف التحديث اللحظي مؤقتاً', 'Pause Live Feed') : t('استئناف التحديث اللحظي', 'Resume Live Feed')}
               >
                 <span className="material-symbols-outlined text-sm">
@@ -3661,9 +3640,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleExportAuditLogsExcel}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isDark ? 'border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300' : 'border-teal-300 bg-teal-50 hover:bg-teal-100 text-teal-800'
-                }`}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${isDark ? 'border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300' : 'border-teal-300 bg-teal-50 hover:bg-teal-100 text-teal-800'
+                  }`}
                 title={t('تصدير السجلات إلى إكسل', 'Export to Excel')}
               >
                 <span className="material-symbols-outlined text-sm">table_view</span>
@@ -3673,9 +3651,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               <button
                 type="button"
                 onClick={handlePrintCbiAuditReport}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isDark ? 'border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200' : 'border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${isDark ? 'border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200' : 'border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
                 title={t('طباعة تقرير التدقيق الرقابي الرسمي', 'Print CBI Compliance Report')}
               >
                 <span className="material-symbols-outlined text-sm">print</span>
@@ -3687,9 +3664,8 @@ export const Category9RiskComplianceView: React.FC = () => {
           {/* 5 KPI Metric Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
             {/* Total */}
-            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
-              isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+              }`}>
               <div className="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-500 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-xl">receipt_long</span>
               </div>
@@ -3702,9 +3678,8 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             {/* Critical */}
-            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
-              isDark ? 'bg-[#111827] border-rose-500/30' : 'bg-rose-50/50 border-rose-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${isDark ? 'bg-[#111827] border-rose-500/30' : 'bg-rose-50/50 border-rose-200'
+              }`}>
               <div className="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-xl">gpp_bad</span>
               </div>
@@ -3717,9 +3692,8 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             {/* Warnings */}
-            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
-              isDark ? 'bg-[#111827] border-amber-500/30' : 'bg-amber-50/50 border-amber-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${isDark ? 'bg-[#111827] border-amber-500/30' : 'bg-amber-50/50 border-amber-200'
+              }`}>
               <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-xl">warning</span>
               </div>
@@ -3732,9 +3706,8 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             {/* Successes */}
-            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
-              isDark ? 'bg-[#111827] border-emerald-500/30' : 'bg-emerald-50/50 border-emerald-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${isDark ? 'bg-[#111827] border-emerald-500/30' : 'bg-emerald-50/50 border-emerald-200'
+              }`}>
               <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-xl">verified_user</span>
               </div>
@@ -3747,9 +3720,8 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             {/* Blocked Attempts */}
-            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 col-span-2 md:col-span-1 ${
-              isDark ? 'bg-[#111827] border-purple-500/30' : 'bg-purple-50/50 border-purple-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 col-span-2 md:col-span-1 ${isDark ? 'bg-[#111827] border-purple-500/30' : 'bg-purple-50/50 border-purple-200'
+              }`}>
               <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-xl">shield</span>
               </div>
@@ -3763,9 +3735,8 @@ export const Category9RiskComplianceView: React.FC = () => {
           </div>
 
           {/* Search, Severity Filters, & Module Selector */}
-          <div className={`p-4 rounded-3xl border shadow-xl space-y-3 ${
-            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-          }`}>
+          <div className={`p-4 rounded-3xl border shadow-xl space-y-3 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+            }`}>
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
               {/* Search bar */}
               <div className="relative flex-1">
@@ -3777,9 +3748,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   value={auditSearch}
                   onChange={(e) => setAuditSearch(e.target.value)}
                   placeholder={t('بحث فوري في السجلات بالموظف، IP، نوع العملية، الموديول أو الوصف...', 'Search audit logs by user, IP, action, module, or details...')}
-                  className={`w-full pr-10 pl-9 py-2.5 rounded-xl border text-xs transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/50 ${
-                    isDark ? 'bg-slate-900 border-white/10 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
-                  }`}
+                  className={`w-full pr-10 pl-9 py-2.5 rounded-xl border text-xs transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/50 ${isDark ? 'bg-slate-900 border-white/10 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                    }`}
                 />
                 {auditSearch && (
                   <button
@@ -3796,9 +3766,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                 <select
                   value={auditModuleFilter}
                   onChange={(e) => setAuditModuleFilter(e.target.value)}
-                  className={`w-full px-3 py-2.5 rounded-xl border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/50 cursor-pointer ${
-                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/50 cursor-pointer ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
                 >
                   <option value="all">{t('كافة الموديولات والأنظمة', 'All Modules & Services')}</option>
                   <option value="cat-1-auth">{t('تسجيل الدخول والمصادقة (cat-1-auth)', 'Authentication & 2FA')}</option>
@@ -3815,7 +3784,7 @@ export const Category9RiskComplianceView: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-white/5">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-[11px] font-bold text-slate-400 ml-1">{t('المستوى الأمني:', 'Severity:')}</span>
-                
+
                 {[
                   { id: 'all', labelAr: 'الكل', labelEn: 'All', count: auditLogs.length, color: 'slate' },
                   { id: 'critical', labelAr: 'حرج', labelEn: 'Critical', count: auditStats.critical, color: 'rose' },
@@ -3829,26 +3798,24 @@ export const Category9RiskComplianceView: React.FC = () => {
                       key={s.id}
                       type="button"
                       onClick={() => setAuditSeverityFilter(s.id as any)}
-                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                        isActive
-                          ? s.color === 'rose'
-                            ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
-                            : s.color === 'amber'
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${isActive
+                        ? s.color === 'rose'
+                          ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                          : s.color === 'amber'
                             ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
                             : s.color === 'emerald'
-                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                            : s.color === 'blue'
-                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                            : 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
-                          : isDark
+                              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                              : s.color === 'blue'
+                                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                                : 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
+                        : isDark
                           ? 'bg-slate-900 border border-white/10 text-slate-300 hover:bg-slate-800'
                           : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'
-                      }`}
+                        }`}
                     >
                       <span>{language === 'ar' ? s.labelAr : s.labelEn}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                        isActive ? 'bg-black/25 text-white' : isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-200 text-slate-700'
-                      }`}>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-black/25 text-white' : isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-200 text-slate-700'
+                        }`}>
                         {s.count}
                       </span>
                     </button>
@@ -3874,15 +3841,13 @@ export const Category9RiskComplianceView: React.FC = () => {
           </div>
 
           {/* Audit Logs Table */}
-          <div className={`rounded-3xl border shadow-xl overflow-hidden ${
-            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-          }`}>
+          <div className={`rounded-3xl border shadow-xl overflow-hidden ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+            }`}>
             <div className="overflow-x-auto">
               <table className="w-full text-right text-xs">
                 <thead>
-                  <tr className={`border-b font-bold ${
-                    isDark ? 'bg-slate-900/60 border-white/10 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
-                  }`}>
+                  <tr className={`border-b font-bold ${isDark ? 'bg-slate-900/60 border-white/10 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+                    }`}>
                     <th className="py-3 px-4">{t('معرف الحدث والتوقيت', 'Event ID & Time')}</th>
                     <th className="py-3 px-4">{t('الفاعل / المستخدم', 'Actor / User')}</th>
                     <th className="py-3 px-4">{t('الحدث والإجراء', 'Action & Event')}</th>
@@ -3910,9 +3875,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                       return (
                         <tr
                           key={log.id}
-                          className={`transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${
-                            isCritical ? 'bg-rose-500/5' : ''
-                          }`}
+                          className={`transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${isCritical ? 'bg-rose-500/5' : ''
+                            }`}
                         >
                           {/* ID & Timestamp */}
                           <td className="py-3 px-4 whitespace-nowrap">
@@ -3928,9 +3892,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                           {/* Actor / User */}
                           <td className="py-3 px-4 whitespace-nowrap">
                             <div className="flex items-center gap-2">
-                              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-                                isDark ? 'bg-teal-950 text-teal-300 border border-teal-500/30' : 'bg-teal-100 text-teal-800'
-                              }`}>
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${isDark ? 'bg-teal-950 text-teal-300 border border-teal-500/30' : 'bg-teal-100 text-teal-800'
+                                }`}>
                                 {log.userName ? log.userName.charAt(0) : 'U'}
                               </div>
                               <div>
@@ -3997,13 +3960,12 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                           {/* Status */}
                           <td className="py-3 px-4 whitespace-nowrap">
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                              log.status === 'محظور'
-                                ? 'bg-rose-500 text-white'
-                                : log.status === 'تحذير'
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${log.status === 'محظور'
+                              ? 'bg-rose-500 text-white'
+                              : log.status === 'تحذير'
                                 ? 'bg-amber-500 text-white'
                                 : 'bg-emerald-600 text-white'
-                            }`}>
+                              }`}>
                               {log.status}
                             </span>
                           </td>
@@ -4029,9 +3991,8 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             {/* Table Footer info */}
-            <div className={`p-3.5 border-t flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 ${
-              isDark ? 'bg-slate-900/40 border-white/5' : 'bg-slate-50/50 border-slate-200'
-            }`}>
+            <div className={`p-3.5 border-t flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 ${isDark ? 'bg-slate-900/40 border-white/5' : 'bg-slate-50/50 border-slate-200'
+              }`}>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-sm text-teal-500">lock_open_right</span>
                 <span>{t('جميع الأحداث موقعة بتشفير SHA-256 ومخزنة في السجل المركزي الموحد.', 'All events are SHA-256 cryptographically hashed & stored in the central audit ledger.')}</span>
@@ -4050,9 +4011,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       {(activeModuleId === 'sec-roles-permissions' || activeModuleId === 'sec-edit-role') && (
         <div className="space-y-4">
           {/* Unified Header & Actions Bar (Tabs Switcher + Status + Add User Button) */}
-          <div className={`p-4 rounded-3xl border shadow-lg flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${
-            isDark ? 'bg-teal-950/30 border-teal-500/40' : 'bg-teal-50 border-teal-400'
-          }`}>
+          <div className={`p-4 rounded-3xl border shadow-lg flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${isDark ? 'bg-teal-950/30 border-teal-500/40' : 'bg-teal-50 border-teal-400'
+            }`}>
             <div className="flex items-center gap-3.5">
               <div className="w-11 h-11 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-600/30 shrink-0">
                 <span className="material-symbols-outlined text-2xl">
@@ -4079,11 +4039,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setRolePermissionsSubTab('users')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    rolePermissionsSubTab === 'users'
-                      ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
-                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${rolePermissionsSubTab === 'users'
+                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
+                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
                 >
                   <span className="material-symbols-outlined text-base">manage_accounts</span>
                   <span>{t('أدوار وصلاحيات المستخدمين (RBAC)', 'User Roles & Permissions')}</span>
@@ -4092,11 +4051,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setRolePermissionsSubTab('policies')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    rolePermissionsSubTab === 'policies'
-                      ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
-                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${rolePermissionsSubTab === 'policies'
+                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
+                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
                 >
                   <span className="material-symbols-outlined text-base">policy</span>
                   <span>{t('الإعدادات والسياسات', 'Mini Settings & Policies')}</span>
@@ -4164,364 +4122,356 @@ export const Category9RiskComplianceView: React.FC = () => {
           {rolePermissionsSubTab === 'users' && (
             <div className={`rounded-3xl border shadow-xl overflow-hidden space-y-0 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
 
-          {/* Sub-header info row */}
-          <div className={`px-6 py-3 border-b flex items-center gap-2 ${isDark ? 'border-white/10 bg-[#0a0c10]/50' : 'border-slate-200 bg-slate-50/50'}`}>
-            <span className="material-symbols-outlined text-sm text-slate-400">info</span>
-            <p className="text-[11px] text-slate-500">
-              {t('اضغط على "+ إضافة مستخدم جديد" لفتح النموذج وتحديد اسم المستخدم، كلمة المرور، نوع الوظيفة، والموديولات المصرح بها عبر Tick ✓ أمام كل موديول', 'Click "+ Add New User with Permissions" to open the form and assign username, password, job title, and permitted modules via Tick ✓ checkboxes')}
-            </p>
-          </div>
-
-          {/* Toast Notification */}
-          {customEmpSavedToast && (
-            <div className="m-6 p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2 text-xs font-bold">
-              <span className="material-symbols-outlined text-lg text-emerald-500">check_circle</span>
-              <span>{customEmpSavedToast}</span>
-            </div>
-          )}
-
-          {/* Search & Filter Section */}
-          <div className={`px-6 py-4 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-            isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
-          }`}>
-            <p className="text-xs font-bold" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
-              {t(`إجمالي المستخدمين المخصصين: ${dbUsers.length} مستخدم (+ Super Admin دائم)`,
-                 `Total Custom Users: ${dbUsers.length} (+ Permanent Super Admin)`)}
-            </p>
-
-          <div className="flex flex-wrap items-center gap-3">
-              {/* Department filter */}
-              <select
-                value={empDeptFilter}
-                onChange={e => setEmpDeptFilter(e.target.value)}
-                className={`px-3 py-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${
-                  isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-800'
-                }`}
-              >
-                <option value="all">{t('كافة الأقسام (All Departments)', 'All Departments')}</option>
-                {allUniqueDepartments.map(d => (
-                  <option key={d.name_ar} value={d.name_ar}>
-                    {language === 'ar' ? d.name_ar : (d.name_en || d.name_ar)}
-                  </option>
-                ))}
-              </select>
-
-              {/* Search */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder={t('بحث باسم أو يوزر المستخدم...', 'Search username or name...')}
-                  value={empSearch}
-                  onChange={e => setEmpSearch(e.target.value)}
-                  className={`px-3.5 py-2 rounded-xl border text-xs outline-none w-56 ${
-                    isDark ? 'bg-[#111827] border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-800'
-                  }`}
-                />
+              {/* Sub-header info row */}
+              <div className={`px-6 py-3 border-b flex items-center gap-2 ${isDark ? 'border-white/10 bg-[#0a0c10]/50' : 'border-slate-200 bg-slate-50/50'}`}>
+                <span className="material-symbols-outlined text-sm text-slate-400">info</span>
+                <p className="text-[11px] text-slate-500">
+                  {t('اضغط على "+ إضافة مستخدم جديد" لفتح النموذج وتحديد اسم المستخدم، كلمة المرور، نوع الوظيفة، والموديولات المصرح بها عبر Tick ✓ أمام كل موديول', 'Click "+ Add New User with Permissions" to open the form and assign username, password, job title, and permitted modules via Tick ✓ checkboxes')}
+                </p>
               </div>
-            </div>
-          </div>
 
-          {/* Users List Table */}
-          <div className="p-6 space-y-4">
-            <div className={`overflow-x-auto rounded-2xl border ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-              <table className="w-full text-start text-xs border-collapse">
-                <thead>
-                  <tr className={`border-b text-[11px] font-bold ${
-                    isDark ? 'bg-[#0a0c10] border-white/10 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
-                  }`}>
-                    <th className="p-3.5 text-start">{t('المستخدم والحساب', 'User & Account')}</th>
-                    <th className="p-3.5 text-start">{t('نوع الوظيفة / المسمى الوظيفي', 'Job Title / Position')}</th>
-                    <th className="p-3.5 text-start">{t('القسم والفرع', 'Department & Branch')}</th>
-                    <th className="p-3.5 text-start">{t('الموديولات المصرح بها', 'Allowed Modules')}</th>
-                    <th className="p-3.5 text-start">{t('كلمة المرور', 'Password')}</th>
-                    <th className="p-3.5 text-center">{t('الإجراءات', 'Actions')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                  {/* 1. Super Admin Row (Permanent & Protected) */}
-                  <tr className={`transition-colors ${isDark ? 'bg-teal-950/10 hover:bg-teal-950/20' : 'bg-teal-50/40 hover:bg-teal-50/80'}`}>
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-teal-500 text-white flex items-center justify-center font-bold shadow-md shadow-teal-500/20">
-                          <span className="material-symbols-outlined text-lg">shield</span>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                              {t('مدير النظام الشامل (Super Admin)', 'Super Administrator')}
-                            </h4>
-                            <span className="px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-700 dark:text-teal-300 text-[10px] font-bold">
-                              {t('كامل الصلاحيات', 'Full Access')}
-                            </span>
-                          </div>
-                          <p className="text-teal-600 dark:text-teal-400 font-mono text-[11px]">admin</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <span className="px-2.5 py-1 rounded-lg bg-teal-500/15 border border-teal-500/30 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
-                        {t('مدير النظام (Super Admin)', 'System Administrator')}
-                      </span>
-                    </td>
-                    <td className="p-3.5">
-                      <p className="text-xs text-slate-500">{t('جميع الأقسام والفروع', 'All Departments & Branches')}</p>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="relative inline-block w-full min-w-[220px] max-w-[280px]">
-                        <select
-                          defaultValue="summary"
-                          className={`w-full py-1.5 pe-8 ps-3 rounded-xl border text-xs font-bold appearance-none outline-none cursor-pointer transition-all ${
-                            isDark
-                              ? 'bg-[#111827] border-teal-500/40 text-teal-300 hover:border-teal-400 focus:border-teal-400'
-                              : 'bg-teal-50/80 border-teal-400 text-teal-900 hover:border-teal-600 focus:border-teal-600 shadow-2xs'
-                          }`}
-                        >
-                          <option value="summary" className={isDark ? 'bg-[#111827] text-teal-300 font-bold' : 'bg-slate-50 text-teal-900 font-bold'}>
-                            {t('♾️ جميع الموديولات الـ 11 (محمي)', '♾️ All 11 Modules (Protected)')}
-                          </option>
-                          {CATEGORY_GROUPS.map(g => (
-                            <option key={g.id} value={g.id} className={isDark ? 'bg-[#111827] text-white' : 'bg-white text-slate-800'}>
-                              ✓ {language === 'ar' ? g.title : g.titleEn} ({t('كامل الصلاحيات', 'Full Access')})
-                            </option>
-                          ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-2 text-teal-600 dark:text-teal-400">
-                          <span className="material-symbols-outlined text-base">expand_more</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <span className="font-mono text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded text-[11px]">••••••••</span>
-                    </td>
-                    <td className="p-3.5 text-center">
-                      <span className="px-2 py-1 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 text-[10px] font-bold flex items-center gap-1 w-fit mx-auto">
-                        <span className="material-symbols-outlined text-sm">lock</span>
-                        {t('محمي', 'Protected')}
-                      </span>
-                    </td>
-                  </tr>
+              {/* Toast Notification */}
+              {customEmpSavedToast && (
+                <div className="m-6 p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2 text-xs font-bold">
+                  <span className="material-symbols-outlined text-lg text-emerald-500">check_circle</span>
+                  <span>{customEmpSavedToast}</span>
+                </div>
+              )}
 
-                  {/* 2. Custom Users Rows (Directly from MySQL dbUsers) */}
-                  {dbUsers.map((u: any) => {
-                    const fullName = u.full_name || u.name || u.username;
-                    const uCode = (u.employee_id || `VTS-${u.username.toUpperCase()}`).toUpperCase();
-                    const isCustomMatch =
-                      empSearch.trim() === '' ||
-                      (fullName || '').toLowerCase().includes(empSearch.toLowerCase()) ||
-                      (u.username || '').toLowerCase().includes(empSearch.toLowerCase()) ||
-                      (uCode || '').toLowerCase().includes(empSearch.toLowerCase());
+              {/* Search & Filter Section */}
+              <div className={`px-6 py-4 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 ${isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+                }`}>
+                <p className="text-xs font-bold" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
+                  {t(`إجمالي المستخدمين المخصصين: ${dbUsers.length} مستخدم (+ Super Admin دائم)`,
+                    `Total Custom Users: ${dbUsers.length} (+ Permanent Super Admin)`)}
+                </p>
 
-                    if (!isCustomMatch) return null;
-                    if (empDeptFilter !== 'all' && u.department !== empDeptFilter) return null;
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Department filter */}
+                  <select
+                    value={empDeptFilter}
+                    onChange={e => setEmpDeptFilter(e.target.value)}
+                    className={`px-3 py-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-800'
+                      }`}
+                  >
+                    <option value="all">{t('كافة الأقسام (All Departments)', 'All Departments')}</option>
+                    {allUniqueDepartments.map(d => (
+                      <option key={d.name_ar} value={d.name_ar}>
+                        {language === 'ar' ? d.name_ar : (d.name_en || d.name_ar)}
+                      </option>
+                    ))}
+                  </select>
 
-                    let parsedModules: Record<string, any> = {
-                      employees: Boolean(u.can_manage_employees),
-                      payroll: Boolean(u.can_manage_finance),
-                      recruitment: Boolean(u.can_manage_recruitment),
-                      settings: Boolean(u.can_manage_settings),
-                      attendance: false,
-                      reports: false,
-                      risk: false,
-                      'cat-11-support': 'write'
-                    };
+                  {/* Search */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder={t('بحث باسم أو يوزر المستخدم...', 'Search username or name...')}
+                      value={empSearch}
+                      onChange={e => setEmpSearch(e.target.value)}
+                      className={`px-3.5 py-2 rounded-xl border text-xs outline-none w-56 ${isDark ? 'bg-[#111827] border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-800'
+                        }`}
+                    />
+                  </div>
+                </div>
+              </div>
 
-                    if (u.allowed_screens) {
-                      try {
-                        const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
-                        if (s && typeof s === 'object') {
-                          parsedModules = { ...s };
-                          // Support & Help Desk is always shown as permitted without relying on explicit manual addition
-                          if (parsedModules['cat-11-support'] !== 'none' && parsedModules['support'] !== 'none' && parsedModules['cat-11-support'] !== false && parsedModules['support'] !== false) {
-                            parsedModules['cat-11-support'] = parsedModules['cat-11-support'] || parsedModules['support'] || 'write';
-                          }
-                        }
-                      } catch (e) {}
-                    } else {
-                      parsedModules['cat-11-support'] = 'write';
-                    }
-
-                    const activeModEntries = Object.entries(parsedModules).filter(([_, v]) => v && v !== 'none' && v !== false);
-
-                    return (
-                      <tr key={u.id || u.username} className="hover:bg-slate-500/5 transition-colors">
+              {/* Users List Table */}
+              <div className="p-6 space-y-4">
+                <div className={`overflow-x-auto rounded-2xl border ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                  <table className="w-full text-start text-xs border-collapse">
+                    <thead>
+                      <tr className={`border-b text-[11px] font-bold ${isDark ? 'bg-[#0a0c10] border-white/10 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                        }`}>
+                        <th className="p-3.5 text-start">{t('المستخدم والحساب', 'User & Account')}</th>
+                        <th className="p-3.5 text-start">{t('نوع الوظيفة / المسمى الوظيفي', 'Job Title / Position')}</th>
+                        <th className="p-3.5 text-start">{t('القسم والفرع', 'Department & Branch')}</th>
+                        <th className="p-3.5 text-start">{t('الموديولات المصرح بها', 'Allowed Modules')}</th>
+                        <th className="p-3.5 text-start">{t('كلمة المرور', 'Password')}</th>
+                        <th className="p-3.5 text-center">{t('الإجراءات', 'Actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                      {/* 1. Super Admin Row (Permanent & Protected) */}
+                      <tr className={`transition-colors ${isDark ? 'bg-teal-950/10 hover:bg-teal-950/20' : 'bg-teal-50/40 hover:bg-teal-50/80'}`}>
                         <td className="p-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold">
-                              <span className="material-symbols-outlined text-lg">person</span>
+                            <div className="w-9 h-9 rounded-xl bg-teal-500 text-white flex items-center justify-center font-bold shadow-md shadow-teal-500/20">
+                              <span className="material-symbols-outlined text-lg">shield</span>
                             </div>
                             <div>
-                              <div className="flex items-center gap-1.5">
-                                <h4 className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                                  {fullName}
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                                  {t('مدير النظام الشامل (Super Admin)', 'Super Administrator')}
                                 </h4>
-                                {(u.can_manage_users === 1 || u.role === 'Admin') && (
-                                  <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold text-[9px] inline-flex items-center gap-0.5 border border-amber-500/30">
-                                    <span className="material-symbols-outlined text-[11px]">admin_panel_settings</span>
-                                    Admin
-                                  </span>
-                                )}
-                                {(u.role === 'General Manager' || (u.job_title || '').includes('مدير عام')) && (
-                                  <span className="px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold text-[9px] inline-flex items-center gap-0.5 border border-purple-500/30">
-                                    <span className="material-symbols-outlined text-[11px]">corporate_fare</span>
-                                    {t('مدير عام', 'General Manager')}
-                                  </span>
-                                )}
-                                {(u.role === 'HR Manager' || (u.job_title || '').includes('مدير الموارد البشرية')) && (
-                                  <span className="px-1.5 py-0.5 rounded-md bg-teal-500/20 text-teal-700 dark:text-teal-300 font-bold text-[9px] inline-flex items-center gap-0.5 border border-teal-500/30">
-                                    <span className="material-symbols-outlined text-[11px]">badge</span>
-                                    {t('مدير HR', 'HR Manager')}
-                                  </span>
-                                )}
+                                <span className="px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-700 dark:text-teal-300 text-[10px] font-bold">
+                                  {t('كامل الصلاحيات', 'Full Access')}
+                                </span>
                               </div>
-                              <p className="text-teal-600 dark:text-teal-400 font-mono text-[11px]">
-                                {uCode}
-                              </p>
+                              <p className="text-teal-600 dark:text-teal-400 font-mono text-[11px]">admin</p>
                             </div>
                           </div>
                         </td>
-
                         <td className="p-3.5">
-                          <span className={`px-2.5 py-1 rounded-lg border font-bold text-[11px] inline-flex items-center gap-1 ${
-                            (u.can_manage_users === 1 || u.role === 'Admin')
-                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-300'
-                              : 'bg-teal-500/10 border-teal-500/20 text-teal-700 dark:text-teal-300'
-                          }`}>
-                            {(u.can_manage_users === 1 || u.role === 'Admin') && (
-                              <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
-                            )}
-                            {u.job_title || (u.role && u.role !== 'Employee' ? u.role : null) || t('مسؤول رواتب وحضور', 'Payroll & Attendance Officer')}
+                          <span className="px-2.5 py-1 rounded-lg bg-teal-500/15 border border-teal-500/30 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
+                            {t('مدير النظام (Super Admin)', 'System Administrator')}
                           </span>
                         </td>
-
                         <td className="p-3.5">
-                          <p className="font-medium text-slate-700 dark:text-slate-300 text-xs">
-                            {u.department || t('الموارد البشرية والشؤون الإدارية', 'Human Resources')}
-                          </p>
+                          <p className="text-xs text-slate-500">{t('جميع الأقسام والفروع', 'All Departments & Branches')}</p>
                         </td>
-
                         <td className="p-3.5">
-                          {activeModEntries.length === 0 ? (
-                            <div className="relative inline-block w-full min-w-[200px] max-w-[280px]">
-                              <select
-                                disabled
-                                className={`w-full py-1.5 pe-8 ps-3 rounded-xl border text-xs font-semibold appearance-none outline-none opacity-60 cursor-not-allowed ${
-                                  isDark ? 'bg-[#111827] border-white/10 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500'
+                          <div className="relative inline-block w-full min-w-[220px] max-w-[280px]">
+                            <select
+                              defaultValue="summary"
+                              className={`w-full py-1.5 pe-8 ps-3 rounded-xl border text-xs font-bold appearance-none outline-none cursor-pointer transition-all ${isDark
+                                ? 'bg-[#111827] border-teal-500/40 text-teal-300 hover:border-teal-400 focus:border-teal-400'
+                                : 'bg-teal-50/80 border-teal-400 text-teal-900 hover:border-teal-600 focus:border-teal-600 shadow-2xs'
                                 }`}
-                              >
-                                <option>{t('لا توجد موديولات مصرح بها (0)', 'No Modules Assigned (0)')}</option>
-                              </select>
-                              <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-2.5 text-slate-400">
-                                <span className="material-symbols-outlined text-base">lock</span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="relative inline-block w-full min-w-[210px] max-w-[280px]">
-                              <select
-                                defaultValue="summary"
-                                className={`w-full py-1.5 pe-8 ps-3 rounded-xl border text-xs font-bold appearance-none outline-none cursor-pointer transition-all ${
-                                  isDark
-                                    ? 'bg-[#111827] border-teal-500/30 text-teal-300 hover:border-teal-400 focus:border-teal-400'
-                                    : 'bg-white border-teal-500/40 text-teal-800 hover:border-teal-600 focus:border-teal-600 shadow-2xs'
-                                }`}
-                              >
-                                <option value="summary" className={isDark ? 'bg-[#111827] text-teal-300 font-bold' : 'bg-slate-50 text-teal-800 font-bold'}>
-                                  {t(`📋 ${activeModEntries.length} موديول مصرح به (عرض القائمة)`, `📋 ${activeModEntries.length} Allowed Modules (View List)`)}
+                            >
+                              <option value="summary" className={isDark ? 'bg-[#111827] text-teal-300 font-bold' : 'bg-slate-50 text-teal-900 font-bold'}>
+                                {t('♾️ جميع الموديولات الـ 11 (محمي)', '♾️ All 11 Modules (Protected)')}
+                              </option>
+                              {CATEGORY_GROUPS.map(g => (
+                                <option key={g.id} value={g.id} className={isDark ? 'bg-[#111827] text-white' : 'bg-white text-slate-800'}>
+                                  ✓ {language === 'ar' ? g.title : g.titleEn} ({t('كامل الصلاحيات', 'Full Access')})
                                 </option>
-                                {activeModEntries.map(([mKey, mVal]) => {
-                                  const isRead = mVal === 'read';
-                                  const label = dynamicModuleLabels[mKey] || mKey;
-                                  const permText = isRead ? t('قراءة فقط', 'Read Only') : t('تعديل وصلاحية كاملة', 'Write / Full');
-                                  return (
-                                    <option key={mKey} value={mKey} className={isDark ? 'bg-[#111827] text-white' : 'bg-white text-slate-800'}>
-                                      {isRead ? '👁️' : '✏️'} {label} ({permText})
-                                    </option>
-                                  );
-                                })}
-                              </select>
-                              <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-2 text-teal-600 dark:text-teal-400">
-                                <span className="material-symbols-outlined text-base">expand_more</span>
-                              </div>
+                              ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-2 text-teal-600 dark:text-teal-400">
+                              <span className="material-symbols-outlined text-base">expand_more</span>
                             </div>
-                          )}
-                        </td>
-
-                        <td className="p-3.5">
-                          <span className="font-mono text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded text-[11px]">
-                            ••••••••
-                          </span>
-                        </td>
-
-                        <td className="p-3.5 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {/* Edit Button */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const isUserAdmin = Boolean(u.can_manage_users === 1 || u.role === 'Admin' || u.role === 'Super Admin');
-                                setSelectedRolePreset(u.role || 'manual');
-                                setNewUserForm({
-                                  id: u.id,
-                                  originalUsername: u.username,
-                                  originalEmployeeId: u.employee_id || uCode,
-                                  originalEmail: u.email || '',
-                                  username: u.username,
-                                  password: '', // Blank so user is not forced to type a password when editing
-                                  fullNameAr: fullName,
-                                  fullNameEn: u.name || fullName,
-                                  jobTitle: u.job_title || (u.role && u.role !== 'Employee' ? u.role : '') || 'مسؤول رواتب وحضور',
-                                  department: u.department || 'الموارد البشرية والشؤون الإدارية',
-                                  branch: u.branch || 'الإدارة العامة - بغداد',
-                                  email: u.email || `${u.username.toLowerCase()}@vitasiraq.iq`,
-                                  phone: u.phone || '07700000000',
-                                  modules: parsedModules,
-                                  canManageUsers: isUserAdmin,
-                                  role: isUserAdmin ? 'Admin' : (u.role || 'Employee'),
-                                  level: 'full',
-                                  notes: 'مخول بالعمل على الموديولات المحددة'
-                                });
-                                setBadgeSearchQuery(`${fullName} (${uCode})`);
-                                setShowUserPassword(false);
-                                setIsAddUserModalOpen(true);
-                              }}
-                              className="w-8 h-8 rounded-xl bg-teal-600 hover:bg-teal-500 text-white flex items-center justify-center transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
-                              title={t('تعديل بيانات وصلاحيات المستخدم', 'Edit User & Permissions')}
-                            >
-                              <span className="material-symbols-outlined text-base">edit</span>
-                            </button>
-
-                            {/* Quick Change Password Button - Vibrant Solid Amber Background with Crisp White Icon */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPasswordModalUser(u);
-                                setQuickNewPassword('');
-                                setShowQuickPassword(false);
-                              }}
-                              className="w-8 h-8 rounded-xl bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
-                              title={t('تغيير كلمة المرور مباشرة', 'Change Password Directly')}
-                            >
-                              <span className="material-symbols-outlined text-base">key</span>
-                            </button>
-
-                            {/* Delete Button - Reliable In-App Confirmation Modal */}
-                            <button
-                              type="button"
-                              onClick={() => setUserToDeleteConfirm(u)}
-                              className="w-8 h-8 rounded-xl bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
-                              title={t('حذف المستخدم', 'Delete User')}
-                            >
-                              <span className="material-symbols-outlined text-base">delete</span>
-                            </button>
                           </div>
+                        </td>
+                        <td className="p-3.5">
+                          <span className="font-mono text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded text-[11px]">••••••••</span>
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <span className="px-2 py-1 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 text-[10px] font-bold flex items-center gap-1 w-fit mx-auto">
+                            <span className="material-symbols-outlined text-sm">lock</span>
+                            {t('محمي', 'Protected')}
+                          </span>
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+
+                      {/* 2. Custom Users Rows (Directly from MySQL dbUsers) */}
+                      {dbUsers.map((u: any) => {
+                        const fullName = u.full_name || u.name || u.username;
+                        const uCode = (u.employee_id || `VTS-${u.username.toUpperCase()}`).toUpperCase();
+                        const isCustomMatch =
+                          empSearch.trim() === '' ||
+                          (fullName || '').toLowerCase().includes(empSearch.toLowerCase()) ||
+                          (u.username || '').toLowerCase().includes(empSearch.toLowerCase()) ||
+                          (uCode || '').toLowerCase().includes(empSearch.toLowerCase());
+
+                        if (!isCustomMatch) return null;
+                        if (empDeptFilter !== 'all' && u.department !== empDeptFilter) return null;
+
+                        let parsedModules: Record<string, any> = {
+                          employees: Boolean(u.can_manage_employees),
+                          payroll: Boolean(u.can_manage_finance),
+                          recruitment: Boolean(u.can_manage_recruitment),
+                          settings: Boolean(u.can_manage_settings),
+                          attendance: false,
+                          reports: false,
+                          risk: false,
+                          'cat-11-support': 'write'
+                        };
+
+                        if (u.allowed_screens) {
+                          try {
+                            const s = typeof u.allowed_screens === 'string' ? JSON.parse(u.allowed_screens) : u.allowed_screens;
+                            if (s && typeof s === 'object') {
+                              parsedModules = { ...s };
+                              // Support & Help Desk is always shown as permitted without relying on explicit manual addition
+                              if (parsedModules['cat-11-support'] !== 'none' && parsedModules['support'] !== 'none' && parsedModules['cat-11-support'] !== false && parsedModules['support'] !== false) {
+                                parsedModules['cat-11-support'] = parsedModules['cat-11-support'] || parsedModules['support'] || 'write';
+                              }
+                            }
+                          } catch (e) { }
+                        } else {
+                          parsedModules['cat-11-support'] = 'write';
+                        }
+
+                        const activeModEntries = Object.entries(parsedModules).filter(([_, v]) => v && v !== 'none' && v !== false);
+
+                        return (
+                          <tr key={u.id || u.username} className="hover:bg-slate-500/5 transition-colors">
+                            <td className="p-3.5">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold">
+                                  <span className="material-symbols-outlined text-lg">person</span>
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <h4 className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                                      {fullName}
+                                    </h4>
+                                    {(u.can_manage_users === 1 || u.role === 'Admin') && (
+                                      <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold text-[9px] inline-flex items-center gap-0.5 border border-amber-500/30">
+                                        <span className="material-symbols-outlined text-[11px]">admin_panel_settings</span>
+                                        Admin
+                                      </span>
+                                    )}
+                                    {(u.role === 'General Manager' || (u.job_title || '').includes('مدير عام')) && (
+                                      <span className="px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold text-[9px] inline-flex items-center gap-0.5 border border-purple-500/30">
+                                        <span className="material-symbols-outlined text-[11px]">corporate_fare</span>
+                                        {t('مدير عام', 'General Manager')}
+                                      </span>
+                                    )}
+                                    {(u.role === 'HR Manager' || (u.job_title || '').includes('مدير الموارد البشرية')) && (
+                                      <span className="px-1.5 py-0.5 rounded-md bg-teal-500/20 text-teal-700 dark:text-teal-300 font-bold text-[9px] inline-flex items-center gap-0.5 border border-teal-500/30">
+                                        <span className="material-symbols-outlined text-[11px]">badge</span>
+                                        {t('مدير HR', 'HR Manager')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-teal-600 dark:text-teal-400 font-mono text-[11px]">
+                                    {uCode}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="p-3.5">
+                              <span className={`px-2.5 py-1 rounded-lg border font-bold text-[11px] inline-flex items-center gap-1 ${(u.can_manage_users === 1 || u.role === 'Admin')
+                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-300'
+                                : 'bg-teal-500/10 border-teal-500/20 text-teal-700 dark:text-teal-300'
+                                }`}>
+                                {(u.can_manage_users === 1 || u.role === 'Admin') && (
+                                  <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
+                                )}
+                                {u.job_title || (u.role && u.role !== 'Employee' ? u.role : null) || t('مسؤول رواتب وحضور', 'Payroll & Attendance Officer')}
+                              </span>
+                            </td>
+
+                            <td className="p-3.5">
+                              <p className="font-medium text-slate-700 dark:text-slate-300 text-xs">
+                                {u.department || t('الموارد البشرية والشؤون الإدارية', 'Human Resources')}
+                              </p>
+                            </td>
+
+                            <td className="p-3.5">
+                              {activeModEntries.length === 0 ? (
+                                <div className="relative inline-block w-full min-w-[200px] max-w-[280px]">
+                                  <select
+                                    disabled
+                                    className={`w-full py-1.5 pe-8 ps-3 rounded-xl border text-xs font-semibold appearance-none outline-none opacity-60 cursor-not-allowed ${isDark ? 'bg-[#111827] border-white/10 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500'
+                                      }`}
+                                  >
+                                    <option>{t('لا توجد موديولات مصرح بها (0)', 'No Modules Assigned (0)')}</option>
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-2.5 text-slate-400">
+                                    <span className="material-symbols-outlined text-base">lock</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="relative inline-block w-full min-w-[210px] max-w-[280px]">
+                                  <select
+                                    defaultValue="summary"
+                                    className={`w-full py-1.5 pe-8 ps-3 rounded-xl border text-xs font-bold appearance-none outline-none cursor-pointer transition-all ${isDark
+                                      ? 'bg-[#111827] border-teal-500/30 text-teal-300 hover:border-teal-400 focus:border-teal-400'
+                                      : 'bg-white border-teal-500/40 text-teal-800 hover:border-teal-600 focus:border-teal-600 shadow-2xs'
+                                      }`}
+                                  >
+                                    <option value="summary" className={isDark ? 'bg-[#111827] text-teal-300 font-bold' : 'bg-slate-50 text-teal-800 font-bold'}>
+                                      {t(`📋 ${activeModEntries.length} موديول مصرح به (عرض القائمة)`, `📋 ${activeModEntries.length} Allowed Modules (View List)`)}
+                                    </option>
+                                    {activeModEntries.map(([mKey, mVal]) => {
+                                      const isRead = mVal === 'read';
+                                      const label = dynamicModuleLabels[mKey] || mKey;
+                                      const permText = isRead ? t('قراءة فقط', 'Read Only') : t('تعديل وصلاحية كاملة', 'Write / Full');
+                                      return (
+                                        <option key={mKey} value={mKey} className={isDark ? 'bg-[#111827] text-white' : 'bg-white text-slate-800'}>
+                                          {isRead ? '👁️' : '✏️'} {label} ({permText})
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-2 text-teal-600 dark:text-teal-400">
+                                    <span className="material-symbols-outlined text-base">expand_more</span>
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="p-3.5">
+                              <span className="font-mono text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded text-[11px]">
+                                ••••••••
+                              </span>
+                            </td>
+
+                            <td className="p-3.5 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {/* Edit Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const isUserAdmin = Boolean(u.can_manage_users === 1 || u.role === 'Admin' || u.role === 'Super Admin');
+                                    setSelectedRolePreset(u.role || 'manual');
+                                    setNewUserForm({
+                                      id: u.id,
+                                      originalUsername: u.username,
+                                      originalEmployeeId: u.employee_id || uCode,
+                                      originalEmail: u.email || '',
+                                      username: u.username,
+                                      password: '', // Blank so user is not forced to type a password when editing
+                                      fullNameAr: fullName,
+                                      fullNameEn: u.name || fullName,
+                                      jobTitle: u.job_title || (u.role && u.role !== 'Employee' ? u.role : '') || 'مسؤول رواتب وحضور',
+                                      department: u.department || 'الموارد البشرية والشؤون الإدارية',
+                                      branch: u.branch || 'الإدارة العامة - بغداد',
+                                      email: u.email || `${u.username.toLowerCase()}@vitasiraq.iq`,
+                                      phone: u.phone || '07700000000',
+                                      modules: parsedModules,
+                                      canManageUsers: isUserAdmin,
+                                      role: isUserAdmin ? 'Admin' : (u.role || 'Employee'),
+                                      level: 'full',
+                                      notes: 'مخول بالعمل على الموديولات المحددة'
+                                    });
+                                    setBadgeSearchQuery(`${fullName} (${uCode})`);
+                                    setShowUserPassword(false);
+                                    setIsAddUserModalOpen(true);
+                                  }}
+                                  className="w-8 h-8 rounded-xl bg-teal-600 hover:bg-teal-500 text-white flex items-center justify-center transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                  title={t('تعديل بيانات وصلاحيات المستخدم', 'Edit User & Permissions')}
+                                >
+                                  <span className="material-symbols-outlined text-base">edit</span>
+                                </button>
+
+                                {/* Quick Change Password Button - Vibrant Solid Amber Background with Crisp White Icon */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPasswordModalUser(u);
+                                    setQuickNewPassword('');
+                                    setShowQuickPassword(false);
+                                  }}
+                                  className="w-8 h-8 rounded-xl bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                  title={t('تغيير كلمة المرور مباشرة', 'Change Password Directly')}
+                                >
+                                  <span className="material-symbols-outlined text-base">key</span>
+                                </button>
+
+                                {/* Delete Button - Reliable In-App Confirmation Modal */}
+                                <button
+                                  type="button"
+                                  onClick={() => setUserToDeleteConfirm(u)}
+                                  className="w-8 h-8 rounded-xl bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                  title={t('حذف المستخدم', 'Delete User')}
+                                >
+                                  <span className="material-symbols-outlined text-base">delete</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
           )}
         </div>
       )}
@@ -4532,9 +4482,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       {activeModuleId === 'sec-api-keys' && (
         <div className="space-y-6">
           {/* Top Banner */}
-          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-          }`}>
+          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+            }`}>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
                 <span className="material-symbols-outlined text-2xl">key</span>
@@ -4561,9 +4510,8 @@ export const Category9RiskComplianceView: React.FC = () => {
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
-              isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+              }`}>
               <div className="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-500 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-xl">vpn_key</span>
               </div>
@@ -4575,9 +4523,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               </div>
             </div>
 
-            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
-              isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+              }`}>
               <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-xl">verified</span>
               </div>
@@ -4589,9 +4536,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               </div>
             </div>
 
-            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${
-              isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-            }`}>
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center gap-3 ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+              }`}>
               <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-xl">sync_alt</span>
               </div>
@@ -4616,9 +4562,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               return (
                 <div
                   key={item.id}
-                  className={`p-4 rounded-2xl border shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all ${
-                    isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
-                  }`}
+                  className={`p-4 rounded-2xl border shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+                    }`}
                 >
                   <div className="space-y-1.5 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -4639,18 +4584,16 @@ export const Category9RiskComplianceView: React.FC = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-xs">
-                      <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 select-all ${
-                        isDark ? 'bg-slate-900 border-white/10 text-teal-300' : 'bg-slate-50 border-slate-200 text-teal-700'
-                      }`}>
+                      <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 select-all ${isDark ? 'bg-slate-900 border-white/10 text-teal-300' : 'bg-slate-50 border-slate-200 text-teal-700'
+                        }`}>
                         <span>{displayKey}</span>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleToggleRevealKey(item.id)}
-                        className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
-                          isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
-                        }`}
+                        className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
+                          }`}
                         title={isRevealed ? t('إخفاء المفتاح', 'Hide Key') : t('إظهار المفتاح', 'Reveal Key')}
                       >
                         <span className="material-symbols-outlined text-sm">
@@ -4661,11 +4604,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleCopyApiKey(item.id, item.key)}
-                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                          isCopied
-                            ? 'bg-emerald-600 border-emerald-600 text-white'
-                            : isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
-                        }`}
+                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${isCopied
+                          ? 'bg-emerald-600 border-emerald-600 text-white'
+                          : isDark ? 'border-white/10 hover:bg-white/5 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
+                          }`}
                       >
                         <span className="material-symbols-outlined text-sm">
                           {isCopied ? 'check' : 'content_copy'}
@@ -4715,19 +4657,16 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-4xl xl:max-w-5xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
-            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            {/* Modal Header */}
-            <div className={`p-5 border-b flex items-center justify-between ${
-              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+          <div className={`w-full max-w-4xl xl:max-w-5xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
+            {/* Modal Header */}
+            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+              }`}>
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shadow-inner ${
-                  newUserForm.id
-                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-teal-500/20 text-teal-600 dark:text-teal-400'
-                }`}>
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shadow-inner ${newUserForm.id
+                  ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-teal-500/20 text-teal-600 dark:text-teal-400'
+                  }`}>
                   <span className="material-symbols-outlined text-2xl">
                     {newUserForm.id ? 'manage_accounts' : 'person_add'}
                   </span>
@@ -4736,8 +4675,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <h3 className="font-bold text-sm" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
                     {newUserForm.id
                       ? (language === 'ar'
-                          ? `تعديل بيانات وصلاحيات المستخدم: ${newUserForm.fullNameAr || newUserForm.username}`
-                          : `Edit User & Permissions: ${newUserForm.fullNameEn || newUserForm.username}`)
+                        ? `تعديل بيانات وصلاحيات المستخدم: ${newUserForm.fullNameAr || newUserForm.username}`
+                        : `Edit User & Permissions: ${newUserForm.fullNameEn || newUserForm.username}`)
                       : t('إنشاء يوزر جديد وتحديد نوع الوظيفة والموديولات', 'Add New User, Job Title & Assign Module Permissions')
                     }
                   </h3>
@@ -4761,9 +4700,8 @@ export const Category9RiskComplianceView: React.FC = () => {
             <form onSubmit={handleCreateNewUser} className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
 
               {/* Section 1: User Account & Job Title Info */}
-              <div className={`p-4 rounded-2xl border space-y-3.5 ${
-                isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50/80 border-slate-200'
-              }`}>
+              <div className={`p-4 rounded-2xl border space-y-3.5 ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50/80 border-slate-200'
+                }`}>
                 <h4 className="font-bold text-xs flex items-center gap-2 text-teal-600 dark:text-teal-400">
                   <span className="material-symbols-outlined text-base">badge</span>
                   <span>{t('1. بيانات المستخدم ونوع الوظيفة (User & Position Details)', '1. User Account & Position Details')}</span>
@@ -4781,11 +4719,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                           role: 'Employee'
                         }));
                       }}
-                      className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        newUserForm.userType !== 'special_executive'
-                          ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
-                          : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${newUserForm.userType !== 'special_executive'
+                        ? 'bg-teal-600 text-white shadow-md shadow-teal-600/25'
+                        : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                        }`}
                     >
                       <span className="material-symbols-outlined text-base">badge</span>
                       <span>{t('موظف من كادر المؤسسة (Employee Directory)', 'Staff Employee')}</span>
@@ -4804,11 +4741,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                         setMatchedEmployee(null);
                         setMatchedEmpSubCount(0);
                       }}
-                      className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        newUserForm.userType === 'special_executive'
-                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
-                          : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${newUserForm.userType === 'special_executive'
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
+                        : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                        }`}
                     >
                       <span className="material-symbols-outlined text-base">corporate_fare</span>
                       <span>{t('كادر قيادي / مدير عام / خاص (غير مدرج بالموظفين)', 'Special / Executive (Not in Employee Directory)')}</span>
@@ -4818,9 +4754,8 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                 {/* Branch A: Special Executive Account UI */}
                 {newUserForm.userType === 'special_executive' ? (
-                  <div className={`p-4 rounded-2xl border space-y-3 ${
-                    isDark ? 'bg-purple-950/20 border-purple-500/30' : 'bg-purple-50 border-purple-300'
-                  }`}>
+                  <div className={`p-4 rounded-2xl border space-y-3 ${isDark ? 'bg-purple-950/20 border-purple-500/30' : 'bg-purple-50 border-purple-300'
+                    }`}>
                     <div className="flex items-start sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
                         <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-md">
@@ -4832,7 +4767,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                           </h5>
                           <p className="text-[11px] text-purple-700 dark:text-purple-400 mt-0.5">
                             {t('مخصص للمدراء العامين، مدير الموارد البشرية، والقيادات التنفيذية. يمكنك تحديد الصلاحيات والبيانات يدوياً دون الحاجة لوجوده في جدول كادر ورواتب الموظفين.',
-                               'For General Managers, HR Directors, and leadership staff. Customize credentials and permissions directly without linking to the staff payroll table.')}
+                              'For General Managers, HR Directors, and leadership staff. Customize credentials and permissions directly without linking to the staff payroll table.')}
                           </p>
                         </div>
                       </div>
@@ -4844,7 +4779,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                     {/* Quick Preset Buttons */}
                     <div className="pt-2 border-t border-purple-200/60 dark:border-purple-800/40 flex flex-wrap items-center gap-2">
                       <span className="text-[10px] font-bold text-purple-800 dark:text-purple-300">{t('نماذج جاهزة سريعة:', 'Quick Roles:')}</span>
-                      
+
                       <button
                         type="button"
                         onClick={() => {
@@ -4914,253 +4849,247 @@ export const Category9RiskComplianceView: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                {/* 🌟 Dynamic Searchable Combobox for Badge & Employee Name */}
-                <div className={`p-3.5 rounded-2xl border space-y-2 relative ${
-                  isDark ? 'bg-teal-950/20 border-teal-500/30' : 'bg-teal-50/70 border-teal-500/30'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-teal-800 dark:text-teal-300 text-xs flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-base">person_search</span>
-                      <span>{t('البحث التفاعلي برقم البادج أو اسم الموظف (Dynamic Combobox Search)', 'Dynamic Search by Badge No. or Employee Name')}</span>
-                    </label>
+                    {/* 🌟 Dynamic Searchable Combobox for Badge & Employee Name */}
+                    <div className={`p-3.5 rounded-2xl border space-y-2 relative ${isDark ? 'bg-teal-950/20 border-teal-500/30' : 'bg-teal-50/70 border-teal-500/30'
+                      }`}>
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-teal-800 dark:text-teal-300 text-xs flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-base">person_search</span>
+                          <span>{t('البحث التفاعلي برقم البادج أو اسم الموظف (Dynamic Combobox Search)', 'Dynamic Search by Badge No. or Employee Name')}</span>
+                        </label>
 
-                    {matchedEmployee && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs">verified</span>
-                        <span>{t('تم ربط الموظف والملء التلقائي', 'Employee Linked & Autofilled')}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  <div ref={comboboxRef} className="relative">
-                    <div className="relative flex items-center">
-                      <span className="material-symbols-outlined absolute start-3 text-teal-600 text-base pointer-events-none">
-                        search
-                      </span>
-                      <input
-                        type="text"
-                        placeholder={t('اكتب رقم البادج (مثال: B-101، v 96) أو اسم الموظف بالعربية أو الإنجليزية للبحث الفوري...', 'Type Badge No. (e.g. B-101, v 96) or employee name to filter live...')}
-                        value={badgeSearchQuery}
-                        onFocus={() => setIsComboboxOpen(true)}
-                        onKeyDown={e => {
-                          if (e.key === 'Escape') {
-                            setIsComboboxOpen(false);
-                          }
-                        }}
-                        onChange={e => {
-                          setBadgeSearchQuery(e.target.value);
-                          setIsComboboxOpen(true);
-                        }}
-                        className={`w-full ps-9 pe-16 py-2.5 rounded-xl border text-xs outline-none font-bold transition-all shadow-sm ${
-                          isDark ? 'bg-[#111827] border-teal-500/40 text-white placeholder-slate-500 focus:border-teal-400' : 'bg-white border-teal-500/40 text-slate-900 placeholder-slate-400 focus:border-teal-600'
-                        }`}
-                      />
-                      <div className="absolute end-2 flex items-center gap-1">
-                        {badgeSearchQuery && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setBadgeSearchQuery('');
-                              setMatchedEmployee(null);
-                              setIsComboboxOpen(false);
-                            }}
-                            className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            title="مسح البحث"
-                          >
-                            <span className="material-symbols-outlined text-sm">close</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setIsComboboxOpen(!isComboboxOpen)}
-                          className="p-1 rounded-lg text-teal-600 hover:bg-teal-500/10 transition-colors cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-base">
-                            {isComboboxOpen ? 'expand_less' : 'expand_more'}
+                        {matchedEmployee && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">verified</span>
+                            <span>{t('تم ربط الموظف والملء التلقائي', 'Employee Linked & Autofilled')}</span>
                           </span>
-                        </button>
+                        )}
                       </div>
-                    </div>
 
-                    {/* Floating Dropdown List of Filtered Employees with Guaranteed Solid Black Text */}
-                    {isComboboxOpen && (
-                      <>
-                        {/* Transparent Backdrop to immediately intercept any click outside the dropdown and close it */}
-                        <div
-                          className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[0.5px]"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsComboboxOpen(false);
-                          }}
-                        />
-
-                        <div
-                          className="absolute start-0 end-0 top-full mt-1.5 z-50 max-h-72 overflow-y-auto rounded-2xl border-2 border-teal-500 shadow-2xl divide-y divide-slate-200"
-                          style={{ backgroundColor: '#ffffff', color: '#000000' }}
-                        >
-                          {/* Sticky Header Bar with Count and Dedicated Close Button */}
-                          <div className="sticky top-0 z-10 px-3 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700 shadow-xs">
-                            <span className="flex items-center gap-1.5 text-teal-800">
-                              <span className="material-symbols-outlined text-sm text-teal-600">badge</span>
-                              <span>{t('نتائج بحث الموظفين', 'Employee Search Results')} ({filteredEmployeesForCombobox.length})</span>
-                            </span>
+                      <div ref={comboboxRef} className="relative">
+                        <div className="relative flex items-center">
+                          <span className="material-symbols-outlined absolute start-3 text-teal-600 text-base pointer-events-none">
+                            search
+                          </span>
+                          <input
+                            type="text"
+                            placeholder={t('اكتب رقم البادج (مثال: B-101، v 96) أو اسم الموظف بالعربية أو الإنجليزية للبحث الفوري...', 'Type Badge No. (e.g. B-101, v 96) or employee name to filter live...')}
+                            value={badgeSearchQuery}
+                            onFocus={() => setIsComboboxOpen(true)}
+                            onKeyDown={e => {
+                              if (e.key === 'Escape') {
+                                setIsComboboxOpen(false);
+                              }
+                            }}
+                            onChange={e => {
+                              setBadgeSearchQuery(e.target.value);
+                              setIsComboboxOpen(true);
+                            }}
+                            className={`w-full ps-9 pe-16 py-2.5 rounded-xl border text-xs outline-none font-bold transition-all shadow-sm ${isDark ? 'bg-[#111827] border-teal-500/40 text-white placeholder-slate-500 focus:border-teal-400' : 'bg-white border-teal-500/40 text-slate-900 placeholder-slate-400 focus:border-teal-600'
+                              }`}
+                          />
+                          <div className="absolute end-2 flex items-center gap-1">
+                            {badgeSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBadgeSearchQuery('');
+                                  setMatchedEmployee(null);
+                                  setIsComboboxOpen(false);
+                                }}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                title="مسح البحث"
+                              >
+                                <span className="material-symbols-outlined text-sm">close</span>
+                              </button>
+                            )}
                             <button
                               type="button"
+                              onClick={() => setIsComboboxOpen(!isComboboxOpen)}
+                              className="p-1 rounded-lg text-teal-600 hover:bg-teal-500/10 transition-colors cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-base">
+                                {isComboboxOpen ? 'expand_less' : 'expand_more'}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Floating Dropdown List of Filtered Employees with Guaranteed Solid Black Text */}
+                        {isComboboxOpen && (
+                          <>
+                            {/* Transparent Backdrop to immediately intercept any click outside the dropdown and close it */}
+                            <div
+                              className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[0.5px]"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setIsComboboxOpen(false);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                            />
+
+                            <div
+                              className="absolute start-0 end-0 top-full mt-1.5 z-50 max-h-72 overflow-y-auto rounded-2xl border-2 border-teal-500 shadow-2xl divide-y divide-slate-200"
+                              style={{ backgroundColor: '#ffffff', color: '#000000' }}
                             >
-                              <span className="material-symbols-outlined text-xs">close</span>
-                              <span>{t('إغلاق', 'Close')}</span>
-                            </button>
-                          </div>
+                              {/* Sticky Header Bar with Count and Dedicated Close Button */}
+                              <div className="sticky top-0 z-10 px-3 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700 shadow-xs">
+                                <span className="flex items-center gap-1.5 text-teal-800">
+                                  <span className="material-symbols-outlined text-sm text-teal-600">badge</span>
+                                  <span>{t('نتائج بحث الموظفين', 'Employee Search Results')} ({filteredEmployeesForCombobox.length})</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsComboboxOpen(false);
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                >
+                                  <span className="material-symbols-outlined text-xs">close</span>
+                                  <span>{t('إغلاق', 'Close')}</span>
+                                </button>
+                              </div>
 
-                          {filteredEmployeesForCombobox.length === 0 ? (
-                          <div className="p-4 text-center text-xs font-bold" style={{ color: '#000000', WebkitTextFillColor: '#000000' }}>
-                            <span className="material-symbols-outlined text-2xl block mb-1 text-slate-500">search_off</span>
-                            {t('لا يوجد موظف مطابق لهذا البحث', 'No matching employee found')}
-                          </div>
-                        ) : (
-                          filteredEmployeesForCombobox.map((emp: any) => {
-                            const b = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id || '';
-                            const arName = extractArabicName(emp);
-                            const enName = extractEnglishName(emp);
-                            const dept = emp.department || emp.department_ar || '';
-                            const pos = emp.position || emp.position_ar || emp.job_title || emp.jobTitle || '';
-                            const mainName = arName || enName || `موظف #${b}`;
-                            const photo = emp.photoUrl || emp.photo_url || emp.photo || emp.avatar || emp.avatarUrl || emp.profile_image || '';
+                              {filteredEmployeesForCombobox.length === 0 ? (
+                                <div className="p-4 text-center text-xs font-bold" style={{ color: '#000000', WebkitTextFillColor: '#000000' }}>
+                                  <span className="material-symbols-outlined text-2xl block mb-1 text-slate-500">search_off</span>
+                                  {t('لا يوجد موظف مطابق لهذا البحث', 'No matching employee found')}
+                                </div>
+                              ) : (
+                                filteredEmployeesForCombobox.map((emp: any) => {
+                                  const b = emp.badge_no || emp.badgeNo || emp.employee_id || emp.employeeId || emp.id || '';
+                                  const arName = extractArabicName(emp);
+                                  const enName = extractEnglishName(emp);
+                                  const dept = emp.department || emp.department_ar || '';
+                                  const pos = emp.position || emp.position_ar || emp.job_title || emp.jobTitle || '';
+                                  const mainName = arName || enName || `موظف #${b}`;
+                                  const photo = emp.photoUrl || emp.photo_url || emp.photo || emp.avatar || emp.avatarUrl || emp.profile_image || '';
 
-                            return (
-                              <button
-                                key={emp.id || b}
-                                type="button"
-                                onClick={() => handleAutofillFromEmployee(emp)}
-                                className="w-full p-2.5 text-start flex items-center justify-between gap-3 transition-all cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-teal-50/80"
-                                style={{ backgroundColor: '#ffffff', color: '#000000' }}
-                              >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  {/* Employee Photo Thumbnail or Fallback Icon */}
-                                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-teal-200 text-teal-800 flex items-center justify-center text-sm shrink-0 shadow-sm">
-                                    {photo ? (
-                                      <img
-                                        src={photo}
-                                        alt={mainName}
-                                        className="w-full h-full object-contain p-0.5"
-                                        onError={(e) => {
-                                          (e.target as HTMLElement).style.display = 'none';
-                                        }}
-                                      />
-                                    ) : (
-                                      <span className="material-symbols-outlined text-xl text-teal-700">person</span>
-                                    )}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      {/* Main Arabic / Full Name in Normal Font Weight */}
-                                      <span
-                                        className="font-normal text-sm"
-                                        style={{ color: '#000000', WebkitTextFillColor: '#000000', fontWeight: 400 }}
-                                      >
-                                        {mainName}
-                                      </span>
-                                      {/* Secondary English Name in Normal Font Weight */}
-                                      {enName && arName && enName.toLowerCase() !== arName.toLowerCase() && (
-                                        <span
-                                          className="text-xs font-normal"
-                                          style={{ color: '#475569', WebkitTextFillColor: '#475569', fontWeight: 400 }}
-                                        >
-                                          ({enName})
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p
-                                      className="text-xs font-normal mt-0.5"
-                                      style={{ color: '#64748b', WebkitTextFillColor: '#64748b', fontWeight: 400 }}
+                                  return (
+                                    <button
+                                      key={emp.id || b}
+                                      type="button"
+                                      onClick={() => handleAutofillFromEmployee(emp)}
+                                      className="w-full p-2.5 text-start flex items-center justify-between gap-3 transition-all cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-teal-50/80"
+                                      style={{ backgroundColor: '#ffffff', color: '#000000' }}
                                     >
-                                      {pos ? `${pos} • ` : ''}{dept}
-                                    </p>
-                                  </div>
-                                </div>
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        {/* Employee Photo Thumbnail or Fallback Icon */}
+                                        <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-teal-200 text-teal-800 flex items-center justify-center text-sm shrink-0 shadow-sm">
+                                          {photo ? (
+                                            <img
+                                              src={photo}
+                                              alt={mainName}
+                                              className="w-full h-full object-contain p-0.5"
+                                              onError={(e) => {
+                                                (e.target as HTMLElement).style.display = 'none';
+                                              }}
+                                            />
+                                          ) : (
+                                            <span className="material-symbols-outlined text-xl text-teal-700">person</span>
+                                          )}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            {/* Main Arabic / Full Name in Normal Font Weight */}
+                                            <span
+                                              className="font-normal text-sm"
+                                              style={{ color: '#000000', WebkitTextFillColor: '#000000', fontWeight: 400 }}
+                                            >
+                                              {mainName}
+                                            </span>
+                                            {/* Secondary English Name in Normal Font Weight */}
+                                            {enName && arName && enName.toLowerCase() !== arName.toLowerCase() && (
+                                              <span
+                                                className="text-xs font-normal"
+                                                style={{ color: '#475569', WebkitTextFillColor: '#475569', fontWeight: 400 }}
+                                              >
+                                                ({enName})
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p
+                                            className="text-xs font-normal mt-0.5"
+                                            style={{ color: '#64748b', WebkitTextFillColor: '#64748b', fontWeight: 400 }}
+                                          >
+                                            {pos ? `${pos} • ` : ''}{dept}
+                                          </p>
+                                        </div>
+                                      </div>
 
-                                <div className="shrink-0 text-end">
-                                  <span
-                                    className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-600 font-mono font-bold text-xs shadow-sm inline-block"
-                                    style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
-                                  >
-                                    {b}
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          })
+                                      <div className="shrink-0 text-end">
+                                        <span
+                                          className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-600 font-mono font-bold text-xs shadow-sm inline-block"
+                                          style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
+                                        >
+                                          {b}
+                                        </span>
+                                      </div>
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </>
                         )}
                       </div>
-                    </>
-                    )}
-                  </div>
-                </div>
+                    </div>
 
-                {/* 🌟 Dynamic Supervisor / Employee Scope Indicator Banner */}
-                {matchedEmployee ? (
-                  <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                    matchedEmpSubCount > 0
-                      ? (isDark ? 'bg-amber-950/25 border-amber-500/40 text-amber-200' : 'bg-amber-50 border-amber-500/40 text-amber-900')
-                      : (isDark ? 'bg-emerald-950/25 border-emerald-500/40 text-emerald-200' : 'bg-emerald-50 border-emerald-500/40 text-emerald-900')
-                  }`}>
-                    <div className="flex items-start sm:items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
-                        matchedEmpSubCount > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
-                      }`}>
-                        <span className="material-symbols-outlined text-2xl">
-                          {matchedEmpSubCount > 0 ? 'supervised_user_circle' : 'person'}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-xs">
-                            {matchedEmpSubCount > 0
-                              ? t(`تم الكشف تلقائياً: هذا الموظف مشرف مباشر على (${matchedEmpSubCount}) موظفاً في الشركة`,
-                                  `Auto-Detected: This employee directly supervises (${matchedEmpSubCount}) staff members`)
-                              : t('موظف اعتيادي (لا يوجد موظفون تابعون له مباشرة في الشركة)',
-                                  'Standard Employee (Does not supervise subordinates in the company)')}
+                    {/* 🌟 Dynamic Supervisor / Employee Scope Indicator Banner */}
+                    {matchedEmployee ? (
+                      <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${matchedEmpSubCount > 0
+                        ? (isDark ? 'bg-amber-950/25 border-amber-500/40 text-amber-200' : 'bg-amber-50 border-amber-500/40 text-amber-900')
+                        : (isDark ? 'bg-emerald-950/25 border-emerald-500/40 text-emerald-200' : 'bg-emerald-50 border-emerald-500/40 text-emerald-900')
+                        }`}>
+                        <div className="flex items-start sm:items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${matchedEmpSubCount > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
+                            }`}>
+                            <span className="material-symbols-outlined text-2xl">
+                              {matchedEmpSubCount > 0 ? 'supervised_user_circle' : 'person'}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs">
+                                {matchedEmpSubCount > 0
+                                  ? t(`تم الكشف تلقائياً: هذا الموظف مشرف مباشر على (${matchedEmpSubCount}) موظفاً في الشركة`,
+                                    `Auto-Detected: This employee directly supervises (${matchedEmpSubCount}) staff members`)
+                                  : t('موظف اعتيادي (لا يوجد موظفون تابعون له مباشرة في الشركة)',
+                                    'Standard Employee (Does not supervise subordinates in the company)')}
+                              </span>
+                            </div>
+                            <p className="text-[11px] opacity-85 mt-0.5 leading-relaxed">
+                              {matchedEmpSubCount > 0
+                                ? t('سيتم ضبط نطاق البيانات تلقائياً ليشمل داشبورد موظفيه، والبروفايل، والإجازات، والحضور، والوثائق التابعة لموظفيه وبياناته الشخصية، خاضعاً للصلاحيات المحددة في المصفوفة أدناه.',
+                                  'Data scope will automatically include team dashboard, employee profiles, leaves, attendance, and documents of their team + self, governed by permissions matrix below.')
+                                : t('سيقتصر نطاق البيانات التلقائي على بياناته الشخصية كموظف (ملفه الشخصي، إجازاته، دوامه، ومستنداته) خاضعاً لمصفوفة الصلاحيات المحددة أدناه.',
+                                  'Data scope will automatically restrict to personal employee records (own profile, leaves, attendance, and documents) governed by permissions matrix below.')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 self-end sm:self-center">
+                          <span className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm ${matchedEmpSubCount > 0
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-emerald-600 text-white'
+                            }`}>
+                            <span className="material-symbols-outlined text-sm">
+                              {matchedEmpSubCount > 0 ? 'workspace_premium' : 'badge'}
+                            </span>
+                            <span>{matchedEmpSubCount > 0 ? t('مشرف (Supervisor)', 'Supervisor') : t('موظف (Employee)', 'Employee')}</span>
                           </span>
                         </div>
-                        <p className="text-[11px] opacity-85 mt-0.5 leading-relaxed">
-                          {matchedEmpSubCount > 0
-                            ? t('سيتم ضبط نطاق البيانات تلقائياً ليشمل داشبورد موظفيه، والبروفايل، والإجازات، والحضور، والوثائق التابعة لموظفيه وبياناته الشخصية، خاضعاً للصلاحيات المحددة في المصفوفة أدناه.',
-                                'Data scope will automatically include team dashboard, employee profiles, leaves, attendance, and documents of their team + self, governed by permissions matrix below.')
-                            : t('سيقتصر نطاق البيانات التلقائي على بياناته الشخصية كموظف (ملفه الشخصي، إجازاته، دوامه، ومستنداته) خاضعاً لمصفوفة الصلاحيات المحددة أدناه.',
-                                'Data scope will automatically restrict to personal employee records (own profile, leaves, attendance, and documents) governed by permissions matrix below.')}
+                      </div>
+                    ) : !newUserForm.id ? (
+                      <div className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs ${isDark ? 'bg-sky-950/20 border-sky-500/30 text-sky-300' : 'bg-sky-50 border-sky-300 text-sky-800'
+                        }`}>
+                        <span className="material-symbols-outlined text-lg shrink-0 text-sky-500">info</span>
+                        <p className="text-[11px] leading-relaxed">
+                          {t('يمكنك اختيار موظف مسجل لربطه وتحديد صفته الإشرافية تلقائياً، أو التبديل إلى "كادر قيادي / خاص" أعلاه للمدراء العامين ومدير الموارد البشرية.',
+                            'Select an employee to link them and auto-detect supervision, or switch to "Special / Executive" above for General Managers and HR Directors.')}
                         </p>
                       </div>
-                    </div>
-
-                    <div className="shrink-0 self-end sm:self-center">
-                      <span className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm ${
-                        matchedEmpSubCount > 0
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-emerald-600 text-white'
-                      }`}>
-                        <span className="material-symbols-outlined text-sm">
-                          {matchedEmpSubCount > 0 ? 'workspace_premium' : 'badge'}
-                        </span>
-                        <span>{matchedEmpSubCount > 0 ? t('مشرف (Supervisor)', 'Supervisor') : t('موظف (Employee)', 'Employee')}</span>
-                      </span>
-                    </div>
-                  </div>
-                ) : !newUserForm.id ? (
-                  <div className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs ${
-                    isDark ? 'bg-sky-950/20 border-sky-500/30 text-sky-300' : 'bg-sky-50 border-sky-300 text-sky-800'
-                  }`}>
-                    <span className="material-symbols-outlined text-lg shrink-0 text-sky-500">info</span>
-                    <p className="text-[11px] leading-relaxed">
-                      {t('يمكنك اختيار موظف مسجل لربطه وتحديد صفته الإشرافية تلقائياً، أو التبديل إلى "كادر قيادي / خاص" أعلاه للمدراء العامين ومدير الموارد البشرية.',
-                         'Select an employee to link them and auto-detect supervision, or switch to "Special / Executive" above for General Managers and HR Directors.')}
-                    </p>
-                  </div>
-                ) : null}
+                    ) : null}
                   </>
                 )}
 
@@ -5176,9 +5105,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                       placeholder="e.g. dataentry.hr أو vts1055"
                       value={newUserForm.username}
                       onChange={e => setNewUserForm(prev => ({ ...prev, username: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${
-                        isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                        }`}
                     />
                   </div>
 
@@ -5207,9 +5135,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                         }
                         value={newUserForm.password}
                         onChange={e => setNewUserForm(prev => ({ ...prev, password: e.target.value }))}
-                        className={`w-full px-3 py-2 pe-10 rounded-xl border text-xs font-mono outline-none transition-all ${
-                          isDark ? 'bg-[#111827] border-slate-700 text-white focus:border-teal-400' : 'bg-white border-slate-300 text-slate-900 focus:border-teal-600'
-                        }`}
+                        className={`w-full px-3 py-2 pe-10 rounded-xl border text-xs font-mono outline-none transition-all ${isDark ? 'bg-[#111827] border-slate-700 text-white focus:border-teal-400' : 'bg-white border-slate-300 text-slate-900 focus:border-teal-600'
+                          }`}
                       />
                       <button
                         type="button"
@@ -5241,9 +5168,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                       placeholder="مثال: مدخل بيانات موارد بشرية"
                       value={newUserForm.jobTitle}
                       onChange={e => setNewUserForm(prev => ({ ...prev, jobTitle: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none border-teal-500/50 shadow-sm ${
-                        isDark ? 'bg-[#111827] text-white' : 'bg-white text-slate-900'
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none border-teal-500/50 shadow-sm ${isDark ? 'bg-[#111827] text-white' : 'bg-white text-slate-900'
+                        }`}
                     />
                   </div>
                 </div>
@@ -5260,9 +5186,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                       placeholder="مثال: أحمد كريم عبدالله"
                       value={newUserForm.fullNameAr}
                       onChange={e => setNewUserForm(prev => ({ ...prev, fullNameAr: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${
-                        isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                        }`}
                     />
                   </div>
 
@@ -5276,9 +5201,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                       placeholder="e.g. Ahmed Kareem Abdullah"
                       value={newUserForm.fullNameEn}
                       onChange={e => setNewUserForm(prev => ({ ...prev, fullNameEn: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${
-                        isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                        }`}
                     />
                   </div>
                 </div>
@@ -5292,9 +5216,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <select
                       value={newUserForm.department}
                       onChange={e => setNewUserForm(prev => ({ ...prev, department: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${
-                        isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${isDark ? 'bg-[#111827] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                        }`}
                     >
                       {allUniqueDepartments.map(d => (
                         <option key={d.name_ar} value={d.name_ar}>
@@ -5314,9 +5237,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                       placeholder="e.g. dataentry@vitasiraq.iq"
                       value={newUserForm.email}
                       onChange={e => setNewUserForm(prev => ({ ...prev, email: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${
-                        isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                        }`}
                     />
                   </div>
 
@@ -5330,19 +5252,17 @@ export const Category9RiskComplianceView: React.FC = () => {
                       placeholder="07700000000"
                       value={newUserForm.phone}
                       onChange={e => setNewUserForm(prev => ({ ...prev, phone: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${
-                        isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                        }`}
                     />
                   </div>
                 </div>
 
                 {/* Admin Privileges Card */}
-                <div className={`p-4 rounded-2xl border transition-all ${
-                  newUserForm.canManageUsers
-                    ? 'bg-amber-500/10 border-amber-500/40 dark:bg-amber-500/15 dark:border-amber-500/50 shadow-sm'
-                    : (isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-50 border-slate-200')
-                }`}>
+                <div className={`p-4 rounded-2xl border transition-all ${newUserForm.canManageUsers
+                  ? 'bg-amber-500/10 border-amber-500/40 dark:bg-amber-500/15 dark:border-amber-500/50 shadow-sm'
+                  : (isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-50 border-slate-200')
+                  }`}>
                   <label className="flex items-start gap-3 cursor-pointer select-none">
                     <input
                       type="checkbox"
@@ -5391,7 +5311,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                         {t('تفعيل هذا الخيار يمنح المستخدم صلاحية الدخول لشاشة إدارة المستخدمين والصلاحيات (sec-roles-permissions) وإضافة مستخدمين جدد وتعديل الأدوار وكلمات المرور.',
-                           'Enabling this grants the user access to User Management & RBAC screen, allowing them to add/edit users, assign permissions, and manage credentials.')}
+                          'Enabling this grants the user access to User Management & RBAC screen, allowing them to add/edit users, assign permissions, and manage credentials.')}
                       </p>
                     </div>
                   </label>
@@ -5402,9 +5322,8 @@ export const Category9RiskComplianceView: React.FC = () => {
               {(() => {
                 const activePreset = ROLE_PRESET_CONFIGS.find(p => p.id === selectedRolePreset) || ROLE_PRESET_CONFIGS[0];
                 return (
-                  <div className={`p-4 rounded-2xl border space-y-3 transition-all ${
-                    isDark ? 'bg-gradient-to-r from-teal-950/30 to-[#0a0c10] border-teal-500/40' : 'bg-gradient-to-r from-teal-50/90 to-sky-50/70 border-teal-500/40'
-                  }`}>
+                  <div className={`p-4 rounded-2xl border space-y-3 transition-all ${isDark ? 'bg-gradient-to-r from-teal-950/30 to-[#0a0c10] border-teal-500/40' : 'bg-gradient-to-r from-teal-50/90 to-sky-50/70 border-teal-500/40'
+                    }`}>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <h4 className="font-bold text-xs flex items-center gap-2 text-teal-700 dark:text-teal-300">
@@ -5412,8 +5331,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                           <span>{t('تحديد الصلاحيات تلقائياً حسب نوع الوظيفة (Role-Based Preset) أو يدوياً', 'Automatic Role Preset or Manual Customization')}</span>
                         </h4>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          {t('اختر دوراً وظيفياً لتعبئة مصفوفة الصلاحيات تلقائياً، مع إمكانية التعديل اليدوي على أي شاشة لاحقاً', 
-                             'Select a preset role to auto-configure permissions, with full ability to manually customize any screen below')}
+                          {t('اختر دوراً وظيفياً لتعبئة مصفوفة الصلاحيات تلقائياً، مع إمكانية التعديل اليدوي على أي شاشة لاحقاً',
+                            'Select a preset role to auto-configure permissions, with full ability to manually customize any screen below')}
                         </p>
                       </div>
 
@@ -5432,11 +5351,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                       <select
                         value={selectedRolePreset}
                         onChange={(e) => handleApplyRolePreset(e.target.value)}
-                        className={`w-full ${language === 'ar' ? 'pr-11 pl-9' : 'pl-11 pr-9'} py-2.5 rounded-xl border text-xs font-bold outline-none cursor-pointer appearance-none shadow-sm transition-all ${
-                          isDark 
-                            ? 'bg-[#111827] border-teal-500/50 text-white focus:border-teal-400' 
-                            : 'bg-white border-teal-500/50 text-slate-900 focus:border-teal-600'
-                        }`}
+                        className={`w-full ${language === 'ar' ? 'pr-11 pl-9' : 'pl-11 pr-9'} py-2.5 rounded-xl border text-xs font-bold outline-none cursor-pointer appearance-none shadow-sm transition-all ${isDark
+                          ? 'bg-[#111827] border-teal-500/50 text-white focus:border-teal-400'
+                          : 'bg-white border-teal-500/50 text-slate-900 focus:border-teal-600'
+                          }`}
                       >
                         {ROLE_PRESET_CONFIGS.map(preset => (
                           <option key={preset.id} value={preset.id} className={isDark ? 'bg-[#111827] text-white' : 'bg-white text-slate-900'}>
@@ -5451,11 +5369,10 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                     {/* Active Preset Details Card */}
                     {activePreset && (
-                      <div className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 transition-all ${
-                        activePreset.id === 'manual'
-                          ? (isDark ? 'bg-[#0a0c10] border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600')
-                          : (isDark ? 'bg-teal-950/40 border-teal-500/40 text-slate-200' : 'bg-white border-teal-500/30 text-slate-800 shadow-2xs')
-                      }`}>
+                      <div className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 transition-all ${activePreset.id === 'manual'
+                        ? (isDark ? 'bg-[#0a0c10] border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600')
+                        : (isDark ? 'bg-teal-950/40 border-teal-500/40 text-slate-200' : 'bg-white border-teal-500/30 text-slate-800 shadow-2xs')
+                        }`}>
                         <span className={`material-symbols-outlined text-base shrink-0 mt-0.5 ${activePreset.id === 'manual' ? 'text-slate-400' : 'text-teal-500'}`}>
                           {activePreset.id === 'manual' ? 'edit_note' : 'info'}
                         </span>
@@ -5491,7 +5408,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                     </h4>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       {t('حدد لكل شاشة وموديول نوع الصلاحية: قراءة فقط (Read) أو قراءة وكتابة وتعديل (Read / Write)',
-                         'Set permission level for each screen: Read Only or Read & Write')}
+                        'Set permission level for each screen: Read Only or Read & Write')}
                     </p>
                   </div>
 
@@ -5521,9 +5438,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                       placeholder={t('بحث سريع في الموديولات والشاشات (مثال: رواتب، عقود، تقارير...)...', 'Search screens & modules (e.g. payroll, contracts, reports...)...')}
                       value={moduleFilterQuery}
                       onChange={e => setModuleFilterQuery(e.target.value)}
-                      className={`w-full ps-9 pe-3 py-2 rounded-xl border text-xs outline-none transition-all ${
-                        isDark ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-teal-600'
-                      }`}
+                      className={`w-full ps-9 pe-3 py-2 rounded-xl border text-xs outline-none transition-all ${isDark ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-teal-600'
+                        }`}
                     />
                     {moduleFilterQuery && (
                       <button
@@ -5600,23 +5516,20 @@ export const Category9RiskComplianceView: React.FC = () => {
                     return (
                       <div
                         key={cat.id}
-                        className={`rounded-2xl border transition-all overflow-hidden ${
-                          isDark ? 'bg-[#0f141f] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
-                        }`}
+                        className={`rounded-2xl border transition-all overflow-hidden ${isDark ? 'bg-[#0f141f] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+                          }`}
                       >
                         {/* Category Header Bar */}
                         <div
-                          className={`p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-2.5 cursor-pointer select-none transition-colors ${
-                            enabledCount > 0
-                              ? isDark ? 'bg-teal-950/20 hover:bg-teal-950/30' : 'bg-teal-50/60 hover:bg-teal-50'
-                              : isDark ? 'bg-[#0a0c10] hover:bg-white/5' : 'bg-slate-50 hover:bg-slate-100'
-                          }`}
+                          className={`p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-2.5 cursor-pointer select-none transition-colors ${enabledCount > 0
+                            ? isDark ? 'bg-teal-950/20 hover:bg-teal-950/30' : 'bg-teal-50/60 hover:bg-teal-50'
+                            : isDark ? 'bg-[#0a0c10] hover:bg-white/5' : 'bg-slate-50 hover:bg-slate-100'
+                            }`}
                           onClick={() => toggleCategory(cat.id)}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
-                              enabledCount > 0 ? 'bg-teal-600 text-white' : 'bg-slate-300 dark:bg-slate-800 text-slate-500'
-                            }`}>
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${enabledCount > 0 ? 'bg-teal-600 text-white' : 'bg-slate-300 dark:bg-slate-800 text-slate-500'
+                              }`}>
                               <span className="material-symbols-outlined text-lg">{cat.icon}</span>
                             </div>
                             <div className="min-w-0">
@@ -5630,13 +5543,12 @@ export const Category9RiskComplianceView: React.FC = () => {
                                     {t('متاح تلقائياً لجميع المستخدمين (افتراضي)', 'Always available to all users by default')}
                                   </span>
                                 )}
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  enabledCount === catModules.length && enabledCount > 0
-                                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                                    : enabledCount > 0
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${enabledCount === catModules.length && enabledCount > 0
+                                  ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                                  : enabledCount > 0
                                     ? 'bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-500/30'
                                     : 'bg-slate-200 dark:bg-white/10 text-slate-500'
-                                }`}>
+                                  }`}>
                                   {enabledCount} / {catModules.length} {t('مفعل', 'active')}
                                 </span>
                               </div>
@@ -5648,11 +5560,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setCategoryAll(cat, 'write')}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
-                                allWrite
-                                  ? 'bg-teal-600 text-white border-teal-500 shadow-xs'
-                                  : 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 border-teal-500/30'
-                              }`}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${allWrite
+                                ? 'bg-teal-600 text-white border-teal-500 shadow-xs'
+                                : 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 border-teal-500/30'
+                                }`}
                               title={t('منح صلاحية كتابة وتعديل لكل موديولات هذا القسم', 'Grant Read/Write to all in category')}
                             >
                               <span className="material-symbols-outlined text-xs">edit_note</span>
@@ -5662,11 +5573,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setCategoryAll(cat, 'read')}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
-                                allRead
-                                  ? 'bg-sky-600 text-white border-sky-500 shadow-xs'
-                                  : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/30'
-                              }`}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${allRead
+                                ? 'bg-sky-600 text-white border-sky-500 shadow-xs'
+                                : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/30'
+                                }`}
                               title={t('منح صلاحية قراءة فقط لكل موديولات هذا القسم', 'Grant Read Only to all in category')}
                             >
                               <span className="material-symbols-outlined text-xs">visibility</span>
@@ -5705,20 +5615,18 @@ export const Category9RiskComplianceView: React.FC = () => {
                                 return (
                                   <div
                                     key={mod.id}
-                                    className={`p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
-                                      modLevel === 'write'
-                                        ? isDark ? 'bg-teal-950/25 border-teal-500/40 shadow-xs shadow-teal-500/5' : 'bg-teal-50/80 border-teal-500/40 shadow-xs'
-                                        : modLevel === 'read'
+                                    className={`p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${modLevel === 'write'
+                                      ? isDark ? 'bg-teal-950/25 border-teal-500/40 shadow-xs shadow-teal-500/5' : 'bg-teal-50/80 border-teal-500/40 shadow-xs'
+                                      : modLevel === 'read'
                                         ? isDark ? 'bg-sky-950/25 border-sky-500/40 shadow-xs shadow-sky-500/5' : 'bg-sky-50/80 border-sky-500/40 shadow-xs'
                                         : isDark ? 'bg-[#0a0c10]/40 border-white/5 opacity-80 hover:opacity-100' : 'bg-white border-slate-200/80 opacity-80 hover:opacity-100'
-                                    }`}
+                                      }`}
                                   >
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                        modLevel === 'write' ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' :
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${modLevel === 'write' ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' :
                                         modLevel === 'read' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' :
-                                        'bg-slate-500/10 text-slate-400 border border-slate-500/20'
-                                      }`}>
+                                          'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                                        }`}>
                                         <span className="material-symbols-outlined text-lg">{mod.icon || 'radio_button_unchecked'}</span>
                                       </div>
                                       <div className="min-w-0">
@@ -5739,11 +5647,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                                       <button
                                         type="button"
                                         onClick={() => setModuleLevel(mod.id, 'none')}
-                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                                          modLevel === 'none'
-                                            ? 'bg-slate-500 text-white shadow-xs'
-                                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                        }`}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${modLevel === 'none'
+                                          ? 'bg-slate-500 text-white shadow-xs'
+                                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                          }`}
                                         title={t('تعطيل هذا الموديول', 'Disable this module')}
                                       >
                                         <span className="material-symbols-outlined text-xs">close</span>
@@ -5753,11 +5660,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                                       <button
                                         type="button"
                                         onClick={() => setModuleLevel(mod.id, 'read')}
-                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                                          modLevel === 'read'
-                                            ? 'bg-sky-600 text-white shadow-xs'
-                                            : 'text-sky-600 dark:text-sky-400 hover:bg-sky-500/10'
-                                        }`}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${modLevel === 'read'
+                                          ? 'bg-sky-600 text-white shadow-xs'
+                                          : 'text-sky-600 dark:text-sky-400 hover:bg-sky-500/10'
+                                          }`}
                                         title={t('صلاحية قراءة وعرض فقط', 'Read only')}
                                       >
                                         <span className="material-symbols-outlined text-xs">visibility</span>
@@ -5767,11 +5673,10 @@ export const Category9RiskComplianceView: React.FC = () => {
                                       <button
                                         type="button"
                                         onClick={() => setModuleLevel(mod.id, 'write')}
-                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                                          modLevel === 'write'
-                                            ? 'bg-teal-600 text-white shadow-xs'
-                                            : 'text-teal-600 dark:text-teal-400 hover:bg-teal-500/10'
-                                        }`}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${modLevel === 'write'
+                                          ? 'bg-teal-600 text-white shadow-xs'
+                                          : 'text-teal-600 dark:text-teal-400 hover:bg-teal-500/10'
+                                          }`}
                                         title={t('صلاحية كاملة قراءة وتعديل وكتابة', 'Read and write')}
                                       >
                                         <span className="material-symbols-outlined text-xs">edit_note</span>
@@ -5829,13 +5734,11 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {passwordModalUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${
-            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            {/* Header */}
-            <div className={`p-5 border-b flex items-center justify-between ${
-              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+          <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
+            {/* Header */}
+            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+              }`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold">
                   <span className="material-symbols-outlined text-2xl">key</span>
@@ -5861,9 +5764,8 @@ export const Category9RiskComplianceView: React.FC = () => {
             {/* Form */}
             <form onSubmit={handleQuickChangePassword} className="p-6 space-y-4 text-xs">
               {/* User summary badge */}
-              <div className={`p-3.5 rounded-2xl border space-y-1.5 ${
-                isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
+              <div className={`p-3.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
                 <div className="flex justify-between items-center text-[11px]">
                   <span className="text-slate-500">{t('اسم الدخول:', 'Username:')}</span>
                   <span className="font-mono font-bold text-teal-600 dark:text-teal-400">{passwordModalUser.username}</span>
@@ -5907,9 +5809,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                     value={quickNewPassword}
                     onChange={e => setQuickNewPassword(e.target.value)}
                     placeholder={t('أدخل كلمة المرور الجديدة (4 أحرف على الأقل)...', 'Enter new password (min 4 characters)...')}
-                    className={`w-full px-3.5 py-2.5 pe-10 rounded-xl border text-xs font-mono outline-none ${
-                      isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3.5 py-2.5 pe-10 rounded-xl border text-xs font-mono outline-none ${isDark ? 'bg-[#0a0c10] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
                   />
                   <button
                     type="button"
@@ -5956,12 +5857,10 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {userToDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${
-            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            <div className={`p-5 border-b flex items-center justify-between ${
-              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+          <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
+            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+              }`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-500 flex items-center justify-center font-bold">
                   <span className="material-symbols-outlined text-2xl">delete_forever</span>
@@ -5985,22 +5884,20 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-4 text-xs">
-              <div className={`p-4 rounded-2xl border space-y-2 ${
-                isDark ? 'bg-rose-950/20 border-rose-500/30 text-rose-200' : 'bg-rose-50 border-rose-300 text-rose-900'
-              }`}>
+              <div className={`p-4 rounded-2xl border space-y-2 ${isDark ? 'bg-rose-950/20 border-rose-500/30 text-rose-200' : 'bg-rose-50 border-rose-300 text-rose-900'
+                }`}>
                 <p className="font-bold text-xs flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-base text-rose-600">warning</span>
                   <span>{t('هل أنت متأكد من رغبتك بحذف هذا الحساب نهائياً؟', 'Are you sure you want to permanently delete this user account?')}</span>
                 </p>
                 <p className="text-[11px] leading-relaxed opacity-90">
                   {t('سيتم إلغاء صلاحيات الدخول للمستخدم وحذف بياناته وحسابه من قاعدة البيانات فوراً. لا يؤثر هذا على بطاقة الموظف في جدول الموظفين.',
-                     'The user login and assigned permissions will be deleted immediately. This does not delete their record from the employees table.')}
+                    'The user login and assigned permissions will be deleted immediately. This does not delete their record from the employees table.')}
                 </p>
               </div>
 
-              <div className={`p-3.5 rounded-2xl border space-y-1.5 ${
-                isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
+              <div className={`p-3.5 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0a0c10] border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
                 <div className="flex justify-between items-center text-[11px]">
                   <span className="text-slate-500">{t('اسم الدخول:', 'Username:')}</span>
                   <span className="font-mono font-bold text-teal-600 dark:text-teal-400">{userToDeleteConfirm.username}</span>
@@ -6045,13 +5942,11 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {selectedAuditLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-2xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
-            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            {/* Modal Header */}
-            <div className={`p-5 border-b flex items-center justify-between ${
-              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+          <div className={`w-full max-w-2xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
+            {/* Modal Header */}
+            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+              }`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-500 flex items-center justify-center font-bold">
                   <span className="material-symbols-outlined text-2xl">policy</span>
@@ -6079,24 +5974,22 @@ export const Category9RiskComplianceView: React.FC = () => {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-4 text-xs">
               {/* Event Title Banner */}
-              <div className={`p-4 rounded-2xl border ${
-                selectedAuditLog.severity === 'critical'
-                  ? 'bg-rose-500/10 border-rose-500/30'
-                  : selectedAuditLog.severity === 'warning'
+              <div className={`p-4 rounded-2xl border ${selectedAuditLog.severity === 'critical'
+                ? 'bg-rose-500/10 border-rose-500/30'
+                : selectedAuditLog.severity === 'warning'
                   ? 'bg-amber-500/10 border-amber-500/30'
                   : 'bg-teal-500/10 border-teal-500/30'
-              }`}>
+                }`}>
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="font-bold text-sm text-slate-900 dark:text-white">
                     {selectedAuditLog.action}
                   </h4>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    selectedAuditLog.status === 'محظور'
-                      ? 'bg-rose-600 text-white'
-                      : selectedAuditLog.status === 'تحذير'
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${selectedAuditLog.status === 'محظور'
+                    ? 'bg-rose-600 text-white'
+                    : selectedAuditLog.status === 'تحذير'
                       ? 'bg-amber-600 text-white'
                       : 'bg-emerald-600 text-white'
-                  }`}>
+                    }`}>
                     {selectedAuditLog.status}
                   </span>
                 </div>
@@ -6127,13 +6020,12 @@ export const Category9RiskComplianceView: React.FC = () => {
 
                 <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
                   <p className="text-[10px] text-slate-400 font-bold mb-1">{t('المستوى الأمني والامتثال:', 'Severity & Compliance:')}</p>
-                  <span className={`inline-block px-2 py-0.5 rounded-md font-bold text-[10px] ${
-                    selectedAuditLog.severity === 'critical'
-                      ? 'bg-rose-500/20 text-rose-400'
-                      : selectedAuditLog.severity === 'warning'
+                  <span className={`inline-block px-2 py-0.5 rounded-md font-bold text-[10px] ${selectedAuditLog.severity === 'critical'
+                    ? 'bg-rose-500/20 text-rose-400'
+                    : selectedAuditLog.severity === 'warning'
                       ? 'bg-amber-500/20 text-amber-400'
                       : 'bg-emerald-500/20 text-emerald-400'
-                  }`}>
+                    }`}>
                     {selectedAuditLog.severity.toUpperCase()}
                   </span>
                   <p className="text-[10px] text-slate-400 mt-1">{t('متوافق مع تعليمات CBI', 'CBI Compliant')}</p>
@@ -6183,9 +6075,8 @@ export const Category9RiskComplianceView: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className={`p-4 border-t flex items-center justify-end ${
-              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
-            }`}>
+            <div className={`p-4 border-t flex items-center justify-end ${isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+              }`}>
               <button
                 type="button"
                 onClick={() => setSelectedAuditLog(null)}
@@ -6203,12 +6094,10 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {isAddAuditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${
-            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            <div className={`p-5 border-b flex items-center justify-between ${
-              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+          <div className={`w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
+            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+              }`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-500 flex items-center justify-center font-bold">
                   <span className="material-symbols-outlined text-2xl">add_moderator</span>
@@ -6242,9 +6131,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   value={newAuditForm.action}
                   onChange={(e) => setNewAuditForm({ ...newAuditForm, action: e.target.value })}
                   placeholder={t('مثال: فحص سلامة أذونات التوطين المصرفي للفرع الرئيسي', 'e.g., Audit inspection of banking payroll authorization')}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
                 />
               </div>
 
@@ -6256,9 +6144,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <select
                     value={newAuditForm.severity}
                     onChange={(e) => setNewAuditForm({ ...newAuditForm, severity: e.target.value as any })}
-                    className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${
-                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                   >
                     <option value="info">{t('معلومات (Info)', 'Info')}</option>
                     <option value="success">{t('ناجح / معتمد (Success)', 'Success')}</option>
@@ -6274,9 +6161,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <select
                     value={newAuditForm.status}
                     onChange={(e) => setNewAuditForm({ ...newAuditForm, status: e.target.value as any })}
-                    className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${
-                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                   >
                     <option value="ناجح">{t('ناجح (Approved)', 'Approved')}</option>
                     <option value="تحذير">{t('تحذير (Warning)', 'Warning')}</option>
@@ -6292,9 +6178,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                 <select
                   value={newAuditForm.module}
                   onChange={(e) => setNewAuditForm({ ...newAuditForm, module: e.target.value })}
-                  className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${
-                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
                 >
                   <option value="الحوكمة والرقابة (cat-9-risk)">{t('الحوكمة والرقابة والامتثال (cat-9-risk)', 'Governance & Risk')}</option>
                   <option value="الرواتب والتعويضات (cat-5-payroll)">{t('الرواتب والتعويضات والتوطين (cat-5-payroll)', 'Payroll & Banking')}</option>
@@ -6314,9 +6199,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   value={newAuditForm.details}
                   onChange={(e) => setNewAuditForm({ ...newAuditForm, details: e.target.value })}
                   placeholder={t('اكتب تفاصيل التقرير، الملاحظات الفنية، أو التوصيات الرقابية بدقة...', 'Enter inspection findings, technical notes, or compliance recommendations...')}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
                 />
               </div>
 
@@ -6346,12 +6230,10 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {isAddApiKeyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${
-            isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            <div className={`p-5 border-b flex items-center justify-between ${
-              isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+          <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
+            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-white/10 bg-[#0a0c10]' : 'border-slate-200 bg-slate-50'
+              }`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-500 flex items-center justify-center font-bold">
                   <span className="material-symbols-outlined text-2xl">key</span>
@@ -6385,9 +6267,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   value={newApiKeyForm.name}
                   onChange={(e) => setNewApiKeyForm({ ...newApiKeyForm, name: e.target.value })}
                   placeholder={t('مثال: منصة التوطين المصرفي CBI API Gateway', 'e.g., CBI Payment & Settlement Gateway')}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
                 />
               </div>
 
@@ -6398,9 +6279,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                 <select
                   value={newApiKeyForm.permissions}
                   onChange={(e) => setNewApiKeyForm({ ...newApiKeyForm, permissions: e.target.value })}
-                  className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${
-                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
                 >
                   <option value="قراءة وكتابة (Full Access)">{t('قراءة وكتابة كاملة (Full Access)', 'Full Read / Write Access')}</option>
                   <option value="قراءة فقط (Read Only)">{t('قراءة فقط واستعلام (Read Only)', 'Read Only')}</option>
@@ -6416,9 +6296,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   type="date"
                   value={newApiKeyForm.expires}
                   onChange={(e) => setNewApiKeyForm({ ...newApiKeyForm, expires: e.target.value })}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
                 />
               </div>
 
@@ -6448,9 +6327,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {selectedReportForView && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${
-            isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
+          <div className={`w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}>
             {/* Modal Controls Bar (Hidden during print) */}
             <div className="print:hidden p-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/5 sticky top-0 z-10 backdrop-blur-md">
               <div className="flex items-center gap-2">
@@ -6615,9 +6493,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {selectedPolicyForView && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${
-            isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
+          <div className={`w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}>
             {/* Modal Controls Bar */}
             <div className="print:hidden p-4 border-b border-slate-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/5 sticky top-0 z-10 backdrop-blur-md">
               <div className="flex items-center gap-2">
@@ -6634,9 +6511,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                     placeholder={t('بحث داخل اللائحة...', 'Search policy...')}
                     value={policySearchQuery}
                     onChange={e => setPolicySearchQuery(e.target.value)}
-                    className={`px-3 py-1.5 rounded-xl text-xs border outline-none pr-8 ${
-                      isDark ? 'bg-slate-800 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
-                    }`}
+                    className={`px-3 py-1.5 rounded-xl text-xs border outline-none pr-8 ${isDark ? 'bg-slate-800 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
                   />
                   <span className="material-symbols-outlined text-sm absolute right-2.5 top-2 text-slate-400">search</span>
                 </div>
@@ -6722,9 +6598,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {selectedRiskForDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-xl rounded-3xl border shadow-2xl p-6 space-y-5 text-xs ${
-            isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
+          <div className={`w-full max-w-xl rounded-3xl border shadow-2xl p-6 space-y-5 text-xs ${isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}>
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <span className="p-2 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 material-symbols-outlined text-lg">edit_note</span>
@@ -6754,9 +6629,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                     value={editRiskForm.title}
                     onChange={e => setEditRiskForm({ ...editRiskForm, title: e.target.value })}
                     placeholder={t('أدخل عنوان الخطر المخصص للمؤسسة...', 'Enter custom risk title...')}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
-                      isDark ? 'bg-slate-900 border-white/10 text-white focus:border-teal-400' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-teal-600'
-                    }`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${isDark ? 'bg-slate-900 border-white/10 text-white focus:border-teal-400' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-teal-600'
+                      }`}
                   />
                 </div>
 
@@ -6768,9 +6642,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <select
                       value={editRiskForm.category}
                       onChange={e => setEditRiskForm({ ...editRiskForm, category: e.target.value })}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
-                        isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                        }`}
                     >
                       <option value="المالي">{t('المالي (Financial)', 'Financial')}</option>
                       <option value="التشغيلي">{t('التشغيلي (Operational)', 'Operational')}</option>
@@ -6788,9 +6661,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                       value={editRiskForm.owner}
                       onChange={e => setEditRiskForm({ ...editRiskForm, owner: e.target.value })}
                       placeholder={t('مثال: مدير العمليات والائتمان', 'e.g. Credit Operations Director')}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
-                        isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                        }`}
                     />
                   </div>
                 </div>
@@ -6804,9 +6676,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <select
                     value={editRiskForm.status}
                     onChange={e => setEditRiskForm({ ...editRiskForm, status: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
-                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                   >
                     <option value="مفتوح">{t('مفتوح (Open)', 'Open')}</option>
                     <option value="قيد المعالجة">{t('قيد المعالجة والتخفيف (In Progress)', 'In Progress')}</option>
@@ -6821,9 +6692,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <select
                     value={editRiskForm.impact}
                     onChange={e => setEditRiskForm({ ...editRiskForm, impact: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
-                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                   >
                     <option value="منخفض">{t('منخفض (Low)', 'Low')}</option>
                     <option value="متوسط">{t('متوسط (Medium)', 'Medium')}</option>
@@ -6839,9 +6709,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <select
                     value={editRiskForm.probability}
                     onChange={e => setEditRiskForm({ ...editRiskForm, probability: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
-                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                   >
                     <option value="منخفض">{t('نادر / منخفض (Low)', 'Low')}</option>
                     <option value="متوسط">{t('محتمل / متوسط (Medium)', 'Medium')}</option>
@@ -6860,9 +6729,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   value={editRiskForm.mitigationPlan}
                   onChange={e => setEditRiskForm({ ...editRiskForm, mitigationPlan: e.target.value })}
                   placeholder={t('أدخل الإجراءات والخطوات المتبعة للحد من الخطر بما يلائم سياسات المؤسسة...', 'Enter mitigation actions...')}
-                  className={`w-full p-3 rounded-xl border text-xs outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
+                  className={`w-full p-3 rounded-xl border text-xs outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
                 />
               </div>
 
@@ -6870,7 +6738,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleDeleteRisk(selectedRiskForDetails)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 flex items-center gap-1.5 cursor-pointer transition-all"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white shadow-md shadow-rose-700/25 flex items-center gap-1.5 cursor-pointer transition-all"
                   title={t('حذف هذا الخطر نهائياً من قاعدة البيانات', 'Delete Risk Permanently')}
                 >
                   <span className="material-symbols-outlined text-sm">delete_forever</span>
@@ -6881,13 +6749,13 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedRiskForDetails(null)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-all"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-700 hover:bg-slate-800 text-white cursor-pointer transition-all shadow-sm"
                   >
                     {t('إلغاء', 'Cancel')}
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer transition-all"
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white shadow-md shadow-teal-700/25 flex items-center gap-1.5 cursor-pointer transition-all"
                   >
                     <span className="material-symbols-outlined text-sm">save</span>
                     <span>{t('حفظ التعديلات', 'Save Changes')}</span>
@@ -6904,9 +6772,8 @@ export const Category9RiskComplianceView: React.FC = () => {
       ============================================================ */}
       {isAddPolicyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border shadow-2xl p-6 space-y-5 text-xs ${
-            isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
+          <div className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border shadow-2xl p-6 space-y-5 text-xs ${isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}>
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <span className="p-2 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 material-symbols-outlined text-lg">policy</span>
@@ -6936,9 +6803,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                     placeholder="مثال: POL-REM-06"
                     value={newPolicyForm.code}
                     onChange={e => setNewPolicyForm({ ...newPolicyForm, code: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-bold outline-none ${
-                      isDark ? 'bg-slate-900 border-white/10 text-teal-400' : 'bg-slate-50 border-slate-300 text-teal-700'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-bold outline-none ${isDark ? 'bg-slate-900 border-white/10 text-teal-400' : 'bg-slate-50 border-slate-300 text-teal-700'
+                      }`}
                   />
                 </div>
 
@@ -6952,9 +6818,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                     placeholder="مثال: سياسة العمل المرن والعمل عن بعد"
                     value={newPolicyForm.title}
                     onChange={e => setNewPolicyForm({ ...newPolicyForm, title: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
-                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                   />
                 </div>
               </div>
@@ -6967,9 +6832,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   <select
                     value={newPolicyForm.category}
                     onChange={e => setNewPolicyForm({ ...newPolicyForm, category: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
-                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                   >
                     <option value="إدارية وتنظيمية">إدارية وتنظيمية</option>
                     <option value="إجازات ودوام">إجازات ودوام</option>
@@ -6989,9 +6853,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                     value={newPolicyForm.version}
                     onChange={e => setNewPolicyForm({ ...newPolicyForm, version: e.target.value })}
                     placeholder="v1.0"
-                    className={`w-full px-3 py-2 rounded-xl border text-xs font-mono outline-none ${
-                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-mono outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                   />
                 </div>
 
@@ -7004,9 +6867,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                     value={newPolicyForm.pages}
                     onChange={e => setNewPolicyForm({ ...newPolicyForm, pages: e.target.value })}
                     placeholder="8 صفحات"
-                    className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${
-                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                   />
                 </div>
               </div>
@@ -7021,9 +6883,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                   value={newPolicyForm.desc}
                   onChange={e => setNewPolicyForm({ ...newPolicyForm, desc: e.target.value })}
                   placeholder="وصف مختصر للسياسة والأهداف العامة منها..."
-                  className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
+                  className={`w-full p-2.5 rounded-xl border text-xs outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
                 />
               </div>
 
@@ -7055,9 +6916,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                           updated[idx].title = e.target.value;
                           setNewPolicyForm({ ...newPolicyForm, chapters: updated });
                         }}
-                        className={`flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold outline-none ${
-                          isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
-                        }`}
+                        className={`flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+                          }`}
                       />
                       {newPolicyForm.chapters.length > 1 && (
                         <button
@@ -7078,9 +6938,8 @@ export const Category9RiskComplianceView: React.FC = () => {
                         updated[idx].content = e.target.value;
                         setNewPolicyForm({ ...newPolicyForm, chapters: updated });
                       }}
-                      className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
-                        isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
+                      className={`w-full p-2.5 rounded-xl border text-xs outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+                        }`}
                     />
                   </div>
                 ))}
