@@ -2728,40 +2728,152 @@ export const Category9RiskComplianceView: React.FC = () => {
           MODULE: Enterprise Process Map & Management Control Framework (risk-process-map)
           ========================================================================= */}
       {activeModuleId === 'risk-process-map' && (
-        <div className="space-y-4">
-          <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-            isDark ? 'bg-slate-900 border-white/10' : 'bg-blue-50/60 border-blue-200'
+        <div className="space-y-6 text-xs">
+          {/* Header Banner */}
+          <div className={`p-5 rounded-3xl border shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
           }`}>
             <div className="flex items-center gap-3">
-              <span className="material-icons-outlined text-blue-600 text-3xl">account_tree</span>
+              <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
+                <span className="material-symbols-outlined text-2xl">account_tree</span>
+              </div>
               <div>
-                <h3 className="font-bold text-sm sm:text-base text-slate-800 dark:text-white">
-                  {t('خريطة العمليات المؤسسية وإطار الرقابة الإدارية لنظام الموارد البشرية', 'HRIS Enterprise Process Map & Management Control Framework')}
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                  {t('بوابة الإدارة العامة التفاعلية: مصفوفة RACI، مؤشرات كفاءة العمليات، ومسارات العمل المؤسسية', 'General Manager Interactive Portal: RACI Matrix, Process KPIs & Operational Workflows')}
+                <h2 className="text-base font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t('خريطة العمليات المؤسسية وإطار الرقابة الإدارية (Enterprise Process Map)', 'HRIS Enterprise Process Map & Management Control Framework')}
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {t('بوابة الإدارة العامة: مصفوفة RACI، مؤشرات كفاءة العمليات، ومسارات العمل المؤسسية المعتمدة', 'Corporate Governance: RACI Matrix, Operational Workflows & Management Controls')}
                 </p>
               </div>
             </div>
+
             <div className="flex items-center gap-2">
-              <a
-                href="http://localhost:3000"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors whitespace-nowrap"
-              >
-                <span className="material-icons-outlined text-sm">open_in_new</span>
-                {t('فتح في نافذة كاملة (Port 3000)', 'Open Fullscreen (Port 3000)')}
-              </a>
+              <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                {t('إطار رقابي معتمد 2026', 'Approved Framework 2026')}
+              </span>
             </div>
           </div>
 
-          <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm bg-white dark:bg-slate-900">
-            <iframe
-              src="http://localhost:3000"
-              title="HRIS Enterprise Process Map & Management Control Framework"
-              className="w-full h-[78vh] border-0"
-            />
+          {/* 5 Enterprise Core Workflows Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5">
+            {[
+              { id: 1, title: 'الاستقطاب والتعيين', en: 'Talent Acquisition', step: 'طلب احتياج ← مقابلة لجنة ← فحص نزاهة CBI ← عقد عمل', color: 'teal', icon: 'person_add' },
+              { id: 2, title: 'الدوام والإجازات', en: 'Time & Attendance', step: 'بصمة بيومترية ← طلب إجازة ← اعتماد مشرف ← تسوية تايم شيت', color: 'blue', icon: 'schedule' },
+              { id: 3, title: 'الرواتب والضمان', en: 'Payroll & Social Security', step: 'تجميع الحركات ← استقطاع قانون 18 ← تدقيق مالي ← توطين مصرفي', color: 'indigo', icon: 'payments' },
+              { id: 4, title: 'التقييم والترقيات', en: 'Performance & Appraisal', step: 'تقييم ذاتي ← تقييم مشرف ← مراجعة مدير الفرع ← اعتماد نهائي', color: 'amber', icon: 'trending_up' },
+              { id: 5, title: 'نهاية الخدمة والذمة', en: 'Offboarding & Clearance', step: 'طلب انفكاك ← استرجاع العهد ← براءة ذمة ← صرف مكافأة نهاية الخدمة', color: 'rose', icon: 'exit_to_app' }
+            ].map(w => (
+              <div key={w.id} className={`p-4 rounded-2xl border shadow-sm space-y-2 ${
+                isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className="w-7 h-7 rounded-lg bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-xs font-mono">
+                    {w.id}
+                  </span>
+                  <span className="material-symbols-outlined text-slate-400 text-lg">{w.icon}</span>
+                </div>
+                <h4 className="font-bold text-xs" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{w.title}</h4>
+                <p className="text-[10px] text-slate-400 font-mono">{w.en}</p>
+                <div className="p-2 rounded-xl bg-white/50 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-[10px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {w.step}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* RACI Matrix Table */}
+          <div className={`p-6 rounded-3xl border shadow-xl space-y-4 ${
+            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+          }`}>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-3">
+              <div>
+                <h3 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t('مصفوفة المسؤوليات والصلاحيات المؤسسية (RACI Matrix)', 'Enterprise RACI Governance Matrix')}
+                </h3>
+                <p className="text-slate-500 text-[11px] mt-0.5">
+                  {t('توزيع الأدوار الرقابية والمساءلة الإدارية لمنع تضارب المصالح (Segregation of Duties)', 'Accountability & Responsibility mapping across departments')}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono">
+                <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold">R = Responsible (المنفذ)</span>
+                <span className="px-2 py-0.5 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold">A = Accountable (المعتمد)</span>
+                <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold">C = Consulted (المستشار)</span>
+                <span className="px-2 py-0.5 rounded bg-slate-500/15 text-slate-600 dark:text-slate-400 font-bold">I = Informed (المبلّغ)</span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-start">
+                <thead>
+                  <tr className={`border-b text-[11px] font-bold ${
+                    isDark ? 'border-slate-800 text-slate-400 bg-slate-900/50' : 'border-slate-200 text-slate-600 bg-slate-50'
+                  }`}>
+                    <th className="p-3 text-start">{t('العملية الإدارية / النشاط الرقابي', 'Process Activity')}</th>
+                    <th className="p-3 text-center">{t('الموظف', 'Employee')}</th>
+                    <th className="p-3 text-center">{t('المشرف المباشر', 'Supervisor')}</th>
+                    <th className="p-3 text-center">{t('مدير الفرع', 'Branch Mgr')}</th>
+                    <th className="p-3 text-center">{t('إدارة الموارد البشرية', 'HR Dept')}</th>
+                    <th className="p-3 text-center">{t('المدير المفوض / المجلس', 'Managing Dir')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                  {[
+                    { act: 'طلب وتقديم الإجازات الاعتيادية والمرضية', emp: 'R', sup: 'A', mgr: 'I', hr: 'C', md: 'I' },
+                    { act: 'إعداد واعتماد جدول رواتب الموظفين والبدلات', emp: 'I', sup: 'C', mgr: 'C', hr: 'R', md: 'A' },
+                    { act: 'إجراء تقييم الأداء السنوي ومراجعة الأهداف', emp: 'R', sup: 'R', mgr: 'A', hr: 'C', md: 'I' },
+                    { act: 'توريد اشتراكات الضمان الاجتماعي (قانون 18)', emp: 'I', sup: 'I', mgr: 'I', hr: 'R', md: 'A' },
+                    { act: 'تعديل مصفوفة الصلاحيات الأمنية RBAC', emp: 'I', sup: 'I', mgr: 'C', hr: 'C', md: 'A' },
+                    { act: 'استلام براءة الذمة واسترجاع العهد الرقمية', emp: 'R', sup: 'C', mgr: 'A', hr: 'A', md: 'I' }
+                  ].map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-500/5 transition-colors">
+                      <td className="p-3 font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{row.act}</td>
+                      <td className="p-3 text-center font-mono font-bold text-emerald-600">{row.emp}</td>
+                      <td className="p-3 text-center font-mono font-bold text-blue-600">{row.sup}</td>
+                      <td className="p-3 text-center font-mono font-bold text-amber-600">{row.mgr}</td>
+                      <td className="p-3 text-center font-mono font-bold text-indigo-600">{row.hr}</td>
+                      <td className="p-3 text-center font-mono font-bold text-rose-600">{row.md}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SLAs & Performance Control Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className={`p-4 rounded-2xl border space-y-1.5 ${
+              isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 font-bold">
+                <span className="material-symbols-outlined text-lg">timer</span>
+                <span>{t('اتفاقية معالجة الإجازات (SLA)', 'Leave Processing SLA')}</span>
+              </div>
+              <p className="text-xl font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>أقل من 24 ساعة</p>
+              <p className="text-[10px] text-slate-500">{t('اعتماد فوري من المشرف المباشر وتحديث الرصيد', 'Instant supervisor sign-off')}</p>
+            </div>
+
+            <div className={`p-4 rounded-2xl border space-y-1.5 ${
+              isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold">
+                <span className="material-symbols-outlined text-lg">verified_user</span>
+                <span>{t('إقفال كشوفات الرواتب', 'Payroll Closure Deadline')}</span>
+              </div>
+              <p className="text-xl font-bold text-blue-600 dark:text-blue-400">يوم 26 شهرياً</p>
+              <p className="text-[10px] text-slate-500">{t('مطابقة التايم شيت ورفع ملف التوطين للبنك', 'Timesheet freeze & bank upload')}</p>
+            </div>
+
+            <div className={`p-4 rounded-2xl border space-y-1.5 ${
+              isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
+                <span className="material-symbols-outlined text-lg">policy</span>
+                <span>{t('توريد اشتراكات الضمان', 'Social Security Filing')}</span>
+              </div>
+              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">قبل يوم 15</p>
+              <p className="text-[10px] text-slate-500">{t('سداد حصة الـ 17% لمنصة الضمان الإلكترونية', '17% statutory monthly wire')}</p>
+            </div>
           </div>
         </div>
       )}

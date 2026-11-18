@@ -221,6 +221,7 @@ function AppContent() {
 
       // Category 9: Risk, Compliance & Security
       case 'cat-9-risk':
+      case 'risk-process-map':
       case 'risk-audit-reports':
       case 'risk-governance':
       case 'risk-tracker':
