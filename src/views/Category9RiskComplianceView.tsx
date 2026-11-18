@@ -3412,10 +3412,12 @@ export const Category9RiskComplianceView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsLiveAuditStreaming(prev => !prev)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${isLiveAuditStreaming
-                  ? isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20' : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                  : isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20' : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                  }`}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer badge-white-text ${
+                  isLiveAuditStreaming
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white border border-amber-500 shadow-amber-600/20'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 shadow-emerald-600/20'
+                }`}
+                style={{ color: '#ffffff' }}
                 title={isLiveAuditStreaming ? t('إيقاف التحديث اللحظي مؤقتاً', 'Pause Live Feed') : t('استئناف التحديث اللحظي', 'Resume Live Feed')}
               >
                 <span className="material-symbols-outlined text-sm">
