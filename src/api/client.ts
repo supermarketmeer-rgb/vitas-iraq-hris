@@ -84,9 +84,17 @@ export const apiClient = {
 
 // API Endpoints
 export const api = {
-  // Health check
+  // Health check & System Developer Tools
   health: () => apiClient.get('/health'),
   getSystemHealthTelemetry: () => apiClient.get('/system/health-telemetry'),
+  getEndpointsStatus: () => apiClient.get('/system/endpoints-status'),
+  getHealthConfig: () => apiClient.get('/system/health-config'),
+  saveHealthConfig: (config: any) => apiClient.post('/system/health-config', config),
+  getGatewayInfo: () => apiClient.get('/system/gateway-info'),
+  runApiExplorer: (payload: { endpoint: string; method?: string }) => apiClient.post('/system/api-explorer', payload),
+  getDbTables: () => apiClient.get('/system/db-tables'),
+  getN8nWorkflows: () => apiClient.get('/system/n8n-workflows'),
+  testN8nWebhook: (payload: { workflowId: string }) => apiClient.post('/system/n8n-test-webhook', payload),
 
   // Authentication
   login: (credentials: { username: string; password: string }) => apiClient.post('/login', credentials),
