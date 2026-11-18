@@ -78,66 +78,6 @@ const AUDIT_REPORTS_DATA = [
   }
 ];
 
-// Official Company Policies Data
-const COMPANY_POLICIES_DATA = [
-  {
-    code: 'POL-HR-01',
-    title: 'دليل سياسات وإجراءات الموارد البشرية والتوظيف',
-    version: 'v3.2',
-    date: '2026-01-01',
-    pages: '45 صفحة',
-    desc: 'المعايير المعتمدة للتعيين، التقييم، الترقية، الرواتب والبدلات، وإنهاء الخدمة وفق قانون العمل العراقي.',
-    chapters: [
-      { title: 'الفصل الأول: أحكام عامة ونطاق التطبيق', content: 'تسري هذه اللائحة على جميع العاملين بعقود عمل محددة أو غير محددة المدة في مؤسسة فيتاس العراق لتمويل المشاريع الصغيرة والمتوسطة، وتعتبر جزءاً لا يتجزأ من عقد العمل الفردي.' },
-      { title: 'الفصل الثاني: سياسات الاستقطاب والتعيين', content: 'يتم التعيين بناءً على الكفاءة والشفافية وتكافؤ الفرص مع خضوع المرشحين لفحص النزاهة والمطابقة مع القوائم الرقابية المعتمدة من البنك المركزي العراقي وفترة تجربة قانونية لمدة 90 يوماً.' },
-      { title: 'الفصل الثالث: إدارة الأداء والترقيات والبدلات', content: 'تعتمد المؤسسة نظام التقييم السنوي الشامل للأداء المؤسسي والفردي، وتحدد الترقيات والعلاوات السنوية وفقاً لنتائج التقييم المحققة ومؤشرات الأداء الرئيسية (KPIs).' },
-      { title: 'الفصل الرابع: إنهاء الخدمة وبراءة الذمة', content: 'تنتهي خدمة الموظف وفق الحالات المنصوص عليها في قانون العمل العراقي رقم 37 لسنة 2015، وتصرف مكافأة نهاية الخدمة ومستحقات الإجازات المتراكمة فور استكمال إجراءات براءة الذمة واسترجاع العهد.' }
-    ]
-  },
-  {
-    code: 'POL-SEC-02',
-    title: 'سياسة أمان المعلومات وسرية البيانات والأجهزة',
-    version: 'v2.8',
-    date: '2025-12-10',
-    pages: '28 صفحة',
-    desc: 'ضوابط كلمات المرور، استخدام الحواسيب المحمولة، وحظر تسريب بيانات المقترضين وسرية المعاملات المالية.',
-    chapters: [
-      { title: 'الفصل الأول: تصنيف وسرية البيانات', content: 'تُصنف جميع بيانات المقترضين، سجلات الرواتب، القوائم المالية، ومفاتيح النظام كبيانات "سرية للغاية" يُحظر تداولها خارج بيئة العمل المصرح بها أو نسخها على وسائط خارجية غير مشفرة.' },
-      { title: 'الفصل الثاني: ضوابط النفاذ وكلمات المرور', content: 'يجب أن لا تقل كلمات المرور عن 10 خانات مركبة، مع إلزامية التغيير الدوري كل 90 يوماً وتفعيل المصادقة الثنائية (2FA) لجميع مسؤولي النظام وأصحاب الصلاحيات المالية.' },
-      { title: 'الفصل الثالث: الاستخدام الآمن للشبكة والحواسيب', content: 'يُحظر استخدام شبكات Wi-Fi العامة غير المحمية للاتصال بالنظام دون تفعيل شبكة VPN المؤسسية المشفرة، كما يُحظر تنصيب برمجيات أو برامج مشاركة الملفات خارج المتجر المعتمد.' },
-      { title: 'الفصل الرابع: الاستجابة للحوادث والمساءلة', content: 'يتم التبليغ عن أي اشتباه باختراق أو تسريب خلال 60 دقيقة لفريق أمن المعلومات. يُعرض تسريب بيانات العملاء الموظف للمساءلة القانونية والفصل وفق أحكام القانون العراقي.' }
-    ]
-  },
-  {
-    code: 'POL-ETH-03',
-    title: 'ميثاق السلوك المهني والنزاهة ومكافحة الفساد',
-    version: 'v4.0',
-    date: '2026-01-15',
-    pages: '18 صفحة',
-    desc: 'قواعد تجنب تضارب المصالح، قبول الهدايا، وحماية أصول المؤسسة وسمعتها، ومبادئ حماية المستهلك المالي.',
-    chapters: [
-      { title: 'الفصل الأول: النزاهة والأمانة المهنية', content: 'يلتزم موظفو فيتاس العراق بأعلى معايير الصدق والشفافية في كافة المعاملات الائتمانية والتعامل مع المقترضين والزملاء باحترام ومهنية تامة.' },
-      { title: 'الفصل الثاني: حظر قبول الهدايا والرشاوى', content: 'يُحظر حظراً تاماً على أي موظف طلب أو قبول أي مبالغ مالية أو هدايا عينية أو تسهيلات من المقترضين أو الموردين، وتعتبر أي مخالفة لذلك مبرراً للفصل المباشر والإحالة للقضاء.' },
-      { title: 'الفصل الثالث: سياسة منع تضارب المصالح', content: 'يجب على الموظف الإفصاح كتابياً عن أي صلة قرابة حتى الدرجة الرابعة مع أي مقترض أو طالب وظيفة أو مورد، ويمتنع عن المشاركة في أي قرار ائتماني أو مالي يخصهم.' },
-      { title: 'الفصل الرابع: الإبلاغ عن المخالفات (Whistleblowing)', content: 'توفر المؤسسة قناة سرية ومحمية للإبلاغ عن أي ممارسات غير قانونية مع ضمان الحماية الكاملة للمبلغ من أي إجراءات انتقامية.' }
-    ]
-  },
-  {
-    code: 'POL-LEV-04',
-    title: 'لائحة تنظيم الدوام الرسمي والإجازات والانضباط',
-    version: 'v3.0',
-    date: '2025-11-05',
-    pages: '22 صفحة',
-    desc: 'ضوابط الإجازات السنوية، المرضية، الاستثنائية، وساعات العمل المرنة والعطل الرسمية والجزاءات التأديبية.',
-    chapters: [
-      { title: 'الفصل الأول: ساعات العمل وأجهزة البصمة', content: 'ساعات العمل الرسمية 8 ساعات يومياً بمعدل 40 ساعة أسبوعياً. يتم تسجيل الحضور والانصراف عبر أجهزة البصمة البيومترية أو التطبيق الجغرافي المعتمد.' },
-      { title: 'الفصل الثاني: الإجازات الاعتيادية والسنوية', content: 'يستحق الموظف إجازة اعتيادية براتب تام بواقع (20) يوماً عن كل سنة خدمة فعلية، وتزداد إلى (30) يوماً لمن أمضى خمس سنوات في الخدمة، وتُقدم عبر البوابة قبل 72 ساعة على الأقل.' },
-      { title: 'الفصل الثالث: الإجازات المرضية والطارئة', content: 'تمنح الإجازة المرضية بموجب تقرير طبي رسمي معتمد من الجهات الصحية المختصة. ويجوز منح إجازة طارئة لا تتجاوز 4 أيام في السنة لأسباب قاهرة.' },
-      { title: 'الفصل الرابع: المخالفات والجزاءات التأديبية', content: 'تتدرج العقوبات التأديبية من التنبيه، والإنذار، وقطع الراتب بما لا يتجاوز 3 أيام شهرياً، وتأجيل العلاوة، وحتى الفصل في حالات الغياب بدون عذر لأكثر من 10 أيام متصلة.' }
-    ]
-  }
-];
-
 export const Category9RiskComplianceView: React.FC = () => {
   const {
     activeModuleId,
@@ -153,6 +93,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     language,
     theme,
     appSettings,
+    updateAppSetting,
     t
   } = useApp();
 
@@ -220,6 +161,316 @@ export const Category9RiskComplianceView: React.FC = () => {
   const [selectedReportForView, setSelectedReportForView] = useState<any | null>(null);
   const [selectedPolicyForView, setSelectedPolicyForView] = useState<any | null>(null);
   const [policySearchQuery, setPolicySearchQuery] = useState('');
+  const [isAddPolicyModalOpen, setIsAddPolicyModalOpen] = useState(false);
+  const [newPolicyForm, setNewPolicyForm] = useState({
+    code: '',
+    title: '',
+    category: 'إدارية وتنظيمية',
+    version: 'v1.0',
+    pages: '5 صفحات',
+    desc: '',
+    chapters: [
+      { title: 'الفصل الأول: نطاق وتطبيق السياسة', content: '' },
+      { title: 'الفصل الثاني: القواعد والضوابط الإلزامية', content: '' }
+    ]
+  });
+
+  // Dynamic System Policies derived EXCLUSIVELY from entered system settings & rules
+  const systemPolicies = useMemo(() => {
+    const s = appSettings || {};
+
+    const annualLeaveDays = s.annual_leave_days_default || s.annual_leave_balance || '20';
+    const sickLeaveDays = s.sick_leave_days_default || s.max_sick_leave || '30';
+    const marriageLeave = s.marriage_leave_limit || '5';
+    const maternityLeave = s.maternity_leave_limit || '72';
+    const emergencyLeave = s.emergency_leave_limit || '4';
+    const bereavementLeave = s.bereavement_indirect_leave_limit || '3';
+    const unpaidLeave = s.unpaid_leave_limit || '30';
+
+    const workingHours = s.working_hours_per_day || '8';
+    const workingDays = s.working_days_per_month || '22';
+    const thursdayEnd = s.thursday_work_hours_end || '15:00';
+    const overtimeRate = s.overtime_rate_multiplier || '1.5';
+    const weekendFri = s.weekend_friday === '0' ? 'عمل' : 'عطلة رسمية';
+    const weekendSat = s.weekend_saturday === '0' ? 'عمل' : 'عطلة رسمية';
+
+    const transAllowance = s.transportation_allowance_default ? `${Number(s.transportation_allowance_default).toLocaleString()} د.ع` : '100,000 د.ع';
+    const houseAllowance = s.housing_allowance_default ? `${Number(s.housing_allowance_default).toLocaleString()} د.ع` : '150,000 د.ع';
+    const childAllowance = s.child_allowance_default ? `${Number(s.child_allowance_default).toLocaleString()} د.ع` : '25,000 د.ع';
+    const marriageAllowance = s.marriage_allowance_default ? `${Number(s.marriage_allowance_default).toLocaleString()} د.ع` : '50,000 د.ع';
+    const certMaster = s.certificate_allowance_master ? `${Number(s.certificate_allowance_master).toLocaleString()} د.ع` : '150,000 د.ع';
+    const certBach = s.certificate_allowance_bachelar ? `${Number(s.certificate_allowance_bachelar).toLocaleString()} د.ع` : '100,000 د.ع';
+    const certDip = s.certificate_allowance_diplome ? `${Number(s.certificate_allowance_diplome).toLocaleString()} د.ع` : '50,000 د.ع';
+
+    const ssCompany = s.social_security_company_share || '12';
+    const ssEmployee = s.social_security_employee_share || '5';
+    const ssTotal = s.social_security_rate_default || '17';
+    const insDeduction = s.insurance_deduction_default ? `${Number(s.insurance_deduction_default).toLocaleString()} د.ع` : '10,000 د.ع';
+
+    const fxRate = s.usd_to_iqd_rate || '1310';
+    const curr = s.currency || 'IQD';
+
+    const builtIn: any[] = [
+      {
+        code: 'POL-LEV-01',
+        title: 'سياسة ولائحة الإجازات الرسمية والسنوية والغياب',
+        version: 'v3.2',
+        date: s.security_settings_updated_at?.split('T')[0] || '2026-01-01',
+        pages: '12 صفحة',
+        category: 'إجازات ودوام',
+        isBuiltIn: true,
+        desc: `ضوابط الإجازات المدخلة بالنظام: السنوية (${annualLeaveDays} يوماً وتصل لـ 30 يوماً بعد 5 سنوات)، المرضية (${sickLeaveDays} يوماً)، الزواج (${marriageLeave} أيام)، الأمومة (${maternityLeave} يوماً)، والطارئة (${emergencyLeave} أيام).`,
+        chapters: [
+          {
+            title: 'الفصل الأول: الإجازة السنوية والاعتيادية (قانون العمل العراقي)',
+            content: `يستحق الموظف رصيد إجازة سنوية مدفوعة الراتب بالكامل بواقع (${annualLeaveDays}) يوماً عن كل سنة خدمة فعلية، وتزداد إلى (30) يوماً بعد إتمام (5) سنوات خدمة بموجب قانون العمل العراقي رقم 37 لسنة 2015 ولائحة فيتاس العراق.`
+          },
+          {
+            title: 'الفصل الثاني: الإجازات المرضية والإجراءات الطبية',
+            content: `يمنح الموظف إجازة مرضية بحد أقصى (${sickLeaveDays}) يوماً خلال السنة التعاقدية الواحدة استناداً إلى تقرير طبي رسمي صادر عن جهة صحية معتمدة، وتصرف براتب تام وفق الضوابط.`
+          },
+          {
+            title: 'الفصل الثالث: الإجازات الخاصة والمناسبات والطارئة',
+            content: `تمنح إجازة الزواج لمدة (${marriageLeave}) أيام، وإجازة الأمومة ورعاية المولود لمدة (${maternityLeave}) يوماً مدفوعة الأجر، وإجازة الوفاة لمدة (${bereavementLeave}) أيام، والإجازة الطارئة بحد أقصى (${emergencyLeave}) أيام، مع إمكانية منح إجازة غير مدفوعة الأجر لمدة (${unpaidLeave}) يوماً بطلب رسمي.`
+          },
+          {
+            title: 'الفصل الرابع: مسار تقديم واعتماد الإجازات',
+            content: 'يتم تقديم طلب الإجازة إلكترونياً عبر البوابة الذاتية للموظف قبل الموعد بـ 48 ساعة على الأقل، ويشترط موافقة المشرف المباشر ومسؤول الموارد البشرية لاعتمادها وخصمها من الرصيد النشط.'
+          }
+        ]
+      },
+      {
+        code: 'POL-SCH-02',
+        title: 'سياسة الدوام وساعات العمل والعطل الأسبوعية',
+        version: 'v2.8',
+        date: s.security_settings_updated_at?.split('T')[0] || '2026-01-10',
+        pages: '8 صفحات',
+        category: 'تنظيم إداري',
+        isBuiltIn: true,
+        desc: `ساعات العمل المقررة في النظام: (${workingHours}) ساعات يومياً (${workingDays} يوم شهرياً)، انتهاء دوام الخميس (${thursdayEnd})، العطلة الأسبوعية (الجمعة: ${weekendFri}، السبت: ${weekendSat})، ومعامل العمل الإضافي (${overtimeRate}x).`,
+        chapters: [
+          {
+            title: 'الفصل الأول: ساعات الدوام الرسمي وأوقات العمل',
+            content: `ساعات العمل الرسمية المقررة لمؤسسة فيتاس العراق هي (${workingHours}) ساعات يومياً بمعدل 40 ساعة أسبوعياً على مدار (${workingDays}) يوم عمل شهرياً، وينتهي الدوام يوم الخميس عند الساعة (${thursdayEnd}).`
+          },
+          {
+            title: 'الفصل الثاني: أيام العطلات الأسبوعية والرسمية',
+            content: `تعتبر أيام (الجمعة والسبت) عطلة أسبوعية رسمية مدفوعة الأجر لكافة ملاكات المؤسسة في الإدارة العامة وشبكة الفروع، بالإضافة إلى العطل الرسمية المعلنة من الحكومة الاتحادية.`
+          },
+          {
+            title: 'الفصل الثالث: تسجيل الحضور والانصراف والبصمة البيومترية',
+            content: 'يلتزم الموظف بتسجيل الحضور والانصراف عبر أجهزة البصمة المربوطة مركزياً بالنظام أو البوابة الجغرافية، ويتم رصد التأخيرات تلقائياً في التايم شيت الشهري.'
+          },
+          {
+            title: 'الفصل الرابع: ضوابط الساعات الإضافية (Overtime)',
+            content: `لا يجوز التكليف بالعمل الإضافي إلا بموافقة مسبقة من مدير الدائرة، ويتم احتساب بدل الساعات الإضافية بمضاعف (${overtimeRate}) ضعف أجر الساعة الاعتيادية وفق قانون العمل رقم 37 لسنة 2015.`
+          }
+        ]
+      },
+      {
+        code: 'POL-ALW-03',
+        title: 'سياسة البدلات والمخصصات والامتيازات المالية',
+        version: 'v3.5',
+        date: s.security_settings_updated_at?.split('T')[0] || '2026-02-01',
+        pages: '14 صفحة',
+        category: 'مالية وتعويضات',
+        isBuiltIn: true,
+        desc: `جدول البدلات المعتمد: بدل النقل (${transAllowance})، بدل السكن (${houseAllowance})، بدل الأطفال (${childAllowance})، علاوة الزواج (${marriageAllowance})، مخصصات الشهادات (ماجستير: ${certMaster}، بكالوريوس: ${certBach}، دبلوم: ${certDip}).`,
+        chapters: [
+          {
+            title: 'الفصل الأول: الهيكل العام للبدلات المعتمدة',
+            content: `تعتمد مؤسسة فيتاس العراق جدولاً موحداً للبدلات الشهرية الثابتة تشمل بدل النقل والانتقال (${transAllowance}) وبدل السكن (${houseAllowance}) وبدل الإعالة للأطفال (${childAllowance}) لكل طفل مستحق.`
+          },
+          {
+            title: 'الفصل الثاني: مخصصات التحصيل الدراسي والشهادات',
+            content: `تمنح مخصصات شهرية لتشجيع الكفاءات العلمية وفق المستويات المدخلة: شهادة الماجستير (${certMaster})، شهادة البكالوريوس (${certBach})، وشهادة الدبلوم (${certDip}) بعد مطابقة الشهادات مع ملف الموظف.`
+          },
+          {
+            title: 'الفصل الثالث: علاوة الزواج والبدلات الاستثنائية',
+            content: `تمنح علاوة الزواج الشهرية بقيمة (${marriageAllowance}) للموظف المتزوج، مع مخصصات المسؤولية ومواقع العمل الميدانية ومخاطر الائتمان المقررة بلائحة الرواتب.`
+          },
+          {
+            title: 'الفصل الرابع: مواعيد الصرف والتسوية المالية',
+            content: 'تدرج كافة البدلات المستحقة آلياً ضمن كشف الراتب الإجمالي وتصرف مع نهاية كل شهر ميلادي عبر الحسابات المصرفية الموطنة للموظفين.'
+          }
+        ]
+      },
+      {
+        code: 'POL-SEC-04',
+        title: 'سياسة الاستقطاعات والضمان الاجتماعي وضريبة الدخل',
+        version: 'v4.1',
+        date: s.security_settings_updated_at?.split('T')[0] || '2026-01-15',
+        pages: '16 صفحة',
+        category: 'قانوني وامتثال',
+        isBuiltIn: true,
+        desc: `قواعد الاستقطاع الإلزامي: اشتراك الضمان للعمال رقم 18 لسنة 2023 (حصة العامل: ${ssEmployee}%، حصة الشركة: ${ssCompany}% بمجموع ${ssTotal}%)، واشتراك التأمين الصحي (${insDeduction}).`,
+        chapters: [
+          {
+            title: 'الفصل الأول: تطبيق قانون التقاعد والضمان الاجتماعي للعمال رقم (18) لسنة 2023',
+            content: `تلتزم فيتاس العراق بالتسجيل الإلزامي لكافة موظفيها في دائرة التقاعد والضمان الاجتماعي للعمال، واستقطاع نسبة (${ssEmployee}%) من الأجر الخاضع للضمان وتوريد حصة المؤسسة البالغة (${ssCompany}%) ليصبح الإجمالي (${ssTotal}%).`
+          },
+          {
+            title: 'الفصل الثاني: ضريبة الدخل والاستقطاع المباشر',
+            content: 'تطبق نسب ضريبة الدخل والشرائح القانونية المعتمدة لدى الهيئة العامة للضرائب بموجب قانون ضريبة الدخل وتعديلاته بعد خصم السماحات القانونية للزوجية والأبناء وتنزيل حصة التقاعد.'
+          },
+          {
+            title: 'الفصل الثالث: التأمين الصحي والتكافل الاجتماعي',
+            content: `يخضع الموظفون للاستقطاع الشهري المخصص لوثيقة التأمين الصحي والرعاية الطبية الشاملة بمعدل (${insDeduction}) شهرياً لتأمين التغطية في المستشفيات والعيادات المعتمدة.`
+          },
+          {
+            title: 'الفصل الرابع: الجزاءات والخصومات الانضباطية',
+            content: 'لا يجوز إجراء أي استقطاع انضباطي إلا بقرار رسمي مسبب من لجنة التحقيق الإداري وبما لا يتجاوز سقف 3 أيام من الأجر الشهري وفق أحكام قانون العمل العراقي.'
+          }
+        ]
+      },
+      {
+        code: 'POL-FX-05',
+        title: 'سياسة أسعار الصرف ومطابقة العملات الأجنبية',
+        version: 'v2.2',
+        date: s.security_settings_updated_at?.split('T')[0] || '2026-02-10',
+        pages: '6 صفحات',
+        category: 'مالية ومصرفية',
+        isBuiltIn: true,
+        desc: `سعر الصرف المعتمد لصرف الرواتب والمطالبات المالية: (${fxRate}) د.ع لكل 1 دولار أمريكي، العملة الأساسية للحسابات (${curr}) مع سجل تاريخي لحركات الصرف.`,
+        chapters: [
+          {
+            title: 'الفصل الأول: العملة المعتمدة وسعر الصرف الإداري',
+            content: `تعتمد مؤسسة فيتاس العراق سعر صرف رسمي محدد في النظام بواقع (${fxRate}) دينار عراقي لكل دولار أمريكي لصرف المستحقات والرواتب والمطالبات المالية لضمان استقرار الدخل.`
+          },
+          {
+            title: 'الفصل الثاني: تحديث سعر الصرف وسجل التغييرات',
+            content: 'يتم تعديل سعر الصرف حصراً بقرار من الإدارة العامة وبموافقة المدير المالي، ويحفظ التاريخ الكامل لأسعار الصرف السابقة في سجل النظام التراكمي.'
+          },
+          {
+            title: 'الفصل الثالث: معالجة فروقات العملة والتحويلات المصرفية',
+            content: 'تتم تسوية كافة الحوالات والمطالبات الميدانية بالدينار العراقي استناداً إلى تعليمات البنك المركزي العراقي الخاصة بتوطين المدفوعات والرواتب بالعملة الوطنية.'
+          }
+        ]
+      }
+    ];
+
+    // Read custom entered policies from appSettings or localStorage
+    let customPolicies: any[] = [];
+    try {
+      const raw = s.vitas_custom_company_policies || localStorage.getItem('vitas_custom_company_policies');
+      if (raw) {
+        customPolicies = JSON.parse(raw);
+        if (!Array.isArray(customPolicies)) customPolicies = [];
+      }
+    } catch (e) {}
+
+    return [...builtIn, ...customPolicies];
+  }, [appSettings]);
+
+  // Handlers for adding/removing policy chapters
+  const handleAddPolicyChapter = () => {
+    setNewPolicyForm(prev => ({
+      ...prev,
+      chapters: [
+        ...prev.chapters,
+        { title: `الفصل ${prev.chapters.length + 1}: `, content: '' }
+      ]
+    }));
+  };
+
+  const handleRemovePolicyChapter = (idx: number) => {
+    setNewPolicyForm(prev => ({
+      ...prev,
+      chapters: prev.chapters.filter((_, i) => i !== idx)
+    }));
+  };
+
+  // Submit new policy
+  const handleSaveNewPolicy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPolicyForm.title.trim()) return;
+
+    const code = newPolicyForm.code.trim() || `POL-CUS-0${systemPolicies.length + 1}`;
+    const newPolicyObj = {
+      code,
+      title: newPolicyForm.title.trim(),
+      category: newPolicyForm.category,
+      version: newPolicyForm.version || 'v1.0',
+      date: new Date().toISOString().split('T')[0],
+      pages: newPolicyForm.pages || '5 صفحات',
+      desc: newPolicyForm.desc.trim() || 'سياسة ولوائح داخلية معتمدة من إدارة فيتاس العراق.',
+      isBuiltIn: false,
+      chapters: newPolicyForm.chapters.filter(ch => ch.title.trim() || ch.content.trim())
+    };
+
+    let currentCustom: any[] = [];
+    try {
+      const raw = appSettings?.vitas_custom_company_policies || localStorage.getItem('vitas_custom_company_policies');
+      if (raw) currentCustom = JSON.parse(raw);
+    } catch (e) {}
+
+    const updatedCustom = [newPolicyObj, ...currentCustom];
+    const stringified = JSON.stringify(updatedCustom);
+
+    try {
+      localStorage.setItem('vitas_custom_company_policies', stringified);
+      if (updateAppSetting) {
+        await updateAppSetting('vitas_custom_company_policies', stringified);
+      }
+      await (api as any).addAuditLog?.({
+        action: `إضافة واعتماد سياسة مؤسسية جديدة (${code} - ${newPolicyForm.title.trim()})`,
+        action_type: 'POLICY_CREATE',
+        severity: 'info',
+        module: 'اللوائح والسياسات (risk-policies)',
+        details: `تمت إضافة سياسة جديدة بواسطة: ${currentUser?.name || 'مسؤول النظام'}`
+      }).catch(() => {});
+    } catch (err) {
+      console.error(err);
+    }
+
+    setIsAddPolicyModalOpen(false);
+    setNewPolicyForm({
+      code: '',
+      title: '',
+      category: 'إدارية وتنظيمية',
+      version: 'v1.0',
+      pages: '5 صفحات',
+      desc: '',
+      chapters: [
+        { title: 'الفصل الأول: نطاق وتطبيق السياسة', content: '' },
+        { title: 'الفصل الثاني: القواعد والضوابط الإلزامية', content: '' }
+      ]
+    });
+
+    setAuditToast(language === 'ar' ? `تمت إضافة السياسة وتوليد البطاقة (${code}) تلقائياً بنجاح!` : `New policy (${code}) added and card generated!`);
+    setTimeout(() => setAuditToast(null), 3500);
+  };
+
+  // Delete custom policy
+  const handleDeleteCustomPolicy = async (code: string) => {
+    if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذه السياسة من سجل السياسات المعتمدة؟' : 'Are you sure you want to delete this policy?')) return;
+    
+    let currentCustom: any[] = [];
+    try {
+      const raw = appSettings?.vitas_custom_company_policies || localStorage.getItem('vitas_custom_company_policies');
+      if (raw) currentCustom = JSON.parse(raw);
+    } catch (e) {}
+
+    const updatedCustom = currentCustom.filter(p => p.code !== code);
+    const stringified = JSON.stringify(updatedCustom);
+
+    try {
+      localStorage.setItem('vitas_custom_company_policies', stringified);
+      if (updateAppSetting) {
+        await updateAppSetting('vitas_custom_company_policies', stringified);
+      }
+      await (api as any).addAuditLog?.({
+        action: `حذف سياسة مؤسسية (${code})`,
+        action_type: 'POLICY_DELETE',
+        severity: 'warning',
+        module: 'اللوائح والسياسات (risk-policies)',
+        details: `تم حذف السياسة بواسطة: ${currentUser?.name || 'مسؤول النظام'}`
+      }).catch(() => {});
+    } catch (err) {}
+
+    setAuditToast(language === 'ar' ? 'تم حذف السياسة بنجاح.' : 'Policy deleted successfully.');
+    setTimeout(() => setAuditToast(null), 3500);
+  };
 
   // --- 2. API Keys State ---
   const [apiKeys, setApiKeys] = useState<{ id: string; name: string; key: string; created: string; expires?: string; permissions?: string; status: string }[]>(() => {
@@ -2617,39 +2868,96 @@ export const Category9RiskComplianceView: React.FC = () => {
           MODULE 4: Company Policies Register (risk-policies / risk-training)
           ========================================================================= */}
       {(activeModuleId === 'risk-policies' || activeModuleId === 'risk-training') && (
-        <div className={`p-6 rounded-3xl border shadow-xl space-y-4 text-xs ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+        <div className={`p-6 rounded-3xl border shadow-xl space-y-5 text-xs ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-4">
             <div>
-              <h2 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                {t('سجل السياسات واللوائح الداخلية المعتمدة لمؤسسة فيتاس العراق', 'VITAS Iraq Approved Internal Policies Register')}
-              </h2>
-              <p className="text-slate-500 text-[11px] mt-0.5">{t('السياسات المعتمدة والملزمة لجميع موظفي المؤسسة في الإدارة العامة وكافة الفروع', 'Mandatory policies for all staff across HQ and branch network')}</p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t('سجل السياسات واللوائح المعتمدة بنظام فيتاس العراق', 'VITAS Iraq Approved Internal Policies Register')}
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30">
+                  {systemPolicies.length} {t('سياسات نشطة ومولدة', 'Active Policies')}
+                </span>
+              </div>
+              <p className="text-slate-500 text-[11px] mt-0.5">
+                {t('بطاقات ديناميكية مولدة حصراً من السياسات والقواعد المدخلة بالنظام، وتتولد تلقائياً فور إضافة أي سياسة جديدة', 'Dynamic policy cards derived exclusively from configured system policies, auto-generating cards when new policies are added')}
+              </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const nextCode = `POL-CUS-0${systemPolicies.length + 1}`;
+                setNewPolicyForm({
+                  code: nextCode,
+                  title: '',
+                  category: 'إدارية وتنظيمية',
+                  version: 'v1.0',
+                  pages: '5 صفحات',
+                  desc: '',
+                  chapters: [
+                    { title: 'الفصل الأول: نطاق وتطبيق السياسة', content: '' },
+                    { title: 'الفصل الثاني: القواعد والضوابط الإلزامية', content: '' }
+                  ]
+                });
+                setIsAddPolicyModalOpen(true);
+              }}
+              className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              <span>{t('+ إضافة سياسة جديدة', '+ Add New Policy')}</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {COMPANY_POLICIES_DATA.map(pol => (
-              <div key={pol.code} className={`p-4 rounded-2xl border space-y-3 shadow-sm ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+            {systemPolicies.map(pol => (
+              <div key={pol.code} className={`p-4 rounded-2xl border space-y-3 shadow-sm transition-all hover:border-teal-500/40 ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="font-mono text-[10px] text-teal-600 dark:text-teal-400 font-bold">{pol.code} • {pol.version}</span>
-                    <h3 className="font-bold text-sm mt-0.5" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{pol.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] text-teal-600 dark:text-teal-400 font-bold">{pol.code} • {pol.version}</span>
+                      {pol.isBuiltIn ? (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                          {t('سياسة نظام مدخلة', 'Configured System Policy')}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                          {t('سياسة مضافة', 'Custom Policy')}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-bold text-sm mt-1" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{pol.title}</h3>
                   </div>
                   <span className="px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 text-[10px] font-bold">
                     {pol.pages}
                   </span>
                 </div>
-                <p className="text-slate-500 leading-relaxed text-[11px]">{pol.desc}</p>
+
+                <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-[11px]">{pol.desc}</p>
+
                 <div className="pt-2 border-t border-slate-200 dark:border-white/5 flex items-center justify-between text-[11px]">
                   <span className="text-slate-400">{t('تاريخ التحديث:', 'Updated:')} <b className="font-mono text-slate-600 dark:text-slate-200">{pol.date}</b></span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPolicyForView(pol)}
-                    className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-[11px] transition-all flex items-center gap-1 shadow-sm cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-xs">visibility</span>
-                    <span>{t('استعراض الدليل', 'View Policy')}</span>
-                  </button>
+                  
+                  <div className="flex items-center gap-2">
+                    {!pol.isBuiltIn && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCustomPolicy(pol.code)}
+                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
+                        title={t('حذف السياسة', 'Delete Policy')}
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPolicyForView(pol)}
+                      className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-[11px] transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-xs">visibility</span>
+                      <span>{t('استعراض الدليل', 'View Policy')}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -6316,6 +6624,214 @@ export const Category9RiskComplianceView: React.FC = () => {
                 >
                   <span className="material-symbols-outlined text-sm">save</span>
                   <span>{t('حفظ التعديلات', 'Save Changes')}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          DYNAMIC "ADD NEW COMPANY POLICY" MODAL
+      ============================================================ */}
+      {isAddPolicyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border shadow-2xl p-6 space-y-5 text-xs ${
+            isDark ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 material-symbols-outlined text-lg">policy</span>
+                <div>
+                  <h3 className="font-bold text-sm">{t('إضافة واعتماد سياسة ولائحة جديدة', 'Add & Approve New Policy')}</h3>
+                  <p className="text-[11px] text-slate-500">{t('سيتم توليد بطاقة السياسة تلقائياً وإدراجها فوراً في سجل السياسات', 'Policy card will be auto-generated and added to policies register')}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddPolicyModalOpen(false)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewPolicy} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    {t('رمز السياسة *', 'Policy Code *')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: POL-REM-06"
+                    value={newPolicyForm.code}
+                    onChange={e => setNewPolicyForm({ ...newPolicyForm, code: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-bold outline-none ${
+                      isDark ? 'bg-slate-900 border-white/10 text-teal-400' : 'bg-slate-50 border-slate-300 text-teal-700'
+                    }`}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    {t('عنوان اللائحة / السياسة *', 'Policy Title *')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: سياسة العمل المرن والعمل عن بعد"
+                    value={newPolicyForm.title}
+                    onChange={e => setNewPolicyForm({ ...newPolicyForm, title: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
+                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    {t('الفئة / التصنيف', 'Category')}
+                  </label>
+                  <select
+                    value={newPolicyForm.category}
+                    onChange={e => setNewPolicyForm({ ...newPolicyForm, category: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${
+                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <option value="إدارية وتنظيمية">إدارية وتنظيمية</option>
+                    <option value="إجازات ودوام">إجازات ودوام</option>
+                    <option value="مالية وتعويضات">مالية وتعويضات</option>
+                    <option value="أمن وسلامة مهنية">أمن وسلامة مهنية</option>
+                    <option value="سلوك ونزاهة">سلوك ونزاهة</option>
+                    <option value="تقنية وسيبرانية">تقنية وسيبرانية</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    {t('رقم الإصدار', 'Version')}
+                  </label>
+                  <input
+                    type="text"
+                    value={newPolicyForm.version}
+                    onChange={e => setNewPolicyForm({ ...newPolicyForm, version: e.target.value })}
+                    placeholder="v1.0"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-mono outline-none ${
+                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    {t('عدد الصفحات التقريبي', 'Pages')}
+                  </label>
+                  <input
+                    type="text"
+                    value={newPolicyForm.pages}
+                    onChange={e => setNewPolicyForm({ ...newPolicyForm, pages: e.target.value })}
+                    placeholder="8 صفحات"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${
+                      isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                  {t('ملخص ونطاق تطبيق السياسة *', 'Policy Summary *')}
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={newPolicyForm.desc}
+                  onChange={e => setNewPolicyForm({ ...newPolicyForm, desc: e.target.value })}
+                  placeholder="وصف مختصر للسياسة والأهداف العامة منها..."
+                  className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                    isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+
+              {/* Dynamic Chapters and Articles */}
+              <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-white/10">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                    {t('فصول وبنود اللائحة المعتمدة', 'Policy Chapters & Clauses')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddPolicyChapter}
+                    className="px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-xs">add</span>
+                    <span>{t('إضافة فصل', 'Add Chapter')}</span>
+                  </button>
+                </div>
+
+                {newPolicyForm.chapters.map((ch, idx) => (
+                  <div key={idx} className="p-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <input
+                        type="text"
+                        placeholder={`عنوان الفصل ${idx + 1}`}
+                        value={ch.title}
+                        onChange={e => {
+                          const updated = [...newPolicyForm.chapters];
+                          updated[idx].title = e.target.value;
+                          setNewPolicyForm({ ...newPolicyForm, chapters: updated });
+                        }}
+                        className={`flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold outline-none ${
+                          isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                      />
+                      {newPolicyForm.chapters.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePolicyChapter(idx)}
+                          className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      )}
+                    </div>
+                    <textarea
+                      rows={2}
+                      placeholder={`أدخل نص وأحكام مواد الفصل ${idx + 1}...`}
+                      value={ch.content}
+                      onChange={e => {
+                        const updated = [...newPolicyForm.chapters];
+                        updated[idx].content = e.target.value;
+                        setNewPolicyForm({ ...newPolicyForm, chapters: updated });
+                      }}
+                      className={`w-full p-2.5 rounded-xl border text-xs outline-none ${
+                        isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddPolicyModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                >
+                  {t('إلغاء', 'Cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">verified</span>
+                  <span>{t('اعتماد وتوليد البطاقة', 'Approve & Generate Card')}</span>
                 </button>
               </div>
             </form>
