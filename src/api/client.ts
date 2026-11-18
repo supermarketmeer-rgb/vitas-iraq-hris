@@ -86,6 +86,7 @@ export const apiClient = {
 export const api = {
   // Health check
   health: () => apiClient.get('/health'),
+  getSystemHealthTelemetry: () => apiClient.get('/system/health-telemetry'),
 
   // Authentication
   login: (credentials: { username: string; password: string }) => apiClient.post('/login', credentials),

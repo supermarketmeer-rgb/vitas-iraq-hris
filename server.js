@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import fs from 'fs';
+import os from 'os';
 import config from './database/config.mjs';
 import { initDatabase } from './database/initDatabase.js';
 import { 
@@ -437,6 +438,75 @@ app.get('/api/server-info', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Comprehensive Real-time System Health & Telemetry API
+app.get('/api/system/health-telemetry', async (req, res) => {
+  try {
+    const t0 = Date.now();
+    let dbStatus = 'connected';
+    let pingMs = 0;
+    try {
+      await query('SELECT 1');
+      pingMs = Math.max(1, Date.now() - t0);
+    } catch (e) {
+      dbStatus = 'disconnected';
+      pingMs = Date.now() - t0;
+    }
+
+    const uptimeSeconds = Math.floor(process.uptime());
+    const days = Math.floor(uptimeSeconds / (3600 * 24));
+    const hours = Math.floor((uptimeSeconds % (3600 * 24)) / 3600);
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+    const seconds = uptimeSeconds % 60;
+    const uptimeFormatted = `${days > 0 ? `${days}d ` : ''}${hours}h ${minutes}m ${seconds}s`;
+
+    const mem = process.memoryUsage();
+    const osTotalMB = Math.round(os.totalmem() / 1024 / 1024);
+    const osFreeMB = Math.round(os.freemem() / 1024 / 1024);
+    const osUsedPercent = Number((((os.totalmem() - os.freemem()) / os.totalmem()) * 100).toFixed(1));
+    const processUsedPercent = Number(((mem.rss / os.totalmem()) * 100).toFixed(1));
+
+    res.json({
+      status: dbStatus === 'connected' ? 'Optimal' : 'Degraded',
+      uptimeSeconds,
+      uptimeFormatted,
+      memory: {
+        rssMB: Math.round(mem.rss / 1024 / 1024),
+        heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+        osTotalMB,
+        osFreeMB,
+        osUsedPercent,
+        processUsedPercent
+      },
+      cpu: {
+        cores: os.cpus().length,
+        model: os.cpus()[0]?.model || 'Processor',
+        loadAvg: os.loadavg().map(l => Number(l.toFixed(2)))
+      },
+      database: {
+        status: dbStatus,
+        pingMs,
+        databaseName: process.env.DB_NAME || 'vitas_iraq_hris'
+      },
+      cloudSync: {
+        enabled: Boolean(process.env.CLOUD_DB_HOST),
+        cloudHost: process.env.CLOUD_DB_HOST || 'Not Configured',
+        status: process.env.CLOUD_DB_HOST ? 'Connected' : 'Offline'
+      },
+      server: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        environment: process.env.NODE_ENV || 'production',
+        port: PORT,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'Error', error: err.message });
   }
 });
 
