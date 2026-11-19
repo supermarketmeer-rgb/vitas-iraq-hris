@@ -180,7 +180,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             <button
               onClick={onReprocess}
               disabled={isReprocessing}
-              className="px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white shadow-md border border-slate-700 dark:border-slate-600 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
             >
               <span className={`material-symbols-outlined text-sm ${isReprocessing ? 'animate-spin' : ''}`}>refresh</span>
               <span>{t.reprocess_attendance}</span>
@@ -188,7 +188,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
             <button
               onClick={onExportExcel}
-              className="px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md transition-all flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
             >
               <span className="material-symbols-outlined text-sm">table_chart</span>
               <span>{t.export_excel}</span>
@@ -196,7 +196,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
             <button
               onClick={onExportPdf}
-              className="px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 text-white border border-white/10 transition-all flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white shadow-md border border-slate-700 dark:border-slate-600 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
             >
               <span className="material-symbols-outlined text-sm">print</span>
               <span>{t.export_pdf}</span>
