@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { DashboardStats, Language } from './types';
 import * as XLSX from 'xlsx';
+import { isLebanonEmployee } from '../../utils/lebanonHelper';
 
 export type KpiType = 'present' | 'late' | 'on_leave' | 'early_leave' | 'missing_punch' | 'absent';
 
@@ -38,11 +39,14 @@ export const KpiAttendanceDetailsModal: React.FC<KpiAttendanceDetailsModalProps>
   lang,
   onClose,
   stats,
-  employees = [],
+  employees: rawEmployees = [],
 }) => {
   // 1. All Hooks called unconditionally at top level
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('All');
+
+  // Strictly filter out Lebanon employees
+  const employees = useMemo(() => (rawEmployees || []).filter(e => !isLebanonEmployee(e)), [rawEmployees]);
 
   // Metadata for each KPI
   const kpiConfig: Record<KpiType, {

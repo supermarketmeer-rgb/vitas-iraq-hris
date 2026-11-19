@@ -6,6 +6,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { CHF_LOGO_BASE64, VITAS_LOGO_BASE64 } from './timesheetLogos';
 import { isCleanerOrSupervisor } from '../../utils/overtimePolicy';
+import { isLebanonEmployee } from '../../utils/lebanonHelper';
 
 interface TimesheetRecord {
   dayName: string;
@@ -268,7 +269,9 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
         }
         const data = await res.json();
         if (isMounted && data.employees && data.employees.length > 0) {
-          const processedEmployees = data.employees.map(normalizeAndRecalculateEmployee);
+          const processedEmployees = data.employees
+            .filter((e: any) => !isLebanonEmployee({ ...e, branch: e.location, employeeCode: e.code }))
+            .map(normalizeAndRecalculateEmployee);
           setEmployees(processedEmployees);
           let activeCycle = data.cycle || '21-09-2026 To 20-10-2026';
           try {

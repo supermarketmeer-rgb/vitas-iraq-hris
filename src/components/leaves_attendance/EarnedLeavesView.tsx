@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { AttendanceRecord, Language, LeaveBalance, LeaveRequest } from './types';
 import { leavesApi } from './api';
+import { isLebanonEmployee } from '../../utils/lebanonHelper';
 
 interface EarnedLeavesViewProps {
   employees: any[];
@@ -40,7 +41,7 @@ interface EmployeeEarnedLeaveRow {
 }
 
 export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
-  employees = [],
+  employees: rawEmployees = [],
   attendanceRecords = [],
   leaveBalances = [],
   leaveRequests = [],
@@ -51,6 +52,9 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
 }) => {
   const isAr = lang === 'ar';
   const safeAppSettings = appSettings || {};
+
+  // Strictly filter out Lebanon employees
+  const employees = useMemo(() => (rawEmployees || []).filter(e => !isLebanonEmployee(e)), [rawEmployees]);
 
   // Configurable parameters
   const defaultWorkHours = (() => {

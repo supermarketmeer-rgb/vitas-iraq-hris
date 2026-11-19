@@ -26,6 +26,7 @@ import {
   initialCorrectionRequests,
   initialLeaveTypes,
 } from './mockHrisDb';
+import { isLebanonEmployee, filterIraqEmployees } from '../../utils/lebanonHelper';
 
 let mockUsers = [...userProfiles];
 let mockActiveUser = mockUsers[1]; // Default to Manager
@@ -81,6 +82,10 @@ const BRANCH_EN_MAP: Record<string, string> = {
 export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<string, string>) => {
   if (!Array.isArray(appEmployees) || appEmployees.length === 0) return;
 
+  // Strictly exclude Lebanon employees from Attendance Module per institutional policy
+  const iraqEmployees = appEmployees.filter(emp => !isLebanonEmployee(emp));
+  if (iraqEmployees.length === 0) return;
+
   const today = new Date().toISOString().split('T')[0];
 
   // Extract policy settings from Settings > Policies if configured
@@ -110,8 +115,8 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
     return { ...lt, max_days_per_year: maxDays };
   });
 
-  // Map real app employees into Attendance Employee objects using employee ID as exact key
-  const mappedEmps = appEmployees.map((emp, index) => {
+  // Map real app employees into Attendance Employee objects using employee ID as exact key (excluding Lebanon)
+  const mappedEmps = iraqEmployees.map((emp, index) => {
     const rawId = emp.id !== undefined && emp.id !== null ? String(emp.id) : String(index + 1);
     const numId = parseInt(rawId.replace(/\D/g, ''), 10) || (index + 1);
     
@@ -573,10 +578,13 @@ export const api = {
         records = records.filter((r) => r.overtime_minutes > 0);
       }
 
+      // Strictly exclude any Lebanon records
+      records = records.filter((r) => !isLebanonEmployee(r));
+
       return { records, total: records.length };
     }
 
-    let filtered = [...mockAttendance];
+    let filtered = mockAttendance.filter((r) => !isLebanonEmployee(r));
     if (params?.status) {
       filtered = filtered.filter((r) => r.status === params.status);
     }
@@ -644,9 +652,11 @@ export const api = {
   async getLeaveBalances(employeeId?: number): Promise<{ balances: LeaveBalance[] }> {
     const query = employeeId ? `?employee_id=${employeeId}` : '';
     const data = await safeFetchJson(`/api/leaves/balances${query}`);
-    if (data && Array.isArray(data.balances)) return data;
+    if (data && Array.isArray(data.balances)) {
+      return { balances: data.balances.filter(b => !isLebanonEmployee(b)) };
+    }
 
-    return { balances: mockBalances };
+    return { balances: mockBalances.filter(b => !isLebanonEmployee(b)) };
   },
 
   async updateLeaveBalance(balanceId: number, updates: Partial<LeaveBalance>): Promise<{ balance: LeaveBalance }> {
@@ -684,9 +694,13 @@ export const api = {
       });
     }
     const data = await safeFetchJson(`/api/leaves/requests?${query.toString()}`);
-    if (data && Array.isArray(data.requests)) return data;
+    if (data && Array.isArray(data.requests)) {
+      const filtered = data.requests.filter((r: any) => !isLebanonEmployee(r));
+      return { requests: filtered, total: filtered.length };
+    }
 
-    return { requests: mockLeaves, total: mockLeaves.length };
+    const filteredMock = mockLeaves.filter(r => !isLebanonEmployee(r));
+    return { requests: filteredMock, total: filteredMock.length };
   },
 
   async applyLeave(data: Partial<LeaveRequest>): Promise<any> {

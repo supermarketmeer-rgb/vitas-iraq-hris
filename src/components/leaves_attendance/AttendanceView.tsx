@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, Language } from './types';
 import { translations } from './translations';
 import { useApp } from '../../context/AppContext';
+import { isLebanonEmployee } from '../../utils/lebanonHelper';
 
 interface AttendanceViewProps {
   records: AttendanceRecord[];
@@ -64,7 +65,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
-  const filteredRecords = records.filter((r) => {
+  // Strictly exclude Lebanon records from Biometric Attendance Registry
+  const validRecords = useMemo(() => records.filter(r => !isLebanonEmployee(r)), [records]);
+
+  const filteredRecords = validRecords.filter((r) => {
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       const matchName =
@@ -86,13 +90,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     return true;
   });
 
-  const totalCount = records.length;
-  const presentCount = records.filter(
+  const totalCount = validRecords.length;
+  const presentCount = validRecords.filter(
     (r) => r.status === 'present' || r.status === 'late' || r.status === 'early_leave'
   ).length;
-  const lateCount = records.filter((r) => r.late_minutes > 0 || r.status === 'late').length;
-  const missingCount = records.filter((r) => r.status === 'missing_punch').length;
-  const totalOvertimeMins = records.reduce((acc, r) => acc + (r.overtime_minutes || 0), 0);
+  const lateCount = validRecords.filter((r) => r.late_minutes > 0 || r.status === 'late').length;
+  const missingCount = validRecords.filter((r) => r.status === 'missing_punch').length;
+  const totalOvertimeMins = validRecords.reduce((acc, r) => acc + (r.overtime_minutes || 0), 0);
 
   const totalPages = Math.ceil(filteredRecords.length / pageSize) || 1;
   const paginatedRecords = filteredRecords.slice(
@@ -165,7 +169,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               <span className={`text-xs font-mono px-2.5 py-0.5 rounded-full ${
                 isDark ? 'text-slate-400 bg-white/5' : 'text-slate-600 bg-slate-100'
               }`}>
-                {records.length} {lang === 'ar' ? 'سجل دوام' : 'Records'}
+                {totalCount} {lang === 'ar' ? 'سجل دوام' : 'Records'}
               </span>
             </div>
             <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>

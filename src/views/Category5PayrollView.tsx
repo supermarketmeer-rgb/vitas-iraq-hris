@@ -19,6 +19,7 @@ import {
   getCleanerHolidayOvertimeDays,
   calculateOvertimeCompensation,
 } from '../utils/overtimePolicy';
+import { filterIraqEmployees, isLebanonEmployee } from '../utils/lebanonHelper';
 
 interface EmployeeAdjustment {
   absenceDays?: number;
@@ -152,8 +153,11 @@ function parseDateParts(dateVal: any): { year: number; month: number; day: numbe
 }
 
 export const Category5PayrollView: React.FC = () => {
-  const { activeModuleId, setActiveModuleId, employees, updateEmployee, t, currentUser, language, theme, appSettings, updateAppSetting, updateAppSettings, refreshAllData } = useApp();
+  const { activeModuleId, setActiveModuleId, employees: rawEmployees, updateEmployee, t, currentUser, language, theme, appSettings, updateAppSetting, updateAppSettings, refreshAllData } = useApp();
   const isDark = theme === 'dark';
+
+  // Strictly filter out Lebanon employees from the Payroll Module (managed via dedicated regional module)
+  const employees = useMemo(() => filterIraqEmployees(rawEmployees || []), [rawEmployees]);
 
   // Period Selection: Automatically initialized to current live system year & month
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
@@ -645,14 +649,14 @@ export const Category5PayrollView: React.FC = () => {
     return approvalRequests.find(r => r.id === selectedClaimId) || approvalRequests[0];
   }, [approvalRequests, selectedClaimId]);
 
-  // Branch list
+  // Branch list (excluding Lebanon)
   const branchesList = useMemo(() => {
     const set = new Set<string>();
     employees.forEach(e => {
       if (e.branch) set.add(e.branch);
       if (e.location_ar) set.add(e.location_ar);
     });
-    return Array.from(set).filter(Boolean);
+    return Array.from(set).filter(b => b && !isLebanonEmployee({ branch: b }));
   }, [employees]);
 
   // Compute live payroll rows for all employees (Matching XAMPP/vitasiraq_hris_db & hrms_pro_db `payroll_finalized_rows` schema 100%)

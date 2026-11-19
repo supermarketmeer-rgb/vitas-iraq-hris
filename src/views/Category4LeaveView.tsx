@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { leavesApi } from '../components/leaves_attendance/api';
+import { filterIraqEmployees, isLebanonEmployee } from '../utils/lebanonHelper';
 import {
   AttendanceRecord,
   AttendanceCorrectionRequest,
@@ -38,13 +39,16 @@ export const Category4LeaveView: React.FC = () => {
     activeModuleId,
     setActiveModuleId,
     language,
-    employees,
+    employees: rawEmployees,
     scopedEmployees,
     appSettings,
     currentUser: appUser,
     currentUserRole
   } = useApp();
   const lang: Language = (language === 'en' ? 'en' : 'ar') as Language;
+
+  // Strictly filter out Lebanon employees from Attendance & Leaves Module
+  const employees = useMemo(() => filterIraqEmployees(rawEmployees || []), [rawEmployees]);
 
   const isSuperAdminOrHR =
     currentUserRole === 'Super Admin' ||
@@ -140,19 +144,19 @@ export const Category4LeaveView: React.FC = () => {
 
       const attRes = await leavesApi.getAttendanceRecords();
       if (attRes.data) {
-        const filtered = isEmployeeRole ? attRes.data.filter(matchesCurrentEmployee) : attRes.data;
+        const filtered = (isEmployeeRole ? attRes.data.filter(matchesCurrentEmployee) : attRes.data).filter(r => !isLebanonEmployee(r));
         setAttendanceRecords(filtered);
       }
 
       const reqsRes = await leavesApi.getLeaveRequests();
       if (reqsRes.data) {
-        const filteredReqs = isEmployeeRole ? reqsRes.data.filter(matchesCurrentEmployee) : reqsRes.data;
+        const filteredReqs = (isEmployeeRole ? reqsRes.data.filter(matchesCurrentEmployee) : reqsRes.data).filter(r => !isLebanonEmployee(r));
         setLeaveRequests(filteredReqs);
       }
 
       const pLeavesRes = await leavesApi.getPendingLeaves();
       if (pLeavesRes.data) {
-        const filteredP = isEmployeeRole ? pLeavesRes.data.filter(matchesCurrentEmployee) : pLeavesRes.data;
+        const filteredP = (isEmployeeRole ? pLeavesRes.data.filter(matchesCurrentEmployee) : pLeavesRes.data).filter(r => !isLebanonEmployee(r));
         setPendingLeaves(filteredP);
       }
 

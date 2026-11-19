@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import reportRawData from '../../data/leaveBalanceReportData.json';
 import { saveExcelWithSaveDialog } from '../../utils/payrollExcelHelper';
 import { Language } from './types';
+import { isLebanonEmployee } from '../../utils/lebanonHelper';
 
 export interface LeaveBalanceRow {
   sn: number;
@@ -45,7 +46,8 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
   const [isExporting, setIsExporting] = useState(false);
 
   const initialRows: LeaveBalanceRow[] = useMemo(() => {
-    return (reportRawData.rows || []) as LeaveBalanceRow[];
+    // Strictly exclude Lebanon employees from Leave Balance Report (Iraq HRIS only)
+    return ((reportRawData.rows || []) as LeaveBalanceRow[]).filter(r => !isLebanonEmployee(r));
   }, []);
 
   // Distinct branches
@@ -354,8 +356,8 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
               </h1>
               <p className="text-xs text-sky-200/80 mt-1">
                 {isAr
-                  ? 'التقرير المعتمد لمؤسسة فيتاس العراق لاحتساب أرصدة الإجازات، المخصص الشهري، ومكافأة نهاية الخدمة لـ 351 موظفاً'
-                  : 'Official CHF - Vitas Iraq staff leave balances, monthly provisions, and end-of-service bonuses'}
+                  ? `التقرير المعتمد لمؤسسة فيتاس العراق لاحتساب أرصدة الإجازات، المخصص الشهري، ومكافأة نهاية الخدمة لـ ${initialRows.length} موظفاً`
+                  : `Official CHF - Vitas Iraq staff leave balances, monthly provisions, and end-of-service bonuses for ${initialRows.length} staff`}
               </p>
             </div>
           </div>

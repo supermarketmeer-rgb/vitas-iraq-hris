@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Language, LeaveBalance, LeaveRequest } from './types';
 import { translations } from './translations';
 import { leavesApi } from './api';
+import { isLebanonEmployee } from '../../utils/lebanonHelper';
 
 interface LeaveDirectoryViewProps {
   requests: LeaveRequest[];
@@ -49,11 +50,13 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
   const [editCurryValue, setEditCurryValue] = useState<string>('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
-  // Local overrides map in case prop updates asynchronously
-  const [localBalances, setLocalBalances] = useState<LeaveBalance[]>(balances);
+  // Local overrides map in case prop updates asynchronously (strictly excluding Lebanon)
+  const [localBalances, setLocalBalances] = useState<LeaveBalance[]>(() =>
+    (balances || []).filter((b) => !isLebanonEmployee(b))
+  );
 
-  React.useEffect(() => {
-    setLocalBalances(balances);
+  useEffect(() => {
+    setLocalBalances((balances || []).filter((b) => !isLebanonEmployee(b)));
   }, [balances]);
 
   const handleClearAllLeaves = async () => {
@@ -122,8 +125,8 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
     setTimeout(() => setSaveSuccessMsg(null), 4000);
   };
 
-  // Filter Leave Requests
-  const filteredRequests = requests.filter((r) => {
+  // Filter Leave Requests (strictly excluding Lebanon)
+  const filteredRequests = requests.filter((r) => !isLebanonEmployee(r)).filter((r) => {
     if (reqSearchTerm) {
       const q = reqSearchTerm.toLowerCase();
       const matchNum = r.request_number.toLowerCase().includes(q);
