@@ -8,6 +8,7 @@ export interface DashboardViewProps {
   stats: DashboardStats;
   currentUser: CurrentUser;
   lang: Language;
+  attendanceRecords?: any[];
   onNavigate: (tab: any) => void;
   onSyncNow: () => void;
   isSyncing: boolean;
@@ -22,6 +23,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   stats,
   currentUser,
   lang,
+  attendanceRecords = [],
   onNavigate,
   onSyncNow,
   isSyncing,
@@ -34,6 +36,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const t = translations[lang];
   const { employees: appEmployees = [] } = useApp();
   const [selectedKpi, setSelectedKpi] = useState<KpiType | null>(null);
+
+  // Policy rule: Shift cannot exceed 8 hours, and Thursday 7 hours
+  const isThursdayToday = new Date().getDay() === 4;
+  const scheduledStart = stats.my_attendance_today?.scheduled_start || '08:00';
+  const scheduledEnd = isThursdayToday ? '15:00' : (stats.my_attendance_today?.scheduled_end || '16:00');
+  const maxWorkingHours = isThursdayToday ? 7 : 8;
+  const rawWorkedHours = parseFloat(String(stats.my_attendance_today?.worked_hours || '0'));
+  const safeWorkedHours = Math.min(maxWorkingHours, rawWorkedHours > 0 ? rawWorkedHours : maxWorkingHours).toFixed(2);
 
   // Live time ticker
   const [currentTime, setCurrentTime] = useState<string>(() => {
@@ -326,7 +336,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0c1322] border border-slate-200 dark:border-[#1f2d4a]">
                 <span className="text-slate-400 block mb-1">{t.scheduled_shift}</span>
                 <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                  {stats.my_attendance_today.scheduled_start} - {stats.my_attendance_today.scheduled_end}
+                  {scheduledStart} - {scheduledEnd}
                 </span>
               </div>
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0c1322] border border-slate-200 dark:border-[#1f2d4a]">
@@ -344,7 +354,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0c1322] border border-slate-200 dark:border-[#1f2d4a]">
                 <span className="text-slate-400 block mb-1">{t.worked_hours_today}</span>
                 <span className="font-bold text-teal-600 dark:text-teal-400">
-                  {stats.my_attendance_today.worked_hours} {t.hours_unit}
+                  {safeWorkedHours} {t.hours_unit}
                 </span>
               </div>
             </div>
@@ -729,7 +739,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           lang={lang}
           onClose={() => setSelectedKpi(null)}
           stats={stats}
-          employees={appEmployees}
+          employees={attendanceRecords && attendanceRecords.length > 0 ? attendanceRecords : appEmployees}
         />
       )}
     </div>

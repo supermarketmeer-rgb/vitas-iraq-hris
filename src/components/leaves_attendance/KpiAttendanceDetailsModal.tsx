@@ -147,9 +147,129 @@ export const KpiAttendanceDetailsModal: React.FC<KpiAttendanceDetailsModalProps>
 
   const currentConfig = (kpiType && kpiConfig[kpiType]) || kpiConfig.present;
 
-  // Deterministically generate rows corresponding to this KPI from real app employees
+  // Deterministically generate rows corresponding to this KPI from real app employees or attendance records
   const rawRows = useMemo(() => {
     if (!kpiType) return [];
+
+    // 1. Direct matching if attendance records are provided
+    const matchingRecords = (employees && employees.length > 0)
+      ? employees.filter(e => e.status === kpiType)
+      : [];
+
+    if (matchingRecords.length > 0) {
+      return matchingRecords.map((rec, idx) => {
+        const code = rec.employee_number || rec.employeeId || rec.badgeNo || rec.id || `EMP-${1000 + idx}`;
+        const name = lang === 'ar'
+          ? (rec.employee_name_ar || rec.fullNameAr || rec.fullName || rec.nameAr || rec.name || `موظف ${idx + 1}`)
+          : (rec.employee_name_en || rec.fullNameEn || rec.fullName || rec.nameEn || rec.name || `Employee ${idx + 1}`);
+        const branch = (lang === 'ar' ? rec.branch_name_ar : rec.branch_name_en) || rec.branch || rec.location || (lang === 'ar' ? 'الإدارة العامة' : 'Headquarters');
+        const dept = (lang === 'ar' ? rec.department_name_ar : rec.department_name_en) || rec.department || rec.dept || (lang === 'ar' ? 'العمليات' : 'Operations');
+        const pos = rec.position_ar || rec.position || rec.jobTitle || rec.pos || (lang === 'ar' ? 'موظف' : 'Employee');
+
+        const inTime = rec.first_punch ? (rec.first_punch.length > 5 ? rec.first_punch.substring(0, 5) : rec.first_punch) : '';
+        const outTime = rec.last_punch ? (rec.last_punch.length > 5 ? rec.last_punch.substring(0, 5) : rec.last_punch) : '';
+
+        if (kpiType === 'present') {
+          const hrs = rec.worked_minutes ? (rec.worked_minutes / 60).toFixed(2) : (new Date().getDay() === 4 ? '7.00' : '8.00');
+          return {
+            id: code,
+            name,
+            branch,
+            dept,
+            pos,
+            col1: inTime || '07:55 ص',
+            col2: outTime || (new Date().getDay() === 4 ? '15:00 م' : '16:00 م'),
+            col3: `${hrs} ${lang === 'ar' ? 'ساعة' : 'hrs'}`,
+            col4: lang === 'ar' ? 'بصمة بيومترية معتمدة' : 'Verified Biometric Punch',
+            statusBadge: lang === 'ar' ? 'حاضر' : 'Present',
+          };
+        }
+
+        if (kpiType === 'late') {
+          const mins = rec.late_minutes || (15 + ((idx * 3) % 30));
+          return {
+            id: code,
+            name,
+            branch,
+            dept,
+            pos,
+            col1: '08:00 ص',
+            col2: inTime || `08:${String(mins).padStart(2, '0')} ص`,
+            col3: `+${mins} ${lang === 'ar' ? 'دقيقة' : 'mins'}`,
+            col4: lang === 'ar' ? 'تأخير صباحي عن موعد الدوام الرسمي' : 'Morning Late Arrival',
+            statusBadge: lang === 'ar' ? `تأخير +${mins} د` : `Late +${mins}m`,
+          };
+        }
+
+        if (kpiType === 'on_leave') {
+          const leaveTypes = lang === 'ar'
+            ? ['إجازة سنوية', 'إجازة مرضية', 'إجازة طارئة', 'إجازة أمومة']
+            : ['Annual Leave', 'Sick Leave', 'Emergency Leave', 'Maternity Leave'];
+          const lType = leaveTypes[idx % leaveTypes.length];
+          return {
+            id: code,
+            name,
+            branch,
+            dept,
+            pos,
+            col1: lType,
+            col2: `1 ${lang === 'ar' ? 'يوم' : 'day'}`,
+            col3: stats?.today_date || '2026-10-12',
+            col4: lang === 'ar' ? 'طلب إجازة رسمي معتمد' : 'Approved Leave Ticket',
+            statusBadge: lang === 'ar' ? 'معتمدة' : 'Approved',
+          };
+        }
+
+        if (kpiType === 'early_leave') {
+          const mins = rec.early_leave_minutes || (25 + ((idx * 4) % 35));
+          const schedEnd = new Date().getDay() === 4 ? '15:00 م' : '16:00 م';
+          return {
+            id: code,
+            name,
+            branch,
+            dept,
+            pos,
+            col1: schedEnd,
+            col2: outTime || (new Date().getDay() === 4 ? '14:25 م' : '15:20 م'),
+            col3: `-${mins} ${lang === 'ar' ? 'دقيقة' : 'mins'}`,
+            col4: lang === 'ar' ? 'مغادرة قبل الموعد الرسمي' : 'Early Departure',
+            statusBadge: lang === 'ar' ? `خروج مبكر -${mins} د` : `Early -${mins}m`,
+          };
+        }
+
+        if (kpiType === 'missing_punch') {
+          const isMissingOut = !rec.last_punch;
+          return {
+            id: code,
+            name,
+            branch,
+            dept,
+            pos,
+            col1: rec.first_punch || (lang === 'ar' ? 'مفقودة' : 'Missing'),
+            col2: rec.last_punch || (lang === 'ar' ? 'مفقودة' : 'Missing'),
+            col3: isMissingOut ? (lang === 'ar' ? 'نقص بصمة الخروج' : 'Missing Check-Out') : (lang === 'ar' ? 'نقص بصمة الدخول' : 'Missing Check-In'),
+            col4: lang === 'ar' ? 'بانتظار تقديم طلب تصحيح بصمة' : 'Pending Correction Request',
+            statusBadge: lang === 'ar' ? 'نقص بصمة' : 'Missing Punch',
+          };
+        }
+
+        // Absent
+        return {
+          id: code,
+          name,
+          branch,
+          dept,
+          pos,
+          col1: '--:--',
+          col2: '--:--',
+          col3: new Date().getDay() === 4 ? `7:00 ${lang === 'ar' ? 'ساعات' : 'hrs'}` : `8:00 ${lang === 'ar' ? 'ساعات' : 'hrs'}`,
+          col4: lang === 'ar' ? 'لم تسجل أي بصمة أو إجازة لهذا اليوم' : 'No biometric punch or leave ticket',
+          statusBadge: lang === 'ar' ? 'غياب غير مبرر' : 'Absent',
+        };
+      });
+    }
+
+    // 2. Fallback to generating cohort from app directory
     const list = (employees && employees.length > 0) ? employees : defaultEmployees;
     const targetCount = Math.max(1, count || (kpiType === 'present' ? 25 : 12));
     if (list.length === 0) return [];
@@ -183,10 +303,11 @@ export const KpiAttendanceDetailsModal: React.FC<KpiAttendanceDetailsModalProps>
 
       // Specific attributes per KPI
       if (kpiType === 'present') {
-        const inM = 45 + ((idx * 7) % 20); // 07:45 to 08:05
-        const inStr = inM < 60 ? `07:${String(inM).padStart(2, '0')} ص` : `08:${String(inM - 60).padStart(2, '0')} ص`;
-        const outStr = idx % 3 === 0 ? (lang === 'ar' ? 'قيد الدوام' : 'On Duty') : `16:${String((idx * 5) % 30).padStart(2, '0')} م`;
-        const hrs = idx % 3 === 0 ? '8.00' : (8.0 + ((idx % 4) * 0.25)).toFixed(2);
+        const inM = 45 + ((idx * 7) % 15); // 07:45 to 08:00
+        const inStr = `07:${String(inM).padStart(2, '0')} ص`;
+        const isThu = new Date().getDay() === 4;
+        const outStr = isThu ? '15:00 م' : '16:00 م';
+        const hrs = isThu ? '7.00' : '8.00';
         return {
           id: code,
           name,
@@ -202,7 +323,7 @@ export const KpiAttendanceDetailsModal: React.FC<KpiAttendanceDetailsModalProps>
       }
 
       if (kpiType === 'late') {
-        const lateMins = 16 + ((idx * 3) % 45); // 16 to 60 mins late
+        const lateMins = 12 + ((idx * 3) % 36);
         const inStr = `08:${String(lateMins).padStart(2, '0')} ص`;
         return {
           id: code,
@@ -212,8 +333,8 @@ export const KpiAttendanceDetailsModal: React.FC<KpiAttendanceDetailsModalProps>
           pos,
           col1: '08:00 ص',
           col2: inStr,
-          col3: `${lateMins} ${lang === 'ar' ? 'دقيقة' : 'mins'}`,
-          col4: lang === 'ar' ? 'تأخير غير مبرر' : 'Unexcused Late',
+          col3: `+${lateMins} ${lang === 'ar' ? 'دقيقة' : 'mins'}`,
+          col4: lang === 'ar' ? 'تأخير صباحي' : 'Morning Late Arrival',
           statusBadge: lang === 'ar' ? `تأخير +${lateMins} د` : `Late +${lateMins}m`,
         };
       }
@@ -239,19 +360,21 @@ export const KpiAttendanceDetailsModal: React.FC<KpiAttendanceDetailsModalProps>
       }
 
       if (kpiType === 'early_leave') {
-        const earlyMins = 20 + ((idx * 4) % 60);
-        const outHour = 16 - Math.ceil(earlyMins / 60);
+        const isThu = new Date().getDay() === 4;
+        const earlyMins = 20 + ((idx * 4) % 40);
+        const outHour = isThu ? 14 : 15;
         const outMin = 60 - (earlyMins % 60);
         const outStr = `${String(outHour).padStart(2, '0')}:${String(outMin === 60 ? 0 : outMin).padStart(2, '0')} م`;
+        const schedEnd = isThu ? '15:00 م' : '16:00 م';
         return {
           id: code,
           name,
           branch,
           dept,
           pos,
-          col1: '16:00 م',
+          col1: schedEnd,
           col2: outStr,
-          col3: `${earlyMins} ${lang === 'ar' ? 'دقيقة' : 'mins'}`,
+          col3: `-${earlyMins} ${lang === 'ar' ? 'دقيقة' : 'mins'}`,
           col4: lang === 'ar' ? 'مغادرة قبل الموعد' : 'Early Out Without Gate Pass',
           statusBadge: lang === 'ar' ? `خروج مبكر -${earlyMins} د` : `Early -${earlyMins}m`,
         };
@@ -266,7 +389,7 @@ export const KpiAttendanceDetailsModal: React.FC<KpiAttendanceDetailsModalProps>
           dept,
           pos,
           col1: isMissOut ? '08:02 ص' : (lang === 'ar' ? 'مفقودة' : 'Missing'),
-          col2: isMissOut ? (lang === 'ar' ? 'مفقودة' : 'Missing') : '16:05 م',
+          col2: isMissOut ? (lang === 'ar' ? 'مفقودة' : 'Missing') : (new Date().getDay() === 4 ? '15:05 م' : '16:05 م'),
           col3: isMissOut ? (lang === 'ar' ? 'نقص بصمة الخروج' : 'Missing Check-Out') : (lang === 'ar' ? 'نقص بصمة الدخول' : 'Missing Check-In'),
           col4: lang === 'ar' ? 'بانتظار تسوية الدوام' : 'Pending Correction',
           statusBadge: lang === 'ar' ? 'نقص بصمة' : 'Missing Punch',
@@ -282,7 +405,7 @@ export const KpiAttendanceDetailsModal: React.FC<KpiAttendanceDetailsModalProps>
         pos,
         col1: '--:--',
         col2: '--:--',
-        col3: `8:00 ${lang === 'ar' ? 'ساعات' : 'hrs'}`,
+        col3: new Date().getDay() === 4 ? `7:00 ${lang === 'ar' ? 'ساعات' : 'hrs'}` : `8:00 ${lang === 'ar' ? 'ساعات' : 'hrs'}`,
         col4: lang === 'ar' ? 'لم تسجل أي بصمة أو إجازة' : 'No biometric punch or leave ticket',
         statusBadge: lang === 'ar' ? 'غياب غير مبرر' : 'Absent',
       };

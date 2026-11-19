@@ -268,12 +268,41 @@ export const Category4LeaveView: React.FC = () => {
           stats={stats}
           currentUser={currentUser}
           lang={lang}
+          attendanceRecords={attendanceRecords}
           onNavigate={(tab) => setActiveModuleId(tab)}
           onSyncNow={handleSyncNow}
           isSyncing={isSyncing}
           onOpenApplyLeave={() => setIsApplyLeaveOpen(true)}
           onOpenCorrection={() => {
-            setSelectedRecordForCorrection(null);
+            const todayStr = stats?.today_date || new Date().toISOString().split('T')[0];
+            const myRec = attendanceRecords.find(r => r.employee_id === currentUser?.id || r.employee_number === currentUser?.employee_number) || {
+              id: 0,
+              employee_id: currentUser?.id || 1,
+              employee_number: currentUser?.employee_number || '10000091',
+              employee_name_ar: currentUser?.name_ar || 'علي رعد محمد',
+              employee_name_en: currentUser?.name_en || 'Ali Raad Muhammed',
+              department_name_ar: currentUser?.department_name_ar || 'قسم الخزينة',
+              department_name_en: currentUser?.department_name_en || 'Treasury Department',
+              branch_name_ar: currentUser?.branch_name_ar || 'كربلاء',
+              branch_name_en: currentUser?.branch_name_en || 'Karbala Branch',
+              date: todayStr,
+              scheduled_start: '08:00',
+              scheduled_end: '16:00',
+              first_punch: stats?.my_attendance_today?.check_in || '',
+              last_punch: stats?.my_attendance_today?.check_out || '',
+              punches: [],
+              worked_minutes: 0,
+              regular_minutes: 0,
+              break_minutes: 0,
+              late_minutes: 0,
+              early_leave_minutes: 0,
+              overtime_minutes: 0,
+              status: 'missing_punch',
+              is_corrected: false,
+              created_at: todayStr,
+              updated_at: todayStr,
+            };
+            setSelectedRecordForCorrection(myRec as AttendanceRecord);
             setIsCorrectionOpen(true);
           }}
           onSimulatePunch={(type, mode) => handleSimulatePunch(currentUser.id, type, mode)}

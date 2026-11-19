@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { CHF_LOGO_BASE64, VITAS_LOGO_BASE64 } from './timesheetLogos';
+import { isCleanerOrSupervisor } from '../../utils/overtimePolicy';
 
 interface TimesheetRecord {
   dayName: string;
@@ -119,17 +120,20 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
   // Automatic calculation & normalization engine based on synced biometric punches and leaves
   const normalizeAndRecalculateEmployee = (emp: EmployeeTimesheetData): EmployeeTimesheetData => {
     let totReq = 0, totAct = 0, totLunch = 0, totAnn = 0, totSick = 0, totOth = 0, totOut = 0, totAbs = 0;
+    const isEligibleForOt = isCleanerOrSupervisor(emp);
+    let holidayOtDaysCount = 0;
 
     const newRecords = (emp.records || []).map(rec => {
       const isWeekend = (rec.dayType && rec.dayType.includes('نهاية الأسبوع')) || (rec.dayName === 'الجمعة');
       const isHoliday = rec.dayType && rec.dayType.includes('عطلة') && !isWeekend;
       const isOffRest = rec.dayType && rec.dayType.includes('يوم راحة استثنائي');
+      const isThursday = rec.dayName === 'الخميس';
 
       let reqHours = rec.requiredHoursNum;
       if (isWeekend || isHoliday) {
         reqHours = 0;
       } else if (reqHours === 0 && !isOffRest) {
-        reqHours = (rec.dayName === 'الخميس' ? 7 : 8);
+        reqHours = (isThursday ? 7 : 8);
       }
 
       const inM = parseTimeToMins(rec.firstIn);
@@ -140,18 +144,33 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
       let lunchMins = 0;
       let dayType = rec.dayType;
       let absenceHours = 0;
+      let remarks = rec.remarks || '';
+      let overtime = '0:00';
 
       const leaveHours = (rec.annualLeaveNum || 0) + (rec.sickLeaveNum || 0) + (rec.otherLeaveNum || 0) + (rec.outsideOfficeNum || 0);
 
-      if (isWeekend) {
-        dayType = 'عطلة نهاية الأسبوع';
+      if (isWeekend || isHoliday || isOffRest) {
+        dayType = isWeekend ? 'عطلة نهاية الأسبوع' : (isHoliday ? 'يوم عطلة' : 'يوم راحة استثنائي');
         reqHours = 0;
-      } else if (isHoliday) {
-        dayType = 'يوم عطلة';
-        reqHours = 0;
-      } else if (isOffRest) {
-        dayType = 'يوم راحة استثنائي';
-        reqHours = 0;
+
+        // Overtime Rule: ONLY Cleaners and their direct supervisor on holidays/weekends
+        // Capped at maximum 2 days per cycle (21st to 20th)
+        // Any punch duration counts as 1 full overtime day at 1.5x daily wage
+        if (hasPunches) {
+          if (isEligibleForOt) {
+            if (holidayOtDaysCount < 2) {
+              holidayOtDaysCount++;
+              overtime = '1.00 يوم (1.5x)';
+              remarks = 'عمل إضافي معتمد يوم عطلة (يوم كامل × 1.5 أجر يوم)';
+            } else {
+              overtime = '0:00';
+              remarks = 'دوام عطلة - تجاوز الحد الأقصى للأوفرتايم (يومان شهرياً)';
+            }
+          } else {
+            overtime = '0:00';
+            remarks = 'دوام عطلة - غير مشمول بالأوفرتايم وفق سياسة الشركة';
+          }
+        }
       } else if (hasPunches) {
         dayType = 'يوم عمل';
         const rawDuration = outM - inM;
@@ -160,7 +179,11 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
         } else if (rec.lunchBreakNum > 0) {
           lunchMins = Math.round(rec.lunchBreakNum * 60);
         }
-        actMins = Math.max(0, rawDuration - lunchMins);
+
+        // Policy Rule: Working hours cannot exceed 8 hours, and Thursday 7 hours
+        const maxDailyHours = isThursday ? 7 : 8;
+        const maxDailyMins = maxDailyHours * 60;
+        actMins = Math.min(maxDailyMins, Math.max(0, rawDuration - lunchMins));
       } else if (leaveHours >= (reqHours > 0 ? reqHours : 7)) {
         dayType = rec.annualLeaveNum > 0 ? 'إجازة سنوية' : (rec.sickLeaveNum > 0 ? 'إجازة مرضية' : 'إجازة أخرى');
         actMins = 0;
@@ -193,7 +216,9 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
         actualHoursNum: actHNum,
         actualHours: formatHHMM(actMins / 60),
         lunchBreakNum: lunchHNum,
-        lunchBreak: formatHHMM(lunchMins / 60)
+        lunchBreak: formatHHMM(lunchMins / 60),
+        remarks,
+        overtime,
       };
     });
 
@@ -209,7 +234,7 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
         otherLeaveHours: Math.round(totOth * 100) / 100,
         outsideOfficeHours: Math.round(totOut * 100) / 100,
         absenceHours: Math.round(totAbs),
-        overtimeHours: emp.totals?.overtimeHours || 0
+        overtimeHours: holidayOtDaysCount * 8
       }
     };
   };

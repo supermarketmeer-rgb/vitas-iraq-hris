@@ -14,6 +14,11 @@ import {
 } from '../utils/iraqPayrollTaxEngine';
 import { CalculationTraceDetailsModal } from '../components/payroll/CalculationTraceDetailsModal';
 import { PoliciesSection } from '../components/PoliciesSection';
+import {
+  isCleanerOrSupervisor,
+  getCleanerHolidayOvertimeDays,
+  calculateOvertimeCompensation,
+} from '../utils/overtimePolicy';
 
 interface EmployeeAdjustment {
   absenceDays?: number;
@@ -850,9 +855,18 @@ export const Category5PayrollView: React.FC = () => {
       const family_allowance = adj.familyAllowance !== undefined ? adj.familyAllowance : auto_family_allowance;
 
       // XAMPP Field: overtime (6. overtime)
+      // Vitas Policy: Only Cleaners and their direct supervisor are eligible for overtime.
+      // It is calculated ONLY on holidays/weekends, capped at max 2 days per cycle (21st to 20th).
+      // Each overtime day is paid at 1.5 × full daily wage (basic_salary / 30).
+      let autoOvertime = 0;
+      if (isCleanerOrSupervisor(emp)) {
+        const otDays = getCleanerHolidayOvertimeDays(emp);
+        autoOvertime = calculateOvertimeCompensation(basic_salary, otDays);
+      }
+
       const overtime = adj.overtime !== undefined
         ? adj.overtime
-        : (adj.overtimeAmount > 0 ? adj.overtimeAmount : ((adj.overtimeHours || 0) * (basic_salary / 240) * 1.5));
+        : (adj.overtimeAmount > 0 ? adj.overtimeAmount : autoOvertime);
       
       // XAMPP Field: allowances_total
       const allowances_total = phone_allowance + cert_allowance + transportation + bonus + family_allowance + overtime + incentives + earned_leave;
