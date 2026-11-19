@@ -60,10 +60,24 @@ export const Sidebar: React.FC = () => {
     };
 
     fetchApprovalCounts();
-    const interval = setInterval(fetchApprovalCounts, 10000);
+    const interval = setInterval(fetchApprovalCounts, 4000);
+
+    const handleApprovalsUpdated = () => {
+      fetchApprovalCounts();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('hris:approvals-updated', handleApprovalsUpdated);
+      window.addEventListener('storage', handleApprovalsUpdated);
+    }
+
     return () => {
       isMounted = false;
       clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('hris:approvals-updated', handleApprovalsUpdated);
+        window.removeEventListener('storage', handleApprovalsUpdated);
+      }
     };
   }, [leaveRequests]);
 

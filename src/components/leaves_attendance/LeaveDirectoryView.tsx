@@ -40,9 +40,9 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
   const [reqPage, setReqPage] = useState(1);
   const pageSize = 8;
 
-  // Search & Filter state for Balances
+  // Search & Filter state for Balances (Default to ANNUAL leave per Vitas Iraq policy)
   const [balSearchTerm, setBalSearchTerm] = useState('');
-  const [balTypeFilter, setBalTypeFilter] = useState('all');
+  const [balTypeFilter, setBalTypeFilter] = useState('ANNUAL');
   const [balPage, setBalPage] = useState(1);
 
   // Inline editing state for Starting Leave Balance (carried_forward_days)
@@ -75,8 +75,9 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
     }
   };
 
-  // Handle saving individual employee Starting Leave Balance
+  // Handle saving individual employee Starting Leave Balance (Annual Leaves only)
   const handleSaveCurry = async (balance: LeaveBalance) => {
+    if (balance.leave_type_code !== 'ANNUAL') return;
     const parsed = Math.max(0, parseInt(editCurryValue, 10) || 0);
     const newAvailable = Math.max(0, balance.entitled_days + parsed - balance.used_days - balance.pending_days);
 
@@ -344,10 +345,10 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
                 }}
                 className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-white/15 text-slate-800 dark:text-slate-200 focus:outline-none"
               >
+                <option value="ANNUAL">{isAr ? 'الإجازة الاعتيادية فقط (Starting Leave Balance)' : 'Annual Leave (Starting Balance)'}</option>
                 <option value="all">{isAr ? 'جميع أنواع الإجازات' : 'All Leave Types'}</option>
-                <option value="ANNUAL">{isAr ? 'الإجازة الاعتيادية (Annual Leave - Starting Balance)' : 'Annual Leave'}</option>
                 <option value="SICK">{isAr ? 'الإجازة المرضية (Sick Leave)' : 'Sick Leave'}</option>
-                <option value="CASUAL">{isAr ? 'الإجازة العارضة / الطارئة (Casual Leave)' : 'Casual Leave'}</option>
+                <option value="EMERGENCY">{isAr ? 'الإجازة العارضة / الطارئة (Emergency Leave)' : 'Emergency Leave'}</option>
               </select>
             </div>
           </div>
@@ -367,6 +368,9 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
                       <div className="flex items-center justify-center gap-1">
                         <span>{isAr ? 'Starting Leave Balance (الرصيد الافتتاحي)' : 'Starting Leave Balance'}</span>
                         <span className="text-[9px] px-1 rounded bg-emerald-200 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-300 font-bold">+</span>
+                      </div>
+                      <div className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400 mt-0.5">
+                        {isAr ? '(خاص بالإجازة الاعتيادية فقط)' : '(Annual Leave Only)'}
                       </div>
                     </th>
                     <th className="px-3.5 py-3 text-center text-amber-700 dark:text-amber-400">{isAr ? 'المستهلك' : 'Used'}</th>
@@ -408,47 +412,56 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
                           {bal.entitled_days} {isAr ? 'يوم' : 'd'}
                         </td>
 
-                        {/* Starting Leave Balance (Inline Editable per employee) */}
+                        {/* Starting Leave Balance (Inline Editable strictly for Annual Leave) */}
                         <td className="px-3.5 py-3 text-center bg-emerald-50/40 dark:bg-emerald-500/5">
-                          {editingBalanceId === bal.id ? (
-                            <div className="flex items-center justify-center gap-1">
-                              <input
-                                type="number"
-                                min={0}
-                                max={90}
-                                value={editCurryValue}
-                                onChange={(e) => setEditCurryValue(e.target.value)}
-                                className="w-16 bg-white dark:bg-black/50 border-2 border-emerald-500 rounded px-1.5 py-0.5 text-center font-mono text-xs font-bold text-slate-900 dark:text-white shadow-sm"
-                                autoFocus
-                              />
-                              <button
-                                onClick={() => handleSaveCurry(bal)}
-                                className="p-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 cursor-pointer"
-                                title={isAr ? 'حفظ Starting Leave Balance' : 'Save'}
+                          {bal.leave_type_code === 'ANNUAL' ? (
+                            editingBalanceId === bal.id ? (
+                              <div className="flex items-center justify-center gap-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={90}
+                                  value={editCurryValue}
+                                  onChange={(e) => setEditCurryValue(e.target.value)}
+                                  className="w-16 bg-white dark:bg-black/50 border-2 border-emerald-500 rounded px-1.5 py-0.5 text-center font-mono text-xs font-bold text-slate-900 dark:text-white shadow-sm"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => handleSaveCurry(bal)}
+                                  className="p-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 cursor-pointer"
+                                  title={isAr ? 'حفظ Starting Leave Balance' : 'Save'}
+                                >
+                                  <span className="material-symbols-outlined text-base">check</span>
+                                </button>
+                                <button
+                                  onClick={() => setEditingBalanceId(null)}
+                                  className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                  title={isAr ? 'إلغاء' : 'Cancel'}
+                                >
+                                  <span className="material-symbols-outlined text-base">close</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => {
+                                  setEditingBalanceId(bal.id);
+                                  setEditCurryValue(String(bal.carried_forward_days || 0));
+                                }}
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-100/70 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-mono font-bold cursor-pointer hover:bg-emerald-200/80 dark:hover:bg-emerald-500/20 transition-all shadow-sm"
+                                title={isAr ? 'انقر لتعديل رصيد الإجازات الافتتاحي (Starting Leave Balance) لهذا الموظف' : 'Click to edit Starting Leave Balance'}
                               >
-                                <span className="material-symbols-outlined text-base">check</span>
-                              </button>
-                              <button
-                                onClick={() => setEditingBalanceId(null)}
-                                className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
-                                title={isAr ? 'إلغاء' : 'Cancel'}
-                              >
-                                <span className="material-symbols-outlined text-base">close</span>
-                              </button>
-                            </div>
+                                <span>{bal.carried_forward_days || 0}</span>
+                                <span className="text-[10px]">{isAr ? 'يوم' : 'd'}</span>
+                                <span className="material-symbols-outlined text-xs opacity-60 group-hover:opacity-100">edit</span>
+                              </div>
+                            )
                           ) : (
-                            <div
-                              onClick={() => {
-                                setEditingBalanceId(bal.id);
-                                setEditCurryValue(String(bal.carried_forward_days || 0));
-                              }}
-                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-100/70 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-mono font-bold cursor-pointer hover:bg-emerald-200/80 dark:hover:bg-emerald-500/20 transition-all shadow-sm"
-                              title={isAr ? 'انقر لتعديل رصيد الإجازات الافتتاحي (Starting Leave Balance) لهذا الموظف' : 'Click to edit Starting Leave Balance'}
+                            <span
+                              className="text-slate-400 font-mono font-bold text-sm"
+                              title={isAr ? 'الرصيد الافتتاحي متاح للإجازات الاعتيادية فقط' : 'Starting leave balance is only applicable to Annual Leaves'}
                             >
-                              <span>{bal.carried_forward_days || 0}</span>
-                              <span className="text-[10px]">{isAr ? 'يوم' : 'd'}</span>
-                              <span className="material-symbols-outlined text-xs opacity-60 group-hover:opacity-100">edit</span>
-                            </div>
+                              —
+                            </span>
                           )}
                         </td>
 
@@ -468,18 +481,22 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
 
                         {/* Actions */}
                         <td className="px-3.5 py-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingBalanceId(bal.id);
-                              setEditCurryValue(String(bal.carried_forward_days || 0));
-                            }}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer border border-teal-700 active:scale-95"
-                            title={isAr ? 'تعديل رصيد البداية الافتتاحي (Starting Leave Balance)' : 'Edit Starting Leave Balance'}
-                          >
-                            <span className="material-symbols-outlined text-sm text-white">edit_calendar</span>
-                            <span className="text-white font-bold">{isAr ? 'تعديل الرصيد الافتتاحي' : 'Edit Starting Balance'}</span>
-                          </button>
+                          {bal.leave_type_code === 'ANNUAL' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingBalanceId(bal.id);
+                                setEditCurryValue(String(bal.carried_forward_days || 0));
+                              }}
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer border border-teal-700 active:scale-95"
+                              title={isAr ? 'تعديل رصيد البداية الافتتاحي (Starting Leave Balance)' : 'Edit Starting Leave Balance'}
+                            >
+                              <span className="material-symbols-outlined text-sm text-white">edit_calendar</span>
+                              <span className="text-white font-bold">{isAr ? 'تعديل الرصيد الافتتاحي' : 'Edit Starting Balance'}</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 font-mono">—</span>
+                          )}
                         </td>
                       </tr>
                     ))

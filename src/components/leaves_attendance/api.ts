@@ -28,15 +28,60 @@ import {
 } from './mockHrisDb';
 import { isLebanonEmployee, filterIraqEmployees } from '../../utils/lebanonHelper';
 
+const loadSavedCorrections = (): AttendanceCorrectionRequest[] => {
+  if (typeof window === 'undefined') return [...initialCorrectionRequests];
+  try {
+    const saved = localStorage.getItem('vitas_attendance_corrections');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to parse saved corrections', e);
+  }
+  return [...initialCorrectionRequests];
+};
+
+const loadSavedLeaves = (): LeaveRequest[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const saved = localStorage.getItem('vitas_mock_leave_requests') || localStorage.getItem('vitas_leave_requests');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.map((r: any) => ({
+          ...r,
+          status: r.status === 'معلقة' ? 'pending_approval' : r.status === 'مقبولة' ? 'approved' : r.status === 'مرفوضة' ? 'rejected' : r.status
+        }));
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse saved leaves', e);
+  }
+  return [];
+};
+
 let mockUsers = [...userProfiles];
 let mockActiveUser = mockUsers[1]; // Default to Manager
 let mockAttendance = [...initialAttendanceRecords];
 let mockBalances: LeaveBalance[] = [];
-let mockLeaves: LeaveRequest[] = [];
-let mockCorrections = [...initialCorrectionRequests];
+let mockLeaves: LeaveRequest[] = loadSavedLeaves();
+let mockCorrections: AttendanceCorrectionRequest[] = loadSavedCorrections();
 let mockSettings = { ...initialBiometricSettings };
 let mockRawLogs = [...initialRawLogs];
 let mockLeaveTypes = [...initialLeaveTypes];
+
+const persistApprovalsState = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('vitas_attendance_corrections', JSON.stringify(mockCorrections));
+      localStorage.setItem('vitas_mock_leave_requests', JSON.stringify(mockLeaves));
+      window.dispatchEvent(new CustomEvent('hris:approvals-updated'));
+    } catch (e) {
+      console.warn('Failed to persist approvals state', e);
+    }
+  }
+};
 
 // Comprehensive Department & Branch Bilingual Lookup Dictionary
 const DEPT_EN_MAP: Record<string, string> = {
@@ -756,6 +801,7 @@ export const api = {
     };
 
     mockLeaves.unshift(newReq);
+    persistApprovalsState();
     return {
       success: true,
       message_ar: 'تم تقديم طلب الإجازة بنجاح وهو الآن بانتظار اعتماد المدير.',
@@ -770,9 +816,10 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ request_id: requestId }),
     });
+    mockLeaves = mockLeaves.map((r) => (r.id === requestId ? { ...r, status: 'cancelled' as const } : r));
+    persistApprovalsState();
     if (data && data.success) return data;
 
-    mockLeaves = mockLeaves.map((r) => (r.id === requestId ? { ...r, status: 'cancelled' as const } : r));
     return { success: true, message: 'تم إلغاء الطلب بنجاح' };
   },
 
@@ -781,8 +828,8 @@ export const api = {
     if (data && (data.pending_leaves || data.pending_corrections)) return data;
 
     return {
-      pending_leaves: mockLeaves.filter((r) => r.status === 'pending_approval'),
-      pending_corrections: mockCorrections.filter((c) => c.status === 'pending'),
+      pending_leaves: mockLeaves.filter((r) => !isLebanonEmployee(r) && (r.status === 'pending_approval' || r.status === 'pending')),
+      pending_corrections: mockCorrections.filter((c) => !isLebanonEmployee(c) && c.status === 'pending'),
     };
   },
 
@@ -798,7 +845,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (data && data.success) return data;
 
     if (payload.request_type === 'leave') {
       const statusMap = { approve: 'approved', reject: 'rejected', return: 'returned' } as const;
@@ -811,6 +857,9 @@ export const api = {
         c.id === payload.request_id ? { ...c, status: statusMap[payload.action] as any, manager_comment: payload.comments } : c
       );
     }
+    persistApprovalsState();
+
+    if (data && data.success) return data;
 
     return {
       success: true,
@@ -825,7 +874,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (resData && resData.success) return resData;
 
     const newCorr: AttendanceCorrectionRequest = {
       id: mockCorrections.length + 1,
@@ -852,6 +900,8 @@ export const api = {
     };
 
     mockCorrections.unshift(newCorr);
+    persistApprovalsState();
+    if (resData && resData.success) return resData;
     return {
       success: true,
       message_ar: 'تم تقديم طلب تصحيح البصمة بنجاح إلى مديرك المباشر.',
@@ -1020,10 +1070,14 @@ export const leavesApi = {
   clearAllLeaveData: async () => {
     mockBalances = [];
     mockLeaves = [];
+    mockCorrections = [];
     if (typeof window !== 'undefined') {
       localStorage.removeItem('vitas_leave_requests');
+      localStorage.removeItem('vitas_mock_leave_requests');
+      localStorage.removeItem('vitas_attendance_corrections');
       localStorage.removeItem('vitas_emp_starting_leave_balance');
       localStorage.removeItem('vitas_emp_curry_forward');
+      window.dispatchEvent(new CustomEvent('hris:approvals-updated'));
     }
     try {
       await fetch('/api/leave-requests', { method: 'DELETE' });
