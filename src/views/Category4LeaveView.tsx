@@ -374,33 +374,24 @@ export const Category4LeaveView: React.FC = () => {
       )}
 
       {activeModuleId === 'leave-apply' && (
-        <div className="w-full space-y-4">
-          <button
-            onClick={() => setIsApplyLeaveOpen(true)}
-            className="w-full py-4 rounded-3xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-sm shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-xl">edit_calendar</span>
-            <span>{lang === 'ar' ? 'فتح نموذج طلب إجازة جديدة' : 'Open Leave Request Form'}</span>
-          </button>
-          <LeaveDirectoryView
-            requests={leaveRequests}
-            balances={leaveBalances.length > 0 ? leaveBalances : (stats?.my_leave_balances || [])}
-            lang={lang}
-            onOpenApply={() => setIsApplyLeaveOpen(true)}
-            onViewDetails={(req) => setSelectedLeaveDetails(req)}
-            onCancelRequest={async (id) => {
-              await leavesApi.cancelLeaveRequest(id);
-              await loadData();
-            }}
-            onExportExcel={() => setIsExportReportOpen(true)}
-            onUpdateBalance={async (id, updates) => {
-              await leavesApi.updateLeaveBalance(id, updates);
-              await loadData();
-            }}
-            onNavigateToEarned={() => setActiveModuleId('leave-earned')}
-            onNavigateToBalanceReport={() => setActiveModuleId('leave-balance-report')}
-          />
-        </div>
+        <LeaveDirectoryView
+          requests={leaveRequests}
+          balances={leaveBalances.length > 0 ? leaveBalances : (stats?.my_leave_balances || [])}
+          lang={lang}
+          onOpenApply={() => setIsApplyLeaveOpen(true)}
+          onViewDetails={(req) => setSelectedLeaveDetails(req)}
+          onCancelRequest={async (id) => {
+            await leavesApi.cancelLeaveRequest(id);
+            await loadData();
+          }}
+          onExportExcel={() => setIsExportReportOpen(true)}
+          onUpdateBalance={async (id, updates) => {
+            await leavesApi.updateLeaveBalance(id, updates);
+            await loadData();
+          }}
+          onNavigateToEarned={() => setActiveModuleId('leave-earned')}
+          onNavigateToBalanceReport={() => setActiveModuleId('leave-balance-report')}
+        />
       )}
 
       {activeModuleId === 'leave-directory' && (

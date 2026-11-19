@@ -576,14 +576,14 @@ html.light .bg-\[\#172238\]:not(aside *):not(header *),
 html.light [class*="bg-[#172238]"]:not(aside *):not(header *),
 html.light .bg-\[\#1f2d4a\]:not(aside *):not(header *),
 html.light [class*="bg-[#1f2d4a]"]:not(aside *):not(header *),
-html.light .bg-slate-900:not(aside *):not(header *),
-html.light [class*="bg-slate-900"]:not(aside *):not(header *),
-html.light .bg-slate-950:not(aside *):not(header *),
-html.light [class*="bg-slate-950"]:not(aside *):not(header *),
-html.light .bg-gray-900:not(aside *):not(header *),
-html.light [class*="bg-gray-900"]:not(aside *):not(header *),
-html.light .bg-gray-950:not(aside *):not(header *),
-html.light [class*="bg-gray-950"]:not(aside *):not(header *) {
+html.light .bg-slate-900:not(aside *):not(header *):not(.btn-dark-solid),
+html.light [class*="bg-slate-900"]:not(aside *):not(header *):not(.btn-dark-solid),
+html.light .bg-slate-950:not(aside *):not(header *):not(.btn-dark-solid),
+html.light [class*="bg-slate-950"]:not(aside *):not(header *):not(.btn-dark-solid),
+html.light .bg-gray-900:not(aside *):not(header *):not(.btn-dark-solid),
+html.light [class*="bg-gray-900"]:not(aside *):not(header *):not(.btn-dark-solid),
+html.light .bg-gray-950:not(aside *):not(header *):not(.btn-dark-solid),
+html.light [class*="bg-gray-950"]:not(aside *):not(header *):not(.btn-dark-solid) {
   background-color: #eef2f6 !important;
   border-color: #cbd5e1 !important;
 }
@@ -714,25 +714,64 @@ html:not(.dark) .dynamic-report-excel-thead th:hover {
 /* ================================================================
    LIGHT MODE: Cards, Panels, Windows, Sidebar Overrides (Pure White)
    ================================================================ */
-html.light .bg-white:not(aside *):not(header *),
-html:not(.dark) .bg-white:not(aside *):not(header *) {
+html.light .bg-white:not(aside *):not(header *):not(.btn-dark-solid),
+html:not(.dark) .bg-white:not(aside *):not(header *):not(.btn-dark-solid) {
   background-color: #eef2f6 !important;
 }
-html.light .bg-slate-800:not(aside *):not(header *),
-html:not(.dark) .bg-slate-800:not(aside *):not(header *) {
+html.light .bg-slate-800:not(aside *):not(header *):not(.btn-dark-solid),
+html:not(.dark) .bg-slate-800:not(aside *):not(header *):not(.btn-dark-solid) {
   background-color: #eef2f6 !important;
 }
-html.light .bg-slate-800\/80:not(aside *):not(header *),
-html:not(.dark) .bg-slate-800\/80:not(aside *):not(header *) {
+html.light .bg-slate-800\/80:not(aside *):not(header *):not(.btn-dark-solid),
+html:not(.dark) .bg-slate-800\/80:not(aside *):not(header *):not(.btn-dark-solid) {
   background-color: #eef2f6 !important;
 }
 
 /* Keep slate-50 and slate-100 matching unified light gray (#eef2f6) */
-html.light .bg-slate-50:not(aside *):not(header *) {
+html.light .bg-slate-50:not(aside *):not(header *):not(.btn-dark-solid) {
   background-color: #eef2f6 !important;
 }
-html.light .bg-slate-100:not(aside *):not(header *) {
+html.light .bg-slate-100:not(aside *):not(header *):not(.btn-dark-solid) {
   background-color: #eef2f6 !important;
+}
+
+/* Explicit solid dark action buttons that MUST remain dark in both light and dark mode */
+.btn-dark-solid,
+button.btn-dark-solid,
+html.light .btn-dark-solid,
+html.light button.btn-dark-solid,
+html:not(.dark) .btn-dark-solid,
+html:not(.dark) button.btn-dark-solid,
+html.dark .btn-dark-solid,
+html.dark button.btn-dark-solid {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  border-color: #334155 !important;
+}
+
+.btn-dark-solid:hover,
+button.btn-dark-solid:hover,
+html.light .btn-dark-solid:hover,
+html.light button.btn-dark-solid:hover,
+html:not(.dark) .btn-dark-solid:hover,
+html:not(.dark) button.btn-dark-solid:hover,
+html.dark .btn-dark-solid:hover,
+html.dark button.btn-dark-solid:hover {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #1e293b !important;
+}
+
+.btn-dark-solid *,
+.btn-dark-solid span,
+html.light .btn-dark-solid *,
+html.light .btn-dark-solid span,
+html:not(.dark) .btn-dark-solid *,
+html:not(.dark) .btn-dark-solid span,
+html.dark .btn-dark-solid *,
+html.dark .btn-dark-solid span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
 /* ================================================================

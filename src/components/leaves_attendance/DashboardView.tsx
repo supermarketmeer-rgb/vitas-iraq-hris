@@ -354,6 +354,88 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* Manager Section: Directly Under Top KPI Cards */}
+      {stats.manager_stats && (
+        <div className="rounded-3xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] p-6 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1f2d4a] pb-3">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-teal-500">fact_check</span>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                {t.manager_approval_center_title}
+              </h2>
+            </div>
+            <button
+              onClick={() => onNavigate('leave-approvals')}
+              className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline cursor-pointer"
+            >
+              {t.view_all_requests}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div
+              onClick={() => onNavigate('leave-approvals')}
+              className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between cursor-pointer hover:bg-amber-500/15 transition-all"
+            >
+              <div>
+                <span className="text-xs text-amber-800 dark:text-amber-300 font-semibold block">
+                  {t.pending_leave_approvals}
+                </span>
+                <span className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 block">
+                  {stats.manager_stats.pending_leave_approvals}
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-3xl text-amber-500">pending_actions</span>
+            </div>
+
+            <div
+              onClick={() => onNavigate('leave-approvals')}
+              className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between cursor-pointer hover:bg-blue-500/15 transition-all"
+            >
+              <div>
+                <span className="text-xs text-blue-800 dark:text-blue-300 font-semibold block">
+                  {t.pending_correction_approvals}
+                </span>
+                <span className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1 block">
+                  {stats.manager_stats.pending_correction_approvals}
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-3xl text-blue-500">rule</span>
+            </div>
+
+            <div
+              onClick={() => onNavigate('leave-attendance')}
+              className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between cursor-pointer hover:bg-emerald-500/15 transition-all"
+            >
+              <div>
+                <span className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold block">
+                  {t.team_present}
+                </span>
+                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
+                  {stats.manager_stats.team_present_today} / {stats.manager_stats.team_total}
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-3xl text-emerald-500">groups</span>
+            </div>
+
+            <div
+              onClick={() => onNavigate('leave-attendance')}
+              className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between cursor-pointer hover:bg-purple-500/15 transition-all"
+            >
+              <div>
+                <span className="text-xs text-purple-800 dark:text-purple-300 font-semibold block">
+                  {t.team_on_leave}
+                </span>
+                <span className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1 block">
+                  {stats.manager_stats.team_on_leave_today}
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-3xl text-purple-500">event_busy</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Grid: My Attendance + Balances */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Today's Personal Attendance Card */}
@@ -583,88 +665,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Manager Section */}
-      {stats.manager_stats && (
-        <div className="rounded-3xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] p-6 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1f2d4a] pb-3">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-500">fact_check</span>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                {t.manager_approval_center_title}
-              </h2>
-            </div>
-            <button
-              onClick={() => onNavigate('leave-approvals')}
-              className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline cursor-pointer"
-            >
-              {t.view_all_requests}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div
-              onClick={() => onNavigate('leave-approvals')}
-              className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between cursor-pointer hover:bg-amber-500/15 transition-all"
-            >
-              <div>
-                <span className="text-xs text-amber-800 dark:text-amber-300 font-semibold block">
-                  {t.pending_leave_approvals}
-                </span>
-                <span className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 block">
-                  {stats.manager_stats.pending_leave_approvals}
-                </span>
-              </div>
-              <span className="material-symbols-outlined text-3xl text-amber-500">pending_actions</span>
-            </div>
-
-            <div
-              onClick={() => onNavigate('leave-approvals')}
-              className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between cursor-pointer hover:bg-blue-500/15 transition-all"
-            >
-              <div>
-                <span className="text-xs text-blue-800 dark:text-blue-300 font-semibold block">
-                  {t.pending_correction_approvals}
-                </span>
-                <span className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1 block">
-                  {stats.manager_stats.pending_correction_approvals}
-                </span>
-              </div>
-              <span className="material-symbols-outlined text-3xl text-blue-500">rule</span>
-            </div>
-
-            <div
-              onClick={() => onNavigate('leave-attendance')}
-              className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between cursor-pointer hover:bg-emerald-500/15 transition-all"
-            >
-              <div>
-                <span className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold block">
-                  {t.team_present}
-                </span>
-                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
-                  {stats.manager_stats.team_present_today} / {stats.manager_stats.team_total}
-                </span>
-              </div>
-              <span className="material-symbols-outlined text-3xl text-emerald-500">groups</span>
-            </div>
-
-            <div
-              onClick={() => onNavigate('leave-attendance')}
-              className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between cursor-pointer hover:bg-purple-500/15 transition-all"
-            >
-              <div>
-                <span className="text-xs text-purple-800 dark:text-purple-300 font-semibold block">
-                  {t.team_on_leave}
-                </span>
-                <span className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1 block">
-                  {stats.manager_stats.team_on_leave_today}
-                </span>
-              </div>
-              <span className="material-symbols-outlined text-3xl text-purple-500">event_busy</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Quick Access Tools Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

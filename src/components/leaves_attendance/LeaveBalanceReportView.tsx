@@ -361,11 +361,11 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto">
             <button
               onClick={handleExportExcel}
               disabled={isExporting}
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95 disabled:opacity-50 whitespace-nowrap shrink-0"
             >
               <span className="material-symbols-outlined text-base">
                 {isExporting ? 'hourglass_top' : 'download'}
@@ -375,7 +375,7 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
 
             <button
               onClick={handlePrint}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-xs flex items-center gap-2 transition-all cursor-pointer"
+              className="btn-dark-solid px-4 py-2.5 rounded-xl border border-slate-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
             >
               <span className="material-symbols-outlined text-base">print</span>
               <span>{isAr ? 'طباعة / PDF' : 'Print / PDF'}</span>
@@ -385,7 +385,7 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
               <>
                 <button
                   onClick={() => onNavigate('leave-earned')}
-                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-xs flex items-center gap-2 transition-all cursor-pointer"
+                  className="btn-dark-solid px-4 py-2.5 rounded-xl border border-slate-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
                 >
                   <span className="material-symbols-outlined text-base">account_balance_wallet</span>
                   <span>{isAr ? 'الإجازات المستحقة' : 'Earned Leaves'}</span>
@@ -393,7 +393,7 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
 
                 <button
                   onClick={() => onNavigate('leave-dashboard')}
-                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-xs flex items-center gap-2 transition-all cursor-pointer"
+                  className="btn-dark-solid px-4 py-2.5 rounded-xl border border-slate-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
                 >
                   <span className="material-symbols-outlined text-base">dashboard</span>
                   <span>{isAr ? 'لوحة التحكم' : 'Dashboard'}</span>

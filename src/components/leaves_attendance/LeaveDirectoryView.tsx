@@ -193,40 +193,40 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm">
-        <div>
+      {/* Header Banner - Title and all buttons strictly on one line */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-5 rounded-3xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm">
+        <div className="shrink-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white whitespace-nowrap">
               {isAr ? 'جدول الإجازات وأرصدة الموظفين' : 'Leave Directory & Balances'}
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/20">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/20 whitespace-nowrap">
               {isAr ? 'يتضمن Starting Leave Balance (مستحقات البداية)' : 'Starting Leave Balance Included'}
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-1">
             {isAr
-              ? 'إدارة سجل طلبات الإجازات وجدول أرصدة الموظفين بما في ذلك مستحقات الإجازات السابقة (Starting Leave Balance)'
+              ? 'إدارة سجل طلبات الإجازات وجدول أرصدة الموظفين بما في ذلك مستحقات الإجازات السابقة'
               : 'Manage leave requests and employee balance tables including Starting Leave Balance (prior entitlements)'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-nowrap shrink-0 overflow-x-auto">
           {onNavigateToBalanceReport && (
             <button
               onClick={onNavigateToBalanceReport}
-              className="px-3 py-2 rounded-xl text-xs font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100 dark:hover:bg-sky-500/20 border border-sky-300 dark:border-sky-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              className="px-3 py-2 rounded-xl text-xs font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100 dark:hover:bg-sky-500/20 border border-sky-300 dark:border-sky-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 whitespace-nowrap shrink-0"
               title={isAr ? 'تقرير رصيد الإجازات ومكافأة نهاية الخدمة (Leave Balance Report)' : 'Leave Balance Report'}
             >
               <span className="material-symbols-outlined text-sm">fact_check</span>
-              <span>{isAr ? 'تقرير رصيد الإجازات (Leave Balance Report)' : 'Leave Balance Report'}</span>
+              <span>{isAr ? 'تقرير رصيد الإجازات' : 'Leave Balance Report'}</span>
             </button>
           )}
 
           {onNavigateToEarned && (
             <button
               onClick={onNavigateToEarned}
-              className="px-3 py-2 rounded-xl text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/10 hover:bg-teal-100 dark:hover:bg-teal-500/20 border border-teal-300 dark:border-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="px-3 py-2 rounded-xl text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/10 hover:bg-teal-100 dark:hover:bg-teal-500/20 border border-teal-300 dark:border-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap shrink-0"
               title={isAr ? 'الانتقال إلى شاشة الإجازات المستحقة والاحتساب المالي' : 'Go to Earned Leaves module'}
             >
               <span className="material-symbols-outlined text-sm">calculate</span>
@@ -236,15 +236,15 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
 
           <button
             onClick={onOpenApply}
-            className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-teal-600 hover:bg-teal-500 active:scale-95 shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+            className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-teal-600 hover:bg-teal-500 active:scale-95 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
           >
             <span className="material-symbols-outlined text-sm">edit_calendar</span>
-            <span>{t.apply_leave_title}</span>
+            <span>{isAr ? 'تقديم طلب إجازة' : 'Submit Leave Application'}</span>
           </button>
 
           <button
             onClick={onExportExcel}
-            className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 border border-slate-200 dark:border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 border border-slate-200 dark:border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
           >
             <span className="material-symbols-outlined text-sm">table_chart</span>
             <span>{t.export_excel}</span>
@@ -253,7 +253,7 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
           <button
             type="button"
             onClick={handleClearAllLeaves}
-            className="px-3 py-2 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-300 dark:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            className="px-3 py-2 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-300 dark:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap shrink-0"
             title={isAr ? 'تفريغ سجلات وطلبات الإجازات التجريبية' : 'Clear test leave records and balances'}
           >
             <span className="material-symbols-outlined text-sm text-rose-600 dark:text-rose-400">delete_sweep</span>
@@ -316,25 +316,6 @@ export const LeaveDirectoryView: React.FC<LeaveDirectoryViewProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'balances' && (
         <div className="space-y-4">
-          {/* Starting Leave Balance Explanatory Notice */}
-          <div className="p-4 rounded-3xl bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-slate-800 dark:text-slate-200">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-xl mt-0.5">
-                info
-              </span>
-              <div className="text-xs space-y-1">
-                <div className="font-bold text-emerald-900 dark:text-emerald-300 text-sm">
-                  {isAr ? 'رصيد الإجازات الافتتاحي (Starting Leave Balance) - مستحقات سابقة' : 'Starting Leave Balance (Prior Entitlements)'}
-                </div>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {isAr
-                    ? 'بما أن قانون الإجازات يتم تطبيقه الآن مع إطلاق النظام والموظفون قدماء، فإن هذا الحقل مخصص لإدخال مستحقات الإجازات السابقة (Starting Leave Balance) لكل موظف ليبدأ النظام باحتساب رصيد الإجازات التي يستحقها الموظف بدقة طبقاً للقانون المطبق. يمكنك النقر على الرقم لتعديله فورياً وسيتم تحديثه في شاشة الإجازات المستحقة مباشرة.'
-                    : 'Because the leave law is being applied with the system startup and employees are existing staff, Starting Leave Balance is used to input prior leave entitlements so the system accurately computes accrued leaves under the applicable law. Click any number to edit inline.'}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Filter Bar for Balances */}
           <div className="p-4 rounded-3xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="relative">
