@@ -105,6 +105,115 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   };
 
+  // Helper to parse HH:MM to minutes
+  const parseTimeToMins = (str?: string): number | null => {
+    if (!str || !str.trim()) return null;
+    const parts = str.trim().split(':');
+    if (parts.length < 2) return null;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+  };
+
+  // Automatic calculation & normalization engine based on synced biometric punches and leaves
+  const normalizeAndRecalculateEmployee = (emp: EmployeeTimesheetData): EmployeeTimesheetData => {
+    let totReq = 0, totAct = 0, totLunch = 0, totAnn = 0, totSick = 0, totOth = 0, totOut = 0, totAbs = 0;
+
+    const newRecords = (emp.records || []).map(rec => {
+      const isWeekend = (rec.dayType && rec.dayType.includes('نهاية الأسبوع')) || (rec.dayName === 'الجمعة');
+      const isHoliday = rec.dayType && rec.dayType.includes('عطلة') && !isWeekend;
+      const isOffRest = rec.dayType && rec.dayType.includes('يوم راحة استثنائي');
+
+      let reqHours = rec.requiredHoursNum;
+      if (isWeekend || isHoliday) {
+        reqHours = 0;
+      } else if (reqHours === 0 && !isOffRest) {
+        reqHours = (rec.dayName === 'الخميس' ? 7 : 8);
+      }
+
+      const inM = parseTimeToMins(rec.firstIn);
+      const outM = parseTimeToMins(rec.lastOut);
+      const hasPunches = inM !== null && outM !== null && outM > inM;
+
+      let actMins = 0;
+      let lunchMins = 0;
+      let dayType = rec.dayType;
+      let absenceHours = 0;
+
+      const leaveHours = (rec.annualLeaveNum || 0) + (rec.sickLeaveNum || 0) + (rec.otherLeaveNum || 0) + (rec.outsideOfficeNum || 0);
+
+      if (isWeekend) {
+        dayType = 'عطلة نهاية الأسبوع';
+        reqHours = 0;
+      } else if (isHoliday) {
+        dayType = 'يوم عطلة';
+        reqHours = 0;
+      } else if (isOffRest) {
+        dayType = 'يوم راحة استثنائي';
+        reqHours = 0;
+      } else if (hasPunches) {
+        dayType = 'يوم عمل';
+        const rawDuration = outM - inM;
+        if (rawDuration >= 5 * 60) {
+          lunchMins = 60;
+        } else if (rec.lunchBreakNum > 0) {
+          lunchMins = Math.round(rec.lunchBreakNum * 60);
+        }
+        actMins = Math.max(0, rawDuration - lunchMins);
+      } else if (leaveHours >= (reqHours > 0 ? reqHours : 7)) {
+        dayType = rec.annualLeaveNum > 0 ? 'إجازة سنوية' : (rec.sickLeaveNum > 0 ? 'إجازة مرضية' : 'إجازة أخرى');
+        actMins = 0;
+        lunchMins = 0;
+      } else {
+        // No punch & no approved full leave -> true absence
+        dayType = 'يوم غياب';
+        actMins = 0;
+        lunchMins = 0;
+        absenceHours = reqHours;
+      }
+
+      const actHNum = Math.round((actMins / 60) * 100) / 100;
+      const lunchHNum = Math.round((lunchMins / 60) * 100) / 100;
+
+      totReq += reqHours;
+      totAct += (actMins / 60);
+      totLunch += (lunchMins / 60);
+      totAnn += (rec.annualLeaveNum || 0);
+      totSick += (rec.sickLeaveNum || 0);
+      totOth += (rec.otherLeaveNum || 0);
+      totOut += (rec.outsideOfficeNum || 0);
+      totAbs += absenceHours;
+
+      return {
+        ...rec,
+        dayType,
+        requiredHoursNum: reqHours,
+        requiredHours: formatHHMM(reqHours),
+        actualHoursNum: actHNum,
+        actualHours: formatHHMM(actMins / 60),
+        lunchBreakNum: lunchHNum,
+        lunchBreak: formatHHMM(lunchMins / 60)
+      };
+    });
+
+    return {
+      ...emp,
+      records: newRecords,
+      totals: {
+        requiredHours: Math.round(totReq),
+        actualHours: Math.round(totAct * 100) / 100,
+        lunchBreakHours: Math.round(totLunch),
+        annualLeaveHours: Math.round(totAnn * 100) / 100,
+        sickLeaveHours: Math.round(totSick * 100) / 100,
+        otherLeaveHours: Math.round(totOth * 100) / 100,
+        outsideOfficeHours: Math.round(totOut * 100) / 100,
+        absenceHours: Math.round(totAbs),
+        overtimeHours: emp.totals?.overtimeHours || 0
+      }
+    };
+  };
+
   // Load bundled official timesheet dataset
   useEffect(() => {
     let isMounted = true;
@@ -117,7 +226,8 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
         }
         const data = await res.json();
         if (isMounted && data.employees && data.employees.length > 0) {
-          setEmployees(data.employees);
+          const processedEmployees = data.employees.map(normalizeAndRecalculateEmployee);
+          setEmployees(processedEmployees);
           let activeCycle = data.cycle || '21-09-2026 To 20-10-2026';
           try {
             const rawSettings = localStorage.getItem('vitas_app_settings');
