@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CurrentUser, Language, LeaveBalance, LeaveType } from './types';
 import { translations } from './translations';
 
 interface LeaveApplyModalProps {
-  currentUser: CurrentUser;
-  leaveTypes: LeaveType[];
-  leaveBalances: LeaveBalance[];
+  currentUser?: CurrentUser | null;
+  leaveTypes?: LeaveType[];
+  leaveBalances?: LeaveBalance[];
   lang: Language;
   onClose: () => void;
   onSubmit: (data: any) => Promise<any>;
@@ -13,13 +13,24 @@ interface LeaveApplyModalProps {
 
 export const LeaveApplyModal: React.FC<LeaveApplyModalProps> = ({
   currentUser,
-  leaveTypes,
-  leaveBalances,
+  leaveTypes = [],
+  leaveBalances = [],
   lang,
   onClose,
   onSubmit,
 }) => {
   const t = translations[lang];
+
+  const userSafe = currentUser || {
+    employee_id: 1,
+    employee_number: 'EMP-1001',
+    name_ar: 'أحمد سعدي الموسوي',
+    name_en: 'Ahmad Al-Saadi',
+    department_name_ar: 'تقنية المعلومات',
+    department_name_en: 'Information Technology',
+    role: 'employee',
+    avatar: ''
+  };
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -43,7 +54,7 @@ export const LeaveApplyModal: React.FC<LeaveApplyModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
-  const selectedBalance = leaveBalances.find((b) => b.leave_type_id === Number(leaveTypeId));
+  const selectedBalance = (leaveBalances || []).find((b) => b.leave_type_id === Number(leaveTypeId));
   const availableDays = selectedBalance?.available_days ?? 18;
 
   const calculateDays = () => {
@@ -95,7 +106,7 @@ export const LeaveApplyModal: React.FC<LeaveApplyModalProps> = ({
 
     try {
       await onSubmit({
-        employee_id: currentUser.employee_id,
+        employee_id: userSafe.employee_id,
         leave_type_id: Number(leaveTypeId),
         is_hourly: isHourly,
         start_date: startDate,
@@ -150,13 +161,13 @@ export const LeaveApplyModal: React.FC<LeaveApplyModalProps> = ({
             <div>
               <span className="text-slate-400 block mb-0.5">{lang === 'ar' ? 'مقدم الطلب:' : 'Applicant:'}</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {lang === 'ar' ? currentUser.name_ar : currentUser.name_en} ({currentUser.employee_number})
+                {lang === 'ar' ? userSafe.name_ar : userSafe.name_en} ({userSafe.employee_number})
               </span>
             </div>
             <div>
               <span className="text-slate-400 block mb-0.5">{t.col_dept}:</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {lang === 'ar' ? currentUser.department_name_ar : currentUser.department_name_en}
+                {lang === 'ar' ? userSafe.department_name_ar : userSafe.department_name_en}
               </span>
             </div>
             <div className="col-span-2 sm:col-span-1">

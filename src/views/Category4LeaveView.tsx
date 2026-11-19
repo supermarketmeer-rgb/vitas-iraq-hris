@@ -439,8 +439,8 @@ export const Category4LeaveView: React.FC = () => {
       {isApplyLeaveOpen && (
         <LeaveApplyModal
           currentUser={currentUser}
-          leaveTypes={leaveTypes}
-          leaveBalances={stats.my_leave_balances}
+          leaveTypes={leaveTypes || []}
+          leaveBalances={leaveBalances.length > 0 ? leaveBalances : (stats?.my_leave_balances || [])}
           lang={lang}
           onClose={() => setIsApplyLeaveOpen(false)}
           onSubmit={handleSubmitLeave}
