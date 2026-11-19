@@ -721,15 +721,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* KPI Attendance Details Popup Modal */}
-      <KpiAttendanceDetailsModal
-        isOpen={Boolean(selectedKpi)}
-        kpiType={selectedKpi}
-        count={selectedKpi ? (stats.today_attendance[selectedKpi] || 0) : 0}
-        lang={lang}
-        onClose={() => setSelectedKpi(null)}
-        stats={stats}
-        employees={appEmployees}
-      />
+      {selectedKpi && (
+        <KpiAttendanceDetailsModal
+          isOpen={Boolean(selectedKpi)}
+          kpiType={selectedKpi}
+          count={selectedKpi && stats?.today_attendance ? (stats.today_attendance[selectedKpi] || 0) : 0}
+          lang={lang}
+          onClose={() => setSelectedKpi(null)}
+          stats={stats}
+          employees={appEmployees}
+        />
+      )}
     </div>
   );
 };
