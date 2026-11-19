@@ -176,30 +176,32 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto">
             <button
               onClick={onReprocess}
               disabled={isReprocessing}
-              className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white shadow-md border border-slate-700 dark:border-slate-600 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+              style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
+              className="px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold shadow-md border border-slate-700 hover:bg-slate-900 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95 whitespace-nowrap shrink-0"
             >
               <span className={`material-symbols-outlined text-sm ${isReprocessing ? 'animate-spin' : ''}`}>refresh</span>
-              <span>{t.reprocess_attendance}</span>
+              <span className="text-white font-bold">{t.reprocess_attendance}</span>
             </button>
 
             <button
               onClick={onExportExcel}
-              className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
             >
               <span className="material-symbols-outlined text-sm">table_chart</span>
-              <span>{t.export_excel}</span>
+              <span className="text-white font-bold">{t.export_excel}</span>
             </button>
 
             <button
               onClick={onExportPdf}
-              className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white shadow-md border border-slate-700 dark:border-slate-600 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
+              className="px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold shadow-md border border-slate-700 hover:bg-slate-900 transition-all flex items-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
             >
               <span className="material-symbols-outlined text-sm">print</span>
-              <span>{t.export_pdf}</span>
+              <span className="text-white font-bold">{t.export_pdf}</span>
             </button>
           </div>
         </div>

@@ -468,7 +468,10 @@ export const Sidebar: React.FC = () => {
                       {groupIndex + 1}
                     </span>
                     <div>
-                      <h2 className="text-xs font-bold text-white group-hover:text-teal-400 transition-colors">
+                      <h2 
+                        className="font-bold text-white group-hover:text-teal-400 transition-colors"
+                        style={{ fontSize: '13.33px' }}
+                      >
                         {displayCatTitle}
                       </h2>
                       {displayCatSubtitle ? (
