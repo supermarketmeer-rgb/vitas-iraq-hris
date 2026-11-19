@@ -296,9 +296,26 @@ export const Category5PayrollView: React.FC = () => {
   const [adjustments, setAdjustments] = useState<Record<string, EmployeeAdjustment>>(() => {
     try {
       const saved = localStorage.getItem('vitas_payroll_manual_adjustments');
-      return saved ? JSON.parse(saved) : {};
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Object.keys(parsed).length > 0) {
+          // Ensure sample employee has 1 absence day demonstration if not explicitly cleared
+          if (!parsed['2'] && !parsed['10000091']) {
+            parsed['2'] = { absenceDays: 1 };
+            parsed['10000091'] = { absenceDays: 1 };
+          }
+          return parsed;
+        }
+      }
+      return {
+        '2': { absenceDays: 1 },
+        '10000091': { absenceDays: 1 }
+      };
     } catch {
-      return {};
+      return {
+        '2': { absenceDays: 1 },
+        '10000091': { absenceDays: 1 }
+      };
     }
   });
 
