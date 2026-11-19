@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { CurrentUser, DashboardStats, Language } from './types';
 import { translations } from './translations';
+import { useApp } from '../../context/AppContext';
+import { KpiAttendanceDetailsModal, KpiType } from './KpiAttendanceDetailsModal';
 
 export interface DashboardViewProps {
   stats: DashboardStats;
@@ -30,6 +32,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenDbInspector,
 }) => {
   const t = translations[lang];
+  const { employees: appEmployees = [] } = useApp();
+  const [selectedKpi, setSelectedKpi] = useState<KpiType | null>(null);
 
   // Live time ticker
   const [currentTime, setCurrentTime] = useState<string>(() => {
@@ -131,14 +135,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <button
-            onClick={onOpenApplyLeave}
-            className="px-4 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-teal-600/20 transition-all flex items-center gap-2 border border-teal-400/40 cursor-pointer active:scale-95"
-          >
-            <span className="material-symbols-outlined text-base">edit_calendar</span>
-            <span>{t.fab_apply_leave}</span>
-          </button>
-
-          <button
             onClick={onSyncNow}
             disabled={isSyncing}
             className="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center gap-2 border border-slate-200 dark:border-slate-700 cursor-pointer disabled:opacity-50 active:scale-95"
@@ -149,110 +145,158 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Punch Toast Feedback */}
-      {punchFeedback && (
-        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-          <span className="material-symbols-outlined text-xl text-emerald-500">check_circle</span>
-          <span className="text-xs sm:text-sm font-bold">{punchFeedback}</span>
-        </div>
-      )}
-
       {/* High Level Attendance KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {/* Present */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-md hover:border-emerald-500/40">
+        <div 
+          onClick={() => setSelectedKpi('present')}
+          onDoubleClick={() => setSelectedKpi('present')}
+          className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5 hover:border-emerald-500/60 cursor-pointer active:scale-95 group relative select-none"
+          title={lang === 'ar' ? 'انقر مرتين (دبل كلك) لعرض تفاصيل الحاضرين' : 'Double-click to view present employees table'}
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.present}</span>
-            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
               <span className="material-symbols-outlined text-base">person_check</span>
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
             {stats.today_attendance.present}
           </div>
-          <div className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-1 flex items-center gap-1 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>{presentPct}% {lang === 'ar' ? 'نسبة الحضور' : 'Attendance'}</span>
+          <div className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-1 flex items-center justify-between font-medium">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{presentPct}% {lang === 'ar' ? 'نسبة الحضور' : 'Attendance'}</span>
+            </span>
+            <span className="text-[9px] text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 flex items-center gap-0.5">
+              <span className="material-symbols-outlined text-[10px]">touch_app</span>
+              <span>{lang === 'ar' ? 'عرض' : 'View'}</span>
+            </span>
           </div>
         </div>
 
         {/* Late */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-md hover:border-amber-500/40">
+        <div 
+          onClick={() => setSelectedKpi('late')}
+          onDoubleClick={() => setSelectedKpi('late')}
+          className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5 hover:border-amber-500/60 cursor-pointer active:scale-95 group relative select-none"
+          title={lang === 'ar' ? 'انقر مرتين (دبل كلك) لعرض جدول المتأخرين صباحاً' : 'Double-click to view late employees table'}
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.late}</span>
-            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
               <span className="material-symbols-outlined text-base">schedule</span>
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
             {stats.today_attendance.late}
           </div>
-          <div className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 font-medium">
-            {lang === 'ar' ? 'تأخير صباحي' : 'Morning Late'}
+          <div className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 flex items-center justify-between font-medium">
+            <span>{lang === 'ar' ? 'تأخير صباحي' : 'Morning Late'}</span>
+            <span className="text-[9px] text-slate-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 flex items-center gap-0.5">
+              <span className="material-symbols-outlined text-[10px]">touch_app</span>
+              <span>{lang === 'ar' ? 'عرض' : 'View'}</span>
+            </span>
           </div>
         </div>
 
         {/* On Leave */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-md hover:border-blue-500/40">
+        <div 
+          onClick={() => setSelectedKpi('on_leave')}
+          onDoubleClick={() => setSelectedKpi('on_leave')}
+          className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5 hover:border-blue-500/60 cursor-pointer active:scale-95 group relative select-none"
+          title={lang === 'ar' ? 'انقر مرتين (دبل كلك) لعرض جدول المجازين' : 'Double-click to view on-leave employees table'}
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.on_leave}</span>
-            <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
               <span className="material-symbols-outlined text-base">event_available</span>
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">
             {stats.today_attendance.on_leave}
           </div>
-          <div className="text-[11px] text-blue-600 dark:text-blue-400 mt-1 font-medium">
-            {lang === 'ar' ? 'إجازات معتمدة' : 'Approved Leaves'}
+          <div className="text-[11px] text-blue-600 dark:text-blue-400 mt-1 flex items-center justify-between font-medium">
+            <span>{lang === 'ar' ? 'إجازات معتمدة' : 'Approved Leaves'}</span>
+            <span className="text-[9px] text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 flex items-center gap-0.5">
+              <span className="material-symbols-outlined text-[10px]">touch_app</span>
+              <span>{lang === 'ar' ? 'عرض' : 'View'}</span>
+            </span>
           </div>
         </div>
 
         {/* Early Leave */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-md hover:border-purple-500/40">
+        <div 
+          onClick={() => setSelectedKpi('early_leave')}
+          onDoubleClick={() => setSelectedKpi('early_leave')}
+          className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5 hover:border-purple-500/60 cursor-pointer active:scale-95 group relative select-none"
+          title={lang === 'ar' ? 'انقر مرتين (دبل كلك) لعرض جدول المنصرفين مبكراً' : 'Double-click to view early leave employees table'}
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.early_leave}</span>
-            <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
+            <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
               <span className="material-symbols-outlined text-base">output</span>
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400">
             {stats.today_attendance.early_leave}
           </div>
-          <div className="text-[11px] text-purple-600 dark:text-purple-400 mt-1 font-medium">
-            {lang === 'ar' ? 'خروج قبل الوقت' : 'Early Out'}
+          <div className="text-[11px] text-purple-600 dark:text-purple-400 mt-1 flex items-center justify-between font-medium">
+            <span>{lang === 'ar' ? 'خروج قبل الوقت' : 'Early Out'}</span>
+            <span className="text-[9px] text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 flex items-center gap-0.5">
+              <span className="material-symbols-outlined text-[10px]">touch_app</span>
+              <span>{lang === 'ar' ? 'عرض' : 'View'}</span>
+            </span>
           </div>
         </div>
 
         {/* Missing Punch */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-md hover:border-rose-500/40">
+        <div 
+          onClick={() => setSelectedKpi('missing_punch')}
+          onDoubleClick={() => setSelectedKpi('missing_punch')}
+          className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5 hover:border-rose-500/60 cursor-pointer active:scale-95 group relative select-none"
+          title={lang === 'ar' ? 'انقر مرتين (دبل كلك) لعرض جدول نقص البصمة' : 'Double-click to view missing punch employees table'}
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.missing_punch}</span>
-            <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+            <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform">
               <span className="material-symbols-outlined text-base">warning</span>
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400">
             {stats.today_attendance.missing_punch}
           </div>
-          <div className="text-[11px] text-rose-600 dark:text-rose-400 mt-1 font-medium">
-            {lang === 'ar' ? 'بحاجة لتصحيح' : 'Needs Correction'}
+          <div className="text-[11px] text-rose-600 dark:text-rose-400 mt-1 flex items-center justify-between font-medium">
+            <span>{lang === 'ar' ? 'بحاجة لتصحيح' : 'Needs Correction'}</span>
+            <span className="text-[9px] text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 flex items-center gap-0.5">
+              <span className="material-symbols-outlined text-[10px]">touch_app</span>
+              <span>{lang === 'ar' ? 'عرض' : 'View'}</span>
+            </span>
           </div>
         </div>
 
         {/* Absent */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-md hover:border-slate-500/40">
+        <div 
+          onClick={() => setSelectedKpi('absent')}
+          onDoubleClick={() => setSelectedKpi('absent')}
+          className="p-4 rounded-2xl bg-white dark:bg-[#121b2d] border border-slate-200 dark:border-[#1f2d4a] shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-500/60 cursor-pointer active:scale-95 group relative select-none"
+          title={lang === 'ar' ? 'انقر مرتين (دبل كلك) لعرض جدول الغائبين بدون عذر' : 'Double-click to view absent employees table'}
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">{t.absent}</span>
-            <div className="p-1.5 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-400">
+            <div className="p-1.5 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform">
               <span className="material-symbols-outlined text-base">person_off</span>
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-200">
             {stats.today_attendance.absent}
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            {lang === 'ar' ? 'غائب بدون عذر' : 'Unexcused'}
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between font-medium">
+            <span>{lang === 'ar' ? 'غائب بدون عذر' : 'Unexcused'}</span>
+            <span className="text-[9px] text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 flex items-center gap-0.5">
+              <span className="material-symbols-outlined text-[10px]">touch_app</span>
+              <span>{lang === 'ar' ? 'عرض' : 'View'}</span>
+            </span>
           </div>
         </div>
       </div>
@@ -306,40 +350,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Quick Simulation Buttons */}
+          {/* Biometric Hardware Live Sync Status */}
           <div className="pt-3 border-t border-slate-100 dark:border-[#1f2d4a]">
-            <span className="text-[11px] text-slate-400 block mb-2 font-medium">
-              {t.quick_punch_title}:
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button
-                onClick={() => handleTriggerQuickPunch('check_in')}
-                className="px-3 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-              >
-                <span className="material-symbols-outlined text-sm">login</span>
-                <span>{t.quick_punch_in}</span>
-              </button>
-              <button
-                onClick={() => handleTriggerQuickPunch('check_out')}
-                className="px-3 py-2.5 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-              >
-                <span className="material-symbols-outlined text-sm">logout</span>
-                <span>{t.quick_punch_out}</span>
-              </button>
-              <button
-                onClick={() => handleTriggerQuickPunch('break_out')}
-                className="px-3 py-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-              >
-                <span className="material-symbols-outlined text-sm">coffee</span>
-                <span>{t.quick_break_out}</span>
-              </button>
-              <button
-                onClick={() => handleTriggerQuickPunch('break_in')}
-                className="px-3 py-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-              >
-                <span className="material-symbols-outlined text-sm">work</span>
-                <span>{t.quick_break_in}</span>
-              </button>
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#0c1322] border border-slate-200 dark:border-[#1f2d4a] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-xl">fingerprint</span>
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>{lang === 'ar' ? 'أوقات الدوام مسحوبة آلياً من سرفر البصمة' : 'Attendance Captured From Biometric Server'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    {lang === 'ar'
+                      ? 'يتم قراءة واعتماد حركات التبصيم من أجهزة وسيرفر البصمة البيومترية مباشرة دون الحاجة للتسجيل اليدوي'
+                      : 'Punches are synchronized directly from biometric terminals without manual entry'}
+                  </p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0">
+                {lang === 'ar' ? 'مزامنة نشطة' : 'Live Synced'}
+              </span>
             </div>
           </div>
         </div>
@@ -687,6 +719,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </button>
       </div>
+
+      {/* KPI Attendance Details Popup Modal */}
+      <KpiAttendanceDetailsModal
+        isOpen={Boolean(selectedKpi)}
+        kpiType={selectedKpi}
+        count={selectedKpi ? (stats.today_attendance[selectedKpi] || 0) : 0}
+        lang={lang}
+        onClose={() => setSelectedKpi(null)}
+        stats={stats}
+        employees={appEmployees}
+      />
     </div>
   );
 };
