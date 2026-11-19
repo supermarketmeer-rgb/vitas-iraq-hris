@@ -1873,6 +1873,120 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Timesheet Calculation Cycle Period / دورة احتساب التايم شيت */}
+          <div className="p-5 rounded-2xl bg-white border-2 border-gray-300 space-y-4 pt-4 mt-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b-2 border-gray-200">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-700 flex items-center justify-center material-symbols-outlined text-lg">
+                  calendar_month
+                </span>
+                <div>
+                  <h5 className="text-xs sm:text-sm font-bold text-black flex items-center gap-2">
+                    <span>{t('دورة احتساب التايم شيت (Timesheet Calculation Cycle)', 'Timesheet Calculation Cycle')}</span>
+                  </h5>
+                  <p className="text-[11px] text-gray-600 font-normal mt-0.5">
+                    {t('تحديد يوم وتاريخ بداية ونهاية احتساب التايم شيت وساعات العمل لاحتساب الرواتب ومطابقة الدوام.', 'Configure timesheet start and end calculation days and dates for payroll reconciliation')}
+                  </p>
+                </div>
+              </div>
+
+              <span className="px-3 py-1.5 rounded-xl bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold shrink-0 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+                <span>{t('الدورة: من يوم 21 إلى يوم 20', 'Cycle: Day 21 to Day 20')}</span>
+              </span>
+            </div>
+
+            {/* Inputs: Start Day & End Day */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Timesheet Cycle Start Day & Date */}
+              <div className="p-4 rounded-xl bg-gray-50/80 border-2 border-gray-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-black flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-teal-700">play_circle</span>
+                    <span>{t('تاريخ بداية احتساب التايم شيت', 'Timesheet Calculation Start Date')}</span>
+                  </label>
+                  <span className="text-[11px] font-mono text-gray-500 font-bold">
+                    {t('يوم 21 بالشهر', 'Day 21 of month')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="block text-[10px] text-gray-500 mb-1">{t('يوم البداية الشهري:', 'Start Day of Month:')}</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={appSettings.timesheet_cycle_start_day || '21'}
+                      onChange={(e) => handleSettingChange('timesheet_cycle_start_day', e.target.value)}
+                      className="w-full bg-white border-2 border-gray-300 rounded-xl px-3 py-2 text-xs text-black font-bold font-mono focus:outline-none focus:border-black text-center"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-gray-500 mb-1">{t('تاريخ البداية (الدورة الحالية):', 'Current Period Start:')}</span>
+                    <input
+                      type="date"
+                      value={appSettings.timesheet_start_date || '2026-09-21'}
+                      onChange={(e) => handleSettingChange('timesheet_start_date', e.target.value)}
+                      className="w-full bg-white border-2 border-gray-300 rounded-xl px-2.5 py-1.5 text-xs text-black font-mono focus:outline-none focus:border-black text-center"
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-gray-600 font-normal">
+                  {t('يبدأ احتساب دورة التايم شيت من يوم 21 في الشهر الميلادي.', 'Timesheet cycle begins on day 21 of each month.')}
+                </p>
+              </div>
+
+              {/* Timesheet Cycle End Day & Date */}
+              <div className="p-4 rounded-xl bg-gray-50/80 border-2 border-gray-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-black flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-amber-700">stop_circle</span>
+                    <span>{t('تاريخ انتهاء احتساب التايم شيت', 'Timesheet Calculation End Date')}</span>
+                  </label>
+                  <span className="text-[11px] font-mono text-gray-500 font-bold">
+                    {t('يوم 20 من الشهر التالي', 'Day 20 of next month')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="block text-[10px] text-gray-500 mb-1">{t('يوم النهاية الشهري:', 'End Day of Next Month:')}</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={appSettings.timesheet_cycle_end_day || '20'}
+                      onChange={(e) => handleSettingChange('timesheet_cycle_end_day', e.target.value)}
+                      className="w-full bg-white border-2 border-gray-300 rounded-xl px-3 py-2 text-xs text-black font-bold font-mono focus:outline-none focus:border-black text-center"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-gray-500 mb-1">{t('تاريخ الانتهاء (الدورة الحالية):', 'Current Period End:')}</span>
+                    <input
+                      type="date"
+                      value={appSettings.timesheet_end_date || '2026-10-20'}
+                      onChange={(e) => handleSettingChange('timesheet_end_date', e.target.value)}
+                      className="w-full bg-white border-2 border-gray-300 rounded-xl px-2.5 py-1.5 text-xs text-black font-mono focus:outline-none focus:border-black text-center"
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-gray-600 font-normal">
+                  {t('ينتهي احتساب دورة التايم شيت في يوم 20 من الشهر التالي.', 'Timesheet cycle closes on day 20 of next month.')}
+                </p>
+              </div>
+            </div>
+
+            {/* Active Formula Banner */}
+            <div className="p-3.5 rounded-xl bg-teal-50 border border-teal-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-teal-900 font-medium">
+                <span className="material-symbols-outlined text-teal-700 text-base">verified</span>
+                <span>{t('الصيغة المعتمدة لاحتساب التايم شيت:', 'Configured Timesheet Calculation Period:')}</span>
+              </div>
+              <div className="font-mono font-bold text-teal-950 bg-white px-3 py-1.5 rounded-lg border border-teal-300 shadow-2xs">
+                {t('من يوم', 'From Day')} <span className="text-teal-700 font-black">{appSettings.timesheet_cycle_start_day || '21'}</span> {t('بالشهر إلى يوم', 'to Day')} <span className="text-teal-700 font-black">{appSettings.timesheet_cycle_end_day || '20'}</span> {t('من الشهر التالي', 'of next month')}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

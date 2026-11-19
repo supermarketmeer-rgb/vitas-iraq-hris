@@ -118,7 +118,19 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
         const data = await res.json();
         if (isMounted && data.employees && data.employees.length > 0) {
           setEmployees(data.employees);
-          setCyclePeriod(data.cycle || '21-09-2026 To 20-10-2026');
+          let activeCycle = data.cycle || '21-09-2026 To 20-10-2026';
+          try {
+            const rawSettings = localStorage.getItem('vitas_app_settings');
+            if (rawSettings) {
+              const parsed = JSON.parse(rawSettings);
+              if (parsed.timesheet_start_date && parsed.timesheet_end_date) {
+                activeCycle = `${parsed.timesheet_start_date} To ${parsed.timesheet_end_date}`;
+              } else if (parsed.timesheet_cycle_start_day && parsed.timesheet_cycle_end_day) {
+                activeCycle = `Day ${parsed.timesheet_cycle_start_day} To Day ${parsed.timesheet_cycle_end_day} (Next Month)`;
+              }
+            }
+          } catch (e) {}
+          setCyclePeriod(activeCycle);
           // Prefer Basra DCC employee (Adel Abdul Ameer Farhood) matching the official sample
           const target = data.employees.find((e: EmployeeTimesheetData) => e.code.toLowerCase().includes('v152')) || 
                          data.employees.find((e: EmployeeTimesheetData) => e.code.toLowerCase().includes('v144')) || 
