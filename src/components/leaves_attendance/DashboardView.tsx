@@ -34,14 +34,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenDbInspector,
 }) => {
   const t = translations[lang];
-  const { employees: appEmployees = [] } = useApp();
+  const { employees: appEmployees = [], appSettings } = useApp();
   const [selectedKpi, setSelectedKpi] = useState<KpiType | null>(null);
+
+  // Organization Work Schedule & Weekend Policy from Settings > Policies
+  const isWeekendDay = (dayKey: string): boolean => {
+    if (appSettings && appSettings[`weekend_${dayKey}`] !== undefined) {
+      return appSettings[`weekend_${dayKey}`] === 'true';
+    }
+    // Default Vitas Iraq policy: Friday and Saturday are weekend off-days
+    return dayKey === 'friday' || dayKey === 'saturday';
+  };
+
+  const allWeekDays = [
+    { key: 'sunday', dayAr: 'الأحد', dayEn: 'Sun', isThu: false },
+    { key: 'monday', dayAr: 'الإثنين', dayEn: 'Mon', isThu: false },
+    { key: 'tuesday', dayAr: 'الثلاثاء', dayEn: 'Tue', isThu: false },
+    { key: 'wednesday', dayAr: 'الأربعاء', dayEn: 'Wed', isThu: false },
+    { key: 'thursday', dayAr: 'الخميس', dayEn: 'Thu', isThu: true },
+    { key: 'friday', dayAr: 'الجمعة', dayEn: 'Fri', isThu: false },
+    { key: 'saturday', dayAr: 'السبت', dayEn: 'Sat', isThu: false },
+  ];
+
+  // Official policy hours from Settings > Policies
+  const officialStart = appSettings?.official_work_hours_start || '08:00';
+  const officialEnd = appSettings?.official_work_hours_end || '16:00';
+  const thuStart = appSettings?.thursday_work_hours_start || '08:00';
+  const thuEnd = appSettings?.thursday_work_hours_end || '15:00';
+
+  // Calculate regular working hours (capped at max 8.00, Thursday max 7.00)
+  const calcHours = (start: string, end: string, maxH: number) => {
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    const raw = (eh * 60 + em - (sh * 60 + sm)) / 60;
+    return Math.min(maxH, Math.max(0, raw));
+  };
+
+  const regDayHours = calcHours(officialStart, officialEnd, 8.0) || 8.0;
+  const thuDayHours = calcHours(thuStart, thuEnd, 7.0) || 7.0;
+
+  // Filter ONLY working days according to enterprise policy
+  const weeklyDays = allWeekDays
+    .filter(day => !isWeekendDay(day.key))
+    .map(day => ({
+      dayAr: day.dayAr,
+      dayEn: day.dayEn,
+      hours: day.isThu ? thuDayHours : regDayHours,
+      target: day.isThu ? thuDayHours : regDayHours,
+      status: 'regular' as const,
+    }));
+
+  const totalWeeklyHours = weeklyDays.reduce((acc, d) => acc + d.hours, 0);
 
   // Policy rule: Shift cannot exceed 8 hours, and Thursday 7 hours
   const isThursdayToday = new Date().getDay() === 4;
-  const scheduledStart = stats.my_attendance_today?.scheduled_start || '08:00';
-  const scheduledEnd = isThursdayToday ? '15:00' : (stats.my_attendance_today?.scheduled_end || '16:00');
-  const maxWorkingHours = isThursdayToday ? 7 : 8;
+  const scheduledStart = officialStart;
+  const scheduledEnd = isThursdayToday ? thuEnd : officialEnd;
+  const maxWorkingHours = isThursdayToday ? thuDayHours : regDayHours;
   const rawWorkedHours = parseFloat(String(stats.my_attendance_today?.worked_hours || '0'));
   const safeWorkedHours = Math.min(maxWorkingHours, rawWorkedHours > 0 ? rawWorkedHours : maxWorkingHours).toFixed(2);
 
@@ -98,13 +147,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalEmployees = stats.total_employees || 49;
   const presentPct = Math.round(((stats.today_attendance.present || 0) / totalEmployees) * 100);
 
-  const weeklyDays = [
-    { dayAr: 'الأحد', dayEn: 'Sun', hours: 8.0, target: 8.0, status: 'regular' },
-    { dayAr: 'الإثنين', dayEn: 'Mon', hours: 8.5, target: 8.0, status: 'overtime' },
-    { dayAr: 'الثلاثاء', dayEn: 'Tue', hours: 8.0, target: 8.0, status: 'regular' },
-    { dayAr: 'الأربعاء', dayEn: 'Wed', hours: 9.0, target: 8.0, status: 'overtime' },
-    { dayAr: 'الخميس', dayEn: 'Thu', hours: 8.0, target: 8.0, status: 'regular' },
-  ];
+
 
   const upcomingHolidays = [
     {
@@ -474,24 +517,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </h2>
             </div>
             <span className="text-xs font-mono font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded-full">
-              {lang === 'ar' ? 'المجموع: 41.5 ساعة' : 'Total: 41.5 hrs'}
+              {lang === 'ar' ? `المجموع: ${totalWeeklyHours} ساعة` : `Total: ${totalWeeklyHours} hrs`}
             </span>
           </div>
 
-          <div className="grid grid-cols-5 gap-3 pt-2">
+          <div className="flex items-center justify-between gap-2.5 pt-2">
             {weeklyDays.map((day, idx) => (
-              <div key={idx} className="flex flex-col items-center gap-2">
+              <div key={idx} className="flex-1 flex flex-col items-center gap-2">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
                   {lang === 'ar' ? day.dayAr : day.dayEn}
                 </span>
                 <div className="w-full bg-slate-100 dark:bg-[#0c1322] rounded-2xl h-36 flex items-end justify-center p-1.5 border border-slate-200 dark:border-[#1f2d4a]">
                   <div
-                    className={`w-full rounded-xl transition-all ${
-                      day.status === 'overtime'
-                        ? 'bg-gradient-to-t from-teal-600 to-teal-400'
-                        : 'bg-gradient-to-t from-blue-600 to-blue-400'
-                    }`}
-                    style={{ height: `${(day.hours / 10) * 100}%` }}
+                    className="w-full rounded-xl transition-all bg-gradient-to-t from-teal-600 to-teal-400"
+                    style={{ height: `${(day.hours / 8.0) * 100}%` }}
                   />
                 </div>
                 <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">

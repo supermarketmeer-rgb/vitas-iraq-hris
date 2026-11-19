@@ -74,7 +74,7 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
   onPeriodChange,
   lang = 'ar',
 }) => {
-  const { theme } = useApp();
+  const { theme, appSettings } = useApp();
   const isDark = theme === 'dark';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const printableSheetRef = useRef<HTMLDivElement>(null);
@@ -124,7 +124,24 @@ export const TimesheetsView: React.FC<TimesheetsViewProps> = ({
     let holidayOtDaysCount = 0;
 
     const newRecords = (emp.records || []).map(rec => {
-      const isWeekend = (rec.dayType && rec.dayType.includes('نهاية الأسبوع')) || (rec.dayName === 'الجمعة');
+      const isWeekendFromPolicy = (dayName: string): boolean => {
+        const map: Record<string, string> = {
+          'الجمعة': 'friday',
+          'السبت': 'saturday',
+          'الأحد': 'sunday',
+          'الاثنين': 'monday',
+          'الثلاثاء': 'tuesday',
+          'الأربعاء': 'wednesday',
+          'الخميس': 'thursday',
+        };
+        const key = map[dayName];
+        if (key && appSettings && appSettings[`weekend_${key}`] !== undefined) {
+          return appSettings[`weekend_${key}`] === 'true';
+        }
+        return dayName === 'الجمعة' || dayName === 'السبت';
+      };
+
+      const isWeekend = (rec.dayType && rec.dayType.includes('نهاية الأسبوع')) || isWeekendFromPolicy(rec.dayName);
       const isHoliday = rec.dayType && rec.dayType.includes('عطلة') && !isWeekend;
       const isOffRest = rec.dayType && rec.dayType.includes('يوم راحة استثنائي');
       const isThursday = rec.dayName === 'الخميس';
