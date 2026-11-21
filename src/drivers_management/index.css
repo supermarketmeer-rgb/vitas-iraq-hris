@@ -36,7 +36,15 @@
   scrollbar-width: none !important;
 }
 
-/* Ensure Driver App banner text is crisp white */
+/* Ensure Driver App banner text is crisp white and background is rich teal */
+.dtms-container .dtms-driver-app-banner,
+html.light .dtms-container .dtms-driver-app-banner,
+html:not(.dark) .dtms-container .dtms-driver-app-banner {
+  background: linear-gradient(135deg, #042f2e 0%, #115e59 50%, #0f172a 100%) !important;
+  background-color: #042f2e !important;
+  border-color: rgba(13, 148, 136, 0.5) !important;
+}
+
 .dtms-container .dtms-driver-app-banner,
 .dtms-container .dtms-driver-app-banner h2,
 .dtms-container .dtms-driver-app-banner p,

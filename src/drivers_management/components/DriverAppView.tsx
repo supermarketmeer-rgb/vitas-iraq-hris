@@ -1141,7 +1141,14 @@ export const DriverAppView: React.FC<DriverAppViewProps> = ({
       )}
 
       {/* Friendly Driver Profile & Greeting Card */}
-      <div className="dark-banner dtms-driver-app-banner relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white p-3 sm:rounded-3xl sm:p-5 shadow-xl border border-teal-700/50">
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #042f2e 0%, #115e59 50%, #0f172a 100%)',
+          backgroundColor: '#042f2e',
+          borderColor: 'rgba(13, 148, 136, 0.5)'
+        }}
+        className="dtms-driver-app-banner relative overflow-hidden rounded-2xl text-white p-3 sm:rounded-3xl sm:p-5 shadow-xl border border-teal-700/50"
+      >
         {/* Ambient background glow */}
         <div className="absolute -top-12 -left-12 w-32 h-32 rounded-full bg-teal-400/10 blur-2xl pointer-events-none" />
         <div className="absolute -bottom-12 -right-12 w-32 h-32 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
