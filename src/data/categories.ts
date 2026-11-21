@@ -312,45 +312,80 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
     modules: [
       {
         id: 'drivers-mgmt',
-        title: 'لوحة التحكم والملخص',
-        titleEn: 'Drivers Dashboard',
+        title: 'لوحة المؤشرات العامة',
+        titleEn: 'General Dashboard',
         icon: 'dashboard',
         description: 'الملخص الإحصائي، حالة السائقين، والرحلات النشطة'
       },
       {
-        id: 'drivers-list',
-        title: 'إدارة أسطول السائقين',
-        titleEn: 'Drivers Fleet',
-        icon: 'person',
-        description: 'قائمة السائقين، بيانات المركبات، وتراخيص القيادة'
-      },
-      {
         id: 'drivers-trips',
-        title: 'سجل واعتماد الرحلات',
-        titleEn: 'Trips & Approvals',
+        title: 'إدارة ومتابعة الرحلات',
+        titleEn: 'Trips Management & Tracking',
         icon: 'commute',
-        description: 'تسجيل الرحلات، تتبع المسارات، والاعتمادات الإدارية'
-      },
-      {
-        id: 'drivers-payroll',
-        title: 'احتساب مسيرات الرواتب',
-        titleEn: 'Driver Payroll',
-        icon: 'payments',
-        description: 'احتساب أجور الرحلات ومسيرات الرواتب الشهرية للسائقين'
+        description: 'تسجيل الرحلات اليومية، قراءات العدادات، والاعتمادات'
       },
       {
         id: 'drivers-offices',
-        title: 'المكاتب والمسارات والتسعير',
-        titleEn: 'Offices & Routes',
+        title: 'إدارة المكاتب والفروع',
+        titleEn: 'Offices & Branches Management',
         icon: 'domain',
-        description: 'إدارة الفروع، خطوط السير، وجداول تسعير الرحلات'
+        description: 'المكاتب، الفروع، ومصفوفة تسعير المسارات'
+      },
+      {
+        id: 'drivers-vehicles',
+        title: 'سيارات ومركبات الأسطول',
+        titleEn: 'Drivers Vehicles & Fleet',
+        icon: 'directions_car',
+        description: 'إدارة أسطول المركبات، قراءات العدادات، وسجلات الصيانة'
+      },
+      {
+        id: 'drivers-list',
+        title: 'إدارة السائقين وتراخيص القيادة',
+        titleEn: 'Drivers Management',
+        icon: 'badge',
+        description: 'بيانات السائقين، رخص القيادة، وربط المركبات والمكاتب'
+      },
+      {
+        id: 'drivers-tracking',
+        title: 'شاشة التتبع المباشر (GPS)',
+        titleEn: 'Live GPS Tracking',
+        icon: 'explore',
+        description: 'الخريطة الحية للتتبع الجغرافي وحركة المركبات'
+      },
+      {
+        id: 'drivers-app',
+        title: 'تطبيق السائق الميداني (الجوال)',
+        titleEn: 'Field Driver App',
+        icon: 'smartphone',
+        description: 'واجهة السائق الميدانية لتسجيل الرحلات وقراءات العداد'
+      },
+      {
+        id: 'drivers-users',
+        title: 'إدارة المستخدمين والصلاحيات',
+        titleEn: 'Users & Access Management',
+        icon: 'manage_accounts',
+        description: 'صلاحيات المشرفين، السائقين، وتعيين المكاتب'
       },
       {
         id: 'drivers-reports',
-        title: 'التقارير والإحصائيات',
-        titleEn: 'Reports & Analytics',
+        title: 'التقارير الشاملة والتشغيلية',
+        titleEn: 'Comprehensive & Operational Reports',
         icon: 'bar_chart',
-        description: 'تقارير أداء السائقين، تكاليف الرحلات، والبيانات التراكمية'
+        description: 'تقارير حركة الأسطول، استهلاك الوقود، والتحليلات والرواتب'
+      },
+      {
+        id: 'drivers-settings',
+        title: 'إعدادات النظام والـ OCR',
+        titleEn: 'System Settings',
+        icon: 'settings',
+        description: 'إعدادات محرك قراءة العدادات وتتبع GPS والتنبيهات'
+      },
+      {
+        id: 'drivers-guide',
+        title: 'دليل دورة العمل',
+        titleEn: 'Workflow Guide',
+        icon: 'help_outline',
+        description: 'الدليل الإرشادي التفاعلي لدورة عمل الرحلات واعتمادها'
       }
     ]
   },

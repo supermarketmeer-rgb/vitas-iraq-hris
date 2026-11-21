@@ -184,10 +184,11 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             <button
               onClick={onReprocess}
               disabled={isReprocessing}
-              className="btn-dark-solid px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold shadow-md border border-slate-700 hover:bg-slate-900 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95 whitespace-nowrap shrink-0"
+              style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
+              className="px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold shadow-md border border-slate-700 hover:bg-slate-900 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95 whitespace-nowrap shrink-0 !text-white !bg-[#1e293b]"
             >
               <span className={`material-symbols-outlined text-sm ${isReprocessing ? 'animate-spin' : ''}`}>refresh</span>
-              <span className="font-bold">{t.reprocess_attendance}</span>
+              <span className="font-bold !text-white">{t.reprocess_attendance}</span>
             </button>
 
             <button
@@ -200,10 +201,11 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
             <button
               onClick={onExportPdf}
-              className="btn-dark-solid px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold shadow-md border border-slate-700 hover:bg-slate-900 transition-all flex items-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+              style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
+              className="px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold shadow-md border border-slate-700 hover:bg-slate-900 transition-all flex items-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap shrink-0 !text-white !bg-[#1e293b]"
             >
               <span className="material-symbols-outlined text-sm">print</span>
-              <span className="font-bold">{t.export_pdf}</span>
+              <span className="font-bold !text-white">{t.export_pdf}</span>
             </button>
           </div>
         </div>

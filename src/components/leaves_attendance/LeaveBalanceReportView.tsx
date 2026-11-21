@@ -377,7 +377,8 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
 
             <button
               onClick={handlePrint}
-              className="btn-dark-solid px-4 py-2.5 rounded-xl border border-slate-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+              style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
+              className="px-4 py-2.5 rounded-xl border border-slate-700 !text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0 !bg-[#1e293b]"
             >
               <span className="material-symbols-outlined text-base">print</span>
               <span>{isAr ? 'طباعة / PDF' : 'Print / PDF'}</span>
@@ -387,7 +388,8 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
               <>
                 <button
                   onClick={() => onNavigate('leave-earned')}
-                  className="btn-dark-solid px-4 py-2.5 rounded-xl border border-slate-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+                  style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
+                  className="px-4 py-2.5 rounded-xl border border-slate-700 !text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0 !bg-[#1e293b]"
                 >
                   <span className="material-symbols-outlined text-base">account_balance_wallet</span>
                   <span>{isAr ? 'الإجازات المستحقة' : 'Earned Leaves'}</span>
@@ -395,7 +397,8 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
 
                 <button
                   onClick={() => onNavigate('leave-dashboard')}
-                  className="btn-dark-solid px-4 py-2.5 rounded-xl border border-slate-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+                  style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
+                  className="px-4 py-2.5 rounded-xl border border-slate-700 !text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0 !bg-[#1e293b]"
                 >
                   <span className="material-symbols-outlined text-base">dashboard</span>
                   <span>{isAr ? 'لوحة التحكم' : 'Dashboard'}</span>

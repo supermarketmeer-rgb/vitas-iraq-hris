@@ -80,34 +80,23 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 lg:px-6 shadow-xs transition-colors duration-200">
-      {/* Right Side: Hamburger & Branding - HIDE sidebar icon completely for driver */}
+      {/* Right Side: Branding */}
       <div className="flex items-center gap-3">
-        {!isDriverView && currentUser.role !== 'driver' && (
-          <button
-            id="mobile-sidebar-toggle-btn"
-            onClick={onToggleSidebar}
-            aria-label="تبديل القائمة الجانبية"
-            className="lg:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        )}
-
-        <div style={{ display: 'none' }} className="hidden items-center gap-2">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-teal-600 text-white shadow-xs">
-            <Truck className="w-5 h-5" />
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#c1cd21] text-[#191e22] shadow-xs shrink-0 font-bold">
+            <Truck className="w-5 h-5 text-[#191e22]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-900 dark:text-white text-base lg:text-lg tracking-tight">
+              <span className="font-bold text-gray-900 dark:text-white text-sm sm:text-base tracking-tight font-['Plus_Jakarta_Sans',sans-serif]">
                 DTMS
               </span>
-              <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-700">
-                {currentUser.role === 'driver' ? 'تطبيق السائق الميداني' : 'نظام إدارة حركة ونقليات السائقين'}
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-700">
+                {currentUser.role === 'driver' ? 'تطبيق السائق الميداني' : 'إدارة حركة ونقليات السائقين'}
               </span>
             </div>
-            <p className="hidden md:block text-[11px] text-gray-500 dark:text-gray-400">
-              {currentUser.role === 'driver' ? 'Field Driver Mobile Application' : 'Driver & Transportation Management System'}
+            <p className="hidden md:block text-[10px] text-gray-500 dark:text-gray-400 font-['Cairo']">
+              نظام إدارة أسطول المركبات والرحلات وقراءات العدادات
             </p>
           </div>
         </div>

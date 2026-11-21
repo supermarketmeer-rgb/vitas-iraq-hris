@@ -300,10 +300,16 @@ function AppContent() {
       case 'cat-drivers':
       case 'drivers-mgmt':
       case 'drivers-trips':
-      case 'drivers-payroll':
-      case 'drivers-reports':
+      case 'drivers-tracking':
       case 'drivers-offices':
+      case 'drivers-vehicles':
       case 'drivers-list':
+      case 'drivers-app':
+      case 'drivers-users':
+      case 'drivers-reports':
+      case 'drivers-payroll':
+      case 'drivers-settings':
+      case 'drivers-guide':
         return <DriversModuleView />;
 
       // Settings & Security

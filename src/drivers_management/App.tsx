@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Header } from './components/Header';
-import { Sidebar, NavSection } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { DriverAppView } from './components/DriverAppView';
 import { TripsManager } from './components/TripsManager';
@@ -19,6 +18,19 @@ import { DtmsStorage } from './utils/storage';
 import { isGPSTrackingEnabled } from './utils/gpsTracker';
 import { hydrateDataFromMySQL } from './utils/apiSync';
 import './index.css';
+
+export type NavSection =
+  | 'dashboard'
+  | 'trips'
+  | 'create_trip'
+  | 'live_tracking'
+  | 'vehicles'
+  | 'drivers'
+  | 'offices'
+  | 'reports'
+  | 'users'
+  | 'settings'
+  | 'driver_app';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -142,16 +154,27 @@ function AppContent() {
       case 'drivers-mgmt':
       case 'cat-drivers':
         return 'dashboard';
-      case 'drivers-list':
-        return 'drivers';
       case 'drivers-trips':
         return 'trips';
-      case 'drivers-payroll':
-        return 'reports';
       case 'drivers-offices':
         return 'offices';
+      case 'drivers-vehicles':
+        return 'vehicles';
+      case 'drivers-list':
+        return 'drivers';
+      case 'drivers-tracking':
+        return 'live_tracking';
+      case 'drivers-app':
+        return 'driver_app';
+      case 'drivers-users':
+        return 'users';
       case 'drivers-reports':
+      case 'drivers-payroll':
         return 'reports';
+      case 'drivers-settings':
+        return 'settings';
+      case 'drivers-guide':
+        return 'dashboard';
       default:
         return 'dashboard';
     }
@@ -163,6 +186,9 @@ function AppContent() {
 
   // Sync section when activeModuleId changes in HRIS Sidebar
   useEffect(() => {
+    if (activeModuleId === 'drivers-guide') {
+      setShowWorkflowGuideModal(true);
+    }
     setCurrentSection(getSectionFromModuleId(activeModuleId));
   }, [activeModuleId]);
 
@@ -255,20 +281,9 @@ function AppContent() {
   };
 
   return (
-    <div className="dtms-container w-full min-h-[calc(100vh-6rem)] bg-[#f4f6f8] dark:bg-slate-900 text-[#191e22] dark:text-slate-100 flex font-['Cairo','Plus_Jakarta_Sans',sans-serif] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-      {/* Vitas Horizon Executive Sidebar for DTMS (Module Buttons) */}
-      <Sidebar
-        currentSection={currentSection}
-        onSelectSection={(section) => navigateToSection(section)}
-        userRole={currentUser.role}
-        currentUser={currentUser}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        onOpenWorkflowGuide={() => setShowWorkflowGuideModal(true)}
-      />
-
+    <div className="dtms-container w-full min-h-[calc(100vh-6rem)] bg-[#f4f6f8] dark:bg-slate-900 text-[#191e22] dark:text-slate-100 flex flex-col font-['Cairo','Plus_Jakarta_Sans',sans-serif] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
       {/* Main Workspace (Header + Content) */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="w-full flex-1 flex flex-col min-w-0">
         <Header
           currentUser={currentUser}
           theme={theme}
