@@ -45,11 +45,20 @@ function createWindow() {
       title: 'VITAS Iraq HRMS - Desktop Edition',
       autoHideMenuBar: true,
       show: true,
+      fullscreen: true,
       webPreferences: {
         preload: path.join(__dirname, 'preload.mjs'),
         nodeIntegration: false,
         contextIsolation: true,
         webSecurity: false
+      }
+    });
+
+    // F11 Fullscreen toggle shortcut inside Electron
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'F11' && input.type === 'keyDown') {
+        mainWindow.setFullScreen(!mainWindow.isFullScreen());
+        event.preventDefault();
       }
     });
 
@@ -125,3 +134,17 @@ app.on('window-all-closed', () => {
 });
 
 ipcMain.handle('get-app-version', () => app.getVersion());
+
+ipcMain.handle('enter-fullscreen', () => {
+  if (mainWindow && !mainWindow.isFullScreen()) {
+    mainWindow.setFullScreen(true);
+  }
+  return true;
+});
+
+ipcMain.handle('toggle-fullscreen', () => {
+  if (mainWindow) {
+    mainWindow.setFullScreen(!mainWindow.isFullScreen());
+  }
+  return true;
+});

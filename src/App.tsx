@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SplashScreen } from './components/splash';
+import { requestFullScreenF11 } from './utils/fullscreen';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 const Router: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -438,6 +439,34 @@ export default function App() {
 
   useEffect(() => {
     (window as any).replaySplashScreen = () => setShowSplash(true);
+
+    // Request fullscreen immediately when app opens (F11 fullscreen)
+    requestFullScreenF11();
+
+    // Trigger on first user interaction (for browser policies requiring user activation)
+    const handleFirstInteraction = () => {
+      requestFullScreenF11();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F11') {
+        requestFullScreenF11();
+      }
+    };
+
+    window.addEventListener('click', handleFirstInteraction, { capture: true, once: true });
+    window.addEventListener('pointerdown', handleFirstInteraction, { capture: true, once: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { capture: true, once: true });
+    window.addEventListener('keydown', handleFirstInteraction, { capture: true, once: true });
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('pointerdown', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   return (

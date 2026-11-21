@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState, useId } from 'react';
 import { ClockHand } from './ClockHand';
 import { ParticleTrail } from './ParticleTrail';
 import { soundSynth } from '../../utils/audio';
+import { requestFullScreenF11 } from '../../utils/fullscreen';
 import splashLogo from '../../../assets/meerson_splash_logo_transparent.png';
 import meersonWatermark from '../../../assets/meerson_logo_transparent.png';
 
@@ -129,6 +130,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   };
 
   const handleSkip = () => {
+    requestFullScreenF11();
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     if (exitTimeoutRef.current) clearTimeout(exitTimeoutRef.current);
     setProgress(1);
@@ -174,6 +176,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   return (
     <div
       data-splash-screen="true"
+      onClick={() => requestFullScreenF11()}
       className={`fixed inset-0 z-[99999] flex items-center justify-center transition-opacity duration-700 select-none overflow-hidden ${
         phase === 'exiting' ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
