@@ -87,6 +87,8 @@ export const api = {
   // Health check & System Developer Tools
   health: () => apiClient.get('/health'),
   getSystemHealthTelemetry: () => apiClient.get('/system/health-telemetry'),
+  getSelfHealingStatus: () => apiClient.get('/system/self-healing/status'),
+  triggerSelfHealing: () => apiClient.post('/system/self-healing/trigger', {}),
   getEndpointsStatus: () => apiClient.get('/system/endpoints-status'),
   getHealthConfig: () => apiClient.get('/system/health-config'),
   saveHealthConfig: (config: any) => apiClient.post('/system/health-config', config),

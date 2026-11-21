@@ -206,6 +206,44 @@ export const Category10SystemDevView: React.FC = () => {
   };
 
   // -------------------------------------------------------------
+  // Self-Healing Engine State
+  // -------------------------------------------------------------
+  const [selfHealingStatus, setSelfHealingStatus] = useState<any | null>(null);
+  const [isTriggeringHealing, setIsTriggeringHealing] = useState<boolean>(false);
+
+  const fetchSelfHealingStatus = async () => {
+    try {
+      const res: any = await (api as any).getSelfHealingStatus?.().catch(() => null);
+      if (res) setSelfHealingStatus(res);
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    if (activeModuleId === 'sys-health-monitor') {
+      fetchSelfHealingStatus();
+      const interval = setInterval(fetchSelfHealingStatus, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [activeModuleId]);
+
+  const handleTriggerHealing = async () => {
+    try {
+      setIsTriggeringHealing(true);
+      const res: any = await (api as any).triggerSelfHealing?.().catch(() => null);
+      if (res?.success) {
+        showToast(t('تم تشغيل الصيانة الفورية بنجاح ✅', 'Instant maintenance triggered successfully ✅'));
+        await fetchSelfHealingStatus();
+      } else {
+        showToast(t('فشل تشغيل الصيانة، يرجى المحاولة لاحقاً', 'Maintenance trigger failed, please try again'));
+      }
+    } catch (_) {
+      showToast(t('خطأ في الاتصال بمحرك الصيانة', 'Connection error to maintenance engine'));
+    } finally {
+      setIsTriggeringHealing(false);
+    }
+  };
+
+  // -------------------------------------------------------------
   // 4. API Gateway State (sys-api-gateway)
   // -------------------------------------------------------------
   const [gatewayData, setGatewayData] = useState<any | null>(null);
@@ -556,6 +594,103 @@ export const Category10SystemDevView: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* ================================================================
+              Self-Healing Engine Panel
+              ================================================================ */}
+          <div className="p-6 rounded-3xl bg-[#0d1117] border border-teal-500/20 shadow-xl space-y-5">
+            {/* Header */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-xl">auto_fix_high</span>
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-white">{t('محرك الإصلاح الذاتي والصيانة التلقائية (Self-Healing Engine)', 'Automated Self-Healing & Maintenance Engine')}</h2>
+                  <p className="text-xs text-slate-400">{t('يعمل 24/7 تلقائياً — حماية الذاكرة + مراقبة قاعدة البيانات + صيانة ليلية (03:00 AM)', '24/7 Auto — Memory Guard + DB Watchdog + Nightly Optimization (03:00 AM)')}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${selfHealingStatus?.active !== false ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${selfHealingStatus?.active !== false ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`}></span>
+                  {selfHealingStatus?.active !== false ? t('نشط', 'Active') : t('متوقف', 'Stopped')}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleTriggerHealing}
+                  disabled={isTriggeringHealing}
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-teal-600/25 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <span className={`material-symbols-outlined text-sm ${isTriggeringHealing ? 'animate-spin' : ''}`}>
+                    {isTriggeringHealing ? 'refresh' : 'bolt'}
+                  </span>
+                  {isTriggeringHealing ? t('جاري الصيانة...', 'Running...') : t('تشغيل الصيانة الفورية', 'Run Instant Maintenance')}
+                </button>
+              </div>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+              <div className="p-3.5 rounded-xl bg-[#0a0c10] border border-white/5 space-y-1">
+                <span className="text-slate-400 font-sans text-[11px]">{t('صحة الذاكرة', 'Memory Health')}</span>
+                <p className={`text-lg font-bold ${selfHealingStatus?.memoryHealth === 'Optimal' ? 'text-emerald-400' : selfHealingStatus?.memoryHealth === 'Warning' ? 'text-amber-400' : 'text-slate-300'}`}>
+                  {selfHealingStatus?.memoryHealth || '—'}
+                </p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-[#0a0c10] border border-white/5 space-y-1">
+                <span className="text-slate-400 font-sans text-[11px]">{t('إجمالي دورات الصيانة', 'Total Maintenance Runs')}</span>
+                <p className="text-lg font-bold text-teal-400">{selfHealingStatus?.totalRuns ?? '—'}</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-[#0a0c10] border border-white/5 space-y-1">
+                <span className="text-slate-400 font-sans text-[11px]">{t('الصيانة الليلية', 'Nightly Runs')}</span>
+                <p className="text-lg font-bold text-purple-400">{selfHealingStatus?.nightlyRunsCount ?? '—'}</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-[#0a0c10] border border-white/5 space-y-1">
+                <span className="text-slate-400 font-sans text-[11px]">{t('الذاكرة المحررة (آخر دورة)', 'Last Freed Memory')}</span>
+                <p className="text-lg font-bold text-sky-400">{selfHealingStatus?.lastFreedMemoryMB != null ? `${selfHealingStatus.lastFreedMemoryMB} MB` : '—'}</p>
+              </div>
+            </div>
+
+            {/* Last Action + Last Run */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-xl bg-[#0a0c10] border border-white/5 flex items-start gap-3">
+                <span className="material-symbols-outlined text-teal-400 text-base mt-0.5">history</span>
+                <div>
+                  <p className="text-[11px] text-slate-400 mb-1">{t('آخر إجراء منفذ', 'Last Action')}</p>
+                  <p className="text-xs font-semibold text-white">{selfHealingStatus?.lastAction || t('لا توجد بيانات بعد', 'No data yet')}</p>
+                </div>
+              </div>
+              <div className="p-3.5 rounded-xl bg-[#0a0c10] border border-white/5 flex items-start gap-3">
+                <span className="material-symbols-outlined text-purple-400 text-base mt-0.5">schedule</span>
+                <div>
+                  <p className="text-[11px] text-slate-400 mb-1">{t('الصيانة الليلية التالية', 'Next Nightly Maintenance')}</p>
+                  <p className="text-xs font-semibold text-white">
+                    {t('03:00 صباحاً يومياً (تلقائي)', '03:00 AM Daily (Automatic)')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Active Features */}
+            {Array.isArray(selfHealingStatus?.activeFeatures) && selfHealingStatus.activeFeatures.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {selfHealingStatus.activeFeatures.map((feature: string, i: number) => (
+                  <span key={i} className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-teal-500/10 text-teal-300 border border-teal-500/20 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-xs">check_circle</span>
+                    {feature}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Footer - Started At */}
+            {selfHealingStatus?.startedAt && (
+              <p className="text-[10px] text-slate-500 pt-1 border-t border-white/5">
+                {t('تم تشغيل المحرك منذ:', 'Engine started since:')} <span className="font-mono text-slate-400">{new Date(selfHealingStatus.startedAt).toLocaleString()}</span>
+              </p>
+            )}
+          </div>
+
         </div>
       )}
 

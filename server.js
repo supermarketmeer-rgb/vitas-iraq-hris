@@ -48,6 +48,7 @@ import { registerLebanonRegionalRoutes } from './database/lebanonRegionalRoutes.
 import { registerM365Routes } from './database/m365Routes.js';
 import { registerLocalServerSetupRoutes } from './database/localServerSetupRoutes.js';
 import { registerAppraisalRoutes } from './database/appraisalRoutes.js';
+import { initSelfHealingEngine, registerSelfHealingRoutes } from './database/selfHealingEngine.js';
 import {
   initBackupScheduler,
   executeBackup,
@@ -243,6 +244,9 @@ db.getConnection(async (err, connection) => {
 
   // Initialize automated periodic database backups & disaster recovery engine
   initBackupScheduler(db);
+
+  // Initialize automated 24/7 Self-Healing & Health Maintenance Engine
+  initSelfHealingEngine(db);
 
   await loadEmployeeColumns();
   await ensureCandidateColumns();
@@ -7585,6 +7589,9 @@ registerM365Routes(app, query, db);
 
 // Register Performance Appraisal Module Routes
 registerAppraisalRoutes(app, query, executeCloudQuery);
+
+// Register Automated Self-Healing & System Health Engine Routes
+registerSelfHealingRoutes(app);
 
 // ============================================================
 // BIOMETRIC ATTENDANCE & SQL SERVER SYNC API ROUTES
