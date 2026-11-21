@@ -346,13 +346,6 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
         description: 'بيانات السائقين، رخص القيادة، وربط المركبات والمكاتب'
       },
       {
-        id: 'drivers-tracking',
-        title: 'شاشة التتبع المباشر (GPS)',
-        titleEn: 'Live GPS Tracking',
-        icon: 'explore',
-        description: 'الخريطة الحية للتتبع الجغرافي وحركة المركبات'
-      },
-      {
         id: 'drivers-app',
         title: 'تطبيق السائق الميداني (الجوال)',
         titleEn: 'Field Driver App',

@@ -1220,7 +1220,7 @@ export const DriverAppView: React.FC<DriverAppViewProps> = ({
           {/* Admin Preview Mode Switcher (Only visible to admin/supervisor to test driver isolation) */}
           {currentUser.role !== 'driver' && drivers.length > 0 && (
             <div className="flex items-center justify-between gap-2 p-2 sm:p-2.5 rounded-2xl bg-teal-950/70 border border-teal-500/40 text-xs">
-              <span style={{ color: '#ffffff' }} className="!text-white font-bold shrink-0">{tr('معاينة كسائق:', 'Preview as driver:')}</span>
+              <span style={{ color: '#000000' }} className="dtms-preview-label !text-black font-bold shrink-0">{tr('معاينة كسائق:', 'Preview as driver:')}</span>
               <select
                 value={driver?.id}
                 onChange={(e) => setSelectedDriverId(e.target.value)}

@@ -48,8 +48,14 @@ html:not(.dark) .dtms-container .dtms-driver-app-banner {
 .dtms-container .dtms-driver-app-banner,
 .dtms-container .dtms-driver-app-banner h2,
 .dtms-container .dtms-driver-app-banner p,
-.dtms-container .dtms-driver-app-banner span:not(.dtms-driver-app-select *):not(.dtms-driver-metric-card *) {
+.dtms-container .dtms-driver-app-banner span:not(.dtms-driver-app-select *):not(.dtms-driver-metric-card *):not(.dtms-preview-label) {
   color: #ffffff !important;
+}
+
+/* Ensure Preview as driver label is black */
+.dtms-container .dtms-preview-label,
+.dtms-container span.dtms-preview-label {
+  color: #000000 !important;
 }
 
 /* Ensure Driver App combobox has black text */
