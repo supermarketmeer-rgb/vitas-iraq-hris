@@ -459,6 +459,23 @@ export function filterEmployeesForUser(employees: any[], user?: any, role?: stri
     return employees;
   }
 
+  // 2b. Data Entry & HR Officer bypass (need company-wide access to enter/edit employee data)
+  if (
+    currentRole === 'Data Entry' ||
+    currentRole === 'HR Officer' ||
+    currentRole === 'HR Staff' ||
+    jobTitleStr.includes('data entry') ||
+    jobTitleStr.includes('مدخل بيانات') ||
+    jobTitleStr.includes('hr officer') ||
+    jobTitleStr.includes('ضابط موارد') ||
+    jobTitleStr.includes('موظف موارد بشرية') ||
+    jobTitleStr.includes('hr-') ||
+    // HR Officer role pattern: "HR Officer-HR-N"
+    /^hr officer/i.test(String(user?.job_title || user?.jobTitle || ''))
+  ) {
+    return employees;
+  }
+
   // 3. Branch Manager scope
   if (isBranchManager(user, role)) {
     const branch = getUserBranch(user);
