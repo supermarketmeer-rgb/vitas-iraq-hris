@@ -7,7 +7,6 @@ import { DtmsStorage } from '../utils/storage';
 import { AuditLogsViewer } from './AuditLogsViewer';
 import { BackupModal } from './BackupModal';
 import { useDtmsHeader } from '../context/DtmsHeaderContext';
-import { useDtmsHeader } from '../context/DtmsHeaderContext';
 
 type SettingsTab = 'governorates' | 'ocr' | 'backup' | 'audit';
 

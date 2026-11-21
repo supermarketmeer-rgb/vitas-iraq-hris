@@ -34,7 +34,6 @@ import { generateSixtySecondTelemetry, RouteTelemetryPoint } from '../utils/rout
 import { compareTripGpsAndOcr, DistanceComparisonResult } from '../utils/distanceComparator';
 import { isGPSTrackingEnabled } from '../utils/gpsTracker';
 import { useDtmsHeader } from '../context/DtmsHeaderContext';
-import { useDtmsHeader } from '../context/DtmsHeaderContext';
 
 interface LiveTrackingDashboardProps {
   initialTripId?: string;
