@@ -148,3 +148,19 @@ ipcMain.handle('toggle-fullscreen', () => {
   }
   return true;
 });
+
+ipcMain.handle('exit-fullscreen', () => {
+  if (mainWindow && mainWindow.isFullScreen()) {
+    mainWindow.setFullScreen(false);
+  }
+  return true;
+});
+
+ipcMain.handle('close-app', () => {
+  if (mainWindow) {
+    mainWindow.close();
+  } else {
+    app.quit();
+  }
+  return true;
+});

@@ -9,8 +9,10 @@ import {
   Sun, 
   ArrowRight,
   Zap,
-  Building2
+  Building2,
+  X
 } from 'lucide-react';
+import { exitAppOrFullscreen } from '../../utils/fullscreen';
 import vitasLogo from '../../../assets/VitasLogo.jpeg';
 
 export const ExecutiveLogin: React.FC = () => {
@@ -56,6 +58,15 @@ export const ExecutiveLogin: React.FC = () => {
             className="p-1.5 rounded-xl border border-slate-700 bg-slate-800/60 text-amber-400"
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+          <button
+            type="button"
+            onClick={exitAppOrFullscreen}
+            className="p-1.5 rounded-xl border border-slate-700 bg-slate-800/60 text-slate-400 hover:text-white hover:bg-rose-600 hover:border-rose-600 transition-colors"
+            title={language === 'ar' ? 'الخروج من التطبيق / إنهاء ملء الشاشة' : 'Exit Application / Fullscreen'}
+            aria-label="Exit Application"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>

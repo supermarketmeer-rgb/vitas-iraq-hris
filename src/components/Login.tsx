@@ -5,7 +5,8 @@ import { UserProfile, UserRole } from '../types';
 import vitasLogo from '../../assets/VitasLogo.jpeg';
 import meersonLogo from '../../assets/meerson_logo_transparent.png';
 import { api } from '../api/client';
-import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, LogIn, X } from 'lucide-react';
+import { exitAppOrFullscreen } from '../utils/fullscreen';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -689,9 +690,10 @@ export const Login: React.FC = () => {
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-teal-700 rounded-full blur-3xl opacity-15 animate-pulse pointer-events-none" style={{ animationDelay: '2s' }}></div>
 
       <div className="relative z-10 w-full max-w-md">
-        {/* Language & Theme Toggle */}
-        <div className="flex justify-end gap-2 mb-4">
+        {/* Language, Theme & Exit Toggle */}
+        <div className="flex justify-end gap-2 mb-4 items-center">
           <button
+            type="button"
             onClick={toggleLanguage}
             className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
               isDark 
@@ -702,6 +704,7 @@ export const Login: React.FC = () => {
             {language === 'ar' ? 'EN' : 'AR'}
           </button>
           <button
+            type="button"
             onClick={toggleTheme}
             className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
               isDark 
@@ -710,6 +713,19 @@ export const Login: React.FC = () => {
             }`}
           >
             {isDark ? '☀' : '🌙'}
+          </button>
+          <button
+            type="button"
+            onClick={exitAppOrFullscreen}
+            className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center cursor-pointer hover:bg-rose-600 hover:border-rose-600 hover:text-white group ${
+              isDark 
+                ? 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-white' 
+                : 'bg-slate-100 border-slate-300 text-slate-600 hover:text-white'
+            }`}
+            title={language === 'ar' ? 'الخروج من التطبيق / إنهاء وضع ملء الشاشة' : 'Exit Application / Fullscreen'}
+            aria-label="Exit Application"
+          >
+            <X className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
           </button>
         </div>
 
