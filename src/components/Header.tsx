@@ -15,7 +15,6 @@ import {
   localizeTimestamp
 } from '../utils/nameHelper';
 import { getBranchName } from '../utils/branchHelper';
-import { exitAppOrFullscreen } from '../utils/fullscreen';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -688,17 +687,6 @@ export const Header: React.FC = () => {
             )}
           </div>
         </div>
-
-        {/* Exit Application / Fullscreen Button */}
-        <button
-          type="button"
-          onClick={exitAppOrFullscreen}
-          className="p-2 rounded-xl transition-all relative border border-rose-600 bg-rose-600 text-white hover:bg-rose-700 shadow-xs flex items-center justify-center cursor-pointer group"
-          title={t('الخروج من التطبيق / إنهاء وضع ملء الشاشة', 'Exit Application / Fullscreen')}
-          aria-label="Exit Application"
-        >
-          <span className="material-symbols-outlined text-xl transition-transform group-hover:scale-110">close</span>
-        </button>
       </div>
     </header>
 

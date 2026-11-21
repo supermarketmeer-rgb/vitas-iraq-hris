@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeContext } from '../context/EmployeeContext';
 import { Sun, Moon, Globe, X } from 'lucide-react';
-import { exitAppOrFullscreen } from '../../utils/fullscreen';
 import vitasLogo from '../../../assets/VitasLogo.jpeg';
 
 interface EmployeeLoginProps {
@@ -336,21 +335,6 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
             title={isDark ? (isEn ? 'Switch to Light Mode' : 'التحويل للوضع النهاري') : (isEn ? 'Switch to Dark Mode' : 'التحويل للوضع الليلي')}
           >
             {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
-          </button>
-
-          {/* Exit Application / Fullscreen Button */}
-          <button
-            type="button"
-            onClick={exitAppOrFullscreen}
-            className={`p-2 rounded-xl border transition-all cursor-pointer shadow-xs active:scale-95 group ${
-              isDark 
-                ? 'bg-rose-600 hover:bg-rose-700 border-rose-500 text-white' 
-                : 'bg-rose-500 hover:bg-rose-600 border-rose-600 text-white shadow-rose-500/20'
-            }`}
-            title={isEn ? 'Exit Application / Fullscreen' : 'الخروج من التطبيق / إنهاء ملء الشاشة'}
-            aria-label="Exit Application"
-          >
-            <X className="w-4 h-4 stroke-[2.5] transition-transform group-hover:scale-110" />
           </button>
         </div>
       </div>
