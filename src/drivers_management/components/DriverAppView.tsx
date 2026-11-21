@@ -1141,7 +1141,7 @@ export const DriverAppView: React.FC<DriverAppViewProps> = ({
       )}
 
       {/* Friendly Driver Profile & Greeting Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white p-3 sm:rounded-3xl sm:p-5 shadow-xl border border-teal-700/50">
+      <div className="dark-banner dtms-driver-app-banner relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white p-3 sm:rounded-3xl sm:p-5 shadow-xl border border-teal-700/50">
         {/* Ambient background glow */}
         <div className="absolute -top-12 -left-12 w-32 h-32 rounded-full bg-teal-400/10 blur-2xl pointer-events-none" />
         <div className="absolute -bottom-12 -right-12 w-32 h-32 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
@@ -1151,21 +1151,21 @@ export const DriverAppView: React.FC<DriverAppViewProps> = ({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:gap-3">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-600 to-teal-500 text-white flex items-center justify-center font-bold shadow-md border border-teal-300/30 shrink-0 sm:h-12 sm:w-12 sm:rounded-2xl">
-                <Truck className="w-4 h-4 sm:h-6 sm:w-6" />
+                <Truck className="w-4 h-4 sm:h-6 sm:w-6 text-white" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-teal-300 font-semibold">
+                <p style={{ color: '#ffffff' }} className="text-[11px] font-semibold !text-white">
                   {getGreeting()}
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-sm sm:text-lg font-black text-white leading-snug">
+                  <h2 style={{ color: '#ffffff' }} className="text-sm sm:text-lg font-black !text-white leading-snug">
                     {driver?.full_name}
                   </h2>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-700/90 text-teal-200 border border-teal-500/40 shrink-0">
+                  <span style={{ color: '#ffffff' }} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-700/90 !text-white border border-teal-500/40 shrink-0">
                     {tr('سائق معتمد', 'Certified driver')}
                   </span>
                 </div>
-                <p className="text-[11px] text-teal-200/80 font-mono mt-0.5">
+                <p style={{ color: '#ffffff' }} className="text-[11px] font-mono mt-0.5 !text-white">
                   {tr('رقم الموظف:', 'Employee No.:')} {driver?.employee_no} • {tr('رخصة:', 'License:')} {driver?.license_no}
                 </p>
               </div>
@@ -1213,14 +1213,15 @@ export const DriverAppView: React.FC<DriverAppViewProps> = ({
           {/* Admin Preview Mode Switcher (Only visible to admin/supervisor to test driver isolation) */}
           {currentUser.role !== 'driver' && drivers.length > 0 && (
             <div className="flex items-center justify-between gap-2 p-2 sm:p-2.5 rounded-2xl bg-teal-950/70 border border-teal-500/40 text-xs">
-              <span className="text-teal-200 font-bold shrink-0">{tr('معاينة كسائق:', 'Preview as driver:')}</span>
+              <span style={{ color: '#ffffff' }} className="!text-white font-bold shrink-0">{tr('معاينة كسائق:', 'Preview as driver:')}</span>
               <select
                 value={driver?.id}
                 onChange={(e) => setSelectedDriverId(e.target.value)}
-                className="bg-teal-900/90 text-white text-xs rounded-xl px-2.5 py-1.5 border border-teal-500/60 focus:outline-none focus:ring-2 focus:ring-teal-300 w-full"
+                style={{ color: '#000000', backgroundColor: '#ffffff' }}
+                className="dtms-driver-app-select bg-white !text-black text-xs font-bold rounded-xl px-2.5 py-1.5 border border-teal-500/60 focus:outline-none focus:ring-2 focus:ring-teal-300 w-full"
               >
                 {drivers.map((d) => (
-                  <option key={d.id} value={d.id}>
+                  <option key={d.id} value={d.id} style={{ color: '#000000', backgroundColor: '#ffffff' }}>
                     {d.full_name} ({tr('رقم وظيفي:', 'Employee No.:')} {d.employee_no})
                   </option>
                 ))}
@@ -1232,47 +1233,35 @@ export const DriverAppView: React.FC<DriverAppViewProps> = ({
           {!isSimpleMode && <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-center">
             <button
               onClick={() => setActiveTab('current')}
-              className={`p-2.5 rounded-2xl border transition-all text-right sm:text-center ${
-                activeTab === 'current'
-                  ? 'bg-white/20 border-white/40 shadow-sm'
-                  : 'bg-white/10 border-white/10 hover:bg-white/15'
-              }`}
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+              className="dtms-driver-metric-card p-2.5 rounded-2xl border border-gray-200 transition-all text-right sm:text-center bg-white shadow-xs"
             >
-              <span className="block text-[11px] text-teal-200">{isSimpleMode ? tr('العمل الحالي', 'Current work') : tr('الرحلة النشطة', 'Active trip')}</span>
-              <span className="text-lg font-black text-white font-mono">{activeTrips.length}</span>
+              <span style={{ color: '#000000' }} className="block text-[11px] font-bold !text-black">{isSimpleMode ? tr('العمل الحالي', 'Current work') : tr('الرحلة النشطة', 'Active trip')}</span>
+              <span style={{ color: '#000000' }} className="text-lg font-black font-mono !text-black">{activeTrips.length}</span>
             </button>
             <button
               onClick={() => setActiveTab('new')}
-              className={`p-2.5 rounded-2xl border transition-all text-right sm:text-center ${
-                activeTab === 'new'
-                  ? 'bg-white/20 border-white/40 shadow-sm'
-                  : 'bg-white/10 border-white/10 hover:bg-white/15'
-              }`}
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+              className="dtms-driver-metric-card p-2.5 rounded-2xl border border-gray-200 transition-all text-right sm:text-center bg-white shadow-xs"
             >
-              <span className="block text-[11px] text-teal-200">{tr('مهام جديدة', 'New tasks')}</span>
-              <span className="text-lg font-black text-amber-300 font-mono">{newTrips.length}</span>
+              <span style={{ color: '#000000' }} className="block text-[11px] font-bold !text-black">{tr('مهام جديدة', 'New tasks')}</span>
+              <span style={{ color: '#000000' }} className="text-lg font-black font-mono !text-black">{newTrips.length}</span>
             </button>
             <button
               onClick={() => setActiveTab('revision')}
-              className={`p-2.5 rounded-2xl border transition-all text-right sm:text-center ${
-                activeTab === 'revision'
-                  ? 'bg-white/20 border-white/40 shadow-sm'
-                  : 'bg-white/10 border-white/10 hover:bg-white/15'
-              }`}
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+              className="dtms-driver-metric-card p-2.5 rounded-2xl border border-gray-200 transition-all text-right sm:text-center bg-white shadow-xs"
             >
-              <span className="block text-[11px] text-orange-200">{tr('تحتاج تصحيح', 'Needs correction')}</span>
-              <span className="text-lg font-black text-orange-300 font-mono">{revisionTrips.length}</span>
+              <span style={{ color: '#000000' }} className="block text-[11px] font-bold !text-black">{tr('تحتاج تصحيح', 'Needs correction')}</span>
+              <span style={{ color: '#000000' }} className="text-lg font-black font-mono !text-black">{revisionTrips.length}</span>
             </button>
             <button
               onClick={() => setActiveTab('completed')}
-              className={`p-2.5 rounded-2xl border transition-all text-right sm:text-center ${
-                activeTab === 'completed'
-                  ? 'bg-white/20 border-white/40 shadow-sm'
-                  : 'bg-white/10 border-white/10 hover:bg-white/15'
-              }`}
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+              className="dtms-driver-metric-card p-2.5 rounded-2xl border border-gray-200 transition-all text-right sm:text-center bg-white shadow-xs"
             >
-              <span className="block text-[11px] text-teal-200">{tr('المنجزة', 'Completed')}</span>
-              <span className="text-lg font-black text-emerald-300 font-mono">{completedTripsList.length}</span>
+              <span style={{ color: '#000000' }} className="block text-[11px] font-bold !text-black">{tr('المنجزة', 'Completed')}</span>
+              <span style={{ color: '#000000' }} className="text-lg font-black font-mono !text-black">{completedTripsList.length}</span>
             </button>
           </div>}
 

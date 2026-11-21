@@ -35,3 +35,33 @@
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
+
+/* Ensure Driver App banner text is crisp white */
+.dtms-container .dtms-driver-app-banner,
+.dtms-container .dtms-driver-app-banner h2,
+.dtms-container .dtms-driver-app-banner p,
+.dtms-container .dtms-driver-app-banner span:not(.dtms-driver-app-select *):not(.dtms-driver-metric-card *) {
+  color: #ffffff !important;
+}
+
+/* Ensure Driver App combobox has black text */
+.dtms-container .dtms-driver-app-select,
+.dtms-container select.dtms-driver-app-select,
+.dtms-container .dtms-driver-app-select option {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+/* Ensure Driver App 4 cards have black text and counters */
+.dtms-container .dtms-driver-metric-card,
+.dtms-container .dtms-driver-metric-card span {
+  color: #000000 !important;
+}
+
+/* Ensure System Settings title container has black text */
+.dtms-container .dtms-settings-header h2,
+.dtms-container .dtms-settings-header h2 span,
+.dtms-container .dtms-settings-header h2 * {
+  color: #000000 !important;
+}
+

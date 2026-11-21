@@ -131,7 +131,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           <button
             id="quick-driver-app-btn"
             onClick={() => onNavigate('driver_app')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-teal-600 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 text-xs font-bold transition-colors"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition-colors"
           >
             <span>{t('driver_app_mobile')}</span>
             <ChevronLeft className="w-4 h-4" />

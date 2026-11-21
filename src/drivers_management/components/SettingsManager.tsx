@@ -130,11 +130,14 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onRefreshData 
   ];
 
   return <div className="space-y-4 pb-16" dir={isEnglish ? 'ltr' : 'rtl'}>
-    <header className="p-5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg">
+    <header className="dtms-settings-header p-5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white"><Settings className="w-5 h-5 text-teal-600" />{tr('إعدادات النظام', 'System Settings')}</h2>
-          <p className="mt-1 text-xs text-gray-500">{tr('إدارة البيانات المرجعية والنسخ الاحتياطي وسجل التدقيق.', 'Manage reference data, backups, and audit records.')}</p>
+          <h2 className="flex items-center gap-2 text-lg font-bold !text-black" style={{color:'#000000'}}>
+            <Settings className="w-5 h-5 text-teal-600" />
+            <span style={{color: '#000000'}} className="!text-black font-black">{tr('إعدادات النظام', 'System Settings')}</span>
+          </h2>
+          <p className="mt-1 text-xs font-semibold !text-slate-700" style={{color:'#374151'}}>{tr('إدارة البيانات المرجعية والنسخ الاحتياطي وسجل التدقيق.', 'Manage reference data, backups, and audit records.')}</p>
         </div>
         {headerActions}
       </div>
