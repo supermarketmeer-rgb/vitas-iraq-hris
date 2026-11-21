@@ -157,9 +157,14 @@ ipcMain.handle('exit-fullscreen', () => {
 });
 
 ipcMain.handle('close-app', () => {
-  if (mainWindow) {
-    mainWindow.close();
-  } else {
+  try {
+    if (mainWindow) {
+      mainWindow.destroy();
+    }
+  } catch {}
+  try {
+    app.exit(0);
+  } catch {
     app.quit();
   }
   return true;

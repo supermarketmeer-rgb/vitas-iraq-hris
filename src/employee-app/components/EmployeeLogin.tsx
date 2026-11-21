@@ -342,15 +342,15 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
           <button
             type="button"
             onClick={exitAppOrFullscreen}
-            className={`p-2 rounded-xl border transition-all cursor-pointer shadow-xs active:scale-95 hover:bg-rose-600 hover:border-rose-600 hover:text-white group ${
+            className={`p-2 rounded-xl border transition-all cursor-pointer shadow-xs active:scale-95 group ${
               isDark 
-                ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white' 
-                : 'bg-white border-slate-300 text-slate-600 hover:text-white'
+                ? 'bg-rose-600 hover:bg-rose-700 border-rose-500 text-white' 
+                : 'bg-rose-500 hover:bg-rose-600 border-rose-600 text-white shadow-rose-500/20'
             }`}
             title={isEn ? 'Exit Application / Fullscreen' : 'الخروج من التطبيق / إنهاء ملء الشاشة'}
             aria-label="Exit Application"
           >
-            <X className="w-4 h-4 transition-transform group-hover:scale-110" />
+            <X className="w-4 h-4 stroke-[2.5] transition-transform group-hover:scale-110" />
           </button>
         </div>
       </div>

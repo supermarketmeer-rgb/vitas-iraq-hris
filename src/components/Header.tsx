@@ -693,11 +693,7 @@ export const Header: React.FC = () => {
         <button
           type="button"
           onClick={exitAppOrFullscreen}
-          className={`p-2 rounded-xl transition-all relative border flex items-center justify-center hover:bg-rose-600 hover:border-rose-600 hover:text-white cursor-pointer group ${
-            isDark 
-              ? 'bg-[#06080d] text-slate-300 border-teal-500/40 hover:text-white' 
-              : 'bg-white/10 text-white border-white/20 hover:text-white'
-          }`}
+          className="p-2 rounded-xl transition-all relative border border-rose-600 bg-rose-600 text-white hover:bg-rose-700 shadow-xs flex items-center justify-center cursor-pointer group"
           title={t('الخروج من التطبيق / إنهاء وضع ملء الشاشة', 'Exit Application / Fullscreen')}
           aria-label="Exit Application"
         >

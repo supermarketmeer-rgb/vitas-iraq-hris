@@ -717,15 +717,15 @@ export const Login: React.FC = () => {
           <button
             type="button"
             onClick={exitAppOrFullscreen}
-            className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center cursor-pointer hover:bg-rose-600 hover:border-rose-600 hover:text-white group ${
+            className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center cursor-pointer shadow-sm active:scale-95 group ${
               isDark 
-                ? 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-white' 
-                : 'bg-slate-100 border-slate-300 text-slate-600 hover:text-white'
+                ? 'bg-rose-600 hover:bg-rose-700 border-rose-500 text-white shadow-rose-900/30' 
+                : 'bg-rose-500 hover:bg-rose-600 border-rose-600 text-white shadow-rose-500/30'
             }`}
-            title={language === 'ar' ? 'الخروج من التطبيق / إنهاء وضع ملء الشاشة' : 'Exit Application / Fullscreen'}
+            title={language === 'ar' ? 'إغلاق والخروج من التطبيق' : 'Close / Exit Application'}
             aria-label="Exit Application"
           >
-            <X className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
+            <X className="w-4 h-4 stroke-[2.5] transition-transform group-hover:scale-110" />
           </button>
         </div>
 

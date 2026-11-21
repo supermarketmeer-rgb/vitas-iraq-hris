@@ -62,11 +62,11 @@ export const ExecutiveLogin: React.FC = () => {
           <button
             type="button"
             onClick={exitAppOrFullscreen}
-            className="p-1.5 rounded-xl border border-slate-700 bg-slate-800/60 text-slate-400 hover:text-white hover:bg-rose-600 hover:border-rose-600 transition-colors"
+            className="p-1.5 rounded-xl border border-rose-600 bg-rose-600 text-white hover:bg-rose-700 shadow-sm transition-colors"
             title={language === 'ar' ? 'الخروج من التطبيق / إنهاء ملء الشاشة' : 'Exit Application / Fullscreen'}
             aria-label="Exit Application"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 stroke-[2.5]" />
           </button>
         </div>
       </div>
