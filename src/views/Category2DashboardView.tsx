@@ -159,10 +159,13 @@ export const Category2DashboardView: React.FC = () => {
       {activeModuleId !== 'dash-ess' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Card 1: Total Employees */}
-          <div className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border flex items-center justify-between transition-all ${isDark
-              ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-              : 'bg-[#eef2f6] border-slate-300/80 text-slate-900 shadow-xs hover:shadow-sm'
-            }`}>
+          <div
+            style={{ borderColor: '#10b981', borderWidth: '2px' }}
+            className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border-2 border-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.3)] flex items-center justify-between transition-all ${isDark
+              ? 'bg-[#0a0c10] text-white'
+              : 'bg-[#eef2f6] text-slate-900'
+            }`}
+          >
             <div>
               <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('إجمالي الموظفين', 'Total Employees')}</p>
               <p className={`text-2xl font-bold mt-0.5 font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalEmployeesCount}</p>
@@ -180,10 +183,13 @@ export const Category2DashboardView: React.FC = () => {
           </div>
 
           {/* Card 2: Job Vacancies */}
-          <div className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border flex items-center justify-between transition-all ${isDark
-              ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-              : 'bg-[#eef2f6] border-slate-300/80 text-slate-900 shadow-xs hover:shadow-sm'
-            }`}>
+          <div
+            style={{ borderColor: '#10b981', borderWidth: '2px' }}
+            className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border-2 border-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.3)] flex items-center justify-between transition-all ${isDark
+              ? 'bg-[#0a0c10] text-white'
+              : 'bg-[#eef2f6] text-slate-900'
+            }`}
+          >
             <div>
               <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الوظائف الشاغرة', 'Job Vacancies')}</p>
               <p className={`text-2xl font-bold mt-0.5 font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{openVacanciesCount}</p>
@@ -204,10 +210,13 @@ export const Category2DashboardView: React.FC = () => {
           </div>
 
           {/* Card 3: Pending Leave Requests */}
-          <div className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border flex items-center justify-between transition-all ${isDark
-              ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-              : 'bg-[#eef2f6] border-slate-300/80 text-slate-900 shadow-xs hover:shadow-sm'
-            }`}>
+          <div
+            style={{ borderColor: '#10b981', borderWidth: '2px' }}
+            className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border-2 border-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.3)] flex items-center justify-between transition-all ${isDark
+              ? 'bg-[#0a0c10] text-white'
+              : 'bg-[#eef2f6] text-slate-900'
+            }`}
+          >
             <div>
               <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('طلبات الإجازات القائمة', 'Pending Leave Requests')}</p>
               <p className={`text-2xl font-bold mt-0.5 font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{pendingLeavesCount}</p>
@@ -226,10 +235,13 @@ export const Category2DashboardView: React.FC = () => {
           </div>
 
           {/* Card 4: Assets & Documents */}
-          <div className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border flex items-center justify-between transition-all ${isDark
-              ? 'bg-[#0a0c10] border-white/10 text-white shadow-sm'
-              : 'bg-[#eef2f6] border-slate-300/80 text-slate-900 shadow-xs hover:shadow-sm'
-            }`}>
+          <div
+            style={{ borderColor: '#10b981', borderWidth: '2px' }}
+            className={`dash-overview-canvas-card py-2.5 px-4 rounded-2xl border-2 border-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.3)] flex items-center justify-between transition-all ${isDark
+              ? 'bg-[#0a0c10] text-white'
+              : 'bg-[#eef2f6] text-slate-900'
+            }`}
+          >
             <div>
               <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الأصول والمستندات المسجلة', 'Assets & Documents')}</p>
               <p className={`text-2xl font-bold mt-0.5 font-mono leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalAssetsAndDocs}</p>
