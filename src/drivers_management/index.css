@@ -1,0 +1,37 @@
+/* DTMS Drivers Management System Styles - Safely scoped to prevent affecting other modules */
+.dtms-container {
+  --vitas-lime: #c1cd21;
+  --vitas-lime-hover: #d2de28;
+  --vitas-lime-dark: #6f7800;
+  --vitas-lime-glow: rgba(193, 205, 33, 0.35);
+  --vitas-charcoal: #4d4d4f;
+  --vitas-ink: #23272a;
+  --vitas-deep: #15181a;
+  --page: #f4f6f8;
+  --border: #e2e7eb;
+}
+
+.dtms-container .btn-vitas {
+  background-color: #c1cd21 !important;
+  color: #191e22 !important;
+  font-weight: 700 !important;
+  border-color: #c1cd21 !important;
+  box-shadow: 0 2px 8px rgba(193, 205, 33, 0.35) !important;
+  transition: all 0.18s ease !important;
+}
+
+.dtms-container .btn-vitas:hover {
+  background-color: #d2de28 !important;
+  box-shadow: 0 4px 14px rgba(193, 205, 33, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+.dtms-container .no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.dtms-container .no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
