@@ -7,10 +7,12 @@ import { getLang, tr } from '../utils/i18n';
 import { isOfficeRestricted, isSameOffice } from '../utils/officeUtils';
 import { DtmsStorage } from '../utils/storage';
 import { normalizeOdometerUnit, odometerFromKm, odometerUnitLabel, roundOdometerReading } from '../utils/odometer';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
 
 interface ReportsManagerProps { currentUser?: User | null; }
 
 export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) => {
+  const { headerActions } = useDtmsHeader();
   const allOffices = DtmsStorage.getOffices();
   const allDrivers = DtmsStorage.getDrivers();
   const allVehicles = DtmsStorage.getVehicles();
@@ -109,7 +111,7 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
   return <div className="space-y-5 pb-16" dir={isEnglish ? 'ltr' : 'rtl'}>
     <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-xs">
       <div><h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><FileBarChart className="w-5 h-5 text-teal-600" />{tr('نظام التقارير الشاملة والتشغيلية (13 تقريراً)', 'Comprehensive & Operational Reports (13 Reports)')}</h2><p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{tr('تقارير تشغيلية قابلة للتصفية والتصدير والطباعة', 'Filter, export, and print operational reports')}</p></div>
-      <div className="flex gap-2"><button onClick={() => exportToExcelCSV(reportData.title, reportData.headers, reportData.rows)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold"><Download className="w-4 h-4" />{tr('تصدير Excel', 'Export Excel')}</button><button onClick={() => printReportTable(reportData.title, reportData.headers, reportData.rows)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-200 text-xs font-bold"><Printer className="w-4 h-4" />{tr('طباعة / PDF', 'Print / PDF')}</button></div>
+      <div className="flex gap-2">{headerActions}<button onClick={() => exportToExcelCSV(reportData.title, reportData.headers, reportData.rows)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold"><Download className="w-4 h-4" />{tr('تصدير Excel', 'Export Excel')}</button><button onClick={() => printReportTable(reportData.title, reportData.headers, reportData.rows)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-200 text-xs font-bold"><Printer className="w-4 h-4" />{tr('طباعة / PDF', 'Print / PDF')}</button></div>
     </section>
     <section className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-xs space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">

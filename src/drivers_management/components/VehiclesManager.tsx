@@ -7,6 +7,7 @@ import { DtmsStorage } from '../utils/storage';
 import { isSameOffice, isOfficeRestricted } from '../utils/officeUtils';
 import { t, getLang } from '../utils/i18n';
 import { normalizeOdometerUnit, odometerFromKm, odometerToKm, odometerUnitLabel, roundOdometerReading } from '../utils/odometer';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
 
 interface VehiclesManagerProps {
   onRefreshData?: () => void;
@@ -24,6 +25,7 @@ export const VehiclesManager: React.FC<VehiclesManagerProps> = ({
   onRefreshData,
   currentUser,
 }) => {
+  const { headerActions } = useDtmsHeader();
   const isEn = getLang() === 'en';
   const tr = (ar: string, en: string) => (isEn ? en : ar);
 
@@ -355,6 +357,7 @@ export const VehiclesManager: React.FC<VehiclesManagerProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {headerActions}
           <button
             id="btn-add-new-vehicle"
             onClick={handleOpenAdd}

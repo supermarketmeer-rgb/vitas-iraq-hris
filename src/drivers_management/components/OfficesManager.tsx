@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Governorate, Office } from '../types';
 import { DtmsStorage } from '../utils/storage';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
 import { fetchGovernorates } from '../utils/apiSync';
 import { getLang } from '../utils/i18n';
 import { ModernToast, ToastState } from './ModernToast';
@@ -23,6 +24,7 @@ interface OfficesManagerProps {
 }
 
 export const OfficesManager: React.FC<OfficesManagerProps> = ({ onRefreshData }) => {
+  const { headerActions } = useDtmsHeader();
   const [offices, setOffices] = useState<Office[]>(DtmsStorage.getOffices());
   const [governorates, setGovernorates] = useState<Governorate[]>([]);
   const drivers = DtmsStorage.getDrivers();
@@ -180,6 +182,7 @@ export const OfficesManager: React.FC<OfficesManagerProps> = ({ onRefreshData })
           <Plus className="w-4 h-4" />
           <span>{tr('إضافة مكتب جديد', 'Add New Office')}</span>
         </button>
+        {headerActions}
       </div>
 
       {/* Search */}

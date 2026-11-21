@@ -12,8 +12,7 @@ import {
   ToggleLeft,
   ToggleRight,
   UserCheck,
-  UserX,
-  Building2,
+  UserX,  Building2,
   Mail,
   Phone,
   Filter,
@@ -23,12 +22,14 @@ import { User, Role, DriverMode } from '../types';
 import { DtmsStorage } from '../utils/storage';
 import { ModernToast, ToastState } from './ModernToast';
 import { t, getLang } from '../utils/i18n';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
 
 interface UsersManagerProps {
   onRefreshData?: () => void;
 }
 
 export const UsersManager: React.FC<UsersManagerProps> = ({ onRefreshData }) => {
+  const { headerActions } = useDtmsHeader();
   const isEn = getLang() === 'en';
   const tr = (ar: string, en: string) => (isEn ? en : ar);
   const [users, setUsers] = useState<User[]>(DtmsStorage.getUsers());
@@ -257,7 +258,9 @@ export const UsersManager: React.FC<UsersManagerProps> = ({ onRefreshData }) => 
             {t('users_manager_desc')}
           </p>
         </div>
-
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {headerActions}
+        </div>
       </div>
 
       {/* Summary Stats Cards */}

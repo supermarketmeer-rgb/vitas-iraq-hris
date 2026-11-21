@@ -7,6 +7,7 @@ import { DtmsStorage } from '../utils/storage';
 import { ModernToast, ToastState } from './ModernToast';
 import { isSameOffice, isOfficeRestricted } from '../utils/officeUtils';
 import { t, getLang } from '../utils/i18n';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
 
 interface DriversManagerProps {
   onRefreshData?: () => void;
@@ -14,6 +15,7 @@ interface DriversManagerProps {
 }
 
 export const DriversManager: React.FC<DriversManagerProps> = ({ onRefreshData, currentUser }) => {
+  const { headerActions } = useDtmsHeader();
   const isEn = getLang() === 'en';
   const tr = (ar: string, en: string) => (isEn ? en : ar);
   const [drivers, setDrivers] = useState<Driver[]>(DtmsStorage.getDrivers());
@@ -248,7 +250,9 @@ export const DriversManager: React.FC<DriversManagerProps> = ({ onRefreshData, c
               : t('drivers_manager_desc')}
           </p>
         </div>
-
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {headerActions}
+        </div>
       </div>
 
       <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">

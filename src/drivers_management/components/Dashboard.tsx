@@ -19,6 +19,7 @@ import { DtmsStorage } from '../utils/storage';
 import { isGPSTrackingEnabled } from '../utils/gpsTracker';
 import { isSameOffice, isOfficeRestricted } from '../utils/officeUtils';
 import { t } from '../utils/i18n';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
 
 interface DashboardProps {
   onNavigate: (section: string) => void;
@@ -26,6 +27,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser }) => {
+  const { headerActions } = useDtmsHeader();
   const allOffices = DtmsStorage.getOffices();
   const allDrivers = DtmsStorage.getDrivers();
   const allVehicles = DtmsStorage.getVehicles();
@@ -115,6 +117,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
         </div>
 
         <div className="flex items-center gap-2">
+          {headerActions}
           {isGPSTrackingEnabled() && (
             <button
               id="quick-live-map-btn"

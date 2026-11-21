@@ -31,6 +31,7 @@ import { isGPSTrackingEnabled } from '../utils/gpsTracker';
 import { isSameOffice, isOfficeRestricted } from '../utils/officeUtils';
 import { fetchGovernorates, hydrateDataFromMySQL, syncSaveTrip, syncUpdateTripDestinations } from '../utils/apiSync';
 import { normalizeOdometerUnit } from '../utils/odometer';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
 
 interface TripsManagerProps {
   currentUser: User;
@@ -47,6 +48,7 @@ export const TripsManager: React.FC<TripsManagerProps> = ({
   onRefreshData,
   initialCreateModalOpen = false,
 }) => {
+  const { headerActions } = useDtmsHeader();
   const tr = (ar: string, en: string) => (getLang() === 'en' ? en : ar);
   const [trips, setTrips] = useState<Trip[]>(DtmsStorage.getTrips());
   const [governorates, setGovernorates] = useState<Governorate[]>([]);
@@ -638,6 +640,7 @@ export const TripsManager: React.FC<TripsManagerProps> = ({
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
+          {headerActions}
           <button
             onClick={refreshList}
             title={t('refresh_list')}

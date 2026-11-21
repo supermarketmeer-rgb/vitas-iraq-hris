@@ -6,6 +6,8 @@ import { getLang, tr } from '../utils/i18n';
 import { DtmsStorage } from '../utils/storage';
 import { AuditLogsViewer } from './AuditLogsViewer';
 import { BackupModal } from './BackupModal';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
 
 type SettingsTab = 'governorates' | 'ocr' | 'backup' | 'audit';
 
@@ -14,6 +16,7 @@ interface SettingsManagerProps {
 }
 
 export const SettingsManager: React.FC<SettingsManagerProps> = ({ onRefreshData }) => {
+  const { headerActions } = useDtmsHeader();
   const [activeTab, setActiveTab] = useState<SettingsTab>('governorates');
   const [governorates, setGovernorates] = useState<Governorate[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -128,8 +131,13 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onRefreshData 
 
   return <div className="space-y-4 pb-16" dir={isEnglish ? 'ltr' : 'rtl'}>
     <header className="p-5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg">
-      <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white"><Settings className="w-5 h-5 text-teal-600" />{tr('إعدادات النظام', 'System Settings')}</h2>
-      <p className="mt-1 text-xs text-gray-500">{tr('إدارة البيانات المرجعية والنسخ الاحتياطي وسجل التدقيق.', 'Manage reference data, backups, and audit records.')}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white"><Settings className="w-5 h-5 text-teal-600" />{tr('إعدادات النظام', 'System Settings')}</h2>
+          <p className="mt-1 text-xs text-gray-500">{tr('إدارة البيانات المرجعية والنسخ الاحتياطي وسجل التدقيق.', 'Manage reference data, backups, and audit records.')}</p>
+        </div>
+        {headerActions}
+      </div>
     </header>
 
     <nav className="flex gap-1 p-1 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg overflow-x-auto">

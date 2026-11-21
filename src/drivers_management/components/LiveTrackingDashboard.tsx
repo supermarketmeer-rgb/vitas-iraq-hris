@@ -33,6 +33,8 @@ import { DtmsStorage } from '../utils/storage';
 import { generateSixtySecondTelemetry, RouteTelemetryPoint } from '../utils/routeGenerator';
 import { compareTripGpsAndOcr, DistanceComparisonResult } from '../utils/distanceComparator';
 import { isGPSTrackingEnabled } from '../utils/gpsTracker';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
+import { useDtmsHeader } from '../context/DtmsHeaderContext';
 
 interface LiveTrackingDashboardProps {
   initialTripId?: string;
@@ -43,6 +45,7 @@ export const LiveTrackingDashboard: React.FC<LiveTrackingDashboardProps> = ({
   initialTripId,
   onSelectTrip,
 }) => {
+  const { headerActions } = useDtmsHeader();
   const allTrips = DtmsStorage.getTrips();
   const drivers = DtmsStorage.getDrivers();
   const vehicles = DtmsStorage.getVehicles();
@@ -226,6 +229,7 @@ export const LiveTrackingDashboard: React.FC<LiveTrackingDashboardProps> = ({
 
         {/* Status badges */}
         <div className="flex flex-wrap items-center gap-2">
+          {headerActions}
           <div className="px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 text-xs font-semibold flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-teal-600" />
             <span>تسجيل دوري: كل 60 ثانية</span>

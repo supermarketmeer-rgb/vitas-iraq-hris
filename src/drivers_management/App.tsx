@@ -17,6 +17,7 @@ import { User, Trip, NotificationItem, Role } from './types';
 import { DtmsStorage } from './utils/storage';
 import { isGPSTrackingEnabled } from './utils/gpsTracker';
 import { hydrateDataFromMySQL } from './utils/apiSync';
+import { DtmsHeaderProvider } from './context/DtmsHeaderContext';
 import './index.css';
 
 export type NavSection =
@@ -47,10 +48,9 @@ const normalizeRole = (role: unknown): Role =>
   DTMS_ROLES.includes(role as Role) ? (role as Role) : 'supervisor';
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  override state: ErrorBoundaryState = { hasError: false, error: null };
-
   constructor(props: ErrorBoundaryProps) {
     super(props);
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
@@ -280,28 +280,23 @@ function AppContent() {
     setNotifications(DtmsStorage.getNotifications());
   };
 
+  const topHeaderActions = (
+    <Header
+      currentUser={currentUser}
+      unreadCount={unreadCount}
+      notifications={notifications}
+      onNotificationClick={handleNotificationClick}
+      onMarkAllRead={handleMarkAllRead}
+    />
+  );
+
   return (
     <div className="dtms-container w-full min-h-[calc(100vh-6rem)] bg-[#f4f6f8] dark:bg-slate-900 text-[#191e22] dark:text-slate-100 flex flex-col font-['Cairo','Plus_Jakarta_Sans',sans-serif] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-      {/* Main Workspace (Header + Content) */}
-      <div className="w-full flex-1 flex flex-col min-w-0">
-        <Header
-          currentUser={currentUser}
-          theme={theme}
-          onThemeToggle={() => {}}
-          onOpenSettings={() => navigateToSection('settings')}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          unreadCount={unreadCount}
-          notifications={notifications}
-          onNotificationClick={handleNotificationClick}
-          onMarkAllRead={handleMarkAllRead}
-          isDriverView={currentSection === 'driver_app' || currentUser.role === 'driver'}
-          onOpenChangePassword={() => {}}
-          onLogout={() => {}}
-          onOpenWorkflowGuide={() => setShowWorkflowGuideModal(true)}
-        />
-
-        {/* Main Content Area */}
-        <main className="flex-1 p-3 sm:p-5 min-w-0">
+      <DtmsHeaderProvider headerActions={topHeaderActions}>
+        {/* Main Workspace */}
+        <div className="w-full flex-1 flex flex-col min-w-0">
+          {/* Main Content Area */}
+          <main className="flex-1 p-3 sm:p-5 min-w-0">
           {currentSection === 'dashboard' && (
             <Dashboard
               key="dashboard"
@@ -381,6 +376,7 @@ function AppContent() {
           )}
         </main>
       </div>
+    </DtmsHeaderProvider>
 
       {/* Modals */}
       {tripForApproval && (
