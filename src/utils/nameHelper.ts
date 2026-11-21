@@ -582,7 +582,105 @@ export const AR_TO_EN_WORD_MAP: Record<string, string> = {
   'فوزية': 'Fawziya',
   'عيال': 'Ayal',
   'داود': 'Dawood',
+  'رزاق': 'Razaq',
+  'الرزاق': 'Al-Razaq',
+  'عبدالرزاق': 'Abdul-Razzaq',
+  'عبد الرزاق': 'Abdul-Razzaq',
+  'العميدي': 'Al-Amidi',
+  'عميدي': 'Amidi',
+  'العبيدي': 'Al-Obaidi',
+  'عبيدي': 'Obaidi',
+  'حميد': 'Hameed',
+  'الحميد': 'Al-Hameed',
+  'عبدالحميد': 'Abdul-Hameed',
+  'عبد الحميد': 'Abdul-Hameed',
+  'صباح': 'Sabah',
+  'شعلان': 'Shaalan',
+  'خضير': 'Khudhair',
+  'حمادي': 'Humaidy',
+  'حمايدي': 'Humaidy',
+  'مزيداوي': 'Muzaidawi',
+  'سرور': 'Srour',
+  'كولت': 'Colette',
+  'قاسم': 'Qasim',
+  'جعفر': 'Jaafar',
+  'ميثم': 'Maytham',
+  'صادق': 'Sadiq',
+  'بشير': 'Basheer',
+  'عدنان': 'Adnan',
+  'مهند': 'Muhannad',
+  'فلاح': 'Falah',
+  'رياض': 'Riyadh',
+  'عزيز': 'Aziz',
+  'حازم': 'Hazim',
+  'فاضل': 'Fadhil',
+  'سعدي': 'Saadi',
+  'ناجي': 'Naji',
+  'عقيل': 'Aqeel',
+  'هادي': 'Hadi',
+  'سلامة': 'Salama',
+  'وهاب': 'Wahab',
+  'عبدالوهاب': 'Abdul-Wahab',
+  'عبد الوهاب': 'Abdul-Wahab',
+  'نزار': 'Nizar',
+  'هيثم': 'Haitham',
+  'حامد': 'Hamid',
+  'محسن': 'Mohsen',
+  'عصام': 'Essam',
+  'فارس': 'Faris',
+  'قصي': 'Qusay',
+  'لؤي': 'Louay',
+  'وسام': 'Wissam'
 };
+
+const AR_TO_EN_PHONETIC_LETTERS: Record<string, string> = {
+  'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'aa', 'ء': '', 'ئ': 'e', 'ؤ': 'o',
+  'ب': 'b',
+  'ت': 't', 'ة': 'a',
+  'ث': 'th',
+  'ج': 'j',
+  'ح': 'h',
+  'خ': 'kh',
+  'د': 'd',
+  'ذ': 'dh',
+  'ر': 'r',
+  'ز': 'z',
+  'س': 's',
+  'ش': 'sh',
+  'ص': 's',
+  'ض': 'dh',
+  'ط': 't',
+  'ظ': 'zh',
+  'ع': 'a',
+  'غ': 'gh',
+  'ف': 'f',
+  'ق': 'q',
+  'ك': 'k',
+  'ل': 'l',
+  'م': 'm',
+  'ن': 'n',
+  'ه': 'h',
+  'و': 'w',
+  'ي': 'y', 'ى': 'a'
+};
+
+function phoneticArabicWordToEnglish(word: string): string {
+  if (!word) return '';
+  let clean = word.trim();
+  let prefix = '';
+  if (clean.startsWith('ال') && clean.length > 2) {
+    prefix = 'Al-';
+    clean = clean.substring(2);
+  }
+  let en = '';
+  for (let i = 0; i < clean.length; i++) {
+    const ch = clean[i];
+    en += AR_TO_EN_PHONETIC_LETTERS[ch] !== undefined ? AR_TO_EN_PHONETIC_LETTERS[ch] : ch;
+  }
+  if (!en) return word;
+  const capitalized = en.charAt(0).toUpperCase() + en.slice(1);
+  return prefix + capitalized;
+}
 
 /**
  * Translates/transliterates an Arabic name to English
@@ -600,6 +698,10 @@ export function transliterateArabicNameToEnglish(arName: string): string {
     if (AR_TO_EN_WORD_MAP[w]) return AR_TO_EN_WORD_MAP[w];
     if (w.startsWith('ال') && AR_TO_EN_WORD_MAP[w.substring(2)]) {
       return 'Al-' + AR_TO_EN_WORD_MAP[w.substring(2)];
+    }
+    // If the word still has Arabic letters, convert phonetically so we never produce mixed Arabic-English text
+    if (hasArabicCharacters(w)) {
+      return phoneticArabicWordToEnglish(w);
     }
     return w;
   });
@@ -623,8 +725,13 @@ export function getEmployeeLocalizedName(emp: any, language: string = 'ar'): str
   const arName = emp.fullName || emp.fullNameAr || emp.full_name_ar || emp.name || emp.name_ar || '';
 
   if (language === 'en') {
-    if (enName && enName.trim() && enName !== 'N/A' && !hasArabicCharacters(enName)) {
-      return enName.trim();
+    // Use enName only if it's complete (more than one word) or no Arabic name exists
+    const enNameClean = enName && enName.trim() && enName !== 'N/A' && !hasArabicCharacters(enName) ? enName.trim() : '';
+    const enWordCount = enNameClean.split(/\s+/).filter(Boolean).length;
+    const arWordCount = arName ? arName.trim().split(/\s+/).filter(Boolean).length : 0;
+    // If enName has fewer words than arName, prefer transliterating the full Arabic name
+    if (enNameClean && (enWordCount >= arWordCount || arWordCount === 0)) {
+      return enNameClean;
     }
     if (arName && !hasArabicCharacters(arName)) {
       return arName.trim();
@@ -632,7 +739,7 @@ export function getEmployeeLocalizedName(emp: any, language: string = 'ar'): str
     if (arName && arName.trim()) {
       return transliterateArabicNameToEnglish(arName);
     }
-    return 'Employee';
+    return enNameClean || 'Employee';
   } else {
     if (arName && arName.trim() && hasArabicCharacters(arName)) {
       return arName.trim();

@@ -250,6 +250,27 @@ export const Header: React.FC = () => {
     if (r === 'Compliance Officer' || r === 'مسؤول الامتثال') {
       return lang === 'en' ? 'Compliance Officer' : 'مسؤول الامتثال';
     }
+    if (
+      r === 'Data Entry' ||
+      r === 'مدخل بيانات' ||
+      r === 'مدخل بيانات موارد بشرية' ||
+      r.includes('مدخل بيانات') ||
+      r.toLowerCase().includes('data entry')
+    ) {
+      return lang === 'en' ? 'HR Data Entry' : 'مدخل بيانات موارد بشرية';
+    }
+    if (
+      r === 'HR Officer' ||
+      r === 'مسؤول موارد بشرية' ||
+      r.includes('مسؤول موارد') ||
+      r.toLowerCase().includes('hr officer')
+    ) {
+      return lang === 'en' ? 'HR Officer' : 'مسؤول موارد بشرية';
+    }
+    // If English requested and string still contains Arabic, translate via job titles dict or transliteration
+    if (lang === 'en' && /[\u0600-\u06FF]/.test(r)) {
+      return getLocalizedJobTitle(r, 'en') || transliterateArabicNameToEnglish(r);
+    }
     return r;
   };
 

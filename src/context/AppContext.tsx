@@ -361,9 +361,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   }
                 } catch (e) {}
 
+                // Resolve Arabic & English display names from matched user record
+                const matchedFullNameAr = matched.full_name_ar || matched.fullNameAr || cur.fullNameAr || cur.full_name_ar || '';
+                const matchedFullNameEn = matched.full_name_en || matched.fullNameEn || cur.fullNameEn || cur.full_name_en || '';
+                const matchedName = matched.full_name || matched.name || cur.name || '';
+
                 const updatedUser: UserProfile = {
                   ...cur,
-                  name: matched.full_name || matched.name || cur.name,
+                  name: matchedName,
+                  // Persist both Arabic and English full names so Header can display correctly in both languages
+                  fullNameAr: matchedFullNameAr || matchedName,
+                  fullNameEn: matchedFullNameEn || (matchedName && !/[\u0600-\u06FF]/.test(matchedName) ? matchedName : ''),
+                  full_name_ar: matchedFullNameAr || matchedName,
+                  full_name_en: matchedFullNameEn || (matchedName && !/[\u0600-\u06FF]/.test(matchedName) ? matchedName : ''),
                   employeeId: matched.employee_id || cur.employeeId,
                   department: matched.department || cur.department,
                   branch: matched.branch || cur.branch,
@@ -399,6 +409,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setEmployees(finalEmpData || []);
         if (Array.isArray(finalEmpData) && finalEmpData.length > 0) {
           try { localStorage.setItem('vitas_employees', JSON.stringify(finalEmpData)); } catch (e) {}
+
+          // Auto-sync active currentUser with official employee record if matching by email, badge or name
+          try {
+            const rawStored = localStorage.getItem('vitas_current_user');
+            if (rawStored) {
+              const cur = JSON.parse(rawStored);
+              const curEmail = String(cur.email || '').toLowerCase().trim();
+              const curEmpId = String(cur.employeeId || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+              const curName = String(cur.name || '').trim();
+
+              const empMatch = finalEmpData.find((e: any) => {
+                const eEmail = String(e.email || '').toLowerCase().trim();
+                const eBadge = String(e.badgeNo || e.badge_no || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+                const eId = String(e.employeeId || e.employee_id || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+                const eNameAr = String(e.fullNameAr || e.fullName || e.full_name_ar || '').trim();
+                const eNameEn = String(e.fullNameEn || e.full_name_en || '').trim();
+
+                return (
+                  (curEmail && eEmail && curEmail === eEmail) ||
+                  (curEmpId && (curEmpId === eBadge || curEmpId === eId)) ||
+                  (curName && (curName === eNameAr || curName === eNameEn))
+                );
+              });
+
+              if (empMatch) {
+                const officialEn = empMatch.fullNameEn || empMatch.full_name_en;
+                const officialAr = empMatch.fullNameAr || empMatch.fullName || empMatch.full_name_ar;
+                if (officialEn || officialAr) {
+                  const enrichedUser = {
+                    ...cur,
+                    fullNameEn: officialEn || cur.fullNameEn,
+                    fullNameAr: officialAr || cur.fullNameAr,
+                    full_name_en: officialEn || cur.full_name_en,
+                    full_name_ar: officialAr || cur.full_name_ar,
+                  };
+                  setCurrentUser(enrichedUser);
+                  localStorage.setItem('vitas_current_user', JSON.stringify(enrichedUser));
+                }
+              }
+            }
+          } catch (_) {}
         }
 
         let finalLeaves = Array.isArray(leaveData) ? leaveData : (Array.isArray(localLeaves) ? localLeaves : []);
