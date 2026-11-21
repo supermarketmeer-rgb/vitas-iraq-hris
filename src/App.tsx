@@ -51,6 +51,7 @@ import { ExecutiveApp } from './executive-app/ExecutiveApp';
 import { useApp } from './context/AppContext';
 import { DocumentRoutingProvider } from './context/DocumentRoutingContext';
 import { DocumentRoutingModal } from './components/routing/DocumentRoutingModal';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
 
 function AppContent() {
   const { activeModuleId, setActiveModuleId, isSidebarOpen, theme, currentUser } = useApp();
@@ -481,6 +482,12 @@ export default function App() {
         )}
         <Router>
           <DocumentRoutingModal />
+          {/* PWA Install Banner – shown only after splash, not in Electron */}
+          {!showSplash && (
+            <PWAInstallBanner language={
+              (typeof window !== 'undefined' && localStorage.getItem('vitas_language') as 'ar' | 'en') || 'ar'
+            } />
+          )}
           <Routes>
             {/* Login Page */}
             <Route path="/login" element={<Login />} />

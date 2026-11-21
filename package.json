@@ -6,7 +6,7 @@
   "main": "electron/main.mjs",
   "scripts": {
     "dev": "concurrently \"node --watch server.js\" \"node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js --port=5173 --host=0.0.0.0\"",
-    "build": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
+    "build": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build && node scripts/stamp-sw-version.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist dist-desktop",
     "lint": "tsc --noEmit",
@@ -49,10 +49,12 @@
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
     "esbuild": "^0.25.0",
+    "react-is": "^19.3.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vite-plugin-pwa": "^0.21.1"
   },
   "build": {
     "npmRebuild": false,

@@ -13,6 +13,7 @@ import { StatusChangeTable } from '../components/StatusChangeTable';
 import { TrainingTable } from '../components/TrainingTable';
 import { WarningTable } from '../components/WarningTable';
 import { Microsoft365Settings } from '../components/m365/Microsoft365Settings';
+import { PWASettingsView } from '../components/pwa/PWASettingsView';
 import { numberToArabicWords } from '../utils/numberToArabicWords';
 import { PerformanceAppraisalExcelSheet } from '../components/performance_appraisal/PerformanceAppraisalExcelSheet';
 
@@ -162,6 +163,7 @@ export const SettingsSecurityView: React.FC = () => {
     { id: 'desktop-sync', icon: 'desktop_windows', labelAr: 'إعدادات Desktop والمزامنة', labelEn: 'Desktop & Sync' },
     { id: 'local-server-setup', icon: 'dns', labelAr: 'إعداد وتثبيت الخادم المحلي', labelEn: 'Local Server Setup' },
     { id: 'm365-integration', icon: 'mark_email_read', labelAr: 'إعدادات Microsoft 365 وOutlook', labelEn: 'Microsoft 365 & Outlook Settings' },
+    { id: 'pwa-install', icon: 'install_desktop', labelAr: 'تثبيت تطبيق سطح المكتب', labelEn: 'Desktop App Installation' },
     { id: 'maintenance', icon: 'warning', labelAr: 'الصيانة', labelEn: 'Maintenance' },
   ];
 
@@ -2606,6 +2608,11 @@ export const SettingsSecurityView: React.FC = () => {
         )}
         {activeTab === 'm365-integration' && (
           <Microsoft365Settings />
+        )}
+        {activeTab === 'pwa-install' && (
+          <div className="max-w-3xl mx-auto py-4">
+            <PWASettingsView language={language as 'ar' | 'en'} isDark={theme === 'dark'} />
+          </div>
         )}
         {activeTab === 'maintenance' && (
           <div className="text-center py-12 bg-rose-500/5 rounded-2xl border border-rose-500/20 max-w-2xl mx-auto p-8 my-4">
