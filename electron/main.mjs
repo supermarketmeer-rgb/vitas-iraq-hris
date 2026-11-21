@@ -37,15 +37,17 @@ async function startLocalServer() {
 
 function createWindow() {
   try {
+    const iconPath = path.join(__dirname, '..', 'public', 'icons', 'icon-512.png');
     mainWindow = new BrowserWindow({
       width: 1366,
       height: 768,
       minWidth: 1024,
       minHeight: 600,
       title: 'VITAS Iraq HRMS - Desktop Edition',
+      icon: iconPath,
       autoHideMenuBar: true,
       show: true,
-      fullscreen: true,
+      fullscreen: false,
       webPreferences: {
         preload: path.join(__dirname, 'preload.mjs'),
         nodeIntegration: false,
@@ -53,6 +55,9 @@ function createWindow() {
         webSecurity: false
       }
     });
+
+    // Start maximized (fills desktop while keeping titlebar and taskbar accessible)
+    mainWindow.maximize();
 
     // F11 Fullscreen toggle shortcut inside Electron
     mainWindow.webContents.on('before-input-event', (event, input) => {
@@ -85,7 +90,7 @@ function createWindow() {
 
 function setupTray() {
   try {
-    const iconPath = path.join(__dirname, '..', 'assets', 'VitasLogo.jpeg');
+    const iconPath = path.join(__dirname, '..', 'public', 'icons', 'icon-512.png');
     if (fs.existsSync(iconPath)) {
       tray = new Tray(iconPath);
       const contextMenu = Menu.buildFromTemplate([
@@ -152,6 +157,16 @@ ipcMain.handle('toggle-fullscreen', () => {
 ipcMain.handle('exit-fullscreen', () => {
   if (mainWindow && mainWindow.isFullScreen()) {
     mainWindow.setFullScreen(false);
+  }
+  return true;
+});
+
+ipcMain.handle('maximize-app', () => {
+  if (mainWindow) {
+    if (mainWindow.isFullScreen()) {
+      mainWindow.setFullScreen(false);
+    }
+    mainWindow.maximize();
   }
   return true;
 });

@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   enterFullscreen: () => ipcRenderer.invoke('enter-fullscreen'),
   toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
   exitFullscreen: () => ipcRenderer.invoke('exit-fullscreen'),
+  maximizeApp: () => ipcRenderer.invoke('maximize-app'),
   closeApp: () => ipcRenderer.invoke('close-app'),
   isDesktop: true
 });

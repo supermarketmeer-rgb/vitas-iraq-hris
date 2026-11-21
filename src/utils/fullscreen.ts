@@ -1,4 +1,16 @@
 /**
+ * Utility to maximize the desktop window (Electron or supported desktop shell)
+ * without entering restrictive F11 FullScreen mode.
+ */
+export const maximizeAppWindow = () => {
+  try {
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.maximizeApp) {
+      (window as any).electronAPI.maximizeApp().catch(() => {});
+    }
+  } catch {}
+};
+
+/**
  * Utility to request Fullscreen (F11) cross-browser and in Electron desktop
  */
 export const requestFullScreenF11 = () => {

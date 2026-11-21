@@ -66,8 +66,8 @@ export const PWASettingsView: React.FC<PWASettingsViewProps> = ({
 
       {/* Title */}
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-teal-500/20' : 'bg-teal-100'}`}>
-          <Monitor className="w-5 h-5 text-teal-500" />
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'} shadow-sm`}>
+          <img src="/icons/icon-192.png" alt="Icon" className="w-10 h-10 object-contain rounded-lg" />
         </div>
         <div>
           <h2 className="text-lg font-bold">{t('تثبيت التطبيق على سطح المكتب', 'Desktop Application Installation')}</h2>
