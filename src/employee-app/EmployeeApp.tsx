@@ -51,13 +51,15 @@ function EmployeeAppMain() {
       localStorage.removeItem('employee_auth');
       sessionStorage.removeItem('employee_auth');
       sessionStorage.setItem('employee_logged_out', 'true');
+      localStorage.removeItem('vitas_current_user');
+      localStorage.removeItem('vitas_user_role');
     } catch {}
     if (logout) {
       logout();
     } else {
       setEmployee(null);
     }
-    navigate('/employee-app/');
+    navigate('/login');
   };
 
   // Restore main admin app theme upon leaving employee portal

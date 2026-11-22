@@ -32,13 +32,20 @@ export const EmployeeTopTabBar: React.FC<EmployeeTopTabBarProps> = ({ onLogout }
       e.preventDefault();
       e.stopPropagation();
     }
+    try {
+      localStorage.removeItem('employee_auth');
+      sessionStorage.removeItem('employee_auth');
+      sessionStorage.setItem('employee_logged_out', 'true');
+      localStorage.removeItem('vitas_current_user');
+      localStorage.removeItem('vitas_user_role');
+    } catch {}
     if (onLogout) {
       onLogout();
     }
     if (logout) {
       logout();
     }
-    navigate('/employee-app/');
+    navigate('/login');
   };
 
   const navItems = [

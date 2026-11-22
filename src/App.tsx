@@ -54,11 +54,57 @@ import { DocumentRoutingModal } from './components/routing/DocumentRoutingModal'
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 
 function AppContent() {
-  const { activeModuleId, setActiveModuleId, isSidebarOpen, theme, currentUser } = useApp();
+  const { activeModuleId, setActiveModuleId, isSidebarOpen, theme, currentUser, employees } = useApp();
   const location = useLocation();
   const isPublicPortal = location.pathname === '/apply';
   const isDriversRoute = location.pathname.startsWith('/drivers') || location.pathname.startsWith('/hr/drivers');
   const isDark = theme === 'dark';
+
+  // If the logged in person is a regular employee (not an administrative system user),
+  // they must strictly be redirected to the Employee Mobile App (/employee-app) and never see the ERP portal.
+  const hasSystemUserPrivileges = Boolean(
+    currentUser?.can_manage_employees ||
+    currentUser?.can_manage_users ||
+    currentUser?.can_manage_finance ||
+    currentUser?.can_manage_recruitment ||
+    currentUser?.can_manage_settings ||
+    (currentUser?.modulePermissions && Object.keys(currentUser.modulePermissions).some(k => currentUser.modulePermissions![k] !== 'none' && currentUser.modulePermissions![k] !== false)) ||
+    (currentUser?.allowed_screens && Object.keys(currentUser.allowed_screens).some(k => (currentUser.allowed_screens as any)[k] !== 'none' && (currentUser.allowed_screens as any)[k] !== false))
+  );
+
+  const isRegularEmployee = (currentUser?.role === 'Employee' || !currentUser?.role) && !hasSystemUserPrivileges;
+
+  if (isRegularEmployee) {
+    try {
+      if (typeof window !== 'undefined' && !localStorage.getItem('employee_auth') && currentUser) {
+        const cEmpId = String(currentUser.employeeId || currentUser.id || '').trim().toLowerCase();
+        const matched = employees.find(emp => {
+          const eId = String(emp.employeeId || emp.id || '').trim().toLowerCase();
+          const bNo = String(emp.badgeNo || '').trim().toLowerCase();
+          return (cEmpId && (eId === cEmpId || bNo === cEmpId));
+        });
+        const empToStore = matched || {
+          id: currentUser.id || '1',
+          employeeId: currentUser.employeeId || '',
+          badgeNo: currentUser.badgeNo || '',
+          fullName: currentUser.name || '',
+          fullNameAr: currentUser.fullNameAr || currentUser.name || '',
+          fullNameEn: currentUser.fullNameEn || '',
+          email: currentUser.email || '',
+          department: currentUser.department || '',
+          position: currentUser.jobTitle || 'موظف',
+          branch: currentUser.branch || '',
+          role: 'Employee'
+        };
+        sessionStorage.removeItem('employee_logged_out');
+        localStorage.setItem('employee_auth', JSON.stringify({
+          employee: empToStore,
+          timestamp: new Date().toISOString()
+        }));
+      }
+    } catch {}
+    return <Navigate to="/employee-app" replace />;
+  }
 
   // Developer access backdoor: Hotkey Ctrl+Alt+S, ?dev=settings URL query param, or window.openDevSettings()
   useEffect(() => {

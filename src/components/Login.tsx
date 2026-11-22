@@ -134,12 +134,46 @@ export const Login: React.FC = () => {
             allowed_screens: parsedScreens
           };
 
-          let initialModule = 'dash-overview';
-
           localStorage.setItem('vitas_current_user', JSON.stringify(userProfile));
           localStorage.setItem('vitas_user_role', assignedRole);
           setCurrentUserRole(assignedRole);
           setCurrentUser(userProfile);
+
+          // If regular employee without any administrative privileges, direct immediately to Employee Mobile App
+          const hasDbSystemPrivileges = Boolean(
+            userProfile.can_manage_employees ||
+            userProfile.can_manage_users ||
+            userProfile.can_manage_finance ||
+            userProfile.can_manage_recruitment ||
+            userProfile.can_manage_settings ||
+            (parsedScreens && Object.keys(parsedScreens).some(k => parsedScreens[k] !== 'none' && parsedScreens[k] !== false))
+          );
+
+          if (assignedRole === 'Employee' && !hasDbSystemPrivileges) {
+            try {
+              sessionStorage.removeItem('employee_logged_out');
+              localStorage.setItem('employee_auth', JSON.stringify({
+                employee: {
+                  id: userProfile.id,
+                  employeeId: userProfile.employeeId,
+                  badgeNo: userProfile.employeeId,
+                  fullName: userProfile.name,
+                  fullNameAr: userProfile.name,
+                  email: userProfile.email,
+                  department: userProfile.department,
+                  position: userProfile.jobTitle || 'موظف',
+                  branch: userProfile.branch,
+                  role: 'Employee'
+                },
+                timestamp: new Date().toISOString()
+              }));
+            } catch {}
+            console.log('Login successful via DB Auth - Regular Employee -> Redirecting to Mobile App');
+            setTimeout(() => navigate('/employee-app/profile'), 100);
+            return;
+          }
+
+          let initialModule = 'dash-overview';
           setActiveModuleId(initialModule);
           console.log('Login successful via Database Auth:', userProfile);
           setTimeout(() => navigate('/'), 100);
@@ -637,9 +671,54 @@ export const Login: React.FC = () => {
         localStorage.setItem('vitas_user_role', finalRoleToStore);
         setCurrentUserRole(finalRoleToStore);
         setCurrentUser(employeeUser);
-        setActiveModuleId('dash-overview');
 
-        console.log('Login successful - Employee', employeeUser);
+        // If regular employee without admin/delegated privileges:
+        // Strictly direct them to the Employee Mobile App (/employee-app) and NEVER show ERP desktop portal
+        if (finalRoleToStore === 'Employee') {
+          const empPayload = {
+            id: String(matchedEmp.id),
+            badgeNo: matchedEmp.badgeNo || (matchedEmp as any).badge_no || '',
+            badge_no: matchedEmp.badgeNo || (matchedEmp as any).badge_no || '',
+            employeeId: matchedEmp.employeeId || (matchedEmp as any).employee_id || '',
+            employee_id: matchedEmp.employeeId || (matchedEmp as any).employee_id || '',
+            fullName: matchedEmp.fullName || matchedEmp.fullNameAr || (matchedEmp as any).full_name_ar || employeeUser.name,
+            fullNameAr: matchedEmp.fullNameAr || (matchedEmp as any).full_name_ar || employeeUser.name,
+            full_name_ar: matchedEmp.fullNameAr || (matchedEmp as any).full_name_ar || employeeUser.name,
+            fullNameEn: matchedEmp.fullNameEn || (matchedEmp as any).full_name_en || '',
+            full_name_en: matchedEmp.fullNameEn || (matchedEmp as any).full_name_en || '',
+            email: matchedEmp.email || employeeUser.email,
+            phone: matchedEmp.phone || (matchedEmp as any).mobile || '',
+            department: matchedEmp.department || employeeUser.department,
+            position: matchedEmp.jobTitle || (matchedEmp as any).position_ar || (matchedEmp as any).position || 'موظف',
+            position_ar: matchedEmp.jobTitle || (matchedEmp as any).position_ar || (matchedEmp as any).position || 'موظف',
+            positionEn: (matchedEmp as any).jobTitleEn || (matchedEmp as any).position_en || 'Employee',
+            branch: matchedEmp.branch || (matchedEmp as any).location || employeeUser.branch,
+            branchEn: (matchedEmp as any).branchEn || (matchedEmp as any).location_en || '',
+            joinDate: (matchedEmp as any).hireDate || (matchedEmp as any).joinDate || (matchedEmp as any).start_date || '',
+            salary: (matchedEmp as any).basicSalary || (matchedEmp as any).basic_salary || (matchedEmp as any).salary || 0,
+            photoUrl: matchedEmp.photoUrl || (matchedEmp as any).photo_url || '',
+            role: 'Employee'
+          };
+
+          try {
+            sessionStorage.removeItem('employee_logged_out');
+            localStorage.setItem('employee_auth', JSON.stringify({
+              employee: empPayload,
+              timestamp: new Date().toISOString()
+            }));
+          } catch {}
+
+          console.log('Login successful - Regular Employee -> Redirecting to Mobile App', empPayload);
+
+          setTimeout(() => {
+            navigate('/employee-app/profile');
+          }, 100);
+          return;
+        }
+
+        // For system users / managers with administrative roles or delegated privileges:
+        setActiveModuleId('dash-overview');
+        console.log('Login successful - System User / Manager', employeeUser);
 
         setTimeout(() => {
           navigate('/');
