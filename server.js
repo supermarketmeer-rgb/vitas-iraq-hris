@@ -1809,8 +1809,10 @@ app.get('/api/employees', async (req, res) => {
       const conditions = [];
       if (badgeParam) {
         const isNum = !isNaN(Number(badgeParam)) && Number(badgeParam) > 0;
+        const vPrefixed = `V${badgeParam.replace(/^v/i, '')}`;
         conditions.push(`(
           LOWER(badge_no) = LOWER(?) 
+          OR LOWER(badge_no) = LOWER(?)
           OR LOWER(employee_id) = LOWER(?) 
           ${isNum ? 'OR id = ?' : ''}
           OR LOWER(waid) = LOWER(?) 
@@ -1819,7 +1821,7 @@ app.get('/api/employees', async (req, res) => {
           OR LOWER(full_name_ar) LIKE LOWER(?)
           OR LOWER(full_name_en) LIKE LOWER(?)
         )`);
-        params.push(badgeParam, badgeParam);
+        params.push(badgeParam, vPrefixed, badgeParam);
         if (isNum) params.push(Number(badgeParam));
         params.push(badgeParam, badgeParam, badgeParam, `%${badgeParam}%`, `%${badgeParam}%`);
       }
@@ -6373,12 +6375,31 @@ app.post('/api/login', async (req, res) => {
       } catch (e) {}
     }
 
-    // 3. If still not found, check `employees` table
+    // 3. If still not found, check `employees` table (by employee_id, badge_no, or email)
     let empRow = null;
     if (!targetUser && !customUserEntry) {
+      // Build badge variants: if input is numeric like "869", also try "V869"
+      const isNumericInput = /^\d+$/.test(cleanUser);
+      const vPrefixed = isNumericInput ? `V${cleanUser}` : (cleanUser.toUpperCase().startsWith('V') ? cleanUser.toUpperCase() : `V${cleanUser}`);
+      const digitsOnly = cleanUser.replace(/[^0-9]/g, '');
+
       const emps = await query(
-        `SELECT * FROM employees WHERE LOWER(employee_id) = LOWER(?) OR LOWER(email) = LOWER(?) LIMIT 1`,
-        [cleanUser, cleanUser]
+        `SELECT * FROM employees WHERE 
+          LOWER(employee_id) = LOWER(?) 
+          OR LOWER(badge_no) = LOWER(?)
+          OR LOWER(badge_no) = LOWER(?)
+          ${digitsOnly ? 'OR (badge_no REGEXP ? )' : ''}
+          OR LOWER(email) = LOWER(?) 
+          OR LOWER(waid) = LOWER(?)
+          LIMIT 1`,
+        [
+          cleanUser,
+          cleanUser,
+          vPrefixed,
+          ...(digitsOnly ? [`^[Vv]?${digitsOnly}$`] : []),
+          cleanUser,
+          cleanUser
+        ]
       );
       if (emps && emps.length > 0) {
         empRow = emps[0];
@@ -6416,6 +6437,17 @@ app.post('/api/login', async (req, res) => {
         cleanPass === 'Password123!' ||
         cleanPass === 'Vitas@2026' ||
         cleanPass === 'Admin@2026'
+      );
+    } else if (empRow) {
+      // Employee: accept stored password, 123456, badge_no (with/without V), or employee_id
+      const empBadge = String(empRow.badge_no || '').trim();
+      const empBadgeDigits = empBadge.replace(/[^0-9]/g, '');
+      const empEmpId = String(empRow.employee_id || '').trim();
+      isPasswordValid = (
+        (storedPassword && storedPassword !== '' && cleanPass === storedPassword) ||
+        cleanPass === '123456' ||
+        (empBadge && (cleanPass.toLowerCase() === empBadge.toLowerCase() || (empBadgeDigits && cleanPass === empBadgeDigits))) ||
+        (empEmpId && cleanPass.toLowerCase() === empEmpId.toLowerCase())
       );
     } else if (storedPassword && storedPassword !== '') {
       isPasswordValid = (cleanPass === storedPassword);

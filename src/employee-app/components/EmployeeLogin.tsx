@@ -139,21 +139,29 @@ export const EmployeeLogin: React.FC<EmployeeLoginProps> = ({ onLogin }) => {
           if (emps.length > 0) {
             const found = emps.find((emp: any) => {
               const bNo = toStandardDigits(String(emp.badge_no || emp.badgeNo || '')).trim().toLowerCase();
+              const bNoAlpha = bNo.replace(/[^a-z0-9]/g, '');
+              const bNoDigits = bNo.replace(/[^0-9]/g, '');
               const eId = toStandardDigits(String(emp.employee_id || emp.employeeId || emp.id || '')).trim().toLowerCase();
+              const eIdAlpha = eId.replace(/[^a-z0-9]/g, '');
+              const eIdDigits = eId.replace(/[^0-9]/g, '');
               const normNameAr = normalizeArabic(emp.full_name_ar || emp.fullName || '');
               const nameEn = String(emp.full_name_en || emp.fullNameEn || '').trim().toLowerCase();
               const waid = toStandardDigits(String(emp.waid || emp.wa_id || '')).trim().toLowerCase();
               const phone = toStandardDigits(String(emp.phone || emp.mobile || '')).trim();
+              const inputDigits = cleanInput.replace(/[^0-9]/g, '');
 
               return (
                 bNo === cleanInput ||
+                bNoAlpha === cleanInputAlpha ||
+                (bNoDigits && inputDigits && bNoDigits === inputDigits) ||
                 eId === cleanInput ||
+                eIdAlpha === cleanInputAlpha ||
+                (eIdDigits && inputDigits && eIdDigits === inputDigits) ||
                 normNameAr.includes(normInput) ||
                 normInput.includes(normNameAr) ||
                 nameEn.includes(cleanInput) ||
                 waid === cleanInput ||
-                phone === cleanInput ||
-                (cleanInputAlpha && (bNo.includes(cleanInputAlpha) || eId.includes(cleanInputAlpha)))
+                phone === cleanInput
               );
             }) || (cleanInput === 'admin' ? emps[0] : (emps.length === 1 ? emps[0] : null));
 

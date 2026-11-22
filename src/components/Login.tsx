@@ -190,8 +190,12 @@ export const Login: React.FC = () => {
           cleanUser.startsWith('v') ||
           /^\d+$/.test(cleanUser) ||
           (employees && employees.some(e => {
-            const code = String(e.employeeId || e.badgeNo || e.id || '').toLowerCase();
-            return code === cleanUser || code.replace(/[^a-z0-9]/g, '') === cleanUser;
+            const b = String(e.badgeNo || (e as any).badge_no || '').toLowerCase();
+            const id = String(e.employeeId || (e as any).employee_id || e.id || '').toLowerCase();
+            return (
+              b === cleanUser || b.replace(/[^a-z0-9]/g, '') === cleanUser || b.replace(/[^0-9]/g, '') === cleanUser ||
+              id === cleanUser || id.replace(/[^a-z0-9]/g, '') === cleanUser || id.replace(/[^0-9]/g, '') === cleanUser
+            );
           }));
 
         const errMsg = String(authErr?.message || '');
@@ -555,31 +559,68 @@ export const Login: React.FC = () => {
       }
 
       // 4. Employee Login (Matches real employee from list)
-      const matchedEmp = employees && employees.length > 0
+      const inputRaw = cleanUser;
+      const inputAlpha = cleanUser.replace(/[^a-z0-9]/g, '');
+      const inputDigits = cleanUser.replace(/[^0-9]/g, '');
+
+      let matchedEmp = employees && employees.length > 0
         ? employees.find(emp => {
-            const empCode = String(emp.employeeId || emp.badgeNo || emp.id || '').toLowerCase();
-            const cleanEmpCode = empCode.replace(/[^a-z0-9]/g, '');
-            const cleanInput = cleanUser.replace(/[^a-z0-9]/g, '');
-            const emailPart = (emp.email || '').toLowerCase().split('@')[0];
+            const eBadge = String(emp.badgeNo || (emp as any).badge_no || '').toLowerCase().trim();
+            const eBadgeAlpha = eBadge.replace(/[^a-z0-9]/g, '');
+            const eBadgeDigits = eBadge.replace(/[^0-9]/g, '');
+
+            const eId = String(emp.employeeId || (emp as any).employee_id || '').toLowerCase().trim();
+            const eIdAlpha = eId.replace(/[^a-z0-9]/g, '');
+            const eIdDigits = eId.replace(/[^0-9]/g, '');
+
+            const pkId = String(emp.id || '').toLowerCase().trim();
+            const eWaid = String((emp as any).waid || (emp as any).wa_id || '').toLowerCase().trim();
+            const eEmail = String(emp.email || '').toLowerCase().trim();
+            const emailPart = eEmail.split('@')[0];
 
             return (
-              empCode === cleanUser ||
-              cleanEmpCode === cleanInput ||
-              emailPart === cleanUser ||
-              (emp.email && emp.email.toLowerCase() === cleanUser)
+              (eBadge && (eBadge === inputRaw || eBadgeAlpha === inputAlpha)) ||
+              (eBadgeDigits && inputDigits && eBadgeDigits === inputDigits) ||
+              (eId && (eId === inputRaw || eIdAlpha === inputAlpha)) ||
+              (eIdDigits && inputDigits && eIdDigits === inputDigits) ||
+              pkId === inputRaw ||
+              eWaid === inputRaw ||
+              emailPart === inputRaw ||
+              eEmail === inputRaw
             );
           })
         : null;
 
+      // If not found in memory, try backend search by badge/id
+      if (!matchedEmp) {
+        try {
+          const liveRes = await fetch(`/api/employees?badge=${encodeURIComponent(cleanUser)}`);
+          if (liveRes.ok) {
+            const data = await liveRes.json();
+            const list = Array.isArray(data) ? data : (data ? [data] : []);
+            if (list.length > 0) matchedEmp = list[0];
+          }
+        } catch {}
+      }
+
       if (matchedEmp) {
         // Validate password against employee badge/code/123456
-        const empCode = String(matchedEmp.employeeId || matchedEmp.badgeNo || '').toLowerCase();
-        const empNum = empCode.replace(/[^0-9]/g, '');
-        const isEmpPassValid = 
-          cleanPass === '123456' || 
-          cleanPass === empCode || 
-          (empNum && cleanPass === empNum) ||
-          cleanPass === String(matchedEmp.badgeNo || '');
+        const eBadge = String((matchedEmp as any).badgeNo || (matchedEmp as any).badge_no || '').toLowerCase().trim();
+        const eBadgeAlpha = eBadge.replace(/[^a-z0-9]/g, '');
+        const eBadgeDigits = eBadge.replace(/[^0-9]/g, '');
+        const eId = String((matchedEmp as any).employeeId || (matchedEmp as any).employee_id || '').toLowerCase().trim();
+        const eIdAlpha = eId.replace(/[^a-z0-9]/g, '');
+        const eIdDigits = eId.replace(/[^0-9]/g, '');
+
+        const isEmpPassValid =
+          cleanPass === '123456' ||
+          cleanPass === cleanUser ||
+          cleanPass === eBadge ||
+          cleanPass === eBadgeAlpha ||
+          (eBadgeDigits && cleanPass === eBadgeDigits) ||
+          cleanPass === eId ||
+          cleanPass === eIdAlpha ||
+          (eIdDigits && cleanPass === eIdDigits);
 
         if (!isEmpPassValid) {
           setError(language === 'ar' ? 'كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مرة أخرى.' : 'Incorrect password. Please verify and try again.');
