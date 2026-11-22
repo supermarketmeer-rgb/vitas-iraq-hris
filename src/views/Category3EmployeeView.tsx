@@ -5223,7 +5223,17 @@ export const Category3EmployeeView: React.FC = () => {
                                   {t('الحالة الاجتماعية:', 'Marital Status:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.maritalStatus || selectedEmployee.marital_status || t('غير محدد', 'Not specified')}</span>
                                 </p>
                                 <p className={`${profileColors.textSecondary}`}>
-                                  {t('مخصص الزوجية:', 'Spouse Allowance:')} <span className="text-emerald-500 font-mono font-bold">{Number(selectedEmployee.spouseAllowance || selectedEmployee.spouse_allowance || 0).toLocaleString('en-US')} {t('د.ع', 'IQD')}</span>
+                                  {t('مخصص الزوجية:', 'Spouse Allowance:')} <span className="text-emerald-500 font-mono font-bold">{(() => {
+                                     const mStat = String(selectedEmployee.maritalStatus || selectedEmployee.marital_status || '').toLowerCase().trim();
+                                     const isMarriedEmp = mStat === 'متأهل' || mStat === 'متزوج' || mStat === 'married';
+                                     const spouseWorksHereEmp = selectedEmployee.spouseEmployedHere === true || String(selectedEmployee.spouse_employed_here) === '1';
+                                     if (!isMarriedEmp || spouseWorksHereEmp) return `0 ${t('د.ع', 'IQD')}`;
+                                     const fxRate = parseFloat(appSettings['usd_to_iqd_rate'] || '1310') || 1310;
+                                     const rawS = parseFloat(appSettings['marriage_allowance_default'] || appSettings['spouse_allowance_default'] || appSettings['marriage_allowance'] || '50000');
+                                     const sCurr = appSettings['marriage_allowance_currency'] || 'IQD';
+                                     const policyAmt = sCurr === 'USD' ? Math.round(rawS * fxRate) : rawS;
+                                     return `${policyAmt.toLocaleString('en-US')} ${t('د.ع', 'IQD')}`;
+                                   })()}</span>
                                 </p>
                                 <p className={`${profileColors.textSecondary}`}>
                                   {t('اسم الزوج / الزوجة:', 'Spouse Name:')} <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{selectedEmployee.spouseName && selectedEmployee.spouseName !== 'N/A' ? selectedEmployee.spouseName : '-'}</span>

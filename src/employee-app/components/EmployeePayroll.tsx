@@ -267,9 +267,34 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee: prop
         ? Number(manualAdjustments.overtimeAmount)
         : ((Number(manualAdjustments.overtimeHours) || 0) * (basicSalary / 240) * 1.5 || 0));
 
-  // Family allowance calculation (exact Category5PayrollView formula)
-  const childAllowanceVal = 25000;
-  const spouseAllowanceVal = 50000;
+  // Family allowance calculation - reads from policy settings (same as Category5PayrollView)
+  const policySettings = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('vitas_app_settings');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {};
+  }, []);
+
+  const fxRate = parseFloat(policySettings['usd_to_iqd_rate'] || '1310') || 1310;
+
+  // Spouse allowance from policy
+  const rawSpousePolicy = parseFloat(policySettings['marriage_allowance_default'] || policySettings['spouse_allowance_default'] || policySettings['marriage_allowance'] || '50000');
+  const spouseCurrPolicy = policySettings['marriage_allowance_currency'] || 'IQD';
+  const spouseAllowanceVal = spouseCurrPolicy === 'USD' ? Math.round(rawSpousePolicy * fxRate) : rawSpousePolicy;
+
+  // Child allowance from policy (use loan officer rate if applicable)
+  const deptStrEmp = `${fullEmployee?.department || ''}`.toLowerCase();
+  const posStrEmp = `${fullEmployee?.jobTitle || fullEmployee?.job_title || ''}`.toLowerCase();
+  const isLoanOfficerEmp = deptStrEmp.includes('credit') || deptStrEmp.includes('ائتمان') || posStrEmp.includes('loan officer') || posStrEmp.includes('credit');
+  const loChildRaw = parseFloat(policySettings['child_allowance_loan_officer_default'] || '5');
+  const loChildCurr = policySettings['child_allowance_loan_officer_currency'] || 'USD';
+  const loChildVal = loChildCurr === 'USD' ? Math.round(loChildRaw * fxRate) : loChildRaw;
+  const otherChildRaw = parseFloat(policySettings['child_allowance_default'] || policySettings['child_allowance'] || '4');
+  const otherChildCurr = policySettings['child_allowance_currency'] || 'USD';
+  const otherChildVal = otherChildCurr === 'USD' ? Math.round(otherChildRaw * fxRate) : otherChildRaw;
+  const childAllowanceVal = isLoanOfficerEmp ? loChildVal : otherChildVal;
+
   const spouseWorksHere = fullEmployee?.spouseEmployedHere === true || 
     fullEmployee?.spouse_employed_here === true || 
     String(fullEmployee?.spouse_employed_here) === '1';
@@ -302,9 +327,9 @@ export const EmployeePayroll: React.FC<EmployeePayrollProps> = ({ employee: prop
 
   const familyAllowance = manualAdjustments.familyAllowance !== undefined
     ? Number(manualAdjustments.familyAllowance)
-    : (fullEmployee?.familyAllowance !== undefined && Number(fullEmployee.familyAllowance) >= 0
+    : (fullEmployee?.familyAllowance !== undefined && Number(fullEmployee.familyAllowance) > 0
         ? Number(fullEmployee.familyAllowance)
-        : (derivedFamilyAllowance > 0 ? derivedFamilyAllowance : 50000));
+        : derivedFamilyAllowance);
 
   // Total Allowances & Gross Salary
   const allowancesTotal = phoneAllowance + certAllowance + transportation + bonus + familyAllowance + overtime + incentives + earnedLeave;
