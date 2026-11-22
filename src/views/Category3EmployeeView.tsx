@@ -4735,12 +4735,14 @@ export const Category3EmployeeView: React.FC = () => {
                             <div className="flex items-center gap-1.5 shrink-0 ms-2">
                               {(emp.waid || emp.wa_id) && (
                                 <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                                  isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-teal-600 text-white border border-teal-700'
                                 }`} title="WAID">
                                   W:{emp.waid || emp.wa_id}
                                 </span>
                               )}
-                              <span className={`text-[11px] font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'} font-bold ${isDark ? 'bg-teal-600/20' : 'bg-blue-50'} group-hover:${isDark ? 'bg-teal-600/30' : 'bg-blue-100'} px-2 py-0.5 rounded-full border ${profileColors.badgeBorder}`}>
+                              <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                                isDark ? 'text-blue-400 bg-teal-600/20 border-teal-500/30' : 'text-white bg-teal-600 border-teal-700'
+                              }`}>
                                 {emp.employeeId || emp.badgeNo || 'EMP'}
                               </span>
                               {isCurrent && (
