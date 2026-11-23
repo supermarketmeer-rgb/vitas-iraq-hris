@@ -213,6 +213,9 @@ export const SettingsSecurityView: React.FC = () => {
       }));
 
       setLocations(normalizedBranches);
+      if (normalizedBranches.length > 0) {
+        try { localStorage.setItem('vitas_locations', JSON.stringify(normalizedBranches)); } catch {}
+      }
       const rawPositions = Array.isArray(positionsData) ? positionsData : [];
       const normalizedPositions = rawPositions.map((p: any) => ({
         ...p,
@@ -224,7 +227,11 @@ export const SettingsSecurityView: React.FC = () => {
       if (normalizedPositions.length > 0) {
         try { localStorage.setItem('vitas_positions', JSON.stringify(normalizedPositions)); } catch {}
       }
-      setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
+      const validDepts = Array.isArray(departmentsData) ? departmentsData : [];
+      setDepartments(validDepts);
+      if (validDepts.length > 0) {
+        try { localStorage.setItem('vitas_departments', JSON.stringify(validDepts)); } catch {}
+      }
       setContractTypes(Array.isArray(contractTypesData) ? contractTypesData : []);
       setStatusChanges(Array.isArray(statusChangesData) ? statusChangesData : []);
       setTrainings(Array.isArray(trainingsData) ? trainingsData : []);
