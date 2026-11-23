@@ -1472,7 +1472,18 @@ export const SettingsSecurityView: React.FC = () => {
     'dohuk': 'دهوك',
     'atas': 'مكتب لبنان (ATAS)',
     'lebanon': 'مكتب لبنان (ATAS)',
-    'lebanon office': 'مكتب لبنان (ATAS)'
+    'lebanon office': 'مكتب لبنان (ATAS)',
+    'hilla-mussaib': 'الحلة - المسيب',
+    'hindia-main office': 'الهندية - الإدارة العامة',
+    'kut-main office': 'الكوت - الإدارة العامة',
+    'main office-mansour': 'الإدارة العامة - المنصور',
+    'main office-najaf': 'الإدارة العامة - النجف',
+    'mansour-main office': 'المنصور - الإدارة العامة',
+    'najaf-main office': 'النجف - الإدارة العامة',
+    'sulaymaniya-main office': 'السليمانية - الإدارة العامة',
+    'sulaymaniya': 'السليمانية',
+    'nassriya': 'الناصرية',
+    'wehda-main office': 'الوحدة - الإدارة العامة'
   };
 
   const DEPT_EN_TO_AR_DICT: Record<string, string> = {
@@ -1512,44 +1523,125 @@ export const SettingsSecurityView: React.FC = () => {
   const translatePositionTitle = (posEn: string): string => {
     if (!posEn) return '';
     const cleanEn = posEn.split('-')[0].trim();
-    const p = posEn.toLowerCase();
+    const p = posEn.toLowerCase().trim();
+
+    // Leadership & Management
+    if (p.includes('co-general mangar') || p.includes('co-general manager')) return 'معاون المدير العام';
+    if (p.includes('athuraty maanager') || p.includes('authorized manager')) return 'المدير المفوض';
+    if (p.includes('regional branch manager')) return 'مدير فروع إقليمي';
+    if (p.includes('senior office manager')) return 'مدير مكتب أقدم';
+    if (p.includes('office manager')) return 'مدير مكتب';
+    if (p.includes('branch manager')) return 'مدير فرع';
+    if (p.includes('partnership manager')) return 'مدير الشراكات';
+    if (p.includes('recruiting & training function manager')) return 'مدير وظيفة التوظيف والتدريب';
+    if (p.includes('hr manager')) return 'مدير الموارد البشرية';
+    if (p.includes('security manager')) return 'مدير الأمن';
+    if (p.includes('procurement and facilities manager')) return 'مدير المشتريات والتسهيلات';
+    if (p.includes('deputy procurement manager')) return 'معاون مدير المشتريات';
+    if (p.includes('deputy it manager')) return 'معاون مدير تكنولوجيا المعلومات';
+    if (p.includes('deputy mis manager')) return 'معاون مدير نظم المعلومات';
+    if (p.includes('deputy accounting manager')) return 'معاون مدير الحسابات';
+    if (p.includes('deputy credit manager')) return 'معاون مدير الائتمان';
+    if (p.includes('credit  manager') || p.includes('credit manager')) return 'مدير الائتمان';
+    if (p.includes('pr manager')) return 'مدير العلاقات العامة';
+    if (p.includes('treasury manager') || p.includes('treasury  manager')) return 'مدير الخزينة';
+    if (p.includes('senior internal audit manager')) return 'مدير التدقيق الداخلي الأقدم';
+    if (p.includes('chief accountant')) return 'رئيس حسابات';
+    if (p.includes('team leader')) return 'قائد فريق';
+
+    // Audit
+    if (p.includes('branch senior internal auditor')) return 'مدقق داخلي فرع أقدم';
     if (p.includes('senior internal auditor') || p.includes('sr. internal auditor')) return 'مدقق داخلي أقدم';
     if (p.includes('internal auditor') || p.includes('auditor')) return 'مدقق داخلي';
+
+    // Credit & Loans
     if (p.includes('senior loan officer supervisor')) return 'مشرف مسؤولي قروض أقدم';
     if (p.includes('loan officer supervisor')) return 'مشرف مسؤولي قروض';
+    if (p.includes('senior collection loan officer')) return 'مسؤول قروض وتحصيل أقدم';
+    if (p.includes('collection loan officer')) return 'مسؤول قروض وتحصيل';
+    if (p.includes('collection supervisor')) return 'مشرف تحصيل';
+    if (p.includes('deputy collection coordinator')) return 'معاون منسق التحصيل';
+    if (p.includes('senior collection officer')) return 'مسؤول تحصيل أقدم';
+    if (p.includes('collection officer')) return 'مسؤول تحصيل';
     if (p.includes('senior loan officer') || p.includes('se loan officer')) return 'مسؤول قروض أقدم';
     if (p.includes('field loan officer')) return 'مسؤول قروض ميداني';
-    if (p.includes('loan officer')) return 'مسؤول قروض';
+    if (p.includes('credit call center')) return 'مسؤول مركز الاتصال للائتمان';
     if (p.includes('senior credit analyst')) return 'محلل ائتمان أقدم';
     if (p.includes('credit analyst')) return 'محلل ائتمان';
+    if (p.includes('senior credit admin coordinator')) return 'منسق إدارة الائتمان الأقدم';
+    if (p.includes('regional credit coordinator')) return 'منسق ائتمان إقليمي';
+    if (p.includes('se deputy credit coordinator')) return 'معاون منسق ائتمان مشاريع صغيرة';
     if (p.includes('credit coordinator')) return 'منسق ائتمان';
+    if (p.includes('senior credit assistant')) return 'مساعد ائتمان أقدم';
     if (p.includes('credit assistant')) return 'مساعد ائتمان';
-    if (p.includes('collection officer')) return 'مسؤول تحصيل';
+    if (p.includes('loan officer')) return 'مسؤول قروض';
+
+    // Treasury
+    if (p.includes('senior treasury coordinator')) return 'منسق خزينة أقدم';
     if (p.includes('branch treasury assistant') || p.includes('treasury assistant')) return 'مساعد خبير خزينة فرع';
     if (p.includes('treasury officer') || p.includes('treasurer')) return 'مسؤول خزينة';
-    if (p.includes('branch manager')) return 'مدير فرع';
-    if (p.includes('office manager')) return 'مدير مكتب';
-    if (p.includes('cleaner') || p.includes('cleaning')) return 'عامل نظافة';
-    if (p.includes('security guard') || p.includes('guard')) return 'حارس أمن';
-    if (p.includes('it support') || p.includes('it officer')) return 'مسؤول دعم تكنولوجيا المعلومات';
-    if (p.includes('mis specialist') || p.includes('mis officer') || p.includes('mis coordinator')) return 'أخصائي نظم معلومات (MIS)';
-    if (p.includes('compliance officer')) return 'مسؤول امتثال';
-    if (p.includes('risk officer')) return 'مسؤول مخاطر';
-    if (p.includes('hr data entry')) return 'مدخل بيانات موارد بشرية';
-    if (p.includes('hr manager')) return 'مدير الموارد البشرية';
-    if (p.includes('hr officer') || p.includes('hr specialist')) return 'مسؤول موارد بشرية';
+
+    // Accounting & Finance
+    if (p.includes('accountant coordinator')) return 'منسق حسابات';
     if (p.includes('senior accountant')) return 'محاسب أقدم';
-    if (p.includes('accountant') || p.includes('accounting officer') || p.includes('accounting manager')) return 'محاسب';
-    if (p.includes('procurement officer') || p.includes('procurement assistant')) return 'مسؤول مشتريات';
-    if (p.includes('marketing officer') || p.includes('pr officer') || p.includes('pr coordinator')) return 'مسؤول تسويق وعلاقات عامة';
-    if (p.includes('driver')) return 'سائق';
-    if (p.includes('receptionist')) return 'موظف استقبال';
-    if (p.includes('branch administrative assistant') || p.includes('branch office staff')) return 'موظف إداري فرع';
-    if (p.includes('maintenance technician') || p.includes('maintinance technician')) return 'فني صيانة';
-    if (p.includes('maintenance')) return 'صيانة وخدمات';
+    if (p.includes('accountant') || p.includes('accounting officer')) return 'محاسب';
+
+    // IT & MIS
+    if (p.includes('it consultant')) return 'مستشار تكنولوجيا المعلومات';
+    if (p.includes('senior it officer')) return 'مسؤول تكنولوجيا معلومات أقدم';
+    if (p.includes('it support') || p.includes('it officer')) return 'مسؤول تكنولوجيا المعلومات';
+    if (p.includes('mis coordinator')) return 'منسق نظم معلومات (MIS)';
+    if (p.includes('mis assistant')) return 'مساعد نظم معلومات (MIS)';
+    if (p.includes('mis specialist') || p.includes('mis officer')) return 'أخصائي نظم معلومات (MIS)';
+
+    // HR
+    if (p.includes('senior compensation and benefits')) return 'مسؤول التعويضات والمزايا الأقدم';
+    if (p.includes('hr administrator')) return 'مسؤول إداري موارد بشرية';
+    if (p.includes('hr data entry')) return 'مدخل بيانات موارد بشرية';
+    if (p.includes('hr officer') || p.includes('hr specialist')) return 'مسؤول موارد بشرية';
+
+    // Compliance, Risk & Legal
+    if (p.includes('aml officer')) return 'مسؤول مكافحة غسل الأموال';
+    if (p.includes('compliance coordinator')) return 'منسق امتثال';
+    if (p.includes('compliance officer') || p.includes('complaince officer')) return 'مسؤول امتثال';
+    if (p.includes('regulatory  officer') || p.includes('regulatory officer')) return 'مسؤول الشؤون التنظيمية';
+    if (p.includes('risk coordinatoor') || p.includes('risk coordinator')) return 'منسق مخاطر';
+    if (p.includes('risk officer')) return 'مسؤول مخاطر';
+    if (p.includes('legal consultant')) return 'مستشار قانوني';
+
+    // Marketing & PR
+    if (p.includes('digital marketing lead')) return 'مسؤول التسويق الرقمي';
+    if (p.includes('customer and social media officer')) return 'مسؤول خدمة العملاء والتواصل الاجتماعي';
+    if (p.includes('senior pr & marketing officer')) return 'مسؤول تسويق وعلاقات عامة أقدم';
+    if (p.includes('pr coordinator')) return 'منسق علاقات عامة';
+    if (p.includes('marketing officer') || p.includes('pr officer')) return 'مسؤول تسويق وعلاقات عامة';
+
+    // Procurement & Facilities & Services
+    if (p.includes('senior  facilities and procurement coordiantor') || p.includes('senior facilities and procurement coordinator')) return 'منسق مشتريات وتسهيلات أقدم';
+    if (p.includes('senior procurement coordinator')) return 'منسق مشتريات أقدم';
+    if (p.includes('procurement assistant')) return 'مساعد مشتريات';
+    if (p.includes('procurement officer')) return 'مسؤول مشتريات';
+    if (p.includes('facilities assistant & driver') || p.includes('facilities assistant')) return 'مساعد خدمات وسائق';
     if (p.includes('business admin officer')) return 'مسؤول إدارة الأعمال';
-    if (p.includes('archiving and records')) return 'مسؤول الأرشفة والسجلات';
-    if (p.includes('partnership manager')) return 'مدير الشراكات';
+    if (p.includes('senior archiving officer')) return 'مسؤول أرشفة أقدم';
+    if (p.includes('archiving & records officer') || p.includes('archiving and records') || p.includes('archiving officer')) return 'مسؤول الأرشفة والسجلات';
+    if (p.includes('admin coordinator')) return 'منسق إداري';
+    if (p.includes('branch admin assistant') || p.includes('branch administrative assistant') || p.includes('branch office staff')) return 'مساعد إداري فرع';
+    if (p.includes('office assistant')) return 'مساعد مكتبي';
+    if (p.includes('receptionist')) return 'موظف استقبال';
+
+    // Security, Driver & Maintenance
+    if (p.includes('senior security coordinator')) return 'منسق أمن أقدم';
+    if (p.includes('security officer and driver')) return 'مسؤول أمن وسائق';
+    if (p.includes('security officer')) return 'مسؤول أمن';
+    if (p.includes('guard and maintenance')) return 'حارس أمن وصيانة';
+    if (p.includes('security guard') || p.includes('guard')) return 'حارس أمن';
+    if (p.includes('technical maintenance') || p.includes('maintenance technician')) return 'فني صيانة';
+    if (p.includes('maintenance')) return 'صيانة وخدمات';
+    if (p.includes('driver')) return 'سائق';
+    if (p.includes('cleaning and hospitality worker')) return 'عامل خدمة ونظافة وضيافة';
+    if (p.includes('cleaner') || p.includes('cleaning')) return 'عامل نظافة';
+
     return cleanEn;
   };
 
@@ -1557,42 +1649,99 @@ export const SettingsSecurityView: React.FC = () => {
     if (!posAr) return '';
     const cleanAr = posAr.split('-')[0].trim();
     const p = cleanAr.toLowerCase();
+    if (p.includes('مدير مفوض') || p.includes('المدير المفوض')) return 'Authorized Manager';
+    if (p.includes('معاون المدير العام')) return 'Co-General Manager';
+    if (p.includes('مدير فروع إقليمي')) return 'Regional Branch Manager';
     if (p.includes('مدقق داخلي أقدم')) return 'Senior Internal Auditor';
+    if (p.includes('مدقق داخلي فرع أقدم')) return 'Branch Senior Internal Auditor';
+    if (p.includes('مدير التدقيق الداخلي الأقدم')) return 'Senior Internal Audit Manager';
     if (p.includes('مدقق داخلي')) return 'Internal Auditor';
     if (p.includes('مشرف مسؤولي قروض أقدم')) return 'Senior Loan Officer Supervisor';
     if (p.includes('مشرف مسؤولي قروض')) return 'Loan Officer Supervisor';
+    if (p.includes('مسؤول قروض وتحصيل أقدم')) return 'Senior Collection Loan Officer';
+    if (p.includes('مسؤول قروض وتحصيل') || p.includes('قروض وتحصيل')) return 'Collection Loan Officer';
+    if (p.includes('مشرف تحصيل')) return 'Collection Supervisor';
+    if (p.includes('معاون منسق التحصيل')) return 'Deputy Collection Coordinator';
+    if (p.includes('مسؤول تحصيل أقدم')) return 'Senior Collection Officer';
+    if (p.includes('مسؤول تحصيل') || p.includes('استحصال')) return 'Collection Officer';
     if (p.includes('مسؤول قروض أقدم')) return 'Senior Loan Officer';
     if (p.includes('مسؤول قروض ميداني') || p.includes('قروض ميداني')) return 'Field Loan Officer';
+    if (p.includes('مسؤول قروض مشاريع صغيرة')) return 'SE Loan Officer';
     if (p.includes('مسؤول قروض')) return 'Loan Officer';
+    if (p.includes('مساعد ائتمان أقدم')) return 'Senior Credit Assistant';
     if (p.includes('مساعد ائتمان')) return 'Credit Assistant';
     if (p.includes('محلل ائتمان أقدم')) return 'Senior Credit Analyst';
     if (p.includes('محلل ائتمان')) return 'Credit Analyst';
+    if (p.includes('منسق إدارة الائتمان الأقدم')) return 'Senior Credit Admin Coordinator';
+    if (p.includes('منسق ائتمان إقليمي')) return 'Regional Credit Coordinator';
+    if (p.includes('معاون منسق ائتمان مشاريع صغيرة')) return 'SE Deputy Credit Coordinator';
     if (p.includes('منسق ائتمان')) return 'Credit Coordinator';
-    if (p.includes('مسؤول تحصيل') || p.includes('استحصال')) return 'Collection Officer';
+    if (p.includes('مدير الائتمان')) return 'Credit Manager';
+    if (p.includes('معاون مدير الائتمان')) return 'Deputy Credit Manager';
+    if (p.includes('منسق خزينة أقدم')) return 'Senior Treasury Coordinator';
     if (p.includes('مساعد خبير خزينة فرع') || p.includes('مساعد خزينة فرع')) return 'Branch Treasury Assistant';
+    if (p.includes('مدير الخزينة')) return 'Treasury Manager';
     if (p.includes('مسؤول خزينة') || p.includes('أمين صندوق') || p.includes('صراف')) return 'Treasury Officer';
-    if (p.includes('مدير فرع')) return 'Branch Manager';
-    if (p.includes('مدير مكتب')) return 'Office Manager';
-    if (p.includes('عامل نظافة') || p.includes('خدمات')) return 'Cleaner';
-    if (p.includes('حارس أمن') || p.includes('حارس')) return 'Security Guard';
-    if (p.includes('مسؤول دعم تكنولوجيا المعلومات') || p.includes('دعم فني')) return 'IT Support Officer';
-    if (p.includes('أخصائي نظم معلومات') || p.includes('نظم معلومات') || p.includes('mis')) return 'MIS Specialist';
-    if (p.includes('مسؤول امتثال') || p.includes('امتثال')) return 'Compliance Officer';
-    if (p.includes('مسؤول مخاطر') || p.includes('مخاطر')) return 'Risk Officer';
-    if (p.includes('مدخل بيانات موارد بشرية') || p.includes('مدخل بيانات')) return 'HR Data Entry';
-    if (p.includes('مدير الموارد البشرية') || p.includes('مدير موارد بشرية')) return 'HR Manager';
-    if (p.includes('مسؤول موارد بشرية') || p.includes('موارد بشرية')) return 'HR Officer';
+    if (p.includes('منسق حسابات')) return 'Accountant Coordinator';
     if (p.includes('محاسب أقدم')) return 'Senior Accountant';
-    if (p.includes('محاسب') || p.includes('مدير حسابات')) return 'Accountant';
-    if (p.includes('مسؤول مشتريات') || p.includes('مساعد مشتريات')) return 'Procurement Officer';
+    if (p.includes('معاون مدير الحسابات')) return 'Deputy Accounting Manager';
+    if (p.includes('رئيس حسابات')) return 'Chief Accountant';
+    if (p.includes('محاسب')) return 'Accountant';
+    if (p.includes('مستشار تكنولوجيا المعلومات')) return 'IT Consultant';
+    if (p.includes('مسؤول تكنولوجيا معلومات أقدم')) return 'Senior IT Officer';
+    if (p.includes('معاون مدير تكنولوجيا المعلومات')) return 'Deputy IT Manager';
+    if (p.includes('مسؤول تكنولوجيا المعلومات') || p.includes('دعم فني')) return 'IT Officer';
+    if (p.includes('منسق نظم معلومات')) return 'MIS Coordinator';
+    if (p.includes('مساعد نظم معلومات')) return 'MIS Assistant';
+    if (p.includes('معاون مدير نظم المعلومات')) return 'Deputy MIS Manager';
+    if (p.includes('أخصائي نظم معلومات') || p.includes('نظم معلومات') || p.includes('mis')) return 'MIS Specialist';
+    if (p.includes('مسؤول التعويضات والمزايا الأقدم')) return 'Senior Compensation and Benefits';
+    if (p.includes('مسؤول إداري موارد بشرية')) return 'HR Administrator';
+    if (p.includes('مدير وظيفة التوظيف والتدريب')) return 'Recruiting & Training Function Manager';
+    if (p.includes('مدير الموارد البشرية')) return 'HR Manager';
+    if (p.includes('مسؤول موارد بشرية') || p.includes('موارد بشرية')) return 'HR Officer';
+    if (p.includes('مسؤول مكافحة غسل الأموال')) return 'AML Officer';
+    if (p.includes('منسق امتثال')) return 'Compliance Coordinator';
+    if (p.includes('مسؤول امتثال') || p.includes('امتثال')) return 'Compliance Officer';
+    if (p.includes('مسؤول الشؤون التنظيمية')) return 'Regulatory Officer';
+    if (p.includes('منسق مخاطر')) return 'Risk Coordinator';
+    if (p.includes('مسؤول مخاطر') || p.includes('مخاطر')) return 'Risk Officer';
+    if (p.includes('مستشار قانوني')) return 'Legal Consultant';
+    if (p.includes('مسؤول التسويق الرقمي')) return 'Digital Marketing Lead';
+    if (p.includes('مسؤول خدمة العملاء والتواصل الاجتماعي')) return 'Customer and Social Media Officer';
+    if (p.includes('مسؤول تسويق وعلاقات عامة أقدم')) return 'Senior PR & Marketing Officer';
+    if (p.includes('منسق علاقات عامة')) return 'PR Coordinator';
+    if (p.includes('مدير العلاقات العامة')) return 'PR Manager';
     if (p.includes('مسؤول تسويق وعلاقات عامة') || p.includes('تسويق') || p.includes('علاقات عامة')) return 'Marketing & PR Officer';
-    if (p.includes('سائق')) return 'Driver';
+    if (p.includes('منسق مشتريات وتسهيلات أقدم')) return 'Senior Facilities and Procurement Coordinator';
+    if (p.includes('منسق مشتريات أقدم')) return 'Senior Procurement Coordinator';
+    if (p.includes('معاون مدير المشتريات')) return 'Deputy Procurement Manager';
+    if (p.includes('مدير المشتريات والتسهيلات')) return 'Procurement and Facilities Manager';
+    if (p.includes('مساعد مشتريات')) return 'Procurement Assistant';
+    if (p.includes('مسؤول مشتريات')) return 'Procurement Officer';
+    if (p.includes('مساعد خدمات وسائق')) return 'Facilities Assistant & Driver';
+    if (p.includes('مسؤول إدارة الأعمال')) return 'Business Admin Officer';
+    if (p.includes('مسؤول أرشفة أقدم')) return 'Senior Archiving Officer';
+    if (p.includes('مسؤول الأرشفة والسجلات') || p.includes('أرشفة')) return 'Archiving & Records Officer';
+    if (p.includes('منسق إداري')) return 'Admin Coordinator';
+    if (p.includes('مساعد إداري فرع') || p.includes('موظف إداري فرع') || p.includes('إداري فرع')) return 'Branch Admin Assistant';
+    if (p.includes('مساعد مكتبي')) return 'Office Assistant';
     if (p.includes('موظف استقبال')) return 'Receptionist';
-    if (p.includes('موظف إداري فرع') || p.includes('مساعد إداري فرع') || p.includes('إداري فرع')) return 'Branch Administrative Assistant';
+    if (p.includes('منسق أمن أقدم')) return 'Senior Security Coordinator';
+    if (p.includes('مسؤول أمن وسائق')) return 'Security Officer and Driver';
+    if (p.includes('مدير الأمن')) return 'Security Manager';
+    if (p.includes('مسؤول أمن')) return 'Security Officer';
+    if (p.includes('حارس أمن وصيانة')) return 'Guard and Maintenance';
+    if (p.includes('حارس أمن') || p.includes('حارس')) return 'Security Guard';
     if (p.includes('فني صيانة') || p.includes('صيانة')) return 'Maintenance Technician';
-    if (p.includes('الأرشفة والسجلات') || p.includes('أرشفة')) return 'Archiving and Records Officer';
-    if (p.includes('إدارة الأعمال') || p.includes('ادارة اعمال')) return 'Business Admin Officer';
+    if (p.includes('سائق')) return 'Driver';
+    if (p.includes('عامل خدمة ونظافة وضيافة')) return 'Cleaning and Hospitality Worker';
+    if (p.includes('عامل نظافة') || p.includes('نظافة')) return 'Cleaner';
+    if (p.includes('مدير فرع')) return 'Branch Manager';
+    if (p.includes('مدير مكتب أقدم')) return 'Senior Office Manager';
+    if (p.includes('مدير مكتب')) return 'Office Manager';
     if (p.includes('مدير الشراكات') || p.includes('شراكات')) return 'Partnership Manager';
+    if (p.includes('قائد فريق')) return 'Team Leader';
     return cleanAr;
   };
 
@@ -2265,27 +2414,22 @@ export const SettingsSecurityView: React.FC = () => {
             const perfRating = rawPerfRating !== '' ? parseValToNum(rawPerfRating) : null;
 
             // Collect unique Branch / Location to add in batch (Strict Guard: Never add employee name as branch)
+            // NOTE: We do NOT filter against currentLocations here — the backend handles upserts safely.
+            // This ensures all branches from the Excel are synced even if they already exist in state.
             if (branch && !isPersonName(branch) && branch.trim().length > 1) {
               const normB = branch.trim().toLowerCase();
               const normBEn = (branchEn || branch).trim().toLowerCase();
-              const exists = currentLocations.some(l => 
-                (l.name_ar && l.name_ar.trim().toLowerCase() === normB) || 
-                (l.name && l.name.trim().toLowerCase() === normB) || 
-                (l.name_en && l.name_en.trim().toLowerCase() === normBEn)
+              const alreadyPushed = branchesToCreate.some(b => 
+                (b.name_ar && b.name_ar.trim().toLowerCase() === normB) || 
+                (b.name_en && b.name_en.trim().toLowerCase() === normBEn)
               );
-              if (!exists) {
-                const alreadyPushed = branchesToCreate.some(b => 
-                  (b.name_ar && b.name_ar.trim().toLowerCase() === normB) || 
-                  (b.name_en && b.name_en.trim().toLowerCase() === normBEn)
-                );
-                if (!alreadyPushed) {
-                  branchesToCreate.push({
-                    name: branch.trim(),
-                    name_ar: branch.trim(),
-                    name_en: (branchEn || branch).trim(),
-                    status: 'Active'
-                  });
-                }
+              if (!alreadyPushed) {
+                branchesToCreate.push({
+                  name: branch.trim(),
+                  name_ar: branch.trim(),
+                  name_en: (branchEn || branch).trim(),
+                  status: 'Active'
+                });
               }
             }
 
