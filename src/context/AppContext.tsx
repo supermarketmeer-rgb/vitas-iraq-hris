@@ -487,14 +487,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAssetRecords(assetData || localAssets);
         setRiskRecords(riskData || localRisks);
         setDocumentRecords(docData || localDocs);
-        const normalizedNotifData = normalizeNotifications(
-          (Array.isArray(notifData) && notifData.length > 0 ? notifData : null) || localNotifs || []
-        );
-        if (normalizedNotifData.length > 0) {
+        if (Array.isArray(notifData)) {
+          const normalizedNotifData = normalizeNotifications(notifData);
           setNotifications(normalizedNotifData);
           try {
             localStorage.setItem('vitas_notifications', JSON.stringify(normalizedNotifData));
           } catch (e) {}
+        } else if (localNotifs && localNotifs.length > 0) {
+          setNotifications(localNotifs);
         }
 
         // Process app settings (handles both array and object responses)
