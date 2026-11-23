@@ -2559,6 +2559,7 @@ app.post('/api/employees/batch-import', async (req, res) => {
     }
 
     // 3. Pre-sync departments in batch if provided
+    // Always re-query fresh from DB (do not rely on frontend state which may be stale)
     let deptsAdded = false;
     if (Array.isArray(departments) && departments.length > 0) {
       const existingDepts = await fastQuery('SELECT id, name, name_ar, name_en FROM departments').catch(() => []);
@@ -2577,6 +2578,7 @@ app.post('/api/employees/batch-import', async (req, res) => {
           console.warn(`[BatchImport] Skipping bogus department matching employee name: ${deptAr || deptEn}`);
           continue;
         }
+        // Always upsert: if not in DB, insert; if already exists, update name_en to keep it in sync
         if (!deptNames.has(deptAr.toLowerCase()) && !deptNames.has(deptEn.toLowerCase())) {
           const dCode = (d.code || `DEP-${Date.now().toString().slice(-4)}`).trim().toUpperCase();
           await fastQuery(
@@ -2587,6 +2589,12 @@ app.post('/api/employees/batch-import', async (req, res) => {
           deptNames.add(deptAr.toLowerCase());
           deptNames.add(deptEn.toLowerCase());
           deptsAdded = true;
+        } else {
+          // Department exists — update name_en if it has changed
+          await fastQuery(
+            `UPDATE departments SET name_en = ?, updated_at = NOW() WHERE (name_ar = ? OR name = ?) AND (name_en IS NULL OR name_en = '' OR name_en = name_ar)`,
+            [deptEn, deptAr, deptAr]
+          ).catch(() => {});
         }
       }
     }
@@ -2595,7 +2603,7 @@ app.post('/api/employees/batch-import', async (req, res) => {
     let posAdded = false;
     const allPositionsToSync = [...(Array.isArray(positions) ? positions : [])];
 
-    // ALSO automatically extract any positions present in the employees rows
+    // ALSO automatically extract any positions present in the employees rows (belt-and-suspenders)
     for (const emp of employees) {
       const pAr = (emp.jobTitle || emp.position_ar || emp.position || '').trim();
       const pEn = (emp.jobTitleEn || emp.position_en || emp.position || '').trim();
@@ -2607,6 +2615,43 @@ app.post('/api/employees/batch-import', async (req, res) => {
           title: pEn,
           status: 'Active'
         });
+      }
+    }
+
+    // Also auto-extract departments from employees (belt-and-suspenders for departments)
+    const allDepartmentsToSync = [...(Array.isArray(departments) ? departments : [])];
+    for (const emp of employees) {
+      const dAr = (emp.department || emp.department_ar || '').trim();
+      const dEn = (emp.departmentEn || emp.department_en || '').trim();
+      if ((dAr || dEn) && !employeeNames.has((dAr || dEn).toLowerCase())) {
+        allDepartmentsToSync.push({ name_ar: dAr, name_en: dEn });
+      }
+    }
+    // Sync any departments found in employees that weren't sent in departments array
+    if (allDepartmentsToSync.length > 0 && departments.length === 0) {
+      // Only do this secondary dept sync if the frontend sent no departments (fallback)
+      const existingDepts2 = await fastQuery('SELECT name, name_ar, name_en FROM departments').catch(() => []);
+      const deptNames2 = new Set();
+      existingDepts2.forEach(d => {
+        if (d.name) deptNames2.add(d.name.trim().toLowerCase());
+        if (d.name_ar) deptNames2.add(d.name_ar.trim().toLowerCase());
+        if (d.name_en) deptNames2.add(d.name_en.trim().toLowerCase());
+      });
+      for (const d of allDepartmentsToSync) {
+        const dAr = (d.name_ar || d.name || d.name_en || '').trim();
+        const dEn = (d.name_en || d.name || d.name_ar || '').trim();
+        if (!dAr && !dEn) continue;
+        if (employeeNames.has(dAr.toLowerCase()) || employeeNames.has(dEn.toLowerCase())) continue;
+        if (!deptNames2.has(dAr.toLowerCase()) && !deptNames2.has(dEn.toLowerCase())) {
+          const dCode = `DEP-${Date.now().toString().slice(-4)}`;
+          await fastQuery(
+            `INSERT INTO departments (name_en, name_ar, name, code, manager_name, status, sort_order) VALUES (?, ?, ?, ?, 'Unassigned', 'Active', 0)`,
+            [dEn || dAr, dAr || dEn, dAr || dEn, dCode]
+          ).catch(() => {});
+          deptNames2.add(dAr.toLowerCase());
+          deptNames2.add(dEn.toLowerCase());
+          deptsAdded = true;
+        }
       }
     }
 
@@ -2631,16 +2676,25 @@ app.post('/api/employees/batch-import', async (req, res) => {
         }
         if (!posAr && posEn) posAr = posEn;
         if (!posEn && posAr) posEn = posAr;
+        // title must NEVER be null (NOT NULL constraint)
+        const safeTitle = posEn || posAr || 'Position';
+        const safeTitleAr = posAr || posEn || 'Position';
 
         if (!posNames.has(posAr.toLowerCase()) && !posNames.has(posEn.toLowerCase())) {
           await fastQuery(
             `INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order)
              VALUES (?, ?, ?, ?, ?, 'Active', 0)`,
-            [posEn, posAr, posAr, posEn, posAr]
+            [posEn, posAr, safeTitleAr, safeTitle, safeTitleAr]
           ).catch(e => console.warn('Batch position insert warn:', e.message));
           posNames.add(posAr.toLowerCase());
           posNames.add(posEn.toLowerCase());
           posAdded = true;
+        } else {
+          // Position exists — update name_en if it was stored as the same as name_ar (English-only placeholder)
+          await fastQuery(
+            `UPDATE positions SET name_en = ?, title = ? WHERE (name_ar = ? OR name = ?) AND (name_en = name_ar OR name_en IS NULL OR name_en = '')`,
+            [posEn, safeTitle, posAr, posAr]
+          ).catch(() => {});
         }
       }
     }

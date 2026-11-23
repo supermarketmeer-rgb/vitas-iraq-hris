@@ -2290,27 +2290,22 @@ export const SettingsSecurityView: React.FC = () => {
             }
 
             // Collect unique Department to add in batch (Strict Guard: Never add employee name as department)
+            // NOTE: We do NOT filter against currentDepartments here — the backend handles upserts safely.
+            // This ensures all departments from the Excel are synced even if they already exist.
             if (department && !isPersonName(department) && department.trim().length > 1) {
               const normD = department.trim().toLowerCase();
               const normDEn = (departmentEn || department).trim().toLowerCase();
-              const exists = currentDepartments.some(d => 
+              const alreadyPushed = departmentsToCreate.some(d => 
                 (d.name_ar && d.name_ar.trim().toLowerCase() === normD) || 
-                (d.name && d.name.trim().toLowerCase() === normD) || 
                 (d.name_en && d.name_en.trim().toLowerCase() === normDEn)
               );
-              if (!exists) {
-                const alreadyPushed = departmentsToCreate.some(d => 
-                  (d.name_ar && d.name_ar.trim().toLowerCase() === normD) || 
-                  (d.name_en && d.name_en.trim().toLowerCase() === normDEn)
-                );
-                if (!alreadyPushed) {
-                  departmentsToCreate.push({
-                    name_ar: department.trim(),
-                    name_en: (departmentEn || department).trim(),
-                    sort_order: currentDepartments.length + departmentsToCreate.length + 1,
-                    status: 'Active'
-                  });
-                }
+              if (!alreadyPushed) {
+                departmentsToCreate.push({
+                  name_ar: department.trim(),
+                  name_en: (departmentEn || department).trim(),
+                  sort_order: departmentsToCreate.length + 1,
+                  status: 'Active'
+                });
               }
             }
 
@@ -2453,6 +2448,22 @@ export const SettingsSecurityView: React.FC = () => {
             }));
             setPositions(normalizedFresh);
             try { localStorage.setItem('vitas_positions', JSON.stringify(normalizedFresh)); } catch {}
+          }
+          // Also refresh departments state so the Departments tab shows new entries immediately
+          const freshDepartments = await api.getDepartments().catch(() => []);
+          if (Array.isArray(freshDepartments) && freshDepartments.length > 0) {
+            setDepartments(freshDepartments);
+          }
+          // Also refresh locations
+          const freshLocations = await api.getBranches().catch(() => []);
+          if (Array.isArray(freshLocations) && freshLocations.length > 0) {
+            const normLoc = freshLocations.map((b: any) => ({
+              ...b,
+              name_ar: b.name_ar || b.name || '',
+              name: b.name || b.name_ar || '',
+              name_en: b.name_en || ''
+            }));
+            setLocations(normLoc);
           }
         } catch (err) {
           console.warn('Could not reload settings data:', err);
