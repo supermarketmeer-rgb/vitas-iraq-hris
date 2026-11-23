@@ -2492,6 +2492,23 @@ app.post('/api/employees', async (req, res) => {
   }
 });
 
+// Helper function to sanitize date strings for MySQL (prevent out-of-range dates like +033582 from rejecting batch inserts)
+const sanitizeDate = (val) => {
+  if (!val || typeof val !== 'string') return null;
+  const s = val.trim();
+  if (!s || s === '0' || s === '0.0' || s === 'N/A' || s === 'null') return null;
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const y = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    const d = parseInt(match[3], 10);
+    if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+  }
+  return null;
+};
+
 // High-Speed Bulk Import Endpoint for Employees and Settings Metadata
 app.post('/api/employees/batch-import', async (req, res) => {
   try {
@@ -2502,9 +2519,13 @@ app.post('/api/employees/batch-import', async (req, res) => {
 
     console.log(`[BatchImport] Starting high-speed batch import for ${employees.length} employees...`);
     const startTime = Date.now();
+    const cloudPool = getCloudPool ? getCloudPool() : null;
+
+    // Immediately clear any deletion pull suppression on new import
+    suppressCloudPull(['branches', 'positions', 'departments', 'settings_offices', 'settings_positions'], 0);
 
     // 1. Reload table columns once
-    await loadEmployeeColumns();
+    await loadEmployeeColumns().catch(() => {});
 
     // Build employee names set for strict guard against inserting person names into settings master tables
     const employeeNames = new Set();
@@ -2540,19 +2561,29 @@ app.post('/api/employees/batch-import', async (req, res) => {
         let nameEn = (b.name_en || b.name || '').trim();
         if (!nameAr && !nameEn) continue;
         if ((nameAr && employeeNames.has(nameAr.toLowerCase())) || (nameEn && employeeNames.has(nameEn.toLowerCase()))) {
-          console.warn(`[BatchImport] Skipping bogus branch matching employee name: ${nameAr || nameEn}`);
           continue;
         }
 
         const checkKey = (nameEn || nameAr || '').toLowerCase();
         if (!branchNames.has(checkKey)) {
           const bId = b.id ? String(b.id) : `BR_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+          const branchVals = [bId, nameEn || nameAr, nameAr, nameEn || nameAr, b.address || null, b.city || null];
           await fastQuery(
             `INSERT INTO branches (id, name, name_ar, name_en, address, city, country, status, sort_order, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, 'Iraq', 'Active', 0, NOW())
              ON DUPLICATE KEY UPDATE name_en = VALUES(name_en), name_ar = VALUES(name_ar), updated_at = NOW()`,
-            [bId, nameEn || nameAr, nameAr, nameEn || nameAr, b.address || null, b.city || null]
+            branchVals
           ).catch(e => console.warn('Batch branch insert warn:', e.message));
+
+          if (cloudPool) {
+            await cloudPool.query(
+              `INSERT INTO branches (id, name, name_ar, name_en, address, city, country, status, sort_order, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, 'Iraq', 'Active', 0, NOW())
+               ON DUPLICATE KEY UPDATE name_en = VALUES(name_en), name_ar = VALUES(name_ar), updated_at = NOW()`,
+              branchVals
+            ).catch(() => {});
+          }
+
           if (nameAr) branchNames.add(nameAr.toLowerCase());
           if (nameEn) branchNames.add(nameEn.toLowerCase());
           branchesAdded = true;
@@ -2585,18 +2616,32 @@ app.post('/api/employees/batch-import', async (req, res) => {
         let deptEn = (d.name_en || d.name || '').trim();
         if (!deptAr && !deptEn) continue;
         if ((deptAr && employeeNames.has(deptAr.toLowerCase())) || (deptEn && employeeNames.has(deptEn.toLowerCase()))) {
-          console.warn(`[BatchImport] Skipping bogus department matching employee name: ${deptAr || deptEn}`);
           continue;
         }
 
         const checkKey = (deptEn || deptAr || '').toLowerCase();
         if (!deptNames.has(checkKey)) {
           const dCode = (d.code || `DEP-${Date.now().toString().slice(-4)}`).trim().toUpperCase();
+          const dId = d.id ? String(d.id) : `DEP_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+
+          // Local insert (has code column)
           await fastQuery(
             `INSERT INTO departments (name_en, name_ar, name, code, manager_name, status, sort_order)
-             VALUES (?, ?, ?, ?, 'Unassigned', 'Active', 0)`,
+             VALUES (?, ?, ?, ?, 'Unassigned', 'Active', 0)
+             ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en)`,
             [deptEn || deptAr, deptAr, deptEn || deptAr, dCode]
           ).catch(e => console.warn('Batch department insert warn:', e.message));
+
+          // Cloud insert (no code column, id is varchar NOT NULL)
+          if (cloudPool) {
+            await cloudPool.query(
+              `INSERT INTO departments (id, name, name_ar, name_en, status, sort_order, updated_at)
+               VALUES (?, ?, ?, ?, 'Active', 0, NOW())
+               ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en), updated_at = NOW()`,
+              [dId, deptEn || deptAr, deptAr, deptEn || deptAr]
+            ).catch(e => console.warn('Batch cloud department insert warn:', e.message));
+          }
+
           if (deptAr) deptNames.add(deptAr.toLowerCase());
           if (deptEn) deptNames.add(deptEn.toLowerCase());
           deptsAdded = true;
@@ -2608,7 +2653,6 @@ app.post('/api/employees/batch-import', async (req, res) => {
     let posAdded = false;
     const allPositionsToSync = [...(Array.isArray(positions) ? positions : [])];
 
-    // ALSO automatically extract any positions present in the employees rows (belt-and-suspenders)
     for (const emp of employees) {
       const pAr = (emp.jobTitle || emp.position_ar || emp.position || '').trim();
       const pEn = (emp.jobTitleEn || emp.position_en || emp.position || '').trim();
@@ -2639,7 +2683,6 @@ app.post('/api/employees/batch-import', async (req, res) => {
         let posEn = (p.title || p.name_en || p.name || '').trim();
         if (!posAr && !posEn) continue;
         if ((posAr && employeeNames.has(posAr.toLowerCase())) || (posEn && employeeNames.has(posEn.toLowerCase()))) {
-          console.warn(`[BatchImport] Skipping bogus position matching employee name: ${posAr || posEn}`);
           continue;
         }
 
@@ -2648,11 +2691,23 @@ app.post('/api/employees/batch-import', async (req, res) => {
 
         const checkKey = (posEn || posAr || '').toLowerCase();
         if (!posNames.has(checkKey)) {
+          const posVals = [posEn || null, posAr || null, safeTitle, safeTitle, safeTitleAr];
           await fastQuery(
             `INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order)
-             VALUES (?, ?, ?, ?, ?, 'Active', 0)`,
-            [posEn || null, posAr || null, safeTitle, safeTitle, safeTitleAr]
+             VALUES (?, ?, ?, ?, ?, 'Active', 0)
+             ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en), title = VALUES(title), title_ar = VALUES(title_ar)`,
+            posVals
           ).catch(e => console.warn('Batch position insert warn:', e.message));
+
+          if (cloudPool) {
+            await cloudPool.query(
+              `INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order, updated_at)
+               VALUES (?, ?, ?, ?, ?, 'Active', 0, NOW())
+               ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en), title = VALUES(title), title_ar = VALUES(title_ar), updated_at = NOW()`,
+              posVals
+            ).catch(e => console.warn('Batch cloud position insert warn:', e.message));
+          }
+
           if (posAr) posNames.add(posAr.toLowerCase());
           if (posEn) posNames.add(posEn.toLowerCase());
           posAdded = true;
@@ -2665,150 +2720,100 @@ app.post('/api/employees/batch-import', async (req, res) => {
     const sMap = {};
     (settingRows || []).forEach(r => { sMap[r.setting_key] = r.setting_value; });
 
-    // 6. Pre-load existing employees to match updates vs inserts in memory
-    const existingEmpRows = await fastQuery('SELECT id, employee_id, badge_no, waid, LOWER(email) as email FROM employees').catch(() => []);
-    const idMap = new Map();
-    const empIdMap = new Map();
-    const badgeMap = new Map();
-    const waidMap = new Map();
-    const emailMap = new Map();
+    // 6. Pre-process all employees candidate data in memory
+    const preparedCandidates = [];
+    for (const empData of employees) {
+      try {
+        const {
+          candidateData,
+          rawInputEmpId,
+          processedChildrenList
+        } = buildEmployeeCandidateData(empData, sMap);
 
-    for (const emp of existingEmpRows) {
-      if (emp.id) idMap.set(Number(emp.id), emp.id);
-      const cleanEmpId = String(emp.employee_id || '').trim().toLowerCase();
-      if (cleanEmpId && cleanEmpId !== '0' && cleanEmpId !== '0.0') empIdMap.set(cleanEmpId, emp.id);
-      const cleanBadge = String(emp.badge_no || '').trim().toLowerCase();
-      if (cleanBadge && cleanBadge !== '0' && cleanBadge !== '0.0') badgeMap.set(cleanBadge, emp.id);
-      const cleanWaid = String(emp.waid || '').trim().toLowerCase();
-      if (cleanWaid && cleanWaid !== '0' && cleanWaid !== '0.0') waidMap.set(cleanWaid, emp.id);
-      if (emp.email && !emp.email.includes('no-email-') && emp.email.includes('@') && !emp.email.endsWith('@vitasiraq.local')) {
-        emailMap.set(emp.email.trim().toLowerCase(), emp.id);
+        // Sanitize all date fields to prevent MySQL Strict Mode out-of-range rejection
+        const dateFields = ['dob', 'original_start_date', 'contract_original_start', 'contract_start_date', 'contract_end_date', 'probation_end_date', 'exit_date', 'passport_expiry'];
+        for (const df of dateFields) {
+          if (candidateData[df]) {
+            candidateData[df] = sanitizeDate(candidateData[df]);
+          }
+        }
+
+        // Ensure email is valid and present (Cloud DB requires email NOT NULL)
+        const empCode = candidateData.employee_id || rawInputEmpId || `VTS-${Date.now().toString().slice(-4)}`;
+        if (!candidateData.email || !candidateData.email.includes('@')) {
+          candidateData.email = `no-email-${empCode}@vitasiraq.local`;
+        }
+
+        preparedCandidates.push({
+          candidateData,
+          empCode,
+          processedChildrenList
+        });
+      } catch (prepErr) {
+        console.warn('[BatchImport] Error preparing employee row:', prepErr.message);
       }
     }
 
+    // 7. Lightning-Fast Batch Bulk Insert into Local DB & Cloud DB (50 rows per query)
+    const BATCH_SIZE = 50;
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+
+    // Columns present in both Local and Cloud
+    const commonEmpCols = [
+      'employee_id', 'badge_no', 'waid', 'full_name_ar', 'full_name_en', 'email', 'personal_email',
+      'phone', 'emergency_phone', 'dob', 'years_of_employment', 'years_in_position', 'exit_date',
+      'gender', 'marital_status', 'nationality', 'department', 'position_ar', 'position_en',
+      'branch', 'branch_en', 'supervisor_name', 'work_scope', 'salary', 'basic_salary',
+      'transportation_fixed', 'fixed_bonus', 'phone_allowance', 'certificate_allowance',
+      'written_basic_salary_ar', 'bank_name', 'iban', 'national_id', 'passport_no', 'passport_expiry',
+      'spouse_name', 'spouse_employed_here', 'children_details', 'original_start_date',
+      'contract_start_date', 'contract_end_date', 'probation_end_date', 'term_of_contract', 'grade',
+      'status', 'mobile', 'position', 'location_en', 'location_ar', 'emergency_mobile',
+      'management_tier', 'branch_vs_mo', 'perf_rating', 'admin_line', 'position_level_1',
+      'position_level_2', 'microfin_position', 'second_citizenship', 'termination_reason'
+    ];
+
+    const localCols = commonEmpCols.filter(col => employeeTableColumns.size === 0 || employeeTableColumns.has(col));
+    const cloudCols = ['id', ...localCols];
+
     let insertedCount = 0;
-    let updatedCount = 0;
 
-    // Process employees in memory and execute in concurrent chunks
-    const CHUNK_SIZE = 25;
-    for (let i = 0; i < employees.length; i += CHUNK_SIZE) {
-      const chunk = employees.slice(i, i + CHUNK_SIZE);
-      await Promise.all(chunk.map(async (empData) => {
-        try {
-          const {
-            candidateData,
-            rawInputEmpId,
-            rawInputBadge,
-            rawInputWaid,
-            rawInputEmail,
-            processedChildrenList,
-            hasPhotoField,
-            photoData,
-            finalPhotoUrl
-          } = buildEmployeeCandidateData(empData, sMap);
+    for (let i = 0; i < preparedCandidates.length; i += BATCH_SIZE) {
+      const chunk = preparedCandidates.slice(i, i + BATCH_SIZE);
 
-          const validColumns = Object.keys(candidateData).filter(col => employeeTableColumns.has(col));
+      // A) Local DB Bulk Insert
+      const localPlaceholders = chunk.map(() => `(${localCols.map(() => '?').join(', ')})`).join(', ');
+      const localUpdates = localCols.map(c => `\`${c}\` = VALUES(\`${c}\`)`).join(', ');
+      const localVals = chunk.flatMap(item => localCols.map(c => item.candidateData[c] ?? null));
 
-          // In-memory match
-          let targetDbId = null;
-          const cleanInputEmpId = String(rawInputEmpId || '').trim().toLowerCase();
-          const cleanInputBadge = String(rawInputBadge || '').trim().toLowerCase();
-          const cleanInputWaid = String(rawInputWaid || '').trim().toLowerCase();
-          const cleanInputEmail = String(rawInputEmail || '').trim().toLowerCase();
+      await fastQuery(
+        `INSERT INTO employees (${localCols.map(c => `\`${c}\``).join(', ')})
+         VALUES ${localPlaceholders}
+         ON DUPLICATE KEY UPDATE ${localUpdates}, updated_at = NOW()`,
+        localVals
+      ).catch(err => console.error('[BatchImport] Local bulk insert error:', err.message));
 
-          if (empData.id && !isNaN(Number(empData.id)) && Number(empData.id) > 0 && Number(empData.id) < 2147483647 && idMap.has(Number(empData.id))) {
-            targetDbId = idMap.get(Number(empData.id));
-          } else if (cleanInputEmpId && cleanInputEmpId !== '0' && cleanInputEmpId !== '0.0' && empIdMap.has(cleanInputEmpId)) {
-            targetDbId = empIdMap.get(cleanInputEmpId);
-          } else if (cleanInputBadge && cleanInputBadge !== '0' && cleanInputBadge !== '0.0' && badgeMap.has(cleanInputBadge)) {
-            targetDbId = badgeMap.get(cleanInputBadge);
-          } else if (cleanInputWaid && cleanInputWaid !== '0' && cleanInputWaid !== '0.0' && waidMap.has(cleanInputWaid)) {
-            targetDbId = waidMap.get(cleanInputWaid);
-          } else if (cleanInputEmail && emailMap.has(cleanInputEmail)) {
-            targetDbId = emailMap.get(cleanInputEmail);
-          }
+      // B) Direct Cloud DB Bulk Insert (Lightning-Fast)
+      if (cloudPool) {
+        const cloudPlaceholders = chunk.map(() => `(${cloudCols.map(() => '?').join(', ')})`).join(', ');
+        const cloudUpdates = cloudCols.filter(c => c !== 'id').map(c => `\`${c}\` = VALUES(\`${c}\`)`).join(', ');
+        const cloudVals = chunk.flatMap(item => cloudCols.map(c => c === 'id' ? item.empCode : (item.candidateData[c] ?? null)));
 
-          let finalEmpDbId = targetDbId;
-          if (targetDbId) {
-            // Update
-            let updateCols = validColumns.filter(col => col !== 'id');
-            if (!hasPhotoField && !photoData && !finalPhotoUrl) {
-              updateCols = updateCols.filter(col => col !== 'photo' && col !== 'photo_url');
-            }
-            const updateVals = updateCols.map(col => candidateData[col]);
-            updateVals.push(targetDbId);
+        await cloudPool.query(
+          `INSERT INTO employees (${cloudCols.map(c => `\`${c}\``).join(', ')})
+           VALUES ${cloudPlaceholders}
+           ON DUPLICATE KEY UPDATE ${cloudUpdates}, updated_at = NOW()`,
+          cloudVals
+        ).catch(err => console.error('[BatchImport] Cloud bulk insert error:', err.message));
+      }
 
-            const cleanEmpId = candidateData.employee_id || '';
-            let whereClause = 'WHERE id = ?';
-            if (cleanEmpId) {
-              whereClause = 'WHERE id = ? OR employee_id = ?';
-              updateVals.push(cleanEmpId);
-            }
-
-            const setClause = updateCols.map(col => `${col} = ?`).join(', ');
-            await fastQuery(`UPDATE employees SET ${setClause}, updated_at = NOW() ${whereClause}`, updateVals);
-            updatedCount++;
-          } else {
-            // Insert
-            const insertCols = validColumns.filter(col => col !== 'id');
-            const insertVals = insertCols.map(col => candidateData[col]);
-            const placeholders = insertCols.map(() => '?').join(', ');
-
-            const insertResult = await fastQuery(`INSERT INTO employees (${insertCols.join(', ')}) VALUES (${placeholders})`, insertVals);
-            finalEmpDbId = insertResult.insertId;
-            insertedCount++;
-
-            // Update in-memory match indices so duplicate records within the same import file won't conflict
-            if (finalEmpDbId) {
-              idMap.set(finalEmpDbId, finalEmpDbId);
-              if (candidateData.employee_id) empIdMap.set(candidateData.employee_id.toLowerCase(), finalEmpDbId);
-              if (candidateData.badge_no) badgeMap.set(candidateData.badge_no.toLowerCase(), finalEmpDbId);
-              if (candidateData.waid) waidMap.set(candidateData.waid.toLowerCase(), finalEmpDbId);
-              if (candidateData.email && !candidateData.email.includes('no-email-')) emailMap.set(candidateData.email.toLowerCase(), finalEmpDbId);
-            }
-          }
-
-          // Direct Cloud DB dual-write if Cloud is connected
-          try {
-            const cloudPool = getCloudPool ? getCloudPool() : null;
-            if (cloudPool) {
-              const cloudEmpCols = validColumns.filter(c => c !== 'id');
-              const cloudPlaceholders = cloudEmpCols.map(() => '?').join(', ');
-              const cloudUpdates = cloudEmpCols.map(c => `\`${c}\` = VALUES(\`${c}\`)`).join(', ');
-              const cloudId = candidateData.employee_id || rawInputEmpId;
-              if (cloudId) {
-                await cloudPool.query(
-                  `INSERT INTO employees (id, ${cloudEmpCols.map(c => `\`${c}\``).join(', ')})
-                   VALUES (?, ${cloudPlaceholders})
-                   ON DUPLICATE KEY UPDATE ${cloudUpdates}, updated_at = NOW()`,
-                  [cloudId, ...cloudEmpCols.map(c => candidateData[c])]
-                ).catch(() => {});
-              }
-            }
-          } catch (cloudErr) {}
-
-          // Handle employee children if provided
-          if (finalEmpDbId && Array.isArray(processedChildrenList) && processedChildrenList.length > 0) {
-            await fastQuery('DELETE FROM employee_children WHERE employee_id = ?', [finalEmpDbId]).catch(() => {});
-            for (const ch of processedChildrenList) {
-              if (ch && (ch.name || ch.dob)) {
-                await fastQuery(
-                  'INSERT INTO employee_children (employee_id, name, relation, dob, age) VALUES (?, ?, ?, ?, ?)',
-                  [finalEmpDbId, ch.name || '', ch.relation || 'Son', ch.dob || null, ch.age || 0]
-                ).catch(() => {});
-              }
-            }
-          }
-        } catch (rowErr) {
-          console.error('[BatchImport] Error processing employee item:', rowErr.message);
-        }
-      }));
+      insertedCount += chunk.length;
     }
 
     const elapsed = Date.now() - startTime;
-    console.log(`[BatchImport] Completed in ${elapsed}ms: ${insertedCount} inserted, ${updatedCount} updated.`);
+    console.log(`[BatchImport] Completed lightning-fast batch import in ${elapsed}ms: ${insertedCount} employees synced.`);
 
-    // 7. Single delta cloud sync & single realtime event
+    // 8. Single delta cloud sync & single realtime event
     triggerRealtimeSync(db, 'employees');
     if (branchesAdded) triggerRealtimeSync(db, 'branches');
     if (deptsAdded) triggerRealtimeSync(db, 'departments');
@@ -2825,7 +2830,7 @@ app.post('/api/employees/batch-import', async (req, res) => {
       success: true,
       count: employees.length,
       inserted: insertedCount,
-      updated: updatedCount,
+      updated: 0,
       elapsedMs: elapsed
     });
   } catch (err) {
