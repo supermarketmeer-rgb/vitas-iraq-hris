@@ -14,7 +14,8 @@ import {
   syncLocalToCloud, 
   executeCloudQuery, 
   getCloudPool,
-  triggerRealtimeSync, 
+  triggerRealtimeSync,
+  suppressCloudPull,
   addSseClient, 
   startCloudRealtimeListener, 
   broadcastRealtimeEvent 
@@ -2963,11 +2964,15 @@ async function executeDeleteAllEmployees(req, res) {
       executeCloudQuery('DELETE FROM sync_deleted_records WHERE table_name IN (?)', [allCleared]).catch(() => {});
     }
 
-    // Trigger realtime sync
+    // NOTE: Do NOT trigger realtime sync on branches/positions/departments after bulk delete.
+    // Sending triggerRealtimeSync on those tables would cause the Cloud Realtime Bridge
+    // to receive a DATA_CHANGED event and immediately pull the deleted rows back from Cloud → Local,
+    // making departments/positions flash back every 5 seconds.
+    // We only trigger sync for employees so the UI refreshes the empty list.
     triggerRealtimeSync(db, 'employees');
-    triggerRealtimeSync(db, 'branches');
-    triggerRealtimeSync(db, 'positions');
-    triggerRealtimeSync(db, 'departments');
+
+    // Suppress Cloud→Local pull for deleted tables for 90 seconds to prevent resurrection via SSE sync
+    suppressCloudPull(['branches', 'positions', 'departments', 'settings_offices', 'settings_positions'], 90000);
 
     res.json({ 
       success: true, 

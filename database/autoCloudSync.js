@@ -10,6 +10,8 @@ let sseDebounceTimer = null;
 let lastSseSyncTriggerTime = 0;
 const pendingTablesToSync = new Set();
 const sseClients = new Set();
+// Tables suppressed from Cloud→Local pull (populated after bulk-delete to prevent resurrection)
+const suppressCloudPullUntil = new Map(); // table → timestamp (ms)
 
 const TABLE_BUSINESS_KEYS = {
   users: 'username',
@@ -102,6 +104,15 @@ export function getCloudPool() {
     connectTimeout: 10000
   });
   return _cloudPool;
+}
+
+// ─── Suppress Cloud→Local pull for a table after bulk delete ───
+// Call this to prevent the Realtime Bridge from pulling deleted rows back from Cloud.
+export function suppressCloudPull(tables, durationMs = 60000) {
+  const until = Date.now() + durationMs;
+  for (const tbl of tables) {
+    suppressCloudPullUntil.set(tbl, until);
+  }
 }
 
 // ─── Direct Asynchronous Real-Time Cloud Query Execution ───
@@ -629,6 +640,13 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
   }
 
   // 4. Cloud to Local sync (New records created on Cloud)
+  // Skip if this table is suppressed (e.g. after bulk delete to prevent resurrection)
+  const suppressed = suppressCloudPullUntil.has(table) && Date.now() < suppressCloudPullUntil.get(table);
+  if (suppressed) {
+    console.log(`[SYNC] Cloud→Local pull suppressed for [${table}] (bulk-delete protection active)`);
+    return { pushed, pulled, deleted };
+  }
+
   const rowsToInsertOnLocal = [];
   for (const [key, cRow] of cloudMap.entries()) {
     if (allKnownDeletions.has(key) || (cRow.id && allKnownDeletions.has(String(cRow.id).toLowerCase()))) {
