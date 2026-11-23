@@ -254,10 +254,44 @@ export const SettingsSecurityView: React.FC = () => {
     loadData();
   }, []);
 
+  // Re-fetch data whenever tab changes so data is never stale or empty
+  useEffect(() => {
+    if (activeTab === 'positions' || activeTab === 'locations' || activeTab === 'departments' || activeTab === 'employees') {
+      loadData();
+      if (activeTab === 'employees' && refreshEmployees) {
+        refreshEmployees();
+      }
+    }
+  }, [activeTab, refreshEmployees]);
+
+  // Listen to realtime refresh events to auto-reload
+  useEffect(() => {
+    const handleDataRefreshed = () => {
+      loadData();
+      if (refreshEmployees) refreshEmployees();
+    };
+    window.addEventListener('vitas:data_refreshed', handleDataRefreshed);
+    window.addEventListener('vitas_employees_updated', handleDataRefreshed);
+    return () => {
+      window.removeEventListener('vitas:data_refreshed', handleDataRefreshed);
+      window.removeEventListener('vitas_employees_updated', handleDataRefreshed);
+    };
+  }, [refreshEmployees]);
+
   // Deduplicate locations strictly by trimmed name
   const deduplicatedLocations = React.useMemo(() => {
+    let sourceLocations = locations;
+    if (!sourceLocations || sourceLocations.length === 0) {
+      try {
+        const stored = localStorage.getItem('vitas_locations');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) sourceLocations = parsed;
+        }
+      } catch {}
+    }
     const seen = new Set();
-    return locations.filter(item => {
+    return sourceLocations.filter(item => {
       const key = String(item.name_ar || item.name || item.name_en || '').trim().toLowerCase();
       if (!key || seen.has(key)) return false;
       seen.add(key);
@@ -267,8 +301,18 @@ export const SettingsSecurityView: React.FC = () => {
 
   // Deduplicate positions strictly by trimmed name
   const deduplicatedPositions = React.useMemo(() => {
+    let sourcePositions = positions;
+    if (!sourcePositions || sourcePositions.length === 0) {
+      try {
+        const stored = localStorage.getItem('vitas_positions');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) sourcePositions = parsed;
+        }
+      } catch {}
+    }
     const seen = new Set();
-    return positions.filter(item => {
+    return sourcePositions.filter(item => {
       const key = String(item.name_ar || item.title_ar || item.name || item.name_en || item.title || '').trim().toLowerCase();
       if (!key || seen.has(key)) return false;
       seen.add(key);
@@ -278,8 +322,18 @@ export const SettingsSecurityView: React.FC = () => {
 
   // Deduplicate departments strictly by trimmed name and filter person names
   const deduplicatedDepartments = React.useMemo(() => {
+    let sourceDepartments = departments;
+    if (!sourceDepartments || sourceDepartments.length === 0) {
+      try {
+        const stored = localStorage.getItem('vitas_departments');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) sourceDepartments = parsed;
+        }
+      } catch {}
+    }
     const seen = new Set();
-    return departments.filter(item => {
+    return sourceDepartments.filter(item => {
       const key = String(item.name_ar || item.name || item.name_en || '').trim().toLowerCase();
       if (!key || seen.has(key)) return false;
       const isPerson = employees.some(e => {
@@ -295,9 +349,19 @@ export const SettingsSecurityView: React.FC = () => {
 
   // Map and deduplicate employees for the Employee Management tab
   const employeeDataItems: DataItem[] = React.useMemo(() => {
+    let sourceEmployees = employees;
+    if (!sourceEmployees || sourceEmployees.length === 0) {
+      try {
+        const stored = localStorage.getItem('vitas_employees');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) sourceEmployees = parsed;
+        }
+      } catch {}
+    }
     const seen = new Set();
     const result: DataItem[] = [];
-    for (const emp of (employees || [])) {
+    for (const emp of (sourceEmployees || [])) {
       const code = String(emp.employeeId || emp.employee_id || emp.id || '').trim();
       const nameAr = String(emp.fullNameAr || emp.full_name_ar || emp.fullName || '').trim();
       const nameEn = String(emp.fullNameEn || emp.full_name_en || emp.fullName || nameAr || '').trim();
@@ -2543,6 +2607,9 @@ export const SettingsSecurityView: React.FC = () => {
         }
 
         setIsImporting(false);
+
+        // Switch to employees tab so the user immediately sees all imported employee records
+        setActiveTab('employees');
 
         const totalImported = batchResult?.count || employeesToImport.length;
         alert(language === 'ar' 
