@@ -1897,8 +1897,9 @@ function buildEmployeeCandidateData(data, sMap = {}) {
                     data.maritalStatus === 'أرمل' || data.marital_status === 'widow' ? 'widow' : 'single';
 
   const nationality = data.nationality || 'عراقي';
-  const department = data.department || null;
-  const positionAr = data.jobTitle || data.position_ar || data.position || null;
+  const department = data.department || data.department_ar || null;
+  const departmentEn = data.departmentEn || data.department_en || null;
+  const positionAr = data.jobTitle || data.position_ar || null;
   const positionEn = data.jobTitleEn || data.position_en || null;
   const branch = data.branch || data.location_ar || null;
   const branchEn = data.branchEn || data.location_en || null;
@@ -1910,29 +1911,15 @@ function buildEmployeeCandidateData(data, sMap = {}) {
   const transportationFixed = parseNum(data.transportationFixed || data.transportation_fixed);
   const fixedBonus = parseNum(data.fixedBonus || data.fixed_bonus);
   const phoneAllowance = parseNum(data.phoneAllowance || data.phone_allowance);
-  let certificateAllowance = parseNum(data.certificateAllowance || data.certificate_allowance);
+  let certificateAllowance = parseNum(data.certificateAllowance !== undefined ? data.certificateAllowance : data.certificate_allowance);
   const graduationDegree = data.graduationDegree || data.graduation_degree || null;
 
-  if ((certificateAllowance === 0 || isNaN(certificateAllowance)) && graduationDegree) {
-    const normDeg = String(graduationDegree).trim().toLowerCase();
-    let rawPolicyVal = 0;
-    if (normDeg.includes('diplom') || normDeg.includes('دبلوم')) {
-      rawPolicyVal = parseFloat(sMap['certificate_allowance_diplome'] || '50000') || 50000;
-    } else if (normDeg.includes('bachelor') || normDeg.includes('bachelar') || normDeg.includes('بكالوريوس')) {
-      rawPolicyVal = parseFloat(sMap['certificate_allowance_bachelar'] || '100000') || 100000;
-    } else if (normDeg.includes('master') || normDeg.includes('ماجستير')) {
-      rawPolicyVal = parseFloat(sMap['certificate_allowance_master'] || '150000') || 150000;
-    }
-    const curr = sMap['certificate_allowance_currency'] || 'IQD';
-    const fx = parseFloat(sMap['usd_to_iqd_rate'] || '1520') || 1520;
-    certificateAllowance = curr === 'USD' ? Math.round(rawPolicyVal * fx) : rawPolicyVal;
-  }
   const writtenBasicSalaryAr = data.writtenBasicSalaryAr || data.written_basic_salary_ar || null;
 
   const bankName = data.bankName || data.bank_name || null;
   const iban = data.iban || null;
-  const nationalId = data.nationalId || data.national_id || null;
-  const passportNo = data.passportNo || data.passport_no || null;
+  const nationalId = data.nationalId && String(data.nationalId).trim() !== '' && String(data.nationalId).trim() !== '0' ? String(data.nationalId).trim() : (data.national_id && String(data.national_id).trim() !== '' && String(data.national_id).trim() !== '0' ? String(data.national_id).trim() : null);
+  const passportNo = data.passportNo && String(data.passportNo).trim() !== '' ? String(data.passportNo).trim() : (data.passport_no && String(data.passport_no).trim() !== '' ? String(data.passport_no).trim() : null);
   const passportExpiry = formatDate(data.passportExpiry || data.passport_expiry);
 
   const hasPhotoField = ('photo' in data) || ('photoUrl' in data) || ('photo_url' in data) || ('photo_removed' in data);
@@ -2022,14 +2009,16 @@ function buildEmployeeCandidateData(data, sMap = {}) {
     gender: genderVal,
     marital_status: maritalVal,
     nationality: nationality,
-    department: department,
-    position: positionAr,
-    position_ar: positionAr,
-    position_en: positionEn,
-    location_ar: branch,
-    location_en: branchEn,
-    branch: branch,
-    branch_en: branchEn,
+    department: department || departmentEn || null,
+    department_ar: department || null,
+    department_en: departmentEn || null,
+    position: positionAr || positionEn || null,
+    position_ar: positionAr || null,
+    position_en: positionEn || null,
+    location_ar: branch || null,
+    location_en: branchEn || null,
+    branch: branch || branchEn || null,
+    branch_en: branchEn || null,
     supervisor_name: supervisorName,
     work_scope: workScope,
     salary: salary,

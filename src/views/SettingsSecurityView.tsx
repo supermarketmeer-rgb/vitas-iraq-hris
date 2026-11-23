@@ -971,15 +971,13 @@ export const SettingsSecurityView: React.FC = () => {
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-        // Smart Check: If user selected an Employee Master Workbook while on settings tabs, redirect to Employees
+        // Smart Check: If user selected an Employee Master Workbook on any tab, run full employee import directly!
         const isEmployeeWorkbook = jsonData.slice(0, 5).some(r => 
           r['Full Name (Arabic)'] || r['Full Name (English)'] || r['Employee Code'] || r['Badge No'] || r['Local Staff (list all)'] || r['اسم الموظف'] || r['الاسم الكامل (عربي)']
         );
-        if (isEmployeeWorkbook && tabId !== 'employees') {
-          alert(language === 'ar'
-            ? '⚠️ هذا الملف يحتوي على بيانات الموظفين (سجل الموظفين الشامل). تم توجيهك تلقائياً إلى تبويب "الموظفين" (Employees) لاستيراد كافة بيانات الموظفين وفروعهم ومسمياتهم دفعة واحدة.'
-            : '⚠️ This file contains complete employee records. Redirecting to "Employees" tab to import all staff, positions, and branches.');
-          setActiveTab('employees');
+        if (isEmployeeWorkbook) {
+          // Pass the file directly to handleEmployeeExcelImport
+          handleEmployeeExcelImport(file);
           return;
         }
 
@@ -1746,12 +1744,14 @@ export const SettingsSecurityView: React.FC = () => {
   };
 
   // Employee Excel Import Handler
-  const handleEmployeeExcelImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleEmployeeExcelImport = (eventOrFile: React.ChangeEvent<HTMLInputElement> | File) => {
+    const file = eventOrFile instanceof File ? eventOrFile : eventOrFile.target?.files?.[0];
     if (!file) return;
 
     // Reset input value so selecting the same file triggers onChange
-    event.target.value = '';
+    if (!(eventOrFile instanceof File) && eventOrFile.target) {
+      eventOrFile.target.value = '';
+    }
 
     setIsImporting(true);
     setImportStatusText(language === 'ar' ? 'جاري قراءة وتحليل ملف Excel...' : 'Reading and analyzing Excel file...');
@@ -2181,32 +2181,14 @@ export const SettingsSecurityView: React.FC = () => {
             let jobTitle = rawJobTitleAr;
             let jobTitleEn = rawJobTitleEn;
 
-            // Auto-translate across languages if one is missing:
+            // Auto-translate across languages if one is missing and dictionary exists (no guessing):
             if (!jobTitle && jobTitleEn) {
-              jobTitle = translatePositionTitle(jobTitleEn);
+              const translated = translatePositionTitle(jobTitleEn);
+              if (translated && translated !== jobTitleEn) jobTitle = translated;
             }
             if (!jobTitleEn && jobTitle) {
-              jobTitleEn = translatePositionTitleArToEn(jobTitle);
-            }
-            if (!jobTitle && !jobTitleEn) {
-              const rawScopeText = (getVal(row, ['Work Scope', 'workScope', 'work_scope', 'Employ. Category']) || '').toLowerCase();
-              const emailLower = (email || '').toLowerCase();
-              if (emailLower.startsWith('lo_') || rawScopeText.includes('loan')) {
-                jobTitle = 'مسؤول قروض'; jobTitleEn = 'Loan Officer';
-              } else if (rawScopeText.includes('field')) {
-                jobTitle = 'مسؤول قروض ميداني'; jobTitleEn = 'Field Loan Officer';
-              } else if (rawScopeText.includes('office')) {
-                jobTitle = 'موظف إداري فرع'; jobTitleEn = 'Branch Office Staff';
-              } else {
-                jobTitle = 'مسؤول قروض'; jobTitleEn = 'Loan Officer';
-              }
-            } else {
-              if (jobTitle && (!jobTitleEn || jobTitleEn === jobTitle)) {
-                jobTitleEn = translatePositionTitleArToEn(jobTitle);
-              }
-              if (jobTitleEn && (!jobTitle || jobTitle === jobTitleEn)) {
-                jobTitle = translatePositionTitle(jobTitleEn);
-              }
+              const translated = translatePositionTitleArToEn(jobTitle);
+              if (translated && translated !== jobTitle) jobTitleEn = translated;
             }
 
             let department = getVal(row, [
@@ -2227,9 +2209,7 @@ export const SettingsSecurityView: React.FC = () => {
               'Branch (English)', 'Branch (EN)', 'Location (EN)', 'Location (English)', 'branchEn', 'branch_en', 'location_en', 
               'الفرع (إنجليزي)', 'الفرع (انجليزي)', 'الموقع (إنجليزي)', 'الفرع الإنجليزي', 'Branch English',
               'Office', 'Office Location', 'Branch', 'Location', 'CHFVITAS (Office)'
-            ]) || branch;
-            if (!branch && branchEn) branch = branchEn;
-            if (!branchEn && branch) branchEn = branch;
+            ]);
 
             const supervisorName = getVal(row, [
               'Supervisor Name', 'supervisorName', 'supervisor_name', 'اسم المشرف المباشر', 'اسم المشرف', 'المشرف', 'المدير المباشر', 'Supervisor'
@@ -2252,79 +2232,24 @@ export const SettingsSecurityView: React.FC = () => {
             if (branch && isPersonName(branch)) branch = '';
             if (branchEn && isPersonName(branchEn)) branchEn = '';
 
-            // Post-sanitization Fallbacks & English-to-Arabic Normalization
-            if (!branch && branchEn) branch = branchEn;
-            if (!branchEn && branch) branchEn = branch;
-            if (branch && BRANCH_EN_TO_AR_DICT[branch.trim().toLowerCase()]) {
-              branch = BRANCH_EN_TO_AR_DICT[branch.trim().toLowerCase()];
-            } else if (branchEn && BRANCH_EN_TO_AR_DICT[branchEn.trim().toLowerCase()]) {
-              branch = BRANCH_EN_TO_AR_DICT[branchEn.trim().toLowerCase()];
+            // Safe dictionary translation for branches and departments if one language is missing (no guessing)
+            if (!branch && branchEn) {
+              if (BRANCH_EN_TO_AR_DICT[branchEn.trim().toLowerCase()]) {
+                branch = BRANCH_EN_TO_AR_DICT[branchEn.trim().toLowerCase()];
+              }
+            } else if (branch && !branchEn) {
+              const matchedEn = Object.keys(BRANCH_EN_TO_AR_DICT).find(k => BRANCH_EN_TO_AR_DICT[k] === branch.trim());
+              if (matchedEn) branchEn = matchedEn.charAt(0).toUpperCase() + matchedEn.slice(1);
             }
 
-            if (!jobTitle && !jobTitleEn) {
-              if (emailLower.startsWith('lo_')) {
-                jobTitle = 'مسؤول قروض'; jobTitleEn = 'Loan Officer';
-              } else if (rawScopeText.includes('field')) {
-                jobTitle = 'مسؤول قروض ميداني'; jobTitleEn = 'Field Loan Officer';
-              } else if (rawScopeText.includes('office')) {
-                jobTitle = 'موظف إداري فرع'; jobTitleEn = 'Branch Office Staff';
-              } else {
-                jobTitle = 'مسؤول قروض'; jobTitleEn = 'Loan Officer';
+            if (!department && departmentEn) {
+              if (DEPT_EN_TO_AR_DICT[departmentEn.trim().toLowerCase()]) {
+                department = DEPT_EN_TO_AR_DICT[departmentEn.trim().toLowerCase()];
               }
-            } else {
-              if (jobTitle && (!jobTitleEn || jobTitleEn === jobTitle)) {
-                jobTitleEn = translatePositionTitleArToEn(jobTitle);
-              }
-              if (jobTitleEn && (!jobTitle || jobTitle === jobTitleEn)) {
-                jobTitle = translatePositionTitle(jobTitleEn);
-              }
+            } else if (department && !departmentEn) {
+              const matchedEn = Object.keys(DEPT_EN_TO_AR_DICT).find(k => DEPT_EN_TO_AR_DICT[k] === department.trim());
+              if (matchedEn) departmentEn = matchedEn.charAt(0).toUpperCase() + matchedEn.slice(1);
             }
-
-            // Department Fallbacks & Normalization
-            if (!department && departmentEn) department = departmentEn;
-            if (!departmentEn && department) departmentEn = department;
-
-            if (department && DEPT_EN_TO_AR_DICT[department.trim().toLowerCase()]) {
-              department = DEPT_EN_TO_AR_DICT[department.trim().toLowerCase()];
-            } else if (departmentEn && DEPT_EN_TO_AR_DICT[departmentEn.trim().toLowerCase()]) {
-              department = DEPT_EN_TO_AR_DICT[departmentEn.trim().toLowerCase()];
-            }
-
-            // Auto-infer Department from Job Title or Email or Scope if missing
-            if (!department) {
-              const p = `${jobTitle || ''} ${jobTitleEn || ''} ${email || ''}`.toLowerCase();
-              if (p.includes('treasur') || p.includes('خزين') || p.includes('صندوق') || p.includes('صراف')) {
-                department = 'قسم الخزينة'; departmentEn = 'Treasury';
-              } else if (p.includes('secur') || p.includes('guard') || p.includes('أمن') || p.includes('حارس')) {
-                department = 'قسم الأمن'; departmentEn = 'Security';
-              } else if (p.includes('audit') || p.includes('تدقيق')) {
-                department = 'التدقيق الداخلي'; departmentEn = 'Internal Audit';
-              } else if (p.includes('risk') || p.includes('مخاطر')) {
-                department = 'المخاطر والامتثال'; departmentEn = 'Risk & Compliance';
-              } else if (p.includes('compliance') || p.includes('regulatory') || p.includes('امتثال')) {
-                department = 'قسم الامتثال'; departmentEn = 'Compliance';
-              } else if (p.includes('account') || p.includes('financ') || p.includes('محاسب') || p.includes('مالي') || p.includes('حسابات')) {
-                department = 'المالية والمحاسبة'; departmentEn = 'Finance & Accounting';
-              } else if (p.includes('hr') || p.includes('recruit') || p.includes('training') || p.includes('personnel') || p.includes('موارد بشرية')) {
-                department = 'الموارد البشرية'; departmentEn = 'Human Resources';
-              } else if (p.includes('mis')) {
-                department = 'نظم المعلومات الإدارية (MIS)'; departmentEn = 'MIS';
-              } else if (p.includes('it') || p.includes('معلومات') || p.includes('تقنية') || p.includes('technical')) {
-                department = 'تكنولوجيا المعلومات'; departmentEn = 'IT';
-              } else if (p.includes('collect') || p.includes('تحصيل') || p.includes('استحصال')) {
-                department = 'الاستحصال والتحصيل'; departmentEn = 'Collection & Recovery';
-              } else if (p.includes('procure') || p.includes('facilit') || p.includes('مشتريات') || p.includes('تسهيلات')) {
-                department = 'المشتريات والتسهيلات'; departmentEn = 'Procurement & Facilities';
-              } else if (p.includes('market') || p.includes('pr') || p.includes('social media') || p.includes('تسويق') || p.includes('علاقات عامة')) {
-                department = 'التسويق والعلاقات العامة'; departmentEn = 'Marketing & PR';
-              } else if (p.includes('office manager') || p.includes('reception') || p.includes('clean') || p.includes('نظافة') || p.includes('استقبال') || p.includes('مدير مكتب')) {
-                department = 'العمليات وإدارة الفروع'; departmentEn = 'Operations';
-              } else {
-                department = 'قسم الائتمان'; departmentEn = 'Credit';
-              }
-            }
-
-            if (!departmentEn) departmentEn = department;
 
             // Work Scope (Harmonized with Office Job & Field Job)
             const rawWorkScope = getVal(row, ['Work Scope', 'workScope', 'work_scope', 'نطاق العمل', 'طبيعة العمل', 'نطاق وطبيعة العمل', 'Employ. Category', 'Category', 'فئة العمل']) || 'Office Job';
@@ -2375,22 +2300,7 @@ export const SettingsSecurityView: React.FC = () => {
             const transportationFixed = parseValToNum(getVal(row, ['Transportation Fixed', 'transportationFixed', 'بدل النقل الثابت', 'بدل النقل', 'مخصصات النقل']));
             const fixedBonus = parseValToNum(getVal(row, ['Fixed Bonus', 'fixedBonus', 'المكافأة الثابتة', 'مكافأة ثابتة', 'المكافاة الثابتة']));
             const phoneAllowance = parseValToNum(getVal(row, ['Phone Allowance', 'phoneAllowance', 'بدل الهاتف', 'مخصصات الهاتف']));
-            let certificateAllowance = parseValToNum(getVal(row, ['Certificate Allowance', 'certificateAllowance', 'بدل الشهادة', 'مخصصات الشهادة']));
-
-            // Automatically calculate and save certificate allowance from policies if 0 or empty but graduation degree is provided
-            if (certificateAllowance === 0 && graduationDegree) {
-              const curr = appSettings['certificate_allowance_currency'] || 'IQD';
-              const fx = parseFloat(appSettings['usd_to_iqd_rate'] || '1520') || 1520;
-              let policyVal = 0;
-              if (graduationDegree === 'Diplome') {
-                policyVal = parseFloat(appSettings['certificate_allowance_diplome'] || '50000') || 50000;
-              } else if (graduationDegree === 'Bachelar') {
-                policyVal = parseFloat(appSettings['certificate_allowance_bachelar'] || '100000') || 100000;
-              } else if (graduationDegree === 'Master') {
-                policyVal = parseFloat(appSettings['certificate_allowance_master'] || '150000') || 150000;
-              }
-              certificateAllowance = curr === 'USD' ? Math.round(policyVal * fx) : policyVal;
-            }
+            const certificateAllowance = parseValToNum(getVal(row, ['Certificate Allowance', 'certificateAllowance', 'بدل الشهادة', 'مخصصات الشهادة']));
             const bankName = getVal(row, ['Bank Name', 'bankName', 'bank_name', 'اسم المصرف', 'المصرف', 'البنك']) || '';
             const iban = getVal(row, ['IBAN', 'iban', 'رقم IBAN', 'رقم الحساب', 'الآيبان', 'حساب المصرف']) || '';
 
@@ -2414,39 +2324,43 @@ export const SettingsSecurityView: React.FC = () => {
             const perfRating = rawPerfRating !== '' ? parseValToNum(rawPerfRating) : null;
 
             // Collect unique Branch / Location to add in batch (Strict Guard: Never add employee name as branch)
-            // NOTE: We do NOT filter against currentLocations here — the backend handles upserts safely.
-            // This ensures all branches from the Excel are synced even if they already exist in state.
-            if (branch && !isPersonName(branch) && branch.trim().length > 1) {
-              const normB = branch.trim().toLowerCase();
-              const normBEn = (branchEn || branch).trim().toLowerCase();
+            const bVal = (branch || branchEn || '').trim();
+            if (bVal && !isPersonName(bVal) && bVal.length > 1) {
+              const normB = (branch || bVal).trim().toLowerCase();
+              const normBEn = (branchEn || bVal).trim().toLowerCase();
               const alreadyPushed = branchesToCreate.some(b => 
                 (b.name_ar && b.name_ar.trim().toLowerCase() === normB) || 
-                (b.name_en && b.name_en.trim().toLowerCase() === normBEn)
+                (b.name_en && b.name_en.trim().toLowerCase() === normBEn) ||
+                (b.name && b.name.trim().toLowerCase() === normB) ||
+                (b.name && b.name.trim().toLowerCase() === normBEn)
               );
               if (!alreadyPushed) {
                 branchesToCreate.push({
-                  name: branch.trim(),
-                  name_ar: branch.trim(),
-                  name_en: (branchEn || branch).trim(),
+                  name: (branch || branchEn || bVal).trim(),
+                  name_ar: (branch || branchEn || bVal).trim(),
+                  name_en: (branchEn || branch || bVal).trim(),
+                  sort_order: branchesToCreate.length + 1,
                   status: 'Active'
                 });
               }
             }
 
             // Collect unique Department to add in batch (Strict Guard: Never add employee name as department)
-            // NOTE: We do NOT filter against currentDepartments here — the backend handles upserts safely.
-            // This ensures all departments from the Excel are synced even if they already exist.
-            if (department && !isPersonName(department) && department.trim().length > 1) {
-              const normD = department.trim().toLowerCase();
-              const normDEn = (departmentEn || department).trim().toLowerCase();
+            const dVal = (department || departmentEn || '').trim();
+            if (dVal && !isPersonName(dVal) && dVal.length > 1) {
+              const normD = (department || dVal).trim().toLowerCase();
+              const normDEn = (departmentEn || dVal).trim().toLowerCase();
               const alreadyPushed = departmentsToCreate.some(d => 
                 (d.name_ar && d.name_ar.trim().toLowerCase() === normD) || 
-                (d.name_en && d.name_en.trim().toLowerCase() === normDEn)
+                (d.name_en && d.name_en.trim().toLowerCase() === normDEn) ||
+                (d.name && d.name.trim().toLowerCase() === normD) ||
+                (d.name && d.name.trim().toLowerCase() === normDEn)
               );
               if (!alreadyPushed) {
                 departmentsToCreate.push({
-                  name_ar: department.trim(),
-                  name_en: (departmentEn || department).trim(),
+                  name: (department || departmentEn || dVal).trim(),
+                  name_ar: (department || departmentEn || dVal).trim(),
+                  name_en: (departmentEn || department || dVal).trim(),
                   sort_order: departmentsToCreate.length + 1,
                   status: 'Active'
                 });
@@ -2454,22 +2368,25 @@ export const SettingsSecurityView: React.FC = () => {
             }
 
             // Collect unique Position to add in batch (Strict Guard: Never add employee name as position)
-            if (jobTitle && !isPersonName(jobTitle) && jobTitle.trim().length > 1) {
-              const normP = jobTitle.trim().toLowerCase();
-              const normPEn = (jobTitleEn || jobTitle).trim().toLowerCase();
+            const pVal = (jobTitle || jobTitleEn || '').trim();
+            if (pVal && !isPersonName(pVal) && pVal.length > 1) {
+              const normP = (jobTitle || pVal).trim().toLowerCase();
+              const normPEn = (jobTitleEn || pVal).trim().toLowerCase();
               const alreadyPushed = positionsToCreate.some(p => 
                 (p.name_ar && p.name_ar.trim().toLowerCase() === normP) || 
                 (p.name_en && p.name_en.trim().toLowerCase() === normPEn) ||
                 (p.title_ar && p.title_ar.trim().toLowerCase() === normP) ||
-                (p.title && p.title.trim().toLowerCase() === normPEn)
+                (p.title && p.title.trim().toLowerCase() === normPEn) ||
+                (p.name && p.name.trim().toLowerCase() === normP) ||
+                (p.name && p.name.trim().toLowerCase() === normPEn)
               );
               if (!alreadyPushed) {
                 positionsToCreate.push({
-                  name: (jobTitleEn || jobTitle).trim(),
-                  name_ar: jobTitle.trim(),
-                  name_en: (jobTitleEn || jobTitle).trim(),
-                  title: (jobTitleEn || jobTitle).trim(),
-                  title_ar: jobTitle.trim(),
+                  name: (jobTitleEn || jobTitle || pVal).trim(),
+                  name_ar: (jobTitle || jobTitleEn || pVal).trim(),
+                  name_en: (jobTitleEn || jobTitle || pVal).trim(),
+                  title: (jobTitleEn || jobTitle || pVal).trim(),
+                  title_ar: (jobTitle || jobTitleEn || pVal).trim(),
                   sort_order: positionsToCreate.length + 1,
                   status: 'Active'
                 });
