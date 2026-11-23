@@ -179,6 +179,13 @@ export const SettingsSecurityView: React.FC = () => {
         console.log('Loaded settings from localStorage (fast load):', parsedSettings);
         setAppSettings(parsedSettings);
       }
+      const localPositions = localStorage.getItem('vitas_positions');
+      if (localPositions) {
+        try {
+          const parsedPos = JSON.parse(localPositions);
+          if (Array.isArray(parsedPos) && parsedPos.length > 0) setPositions(parsedPos);
+        } catch {}
+      }
     } catch (e) {
       console.error('Error reading from localStorage:', e);
     }
@@ -206,7 +213,17 @@ export const SettingsSecurityView: React.FC = () => {
       }));
 
       setLocations(normalizedBranches);
-      setPositions(Array.isArray(positionsData) ? positionsData : []);
+      const rawPositions = Array.isArray(positionsData) ? positionsData : [];
+      const normalizedPositions = rawPositions.map((p: any) => ({
+        ...p,
+        name_en: p.name_en || p.title || p.name || '',
+        name_ar: p.name_ar || p.title_ar || p.name || '',
+        name: p.name || p.name_ar || p.name_en || p.title || ''
+      }));
+      setPositions(normalizedPositions);
+      if (normalizedPositions.length > 0) {
+        try { localStorage.setItem('vitas_positions', JSON.stringify(normalizedPositions)); } catch {}
+      }
       setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
       setContractTypes(Array.isArray(contractTypesData) ? contractTypesData : []);
       setStatusChanges(Array.isArray(statusChangesData) ? statusChangesData : []);
@@ -252,7 +269,7 @@ export const SettingsSecurityView: React.FC = () => {
   const deduplicatedPositions = React.useMemo(() => {
     const seen = new Set();
     return positions.filter(item => {
-      const key = String(item.name_ar || item.name || item.name_en || '').trim().toLowerCase();
+      const key = String(item.name_ar || item.title_ar || item.name || item.name_en || item.title || '').trim().toLowerCase();
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -969,11 +986,22 @@ export const SettingsSecurityView: React.FC = () => {
         // Process imported data
         const importedItems: DataItem[] = [];
         for (const row of jsonData) {
-          const name_en = row['Name (English)'] || row['name_en'] || '';
-          const name_ar = row['الاسم (العربية)'] || row['name_ar'] || '';
+          let name_en = row['Name (English)'] || row['name_en'] || row['Job Title (English)'] || row['Job Title (EN)'] || row['job_title_en'] || row['jobTitleEn'] || row['Job Title'] || row['Position (English)'] || row['Position (EN)'] || row['Position'] || row['Title (English)'] || row['Title'] || '';
+          let name_ar = row['الاسم (العربية)'] || row['الاسم (عربي)'] || row['name_ar'] || row['Job Title (Arabic)'] || row['Job Title (AR)'] || row['job_title_ar'] || row['jobTitleAr'] || row['المسمى الوظيفي (عربي)'] || row['المسمى الوظيفي'] || row['العنوان الوظيفي (عربي)'] || row['العنوان الوظيفي'] || row['الوظيفة'] || row['Title (Arabic)'] || row['title_ar'] || '';
           const sort_order = row['Sort Order'] || row['sort_order'] || 0;
 
-          if (name_en && name_ar) {
+          if (tabId === 'positions') {
+            if (!name_ar && name_en) {
+              name_ar = translatePositionTitle(name_en);
+            }
+            if (!name_en && name_ar) {
+              name_en = translatePositionTitleArToEn(name_ar);
+            }
+          }
+
+          if (name_en || name_ar) {
+            name_en = name_en || name_ar;
+            name_ar = name_ar || name_en;
             try {
               let result;
               switch (tabId) {
@@ -1483,13 +1511,18 @@ export const SettingsSecurityView: React.FC = () => {
 
   const translatePositionTitle = (posEn: string): string => {
     if (!posEn) return '';
+    const cleanEn = posEn.split('-')[0].trim();
     const p = posEn.toLowerCase();
     if (p.includes('senior internal auditor') || p.includes('sr. internal auditor')) return 'مدقق داخلي أقدم';
     if (p.includes('internal auditor') || p.includes('auditor')) return 'مدقق داخلي';
     if (p.includes('senior loan officer supervisor')) return 'مشرف مسؤولي قروض أقدم';
     if (p.includes('loan officer supervisor')) return 'مشرف مسؤولي قروض';
     if (p.includes('senior loan officer') || p.includes('se loan officer')) return 'مسؤول قروض أقدم';
+    if (p.includes('field loan officer')) return 'مسؤول قروض ميداني';
     if (p.includes('loan officer')) return 'مسؤول قروض';
+    if (p.includes('senior credit analyst')) return 'محلل ائتمان أقدم';
+    if (p.includes('credit analyst')) return 'محلل ائتمان';
+    if (p.includes('credit coordinator')) return 'منسق ائتمان';
     if (p.includes('credit assistant')) return 'مساعد ائتمان';
     if (p.includes('collection officer')) return 'مسؤول تحصيل';
     if (p.includes('branch treasury assistant') || p.includes('treasury assistant')) return 'مساعد خبير خزينة فرع';
@@ -1499,16 +1532,68 @@ export const SettingsSecurityView: React.FC = () => {
     if (p.includes('cleaner') || p.includes('cleaning')) return 'عامل نظافة';
     if (p.includes('security guard') || p.includes('guard')) return 'حارس أمن';
     if (p.includes('it support') || p.includes('it officer')) return 'مسؤول دعم تكنولوجيا المعلومات';
-    if (p.includes('mis specialist') || p.includes('mis officer')) return 'أخصائي نظم معلومات (MIS)';
+    if (p.includes('mis specialist') || p.includes('mis officer') || p.includes('mis coordinator')) return 'أخصائي نظم معلومات (MIS)';
     if (p.includes('compliance officer')) return 'مسؤول امتثال';
     if (p.includes('risk officer')) return 'مسؤول مخاطر';
+    if (p.includes('hr data entry')) return 'مدخل بيانات موارد بشرية';
+    if (p.includes('hr manager')) return 'مدير الموارد البشرية';
     if (p.includes('hr officer') || p.includes('hr specialist')) return 'مسؤول موارد بشرية';
-    if (p.includes('accountant') || p.includes('accounting officer')) return 'محاسب';
-    if (p.includes('procurement officer')) return 'مسؤول مشتريات';
-    if (p.includes('marketing officer') || p.includes('pr officer')) return 'مسؤول تسويق وعلاقات عامة';
+    if (p.includes('senior accountant')) return 'محاسب أقدم';
+    if (p.includes('accountant') || p.includes('accounting officer') || p.includes('accounting manager')) return 'محاسب';
+    if (p.includes('procurement officer') || p.includes('procurement assistant')) return 'مسؤول مشتريات';
+    if (p.includes('marketing officer') || p.includes('pr officer') || p.includes('pr coordinator')) return 'مسؤول تسويق وعلاقات عامة';
     if (p.includes('driver')) return 'سائق';
     if (p.includes('receptionist')) return 'موظف استقبال';
-    return posEn.split('-')[0].trim();
+    if (p.includes('branch administrative assistant') || p.includes('branch office staff')) return 'موظف إداري فرع';
+    if (p.includes('maintenance technician') || p.includes('maintinance technician')) return 'فني صيانة';
+    if (p.includes('maintenance')) return 'صيانة وخدمات';
+    if (p.includes('business admin officer')) return 'مسؤول إدارة الأعمال';
+    if (p.includes('archiving and records')) return 'مسؤول الأرشفة والسجلات';
+    if (p.includes('partnership manager')) return 'مدير الشراكات';
+    return cleanEn;
+  };
+
+  const translatePositionTitleArToEn = (posAr: string): string => {
+    if (!posAr) return '';
+    const cleanAr = posAr.split('-')[0].trim();
+    const p = cleanAr.toLowerCase();
+    if (p.includes('مدقق داخلي أقدم')) return 'Senior Internal Auditor';
+    if (p.includes('مدقق داخلي')) return 'Internal Auditor';
+    if (p.includes('مشرف مسؤولي قروض أقدم')) return 'Senior Loan Officer Supervisor';
+    if (p.includes('مشرف مسؤولي قروض')) return 'Loan Officer Supervisor';
+    if (p.includes('مسؤول قروض أقدم')) return 'Senior Loan Officer';
+    if (p.includes('مسؤول قروض ميداني') || p.includes('قروض ميداني')) return 'Field Loan Officer';
+    if (p.includes('مسؤول قروض')) return 'Loan Officer';
+    if (p.includes('مساعد ائتمان')) return 'Credit Assistant';
+    if (p.includes('محلل ائتمان أقدم')) return 'Senior Credit Analyst';
+    if (p.includes('محلل ائتمان')) return 'Credit Analyst';
+    if (p.includes('منسق ائتمان')) return 'Credit Coordinator';
+    if (p.includes('مسؤول تحصيل') || p.includes('استحصال')) return 'Collection Officer';
+    if (p.includes('مساعد خبير خزينة فرع') || p.includes('مساعد خزينة فرع')) return 'Branch Treasury Assistant';
+    if (p.includes('مسؤول خزينة') || p.includes('أمين صندوق') || p.includes('صراف')) return 'Treasury Officer';
+    if (p.includes('مدير فرع')) return 'Branch Manager';
+    if (p.includes('مدير مكتب')) return 'Office Manager';
+    if (p.includes('عامل نظافة') || p.includes('خدمات')) return 'Cleaner';
+    if (p.includes('حارس أمن') || p.includes('حارس')) return 'Security Guard';
+    if (p.includes('مسؤول دعم تكنولوجيا المعلومات') || p.includes('دعم فني')) return 'IT Support Officer';
+    if (p.includes('أخصائي نظم معلومات') || p.includes('نظم معلومات') || p.includes('mis')) return 'MIS Specialist';
+    if (p.includes('مسؤول امتثال') || p.includes('امتثال')) return 'Compliance Officer';
+    if (p.includes('مسؤول مخاطر') || p.includes('مخاطر')) return 'Risk Officer';
+    if (p.includes('مدخل بيانات موارد بشرية') || p.includes('مدخل بيانات')) return 'HR Data Entry';
+    if (p.includes('مدير الموارد البشرية') || p.includes('مدير موارد بشرية')) return 'HR Manager';
+    if (p.includes('مسؤول موارد بشرية') || p.includes('موارد بشرية')) return 'HR Officer';
+    if (p.includes('محاسب أقدم')) return 'Senior Accountant';
+    if (p.includes('محاسب') || p.includes('مدير حسابات')) return 'Accountant';
+    if (p.includes('مسؤول مشتريات') || p.includes('مساعد مشتريات')) return 'Procurement Officer';
+    if (p.includes('مسؤول تسويق وعلاقات عامة') || p.includes('تسويق') || p.includes('علاقات عامة')) return 'Marketing & PR Officer';
+    if (p.includes('سائق')) return 'Driver';
+    if (p.includes('موظف استقبال')) return 'Receptionist';
+    if (p.includes('موظف إداري فرع') || p.includes('مساعد إداري فرع') || p.includes('إداري فرع')) return 'Branch Administrative Assistant';
+    if (p.includes('فني صيانة') || p.includes('صيانة')) return 'Maintenance Technician';
+    if (p.includes('الأرشفة والسجلات') || p.includes('أرشفة')) return 'Archiving and Records Officer';
+    if (p.includes('إدارة الأعمال') || p.includes('ادارة اعمال')) return 'Business Admin Officer';
+    if (p.includes('مدير الشراكات') || p.includes('شراكات')) return 'Partnership Manager';
+    return cleanAr;
   };
 
   // Employee Excel Import Handler
@@ -1902,20 +1987,78 @@ export const SettingsSecurityView: React.FC = () => {
             const termOfContract = getVal(row, ['Term of Contract', 'termOfContract', 'term_of_contract', 'نوع العقد', 'نوع مدة العقد', 'مدة العقد']) || 'عقد محدد المدة (سنة واحدة)';
             const grade = getVal(row, ['Grade', 'grade', 'الدرجة الوظيفية', 'الدرجة', 'الدرجة السلمية', 'المستوى']) || 'G-4 الدرجة الرابعة';
 
-            let jobTitle = getVal(row, [
-              'Job Title (Arabic)', 'Job Title (AR)', 'jobTitle', 'job_title', 'position', 'position_ar', 
-              'المسمى الوظيفي (عربي)', 'العنوان الوظيفي (عربي)', 'المسمى الوظيفي عربي', 'المسمى الوظيفي', 'العنوان الوظيفي', 'الوظيفة',
-              'Position 1', 'Position 2', 'Position', 'Microfin Headcount Position', 'Microfin Position',
-              'Job Title', 'Job Title (English)', 'Position / Role', 'Role', 'Title',
-              'المسمى الوظيفي 1', 'المسمى الوظيفي 2', 'مسمى الوظيفة', 'العنوان المهني'
+            // Separate Arabic and English job titles strictly by language:
+            let rawJobTitleAr = getVal(row, [
+              'Job Title (Arabic)', 'Job Title (AR)', 'Job Title AR', 'job_title_ar', 'jobTitleAr', 'position_ar', 'positionAr',
+              'المسمى الوظيفي (عربي)', 'المسمى الوظيفي (العربية)', 'المسمى الوظيفي عربي', 'المسمى الوظيفي',
+              'العنوان الوظيفي (عربي)', 'العنوان الوظيفي (العربية)', 'العنوان الوظيفي عربي', 'العنوان الوظيفي',
+              'الوظيفة (عربي)', 'الوظيفة', 'اسم الوظيفة', 'العنوان المهني', 'المسمى', 'الوظيفة الحالية',
+              'المسمى الوظيفي 1', 'المسمى الوظيفي 2', 'مسمى الوظيفة'
             ]);
-            let jobTitleEn = getVal(row, [
-              'Job Title (English)', 'Job Title (EN)', 'jobTitleEn', 'job_title_en', 'position_en', 'position1', 'position2',
-              'المسمى الوظيفي (إنجليزي)', 'المسمى الوظيفي (انجليزي)', 'العنوان الوظيفي (إنجليزي)', 'العنوان الوظيفي (انجليزي)', 'المسمى الوظيفي إنجليزي', 'Job Title English',
-              'Position 1', 'Position', 'Position Level 1', 'Position Level 2', 'Microfin Headcount Position'
-            ]) || jobTitle;
-            if (!jobTitle && jobTitleEn) jobTitle = jobTitleEn;
-            if (!jobTitleEn && jobTitle) jobTitleEn = jobTitle;
+
+            let rawJobTitleEn = getVal(row, [
+              'Job Title (English)', 'Job Title (EN)', 'Job Title EN', 'job_title_en', 'jobTitleEn', 'position_en', 'positionEn',
+              'المسمى الوظيفي (إنجليزي)', 'المسمى الوظيفي (انجليزي)', 'المسمى الوظيفي إنجليزي', 'المسمى الوظيفي انجليزي',
+              'العنوان الوظيفي (إنجليزي)', 'العنوان الوظيفي (انجليزي)', 'العنوان الوظيفي إنجليزي', 'العنوان الوظيفي انجليزي',
+              'Job Title English', 'Job Title', 'JobTitle', 'Position (English)', 'Position (EN)',
+              'Position', 'Position 1', 'Position 2', 'Position Level 1', 'Position Level 2',
+              'Microfin Headcount Position', 'Microfin Position', 'Role', 'Title', 'Title (English)', 'Title (EN)'
+            ]);
+
+            // Fallback for single generic column
+            if (!rawJobTitleAr && !rawJobTitleEn) {
+              const genericPos = getVal(row, ['position', 'job_title', 'jobTitle', 'Position / Role', 'Role', 'Title']);
+              if (genericPos) {
+                if (/[\u0600-\u06FF]/.test(genericPos)) {
+                  rawJobTitleAr = genericPos;
+                } else {
+                  rawJobTitleEn = genericPos;
+                }
+              }
+            }
+
+            // Language auto-detection: if Arabic text was put in English column, or English in Arabic column
+            const hasArabicChars = (str: string) => /[\u0600-\u06FF]/.test(str);
+            const hasEnglishChars = (str: string) => /[a-zA-Z]/.test(str);
+
+            if (rawJobTitleAr && !hasArabicChars(rawJobTitleAr) && hasEnglishChars(rawJobTitleAr) && !rawJobTitleEn) {
+              rawJobTitleEn = rawJobTitleAr;
+              rawJobTitleAr = '';
+            } else if (rawJobTitleEn && hasArabicChars(rawJobTitleEn) && !hasEnglishChars(rawJobTitleEn) && !rawJobTitleAr) {
+              rawJobTitleAr = rawJobTitleEn;
+              rawJobTitleEn = '';
+            }
+
+            let jobTitle = rawJobTitleAr;
+            let jobTitleEn = rawJobTitleEn;
+
+            // Auto-translate across languages if one is missing:
+            if (!jobTitle && jobTitleEn) {
+              jobTitle = translatePositionTitle(jobTitleEn);
+            }
+            if (!jobTitleEn && jobTitle) {
+              jobTitleEn = translatePositionTitleArToEn(jobTitle);
+            }
+            if (!jobTitle && !jobTitleEn) {
+              const rawScopeText = (getVal(row, ['Work Scope', 'workScope', 'work_scope', 'Employ. Category']) || '').toLowerCase();
+              const emailLower = (email || '').toLowerCase();
+              if (emailLower.startsWith('lo_') || rawScopeText.includes('loan')) {
+                jobTitle = 'مسؤول قروض'; jobTitleEn = 'Loan Officer';
+              } else if (rawScopeText.includes('field')) {
+                jobTitle = 'مسؤول قروض ميداني'; jobTitleEn = 'Field Loan Officer';
+              } else if (rawScopeText.includes('office')) {
+                jobTitle = 'موظف إداري فرع'; jobTitleEn = 'Branch Office Staff';
+              } else {
+                jobTitle = 'مسؤول قروض'; jobTitleEn = 'Loan Officer';
+              }
+            } else {
+              if (jobTitle && (!jobTitleEn || jobTitleEn === jobTitle)) {
+                jobTitleEn = translatePositionTitleArToEn(jobTitle);
+              }
+              if (jobTitleEn && (!jobTitle || jobTitle === jobTitleEn)) {
+                jobTitle = translatePositionTitle(jobTitleEn);
+              }
+            }
 
             let department = getVal(row, [
               'Department (Arabic)', 'Department (AR)', 'department_ar', 
@@ -1969,12 +2112,6 @@ export const SettingsSecurityView: React.FC = () => {
               branch = BRANCH_EN_TO_AR_DICT[branchEn.trim().toLowerCase()];
             }
 
-            if (!jobTitle && jobTitleEn) jobTitle = jobTitleEn;
-            if (!jobTitleEn && jobTitle) jobTitleEn = jobTitle;
-            const rawScopeText = (getVal(row, ['Work Scope', 'workScope', 'work_scope', 'Employ. Category']) || '').toLowerCase();
-            const emailLower = (email || '').toLowerCase();
-
-            // Infer missing Job Title from email / work scope if still missing
             if (!jobTitle && !jobTitleEn) {
               if (emailLower.startsWith('lo_')) {
                 jobTitle = 'مسؤول قروض'; jobTitleEn = 'Loan Officer';
@@ -1986,9 +2123,11 @@ export const SettingsSecurityView: React.FC = () => {
                 jobTitle = 'مسؤول قروض'; jobTitleEn = 'Loan Officer';
               }
             } else {
-              const translated = translatePositionTitle(jobTitleEn || jobTitle);
-              if (translated && translated !== (jobTitleEn || jobTitle)) {
-                jobTitle = translated;
+              if (jobTitle && (!jobTitleEn || jobTitleEn === jobTitle)) {
+                jobTitleEn = translatePositionTitleArToEn(jobTitle);
+              }
+              if (jobTitleEn && (!jobTitle || jobTitle === jobTitleEn)) {
+                jobTitle = translatePositionTitle(jobTitleEn);
               }
             }
 
@@ -2179,26 +2318,22 @@ export const SettingsSecurityView: React.FC = () => {
             if (jobTitle && !isPersonName(jobTitle) && jobTitle.trim().length > 1) {
               const normP = jobTitle.trim().toLowerCase();
               const normPEn = (jobTitleEn || jobTitle).trim().toLowerCase();
-              const exists = currentPositions.some(p => 
+              const alreadyPushed = positionsToCreate.some(p => 
                 (p.name_ar && p.name_ar.trim().toLowerCase() === normP) || 
-                (p.name && p.name.trim().toLowerCase() === normP) || 
                 (p.name_en && p.name_en.trim().toLowerCase() === normPEn) ||
-                (p.title && p.title.trim().toLowerCase() === normPEn) ||
-                (p.title_ar && p.title_ar.trim().toLowerCase() === normP)
+                (p.title_ar && p.title_ar.trim().toLowerCase() === normP) ||
+                (p.title && p.title.trim().toLowerCase() === normPEn)
               );
-              if (!exists) {
-                const alreadyPushed = positionsToCreate.some(p => 
-                  (p.name_ar && p.name_ar.trim().toLowerCase() === normP) || 
-                  (p.name_en && p.name_en.trim().toLowerCase() === normPEn)
-                );
-                if (!alreadyPushed) {
-                  positionsToCreate.push({
-                    name_ar: jobTitle.trim(),
-                    name_en: (jobTitleEn || jobTitle).trim(),
-                    sort_order: currentPositions.length + positionsToCreate.length + 1,
-                    status: 'Active'
-                  });
-                }
+              if (!alreadyPushed) {
+                positionsToCreate.push({
+                  name: (jobTitleEn || jobTitle).trim(),
+                  name_ar: jobTitle.trim(),
+                  name_en: (jobTitleEn || jobTitle).trim(),
+                  title: (jobTitleEn || jobTitle).trim(),
+                  title_ar: jobTitle.trim(),
+                  sort_order: positionsToCreate.length + 1,
+                  status: 'Active'
+                });
               }
             }
 
@@ -2308,6 +2443,17 @@ export const SettingsSecurityView: React.FC = () => {
         // Reload Settings data (Locations, Departments, Positions) so new entries appear in Settings UI
         try {
           await loadData();
+          const freshPositions = await api.getPositions().catch(() => []);
+          if (Array.isArray(freshPositions) && freshPositions.length > 0) {
+            const normalizedFresh = freshPositions.map((p: any) => ({
+              ...p,
+              name_en: p.name_en || p.title || p.name || '',
+              name_ar: p.name_ar || p.title_ar || p.name || '',
+              name: p.name || p.name_ar || p.name_en || p.title || ''
+            }));
+            setPositions(normalizedFresh);
+            try { localStorage.setItem('vitas_positions', JSON.stringify(normalizedFresh)); } catch {}
+          }
         } catch (err) {
           console.warn('Could not reload settings data:', err);
         }
@@ -2844,11 +2990,11 @@ const DataTable: React.FC<DataTableProps> = ({
           >
             <div className="flex items-center flex-wrap gap-x-3 gap-y-1.5 min-w-0 flex-1 me-4">
               <span className={`text-sm font-bold whitespace-nowrap ${theme === 'dark' ? 'text-[#e2e8f0]' : 'text-gray-900'}`}>
-                {item.name_en}
+                {item.name_en || item.title || item.name}
               </span>
-              {(item.name_ar || item.name) && (
+              {(item.name_ar || item.title_ar || item.name) && (
                 <span className={`text-xs font-semibold whitespace-nowrap ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  {item.name_ar || item.name}
+                  {item.name_ar || item.title_ar || item.name}
                 </span>
               )}
               {activeTab === 'locations' ? (

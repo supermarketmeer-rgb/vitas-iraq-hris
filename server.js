@@ -2591,9 +2591,26 @@ app.post('/api/employees/batch-import', async (req, res) => {
       }
     }
 
-    // 4. Pre-sync positions in batch if provided
+    // 4. Pre-sync positions in batch (from positions array or extracted directly from employees)
     let posAdded = false;
-    if (Array.isArray(positions) && positions.length > 0) {
+    const allPositionsToSync = [...(Array.isArray(positions) ? positions : [])];
+
+    // ALSO automatically extract any positions present in the employees rows
+    for (const emp of employees) {
+      const pAr = (emp.jobTitle || emp.position_ar || emp.position || '').trim();
+      const pEn = (emp.jobTitleEn || emp.position_en || emp.position || '').trim();
+      if ((pAr || pEn) && !employeeNames.has((pAr || pEn).toLowerCase())) {
+        allPositionsToSync.push({
+          name_ar: pAr,
+          name_en: pEn,
+          title_ar: pAr,
+          title: pEn,
+          status: 'Active'
+        });
+      }
+    }
+
+    if (allPositionsToSync.length > 0) {
       const existingPositions = await fastQuery('SELECT id, name, name_ar, name_en, title, title_ar FROM positions').catch(() => []);
       const posNames = new Set();
       existingPositions.forEach(p => {
@@ -2604,14 +2621,17 @@ app.post('/api/employees/batch-import', async (req, res) => {
         if (p.title_ar) posNames.add(p.title_ar.trim().toLowerCase());
       });
 
-      for (const p of positions) {
-        const posAr = (p.title_ar || p.name_ar || p.title || p.name || p.name_en || '').trim();
-        const posEn = (p.title || p.name_en || p.title_ar || p.name_ar || p.name || '').trim();
+      for (const p of allPositionsToSync) {
+        let posAr = (p.title_ar || p.name_ar || p.title || p.name || p.name_en || '').trim();
+        let posEn = (p.title || p.name_en || p.title_ar || p.name_ar || p.name || '').trim();
         if (!posAr && !posEn) continue;
         if (employeeNames.has(posAr.toLowerCase()) || employeeNames.has(posEn.toLowerCase())) {
           console.warn(`[BatchImport] Skipping bogus position matching employee name: ${posAr || posEn}`);
           continue;
         }
+        if (!posAr && posEn) posAr = posEn;
+        if (!posEn && posAr) posEn = posAr;
+
         if (!posNames.has(posAr.toLowerCase()) && !posNames.has(posEn.toLowerCase())) {
           await fastQuery(
             `INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order)
@@ -4994,6 +5014,35 @@ app.get(['/api/settings/positions', '/api/positions', '/api/job-positions'], asy
       if (!key || seen.has(key)) continue;
       seen.add(key);
       cleanPositions.push(p);
+    }
+
+    // If positions table is empty, auto-sync from employees table
+    if (cleanPositions.length === 0) {
+      const empPositions = await query(`
+        SELECT DISTINCT position, position_ar, position_en FROM employees 
+        WHERE (position_ar IS NOT NULL AND position_ar != '') OR (position_en IS NOT NULL AND position_en != '') OR (position IS NOT NULL AND position != '')
+      `).catch(() => []);
+      let idx = 1;
+      for (const pos of (empPositions || [])) {
+        const nameAr = (pos.position_ar || pos.position || pos.position_en || '').trim();
+        const nameEn = (pos.position_en || pos.position || pos.position_ar || '').trim();
+        if (nameAr || nameEn) {
+          await query(
+            'INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [nameEn || nameAr, nameAr || nameEn, nameAr || nameEn, nameEn || nameAr, nameAr || nameEn, 'Active', idx++]
+          ).catch(() => {});
+        }
+      }
+      if (empPositions && empPositions.length > 0) {
+        const refreshed = await query(`
+          SELECT p.*,
+            COALESCE(p.title, p.name_en, p.name) as title,
+            COALESCE(p.title_ar, p.name_ar, p.name) as title_ar
+          FROM positions p
+          ORDER BY p.sort_order ASC, p.id DESC
+        `).catch(() => []);
+        return res.json(refreshed);
+      }
     }
 
     res.json(cleanPositions);
