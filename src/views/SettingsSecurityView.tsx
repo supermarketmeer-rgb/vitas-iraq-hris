@@ -2245,15 +2245,8 @@ export const SettingsSecurityView: React.FC = () => {
             let jobTitle = rawJobTitleAr;
             let jobTitleEn = rawJobTitleEn;
 
-            // Auto-translate across languages if one is missing and dictionary exists (no guessing):
-            if (!jobTitle && jobTitleEn) {
-              const translated = translatePositionTitle(jobTitleEn);
-              if (translated && translated !== jobTitleEn) jobTitle = translated;
-            }
-            if (!jobTitleEn && jobTitle) {
-              const translated = translatePositionTitleArToEn(jobTitle);
-              if (translated && translated !== jobTitle) jobTitleEn = translated;
-            }
+            // Strict 1:1 matching: NEVER auto-translate titles if empty in Excel file
+            // Empty Arabic title remains empty
 
             let department = getVal(row, [
               'Department (Arabic)', 'Department (AR)', 'department_ar', 
@@ -2266,8 +2259,7 @@ export const SettingsSecurityView: React.FC = () => {
 
             let branch = getVal(row, [
               'Branch (Arabic)', 'Branch (AR)', 'Location (AR)', 'Location (Arabic)', 'branch', 'branch_ar', 'location', 'location_ar', 
-              'الفرع (عربي)', 'الموقع (عربي)', 'الفرع العربي', 'الفرع', 'الموقع', 'مكان العمل', 'المكتب', 'المكتب / الفرع', 'المكتب/الفرع',
-              'Office', 'Office Location', 'Branch', 'Location', 'CHFVITAS (Office)', 'Branch Name', 'City', 'المدينة'
+              'الفرع (عربي)', 'الموقع (عربي)', 'الفرع العربي', 'الفرع', 'الموقع', 'مكان العمل', 'المكتب', 'المكتب / الفرع', 'المكتب/الفرع'
             ]);
             let branchEn = getVal(row, [
               'Branch (English)', 'Branch (EN)', 'Location (EN)', 'Location (English)', 'branchEn', 'branch_en', 'location_en', 
@@ -2295,25 +2287,6 @@ export const SettingsSecurityView: React.FC = () => {
             if (jobTitleEn && isPersonName(jobTitleEn)) jobTitleEn = '';
             if (branch && isPersonName(branch)) branch = '';
             if (branchEn && isPersonName(branchEn)) branchEn = '';
-
-            // Safe dictionary translation for branches and departments if one language is missing (no guessing)
-            if (!branch && branchEn) {
-              if (BRANCH_EN_TO_AR_DICT[branchEn.trim().toLowerCase()]) {
-                branch = BRANCH_EN_TO_AR_DICT[branchEn.trim().toLowerCase()];
-              }
-            } else if (branch && !branchEn) {
-              const matchedEn = Object.keys(BRANCH_EN_TO_AR_DICT).find(k => BRANCH_EN_TO_AR_DICT[k] === branch.trim());
-              if (matchedEn) branchEn = matchedEn.charAt(0).toUpperCase() + matchedEn.slice(1);
-            }
-
-            if (!department && departmentEn) {
-              if (DEPT_EN_TO_AR_DICT[departmentEn.trim().toLowerCase()]) {
-                department = DEPT_EN_TO_AR_DICT[departmentEn.trim().toLowerCase()];
-              }
-            } else if (department && !departmentEn) {
-              const matchedEn = Object.keys(DEPT_EN_TO_AR_DICT).find(k => DEPT_EN_TO_AR_DICT[k] === department.trim());
-              if (matchedEn) departmentEn = matchedEn.charAt(0).toUpperCase() + matchedEn.slice(1);
-            }
 
             // Work Scope (Harmonized with Office Job & Field Job)
             const rawWorkScope = getVal(row, ['Work Scope', 'workScope', 'work_scope', 'نطاق العمل', 'طبيعة العمل', 'نطاق وطبيعة العمل', 'Employ. Category', 'Category', 'فئة العمل']) || 'Office Job';
@@ -2400,9 +2373,9 @@ export const SettingsSecurityView: React.FC = () => {
               );
               if (!alreadyPushed) {
                 branchesToCreate.push({
-                  name: (branch || branchEn || bVal).trim(),
-                  name_ar: (branch || branchEn || bVal).trim(),
-                  name_en: (branchEn || branch || bVal).trim(),
+                  name: (branchEn || branch || bVal).trim(),
+                  name_ar: branch ? branch.trim() : null,
+                  name_en: (branchEn || bVal).trim(),
                   sort_order: branchesToCreate.length + 1,
                   status: 'Active'
                 });
@@ -2422,9 +2395,9 @@ export const SettingsSecurityView: React.FC = () => {
               );
               if (!alreadyPushed) {
                 departmentsToCreate.push({
-                  name: (department || departmentEn || dVal).trim(),
-                  name_ar: (department || departmentEn || dVal).trim(),
-                  name_en: (departmentEn || department || dVal).trim(),
+                  name: (departmentEn || department || dVal).trim(),
+                  name_ar: department ? department.trim() : null,
+                  name_en: (departmentEn || dVal).trim(),
                   sort_order: departmentsToCreate.length + 1,
                   status: 'Active'
                 });
@@ -2447,10 +2420,10 @@ export const SettingsSecurityView: React.FC = () => {
               if (!alreadyPushed) {
                 positionsToCreate.push({
                   name: (jobTitleEn || jobTitle || pVal).trim(),
-                  name_ar: (jobTitle || jobTitleEn || pVal).trim(),
-                  name_en: (jobTitleEn || jobTitle || pVal).trim(),
+                  name_ar: jobTitle ? jobTitle.trim() : null,
+                  name_en: (jobTitleEn || pVal).trim(),
                   title: (jobTitleEn || jobTitle || pVal).trim(),
-                  title_ar: (jobTitle || jobTitleEn || pVal).trim(),
+                  title_ar: jobTitle ? jobTitle.trim() : null,
                   sort_order: positionsToCreate.length + 1,
                   status: 'Active'
                 });

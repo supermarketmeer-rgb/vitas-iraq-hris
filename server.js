@@ -13,6 +13,7 @@ import {
   startAutoCloudSync, 
   syncLocalToCloud, 
   executeCloudQuery, 
+  getCloudPool,
   triggerRealtimeSync, 
   addSseClient, 
   startCloudRealtimeListener, 
@@ -2534,37 +2535,26 @@ app.post('/api/employees/batch-import', async (req, res) => {
       });
 
       for (const b of allBranchesToSync) {
-        let nameAr = (b.name_ar || b.name || b.name_en || '').trim();
-        let nameEn = (b.name_en || b.name || b.name_ar || '').trim();
+        let nameAr = (b.name_ar || '').trim() || null;
+        let nameEn = (b.name_en || b.name || '').trim();
         if (!nameAr && !nameEn) continue;
-        if (employeeNames.has(nameAr.toLowerCase()) || employeeNames.has(nameEn.toLowerCase())) {
+        if ((nameAr && employeeNames.has(nameAr.toLowerCase())) || (nameEn && employeeNames.has(nameEn.toLowerCase()))) {
           console.warn(`[BatchImport] Skipping bogus branch matching employee name: ${nameAr || nameEn}`);
           continue;
         }
-        if (!nameAr && nameEn) nameAr = nameEn;
-        if (!nameEn && nameAr) nameEn = nameAr;
 
-        if (!branchNames.has(nameAr.toLowerCase()) && !branchNames.has(nameEn.toLowerCase())) {
+        const checkKey = (nameEn || nameAr || '').toLowerCase();
+        if (!branchNames.has(checkKey)) {
           const bId = b.id ? String(b.id) : `BR_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
           await fastQuery(
             `INSERT INTO branches (id, name, name_ar, name_en, address, city, country, status, sort_order, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, 'Iraq', 'Active', 0, NOW())
-             ON DUPLICATE KEY UPDATE name_en = COALESCE(NULLIF(name_en,''), VALUES(name_en)), name_ar = COALESCE(NULLIF(name_ar,''), VALUES(name_ar)), updated_at = NOW()`,
-            [bId, nameAr, nameAr, nameEn, b.address || null, b.city || null]
+             ON DUPLICATE KEY UPDATE name_en = VALUES(name_en), name_ar = VALUES(name_ar), updated_at = NOW()`,
+            [bId, nameEn || nameAr, nameAr, nameEn || nameAr, b.address || null, b.city || null]
           ).catch(e => console.warn('Batch branch insert warn:', e.message));
-          branchNames.add(nameAr.toLowerCase());
-          branchNames.add(nameEn.toLowerCase());
+          if (nameAr) branchNames.add(nameAr.toLowerCase());
+          if (nameEn) branchNames.add(nameEn.toLowerCase());
           branchesAdded = true;
-        } else {
-          // Branch exists — update name_en and name_ar to keep both languages in sync
-          await fastQuery(
-            `UPDATE branches SET 
-              name_en = CASE WHEN name_en IS NULL OR name_en = '' OR name_en = name_ar THEN ? ELSE name_en END,
-              name_ar = CASE WHEN name_ar IS NULL OR name_ar = '' OR name_ar = name_en THEN ? ELSE name_ar END,
-              updated_at = NOW()
-             WHERE (name_ar = ? OR name = ? OR name_en = ?)`,
-            [nameEn, nameAr, nameAr, nameAr, nameEn]
-          ).catch(() => {});
         }
       }
     }
@@ -2590,37 +2580,25 @@ app.post('/api/employees/batch-import', async (req, res) => {
       });
 
       for (const d of allDepartmentsToSync) {
-        let deptAr = (d.name_ar || d.name || d.name_en || '').trim();
-        let deptEn = (d.name_en || d.name || d.name_ar || '').trim();
+        let deptAr = (d.name_ar || '').trim() || null;
+        let deptEn = (d.name_en || d.name || '').trim();
         if (!deptAr && !deptEn) continue;
-        if (employeeNames.has(deptAr.toLowerCase()) || employeeNames.has(deptEn.toLowerCase())) {
+        if ((deptAr && employeeNames.has(deptAr.toLowerCase())) || (deptEn && employeeNames.has(deptEn.toLowerCase()))) {
           console.warn(`[BatchImport] Skipping bogus department matching employee name: ${deptAr || deptEn}`);
           continue;
         }
-        if (!deptAr && deptEn) deptAr = deptEn;
-        if (!deptEn && deptAr) deptEn = deptAr;
 
-        // Always upsert: if not in DB, insert; if already exists, update name_en and name_ar to keep it in sync
-        if (!deptNames.has(deptAr.toLowerCase()) && !deptNames.has(deptEn.toLowerCase())) {
+        const checkKey = (deptEn || deptAr || '').toLowerCase();
+        if (!deptNames.has(checkKey)) {
           const dCode = (d.code || `DEP-${Date.now().toString().slice(-4)}`).trim().toUpperCase();
           await fastQuery(
             `INSERT INTO departments (name_en, name_ar, name, code, manager_name, status, sort_order)
              VALUES (?, ?, ?, ?, 'Unassigned', 'Active', 0)`,
-            [deptEn, deptAr, deptAr, dCode]
+            [deptEn || deptAr, deptAr, deptEn || deptAr, dCode]
           ).catch(e => console.warn('Batch department insert warn:', e.message));
-          deptNames.add(deptAr.toLowerCase());
-          deptNames.add(deptEn.toLowerCase());
+          if (deptAr) deptNames.add(deptAr.toLowerCase());
+          if (deptEn) deptNames.add(deptEn.toLowerCase());
           deptsAdded = true;
-        } else {
-          // Department exists — update name_en and name_ar if either was missing or duplicate
-          await fastQuery(
-            `UPDATE departments SET 
-              name_en = CASE WHEN name_en IS NULL OR name_en = '' OR name_en = name_ar THEN ? ELSE name_en END,
-              name_ar = CASE WHEN name_ar IS NULL OR name_ar = '' OR name_ar = name_en THEN ? ELSE name_ar END,
-              updated_at = NOW()
-             WHERE (name_ar = ? OR name = ? OR name_en = ?)`,
-            [deptEn, deptAr, deptAr, deptAr, deptEn]
-          ).catch(() => {});
         }
       }
     }
@@ -2656,40 +2634,27 @@ app.post('/api/employees/batch-import', async (req, res) => {
       });
 
       for (const p of allPositionsToSync) {
-        let posAr = (p.title_ar || p.name_ar || p.title || p.name || p.name_en || '').trim();
-        let posEn = (p.title || p.name_en || p.title_ar || p.name_ar || p.name || '').trim();
+        let posAr = (p.title_ar || p.name_ar || '').trim() || null;
+        let posEn = (p.title || p.name_en || p.name || '').trim();
         if (!posAr && !posEn) continue;
-        if (employeeNames.has(posAr.toLowerCase()) || employeeNames.has(posEn.toLowerCase())) {
+        if ((posAr && employeeNames.has(posAr.toLowerCase())) || (posEn && employeeNames.has(posEn.toLowerCase()))) {
           console.warn(`[BatchImport] Skipping bogus position matching employee name: ${posAr || posEn}`);
           continue;
         }
-        if (!posAr && posEn) posAr = posEn;
-        if (!posEn && posAr) posEn = posAr;
-        // title must NEVER be null (NOT NULL constraint)
-        const safeTitle = posEn || posAr || 'Position';
-        const safeTitleAr = posAr || posEn || 'Position';
 
-        if (!posNames.has(posAr.toLowerCase()) && !posNames.has(posEn.toLowerCase())) {
+        const safeTitle = posEn || posAr || 'Position';
+        const safeTitleAr = posAr || null;
+
+        const checkKey = (posEn || posAr || '').toLowerCase();
+        if (!posNames.has(checkKey)) {
           await fastQuery(
             `INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order)
              VALUES (?, ?, ?, ?, ?, 'Active', 0)`,
-            [posEn, posAr, safeTitleAr, safeTitle, safeTitleAr]
+            [posEn || null, posAr || null, safeTitle, safeTitle, safeTitleAr]
           ).catch(e => console.warn('Batch position insert warn:', e.message));
-          posNames.add(posAr.toLowerCase());
-          posNames.add(posEn.toLowerCase());
+          if (posAr) posNames.add(posAr.toLowerCase());
+          if (posEn) posNames.add(posEn.toLowerCase());
           posAdded = true;
-        } else {
-          // Position exists — update name_en and name_ar / title
-          await fastQuery(
-            `UPDATE positions SET 
-              name_en = CASE WHEN name_en IS NULL OR name_en = '' OR name_en = name_ar THEN ? ELSE name_en END,
-              name_ar = CASE WHEN name_ar IS NULL OR name_ar = '' OR name_ar = name_en THEN ? ELSE name_ar END,
-              title = CASE WHEN title IS NULL OR title = '' THEN ? ELSE title END,
-              title_ar = CASE WHEN title_ar IS NULL OR title_ar = '' THEN ? ELSE title_ar END,
-              updated_at = NOW()
-             WHERE (name_ar = ? OR name = ? OR name_en = ? OR title = ? OR title_ar = ?)`,
-            [posEn, posAr, safeTitle, safeTitleAr, posAr, posAr, posEn, safeTitle, posAr]
-          ).catch(() => {});
         }
       }
     }
@@ -2801,6 +2766,25 @@ app.post('/api/employees/batch-import', async (req, res) => {
               if (candidateData.email && !candidateData.email.includes('no-email-')) emailMap.set(candidateData.email.toLowerCase(), finalEmpDbId);
             }
           }
+
+          // Direct Cloud DB dual-write if Cloud is connected
+          try {
+            const cloudPool = getCloudPool ? getCloudPool() : null;
+            if (cloudPool) {
+              const cloudEmpCols = validColumns.filter(c => c !== 'id');
+              const cloudPlaceholders = cloudEmpCols.map(() => '?').join(', ');
+              const cloudUpdates = cloudEmpCols.map(c => `\`${c}\` = VALUES(\`${c}\`)`).join(', ');
+              const cloudId = candidateData.employee_id || rawInputEmpId;
+              if (cloudId) {
+                await cloudPool.query(
+                  `INSERT INTO employees (id, ${cloudEmpCols.map(c => `\`${c}\``).join(', ')})
+                   VALUES (?, ${cloudPlaceholders})
+                   ON DUPLICATE KEY UPDATE ${cloudUpdates}, updated_at = NOW()`,
+                  [cloudId, ...cloudEmpCols.map(c => candidateData[c])]
+                ).catch(() => {});
+              }
+            }
+          } catch (cloudErr) {}
 
           // Handle employee children if provided
           if (finalEmpDbId && Array.isArray(processedChildrenList) && processedChildrenList.length > 0) {

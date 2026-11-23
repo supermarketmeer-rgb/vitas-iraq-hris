@@ -18,9 +18,9 @@ const TABLE_BUSINESS_KEYS = {
   drv_drivers: 'driver_number',
   drv_offices: 'code',
   drv_trip_routes: 'route_code',
-  positions: 'name_ar',
-  branches: 'name_ar',
-  departments: 'name_ar',
+  positions: 'title',
+  branches: 'name_en',
+  departments: 'name_en',
   roles: 'role_name',
   shift_types: 'name',
   contract_types: 'name_ar',
@@ -89,7 +89,7 @@ function getCloudConfig() {
 }
 
 let _cloudPool = null;
-function getCloudPool() {
+export function getCloudPool() {
   if (_cloudPool) return _cloudPool;
   const cfg = getCloudConfig();
   if (!cfg.host || cfg.host === 'proxy.rlwy.net') return null;
