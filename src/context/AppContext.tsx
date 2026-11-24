@@ -1051,7 +1051,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const isRefreshingEmployeesRef = useRef(false);
+
   const refreshEmployees = useCallback(async () => {
+    if (isRefreshingEmployeesRef.current) return;
+    isRefreshingEmployeesRef.current = true;
     try {
       const freshList = await api.getEmployees();
       if (Array.isArray(freshList)) {
@@ -1061,18 +1065,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {}
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('vitas_employees_updated', { detail: freshList }));
-          window.dispatchEvent(new CustomEvent('vitas:data_refreshed', { detail: { table: 'employees' } }));
-          window.dispatchEvent(new Event('storage'));
         }
       }
     } catch (err) {
       console.warn('Could not refresh employees list from API:', err);
+    } finally {
+      isRefreshingEmployeesRef.current = false;
     }
   }, []);
 
   useEffect(() => {
     const handleForceRefresh = (e: any) => {
-      if (!e?.detail || !e.detail.table || e.detail.table === 'employees') {
+      if (e?.detail?.source === 'refreshEmployees') return;
+      if (!e?.detail || !e.detail.table || e.detail.table === 'employees' || e.detail.table === 'all') {
         refreshEmployees();
       }
     };

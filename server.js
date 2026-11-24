@@ -2565,7 +2565,8 @@ app.post('/api/employees/batch-import', async (req, res) => {
 
     console.log(`[BatchImport] Starting high-speed batch import for ${employees.length} employees...`);
     const startTime = Date.now();
-    const cloudPool = getCloudPool ? getCloudPool() : null;
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    const cloudPool = !isRailway && getCloudPool ? getCloudPool() : null;
 
     // Immediately clear any deletion pull suppression on new import
     suppressCloudPull(['branches', 'positions', 'departments', 'settings_offices', 'settings_positions'], 0);
@@ -2582,7 +2583,7 @@ app.post('/api/employees/batch-import', async (req, res) => {
       if (emp.full_name_en) employeeNames.add(String(emp.full_name_en).trim().toLowerCase());
     }
 
-    // 2. Pre-sync branches in batch if provided (or auto-extract from employees)
+    // 2. Pre-sync branches in ONE single bulk query
     let branchesAdded = false;
     const allBranchesToSync = [...(Array.isArray(branches) ? branches : [])];
     for (const emp of employees) {
@@ -2602,42 +2603,39 @@ app.post('/api/employees/batch-import', async (req, res) => {
         if (b.name_en) branchNames.add(b.name_en.trim().toLowerCase());
       });
 
+      const newBranchRows = [];
+      let bIdx = 0;
       for (const b of allBranchesToSync) {
         let nameAr = (b.name_ar || '').trim() || null;
         let nameEn = (b.name_en || b.name || '').trim();
         if (!nameAr && !nameEn) continue;
-        if ((nameAr && employeeNames.has(nameAr.toLowerCase())) || (nameEn && employeeNames.has(nameEn.toLowerCase()))) {
-          continue;
-        }
+        if ((nameAr && employeeNames.has(nameAr.toLowerCase())) || (nameEn && employeeNames.has(nameEn.toLowerCase()))) continue;
 
         const checkKey = (nameEn || nameAr || '').toLowerCase();
         if (!branchNames.has(checkKey)) {
-          const bId = b.id ? String(b.id) : `BR_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-          const branchVals = [bId, nameEn || nameAr, nameAr, nameEn || nameAr, b.address || null, b.city || null];
-          await fastQuery(
-            `INSERT INTO branches (id, name, name_ar, name_en, address, city, country, status, sort_order, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'Iraq', 'Active', 0, NOW())
-             ON DUPLICATE KEY UPDATE name_en = VALUES(name_en), name_ar = VALUES(name_ar), updated_at = NOW()`,
-            branchVals
-          ).catch(e => console.warn('Batch branch insert warn:', e.message));
-
-          if (cloudPool) {
-            await cloudPool.query(
-              `INSERT INTO branches (id, name, name_ar, name_en, address, city, country, status, sort_order, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, 'Iraq', 'Active', 0, NOW())
-               ON DUPLICATE KEY UPDATE name_en = VALUES(name_en), name_ar = VALUES(name_ar), updated_at = NOW()`,
-              branchVals
-            ).catch(() => {});
-          }
-
+          bIdx++;
+          const bId = b.id ? String(b.id) : `BR_${Date.now()}_${bIdx}`;
+          newBranchRows.push([bId, nameEn || nameAr, nameAr, nameEn || nameAr, b.address || null, b.city || nameEn || nameAr || null]);
           if (nameAr) branchNames.add(nameAr.toLowerCase());
           if (nameEn) branchNames.add(nameEn.toLowerCase());
-          branchesAdded = true;
         }
+      }
+
+      if (newBranchRows.length > 0) {
+        const placeholders = newBranchRows.map(() => "(?, ?, ?, ?, ?, ?, 'Iraq', 'Active', 0, NOW())").join(', ');
+        const flatVals = newBranchRows.flat();
+        const sql = `INSERT INTO branches (id, name, name_ar, name_en, address, city, country, status, sort_order, updated_at)
+                     VALUES ${placeholders}
+                     ON DUPLICATE KEY UPDATE name_en = VALUES(name_en), name_ar = VALUES(name_ar), updated_at = NOW()`;
+        await fastQuery(sql, flatVals).catch(e => console.warn('Bulk branch insert warn:', e.message));
+        if (cloudPool) {
+          await cloudPool.query(sql, flatVals).catch(e => console.warn('Bulk cloud branch insert warn:', e.message));
+        }
+        branchesAdded = true;
       }
     }
 
-    // 3. Pre-sync departments in batch (from departments array or auto-extracted from employees)
+    // 3. Pre-sync departments in ONE single bulk query
     let deptsAdded = false;
     const allDepartmentsToSync = [...(Array.isArray(departments) ? departments : [])];
     for (const emp of employees) {
@@ -2657,59 +2655,58 @@ app.post('/api/employees/batch-import', async (req, res) => {
         if (d.name_en) deptNames.add(d.name_en.trim().toLowerCase());
       });
 
+      const newDeptLocalRows = [];
+      const newDeptCloudRows = [];
+      let dIdx = 0;
       for (const d of allDepartmentsToSync) {
         let deptAr = (d.name_ar || '').trim() || null;
         let deptEn = (d.name_en || d.name || '').trim();
         if (!deptAr && !deptEn) continue;
-        if ((deptAr && employeeNames.has(deptAr.toLowerCase())) || (deptEn && employeeNames.has(deptEn.toLowerCase()))) {
-          continue;
-        }
+        if ((deptAr && employeeNames.has(deptAr.toLowerCase())) || (deptEn && employeeNames.has(deptEn.toLowerCase()))) continue;
 
         const checkKey = (deptEn || deptAr || '').toLowerCase();
         if (!deptNames.has(checkKey)) {
-          const dCode = (d.code || `DEP-${Date.now().toString().slice(-4)}`).trim().toUpperCase();
-          const dId = d.id ? String(d.id) : `DEP_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-
-          // Local insert (has code column)
-          await fastQuery(
-            `INSERT INTO departments (name_en, name_ar, name, code, manager_name, status, sort_order)
-             VALUES (?, ?, ?, ?, 'Unassigned', 'Active', 0)
-             ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en)`,
-            [deptEn || deptAr, deptAr, deptEn || deptAr, dCode]
-          ).catch(e => console.warn('Batch department insert warn:', e.message));
-
-          // Cloud insert (no code column, id is varchar NOT NULL)
-          if (cloudPool) {
-            await cloudPool.query(
-              `INSERT INTO departments (id, name, name_ar, name_en, status, sort_order, updated_at)
-               VALUES (?, ?, ?, ?, 'Active', 0, NOW())
-               ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en), updated_at = NOW()`,
-              [dId, deptEn || deptAr, deptAr, deptEn || deptAr]
-            ).catch(e => console.warn('Batch cloud department insert warn:', e.message));
-          }
-
+          dIdx++;
+          const dCode = (d.code || `DEP-${Date.now().toString().slice(-4)}-${dIdx}`).trim().toUpperCase();
+          const dId = d.id ? String(d.id) : `DEP_${Date.now()}_${dIdx}`;
+          newDeptLocalRows.push([deptEn || deptAr, deptAr, deptEn || deptAr, dCode]);
+          newDeptCloudRows.push([dId, deptEn || deptAr, deptAr, deptEn || deptAr]);
           if (deptAr) deptNames.add(deptAr.toLowerCase());
           if (deptEn) deptNames.add(deptEn.toLowerCase());
-          deptsAdded = true;
         }
+      }
+
+      if (newDeptCloudRows.length > 0) {
+        const cloudPlaceholders = newDeptCloudRows.map(() => "(?, ?, ?, ?, 'Active', 0, NOW())").join(', ');
+        const cloudSql = `INSERT INTO departments (id, name, name_ar, name_en, status, sort_order, updated_at)
+                          VALUES ${cloudPlaceholders}
+                          ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en), updated_at = NOW()`;
+        if (isRailway) {
+          await fastQuery(cloudSql, newDeptCloudRows.flat()).catch(e => console.warn('Bulk railway dept insert warn:', e.message));
+        } else {
+          const localPlaceholders = newDeptLocalRows.map(() => "(?, ?, ?, ?, 'Unassigned', 'Active', 0)").join(', ');
+          await fastQuery(
+            `INSERT INTO departments (name_en, name_ar, name, code, manager_name, status, sort_order)
+             VALUES ${localPlaceholders}
+             ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en)`,
+            newDeptLocalRows.flat()
+          ).catch(e => console.warn('Bulk local dept insert warn:', e.message));
+          if (cloudPool) {
+            await cloudPool.query(cloudSql, newDeptCloudRows.flat()).catch(e => console.warn('Bulk cloud dept insert warn:', e.message));
+          }
+        }
+        deptsAdded = true;
       }
     }
 
-    // 4. Pre-sync positions in batch (from positions array or extracted directly from employees)
+    // 4. Pre-sync positions in ONE single bulk query
     let posAdded = false;
     const allPositionsToSync = [...(Array.isArray(positions) ? positions : [])];
-
     for (const emp of employees) {
       const pAr = (emp.jobTitle || emp.position_ar || emp.position || '').trim();
       const pEn = (emp.jobTitleEn || emp.position_en || emp.position || '').trim();
       if ((pAr || pEn) && !employeeNames.has((pAr || pEn).toLowerCase())) {
-        allPositionsToSync.push({
-          name_ar: pAr,
-          name_en: pEn,
-          title_ar: pAr,
-          title: pEn,
-          status: 'Active'
-        });
+        allPositionsToSync.push({ name_ar: pAr, name_en: pEn, title_ar: pAr, title: pEn, status: 'Active' });
       }
     }
 
@@ -2724,40 +2721,34 @@ app.post('/api/employees/batch-import', async (req, res) => {
         if (p.title_ar) posNames.add(p.title_ar.trim().toLowerCase());
       });
 
+      const newPosRows = [];
       for (const p of allPositionsToSync) {
         let posAr = (p.title_ar || p.name_ar || '').trim() || null;
         let posEn = (p.title || p.name_en || p.name || '').trim();
         if (!posAr && !posEn) continue;
-        if ((posAr && employeeNames.has(posAr.toLowerCase())) || (posEn && employeeNames.has(posEn.toLowerCase()))) {
-          continue;
-        }
+        if ((posAr && employeeNames.has(posAr.toLowerCase())) || (posEn && employeeNames.has(posEn.toLowerCase()))) continue;
 
         const safeTitle = posEn || posAr || 'Position';
         const safeTitleAr = posAr || null;
-
         const checkKey = (posEn || posAr || '').toLowerCase();
         if (!posNames.has(checkKey)) {
-          const posVals = [posEn || null, posAr || null, safeTitle, safeTitle, safeTitleAr];
-          await fastQuery(
-            `INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order)
-             VALUES (?, ?, ?, ?, ?, 'Active', 0)
-             ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en), title = VALUES(title), title_ar = VALUES(title_ar)`,
-            posVals
-          ).catch(e => console.warn('Batch position insert warn:', e.message));
-
-          if (cloudPool) {
-            await cloudPool.query(
-              `INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order, updated_at)
-               VALUES (?, ?, ?, ?, ?, 'Active', 0, NOW())
-               ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en), title = VALUES(title), title_ar = VALUES(title_ar), updated_at = NOW()`,
-              posVals
-            ).catch(e => console.warn('Batch cloud position insert warn:', e.message));
-          }
-
+          newPosRows.push([posEn || null, posAr || null, safeTitle, safeTitle, safeTitleAr]);
           if (posAr) posNames.add(posAr.toLowerCase());
           if (posEn) posNames.add(posEn.toLowerCase());
-          posAdded = true;
         }
+      }
+
+      if (newPosRows.length > 0) {
+        const placeholders = newPosRows.map(() => "(?, ?, ?, ?, ?, 'Active', 0, NOW())").join(', ');
+        const flatVals = newPosRows.flat();
+        const sql = `INSERT INTO positions (name_en, name_ar, name, title, title_ar, status, sort_order, updated_at)
+                     VALUES ${placeholders}
+                     ON DUPLICATE KEY UPDATE name = VALUES(name), name_ar = VALUES(name_ar), name_en = VALUES(name_en), title = VALUES(title), title_ar = VALUES(title_ar), updated_at = NOW()`;
+        await fastQuery(sql, flatVals).catch(e => console.warn('Bulk position insert warn:', e.message));
+        if (cloudPool) {
+          await cloudPool.query(sql, flatVals).catch(e => console.warn('Bulk cloud position insert warn:', e.message));
+        }
+        posAdded = true;
       }
     }
 
@@ -2802,7 +2793,6 @@ app.post('/api/employees/batch-import', async (req, res) => {
 
     // 7. Lightning-Fast Batch Bulk Insert into Local DB & Cloud DB (50 rows per query)
     const BATCH_SIZE = 50;
-    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
 
     // Columns present in both Local and Cloud
     const commonEmpCols = [
@@ -2820,6 +2810,7 @@ app.post('/api/employees/batch-import', async (req, res) => {
     ];
 
     const localCols = commonEmpCols.filter(col => employeeTableColumns.size === 0 || employeeTableColumns.has(col));
+    const primaryCols = isRailway ? ['id', ...localCols] : localCols;
     const cloudCols = ['id', ...localCols];
 
     let insertedCount = 0;
@@ -2827,19 +2818,19 @@ app.post('/api/employees/batch-import', async (req, res) => {
     for (let i = 0; i < preparedCandidates.length; i += BATCH_SIZE) {
       const chunk = preparedCandidates.slice(i, i + BATCH_SIZE);
 
-      // A) Local DB Bulk Insert
-      const localPlaceholders = chunk.map(() => `(${localCols.map(() => '?').join(', ')})`).join(', ');
-      const localUpdates = localCols.map(c => `\`${c}\` = VALUES(\`${c}\`)`).join(', ');
-      const localVals = chunk.flatMap(item => localCols.map(c => item.candidateData[c] ?? null));
+      // A) Primary DB Bulk Insert (Local MySQL when local, Cloud MySQL with `id` when on Railway)
+      const primaryPlaceholders = chunk.map(() => `(${primaryCols.map(() => '?').join(', ')})`).join(', ');
+      const primaryUpdates = primaryCols.filter(c => c !== 'id').map(c => `\`${c}\` = VALUES(\`${c}\`)`).join(', ');
+      const primaryVals = chunk.flatMap(item => primaryCols.map(c => c === 'id' ? item.empCode : (item.candidateData[c] ?? null)));
 
       await fastQuery(
-        `INSERT INTO employees (${localCols.map(c => `\`${c}\``).join(', ')})
-         VALUES ${localPlaceholders}
-         ON DUPLICATE KEY UPDATE ${localUpdates}, updated_at = NOW()`,
-        localVals
-      ).catch(err => console.error('[BatchImport] Local bulk insert error:', err.message));
+        `INSERT INTO employees (${primaryCols.map(c => `\`${c}\``).join(', ')})
+         VALUES ${primaryPlaceholders}
+         ON DUPLICATE KEY UPDATE ${primaryUpdates}, updated_at = NOW()`,
+        primaryVals
+      ).catch(err => console.error('[BatchImport] Primary bulk insert error:', err.message));
 
-      // B) Direct Cloud DB Bulk Insert (Lightning-Fast)
+      // B) Direct Cloud DB Bulk Insert when running locally
       if (cloudPool) {
         const cloudPlaceholders = chunk.map(() => `(${cloudCols.map(() => '?').join(', ')})`).join(', ');
         const cloudUpdates = cloudCols.filter(c => c !== 'id').map(c => `\`${c}\` = VALUES(\`${c}\`)`).join(', ');

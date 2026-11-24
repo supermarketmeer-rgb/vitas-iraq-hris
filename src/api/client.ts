@@ -106,7 +106,7 @@ export const api = {
   addEmployee: (employee: any) => apiClient.post('/employees', employee),
   updateEmployee: (employee: any) => apiClient.post('/employees', employee),
   batchImportEmployees: (payload: { employees: any[]; branches?: any[]; departments?: any[]; positions?: any[] }) =>
-    apiClient.post('/employees/batch-import', payload),
+    apiClient.post('/employees/batch-import', payload, 120000),
   batchUpdateContractDates: (data: { employeeIds: (string | number)[]; startDate: string; endDate: string }) =>
     apiClient.post('/employees/batch-contract-dates', data),
   deleteEmployee: (id: string) => apiClient.delete(`/employees/${id}`),

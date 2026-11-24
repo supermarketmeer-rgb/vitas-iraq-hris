@@ -273,17 +273,21 @@ export const SettingsSecurityView: React.FC = () => {
 
   // Listen to realtime refresh events to auto-reload
   useEffect(() => {
-    const handleDataRefreshed = () => {
-      loadData();
-      if (refreshEmployees) refreshEmployees();
+    let debounceTimer: any = null;
+    const handleDataRefreshed = (e: any) => {
+      const tbl = e?.detail?.table;
+      if (tbl === 'employees' || tbl === 'audit_logs') return;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        loadData();
+      }, 600);
     };
     window.addEventListener('vitas:data_refreshed', handleDataRefreshed);
-    window.addEventListener('vitas_employees_updated', handleDataRefreshed);
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('vitas:data_refreshed', handleDataRefreshed);
-      window.removeEventListener('vitas_employees_updated', handleDataRefreshed);
     };
-  }, [refreshEmployees]);
+  }, []);
 
   // Deduplicate locations strictly by trimmed name
   const deduplicatedLocations = React.useMemo(() => {
@@ -2540,36 +2544,9 @@ export const SettingsSecurityView: React.FC = () => {
           positions: positionsToCreate
         });
 
-        // Reload Settings data (Locations, Departments, Positions) so new entries appear in Settings UI
+        // Reload Settings data (Locations, Departments, Positions) once
         try {
           await loadData();
-          const freshPositions = await api.getPositions().catch(() => []);
-          if (Array.isArray(freshPositions) && freshPositions.length > 0) {
-            const normalizedFresh = freshPositions.map((p: any) => ({
-              ...p,
-              name_en: p.name_en || p.title || p.name || '',
-              name_ar: p.name_ar || p.title_ar || p.name || '',
-              name: p.name || p.name_ar || p.name_en || p.title || ''
-            }));
-            setPositions(normalizedFresh);
-            try { localStorage.setItem('vitas_positions', JSON.stringify(normalizedFresh)); } catch {}
-          }
-          // Also refresh departments state so the Departments tab shows new entries immediately
-          const freshDepartments = await api.getDepartments().catch(() => []);
-          if (Array.isArray(freshDepartments) && freshDepartments.length > 0) {
-            setDepartments(freshDepartments);
-          }
-          // Also refresh locations
-          const freshLocations = await api.getBranches().catch(() => []);
-          if (Array.isArray(freshLocations) && freshLocations.length > 0) {
-            const normLoc = freshLocations.map((b: any) => ({
-              ...b,
-              name_ar: b.name_ar || b.name || '',
-              name: b.name || b.name_ar || '',
-              name_en: b.name_en || ''
-            }));
-            setLocations(normLoc);
-          }
         } catch (err) {
           console.warn('Could not reload settings data:', err);
         }
