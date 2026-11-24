@@ -457,7 +457,7 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
             phone: '',
             department: 'الإدارة العليا',
             jobTitle: currentUser.role || 'Super Admin',
-            branch: 'المقر الرئيسي - بغداد',
+            branch: 'المكتب الرئيسي في بابل_الحلة',
             joinDate: new Date().toISOString(),
             salary: 2200000,
             status: 'Active' as const
@@ -787,7 +787,7 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
                 </div>
                 <div>
                   <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('الفرع ومقر العمل', 'Branch / Location')}</label>
-                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{getBranchName(selectedEmployee?.branch, undefined, language) || (language === 'en' ? 'Headquarters - Baghdad' : 'المقر الرئيسي - بغداد')}</p>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{getBranchName(selectedEmployee?.branch, undefined, language) || (language === 'en' ? 'Main Office - Babil_Hilla' : 'المكتب الرئيسي في بابل_الحلة')}</p>
                 </div>
                 <div>
                   <label className={`block text-xs font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('البريد الإلكتروني', 'Email')}</label>

@@ -30,7 +30,7 @@ export const Category1AuthView: React.FC = () => {
 
   // Active Sessions Data
   const [activeSessions, setActiveSessions] = useState([
-    { id: 'SESS-001', device: 'Windows 11 (Chrome)', ip: '192.168.1.45', location: 'المقر الرئيسي - بغداد', role: 'Super Admin', user: 'أحمد محمد علي', method: 'Password + 2FA', time: 'منذ 15 دقيقة', isCurrent: true },
+    { id: 'SESS-001', device: 'Windows 11 (Chrome)', ip: '192.168.1.45', location: 'المكتب الرئيسي في بابل_الحلة', role: 'Super Admin', user: 'أحمد محمد علي', method: 'Password + 2FA', time: 'منذ 15 دقيقة', isCurrent: true },
     { id: 'SESS-002', device: 'iPhone 15 Pro (Safari)', ip: '10.0.4.12', location: 'فرع البصرة', role: 'HR Manager', user: 'فاطمة حسين خليل', method: 'Biometric TouchID', time: 'منذ ساعتين', isCurrent: false },
     { id: 'SESS-003', device: 'Android 14 (Edge)', ip: '10.0.8.99', location: 'فرع أربيل', role: 'Employee', user: 'علي جاسم كريم', method: 'Corporate SSO', time: 'منذ 4 ساعات', isCurrent: false },
   ]);
@@ -45,7 +45,7 @@ export const Category1AuthView: React.FC = () => {
 
   // Hardware Terminals Mock Data
   const terminals = [
-    { id: 'TERM-01', name: 'جهاز البصمة الرئيسي - المدخل العام', location: 'بغداد - المقر الرئيسي', status: 'online', type: 'BioStation 3 (Face+FP)', enrolledCount: 148, lastSync: 'منذ دقيقة' },
+    { id: 'TERM-01', name: 'جهاز البصمة الرئيسي - المدخل العام', location: 'المكتب الرئيسي في بابل_الحلة', status: 'online', type: 'BioStation 3 (Face+FP)', enrolledCount: 148, lastSync: 'منذ دقيقة' },
     { id: 'TERM-02', name: 'جهاز بصمة الاستقبال - فرع البصرة', location: 'فرع البصرة', status: 'online', type: 'FacePass Pro V2', enrolledCount: 65, lastSync: 'منذ 5 دقائق' },
     { id: 'TERM-03', name: 'جهاز بصمة الإدارة - فرع أربيل', location: 'فرع أربيل', status: 'standby', type: 'Anviz TouchID', enrolledCount: 42, lastSync: 'منذ 12 دقيقة' },
   ];

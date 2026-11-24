@@ -54,7 +54,7 @@ export const Category8AssetsDocumentsView: React.FC = () => {
   const [assetTag, setAssetTag] = useState('');
   const [assetCat, setAssetCat] = useState<'أجهزة حاسوب' | 'هواتف' | 'أثاث' | 'مركبات' | 'معدات شبكة'>('أجهزة حاسوب');
   const [serialNum, setSerialNum] = useState('');
-  const [branch, setBranch] = useState('بغداد - المقر الرئيسي');
+  const [branch, setBranch] = useState('المكتب الرئيسي في بابل_الحلة');
   const [assignedToEmpId, setAssignedToEmpId] = useState('');
 
   // Asset Request Form State
@@ -210,7 +210,7 @@ export const Category8AssetsDocumentsView: React.FC = () => {
     allEmployeesList.forEach(emp => {
       const empId = String(emp.id || emp.employeeId || emp.badgeNo || 'EMP');
       const empName = emp.fullNameAr || emp.fullName || 'موظف فيتاس';
-      const branchName = emp.branch || emp.location_ar || 'بغداد - المقر الرئيسي';
+      const branchName = emp.branch || emp.location_ar || 'المكتب الرئيسي في بابل_الحلة';
       const jobTitle = emp.jobTitle || emp.position_ar || 'موظف';
       const salary = emp.salary || emp.basicSalary || 'حسب الكادر';
       const joinDate = emp.joinDate || emp.contractStartDate || '2026-01-01';
@@ -226,7 +226,7 @@ export const Category8AssetsDocumentsView: React.FC = () => {
             <div style="font-size:12px; color:#64748b;">رقم التوثيق المعتمد: ${contractDocNumber} · السنة التعاقدية 2026</div>
           </div>
           <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin-bottom:20px; font-size:13px;">
-            <p><strong>الطرف الأول (صاحب العمل):</strong> شركة فيتاس العراق للتمويل الأصغر - المقر الرئيسي (بغداد)</p>
+            <p><strong>الطرف الأول (صاحب العمل):</strong> شركة فيتاس العراق للتمويل الأصغر - المكتب الرئيسي في بابل_الحلة</p>
             <p><strong>الطرف الثاني (الموظف):</strong> ${empName} (الرقم الوظيفي: ${emp.employeeId || emp.badgeNo || empId})</p>
             <p><strong>المسمى الوظيفي:</strong> ${jobTitle} · <strong>الفرع:</strong> ${branchName}</p>
             <p><strong>مدة العقد:</strong> يبدأ من تاريخ <strong>${joinDate}</strong> وحتى <strong>${contractEnd}</strong></p>
@@ -402,7 +402,7 @@ export const Category8AssetsDocumentsView: React.FC = () => {
         title: `مسوغات التعيين والبطاقة الوطنية - ${empName}`,
         type: 'هوية',
         department: emp.department || 'الموارد البشرية',
-        uploadedBy: 'ضابط شؤون الموظفين (Module 01)',
+        uploadedBy: 'مسؤول شؤون الموظفين (Module 01)',
         uploadDate: joinDate,
         fileSize: '1.5 MB',
         category: 'الوثائق الثبوتية والتعيين',

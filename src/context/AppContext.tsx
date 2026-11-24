@@ -142,7 +142,7 @@ const DEFAULT_USER: UserProfile = {
   avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
   department: 'إدارة الموارد البشرية (HR HQ)',
   employeeId: 'VTS-1001',
-  branch: 'المقر الرئيسي - بغداد',
+  branch: 'المكتب الرئيسي في بابل_الحلة',
   can_manage_employees: 1,
   can_manage_finance: 1,
   can_manage_recruitment: 1,

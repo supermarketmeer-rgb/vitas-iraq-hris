@@ -1724,7 +1724,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     fullNameEn: '',
     jobTitle: 'موظف موارد بشرية',
     department: 'الموارد البشرية والشؤون الإدارية',
-    branch: 'الإدارة العامة - بغداد',
+    branch: 'المكتب الرئيسي في بابل_الحلة',
     email: '',
     phone: '',
     modules: {
@@ -2539,7 +2539,7 @@ export const Category9RiskComplianceView: React.FC = () => {
     const fullNameEn = extractEnglishName(emp) || fullNameAr;
     const jobTitle = emp.position || emp.position_ar || emp.job_title || emp.jobTitle || 'موظف';
     const dept = emp.department || emp.department_ar || 'الموارد البشرية والشؤون الإدارية';
-    const branch = emp.branch || emp.location_ar || emp.location || 'الإدارة العامة - بغداد';
+    const branch = emp.branch || emp.location_ar || emp.location || 'المكتب الرئيسي في بابل_الحلة';
     const email = emp.email || emp.org_email || emp.personal_email || (badge ? `${String(badge).toLowerCase().replace(/[^a-z0-9]/g, '')}@vitasiraq.iq` : '');
     const phone = emp.phone || emp.mobile || '';
 
@@ -2954,7 +2954,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         fullNameEn: '',
         jobTitle: 'مدخل بيانات موارد بشرية (HR Data Entry)',
         department: 'الموارد البشرية والشؤون الإدارية',
-        branch: 'الإدارة العامة - بغداد',
+        branch: 'المكتب الرئيسي في بابل_الحلة',
         email: '',
         phone: '',
         modules: {
@@ -3149,7 +3149,7 @@ export const Category9RiskComplianceView: React.FC = () => {
       employeeId: '',
       jobTitle: 'مدخل بيانات موارد بشرية',
       department: 'الموارد البشرية والشؤون الإدارية',
-      branch: 'الإدارة العامة - بغداد',
+      branch: 'المكتب الرئيسي في بابل_الحلة',
       email: '',
       phone: '',
       modules: {
@@ -3483,14 +3483,36 @@ export const Category9RiskComplianceView: React.FC = () => {
           ========================================================================= */}
       {activeModuleId === 'risk-process-map' && (
         <div className="space-y-6 text-xs">
-          {/* 5 Enterprise Core Workflows Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5">
+          {/* Headquarters & Governance Scope Banner */}
+          <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 ${isDark ? 'bg-teal-950/30 border-teal-500/30' : 'bg-teal-50 border-teal-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-sm">
+                <span className="material-symbols-outlined text-xl">domain</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
+                  {t('المقر الرئيسي: المكتب الرئيسي في بابل_الحلة', 'Headquarters: Main Office in Babil_Hilla')}
+                </h3>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                  {t('خريطة العمليات المعتمدة والمحدثة لمنظومة فيتاس العراق (السحابة + المحلي + سجل التدقيق الأمني WORM)', 'Updated Enterprise Process Map for VITAS Iraq HRMS (Cloud + Local Sync + WORM Audit Trail)')}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold">
+              <span className="px-2.5 py-1 rounded-full bg-teal-600 text-white">{t('المكتب الرئيسي في بابل_الحلة', 'Main Office - Babil_Hilla')}</span>
+              <span className="px-2.5 py-1 rounded-full bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">{t('مزامنة سحابية لحظية SSE', 'Live Cloud↔Local Sync')}</span>
+            </div>
+          </div>
+
+          {/* 6 Enterprise Core Workflows Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {[
-              { id: 1, title: 'الاستقطاب والتعيين', en: 'Talent Acquisition', step: 'طلب احتياج ← مقابلة لجنة ← فحص نزاهة CBI ← عقد عمل', color: 'teal', icon: 'person_add' },
-              { id: 2, title: 'الدوام والإجازات', en: 'Time & Attendance', step: 'بصمة بيومترية ← طلب إجازة ← اعتماد مشرف ← تسوية تايم شيت', color: 'blue', icon: 'schedule' },
-              { id: 3, title: 'الرواتب والضمان', en: 'Payroll & Social Security', step: 'تجميع الحركات ← استقطاع قانون 18 ← تدقيق مالي ← توطين مصرفي', color: 'indigo', icon: 'payments' },
-              { id: 4, title: 'التقييم والترقيات', en: 'Performance & Appraisal', step: 'تقييم ذاتي ← تقييم مشرف ← مراجعة مدير الفرع ← اعتماد نهائي', color: 'amber', icon: 'trending_up' },
-              { id: 5, title: 'نهاية الخدمة والذمة', en: 'Offboarding & Clearance', step: 'طلب انفكاك ← استرجاع العهد ← براءة ذمة ← صرف مكافأة نهاية الخدمة', color: 'rose', icon: 'exit_to_app' }
+              { id: 1, title: 'الاستقطاب والتعيين وإدارة البيانات', en: 'Talent Acquisition & Master Data', step: 'طلب احتياج ← مقابلة لجنة ← فحص نزاهة CBI ← عقد عمل / استيراد جماعي سريع من Excel (Bulk Import) بمسؤولية مسؤول الموارد البشرية', color: 'teal', icon: 'person_add' },
+              { id: 2, title: 'الدوام والإجازات', en: 'Time & Attendance', step: 'بصمة بيومترية ← طلب إجازة ← اعتماد المشرف المباشر ← تسوية التايم شيت المركزي في المكتب الرئيسي في بابل_الحلة', color: 'blue', icon: 'schedule' },
+              { id: 3, title: 'الرواتب والضمان الاجتماعي', en: 'Payroll & Social Security', step: 'تجميع الحركات ← استقطاع قانون 18 والضريبة ← تدقيق مسؤول الرواتب والمالية ← اعتماد وتوطين مصرفي', color: 'indigo', icon: 'payments' },
+              { id: 4, title: 'التقييم والترقيات', en: 'Performance & Appraisal', step: 'تقييم ذاتي ← تقييم المشرف ← مراجعة مدير الفرع / القسم ← اعتماد نهائي وتحديث الدرجة الوظيفية', color: 'amber', icon: 'trending_up' },
+              { id: 5, title: 'نهاية الخدمة وبراءة الذمة', en: 'Offboarding & Clearance', step: 'طلب انفكاك ← استرجاع العهد ← براءة ذمة (مسؤول الأرشيف والإدارية) ← صرف مكافأة نهاية الخدمة', color: 'rose', icon: 'exit_to_app' },
+              { id: 6, title: 'المزامنة السحابية والتدقيق الأمني', en: 'Cloud↔Local Sync & WORM Audit', step: 'مزامنة ثنائية لحظية (SSE) ← تزامن الحذف والتفريغ التشغيلي (Operational Wipe Epoch) ← توثيق تلقائي غير قابل للتعديل في Audit Logs بإشراف مسؤول الأمان والامتثال', color: 'emerald', icon: 'verified_user' }
             ].map(w => (
               <div key={w.id} className={`p-4 rounded-2xl border shadow-sm space-y-2 ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
                 }`}>
@@ -3515,7 +3537,7 @@ export const Category9RiskComplianceView: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-3">
               <div>
                 <h3 className="text-sm font-bold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
-                  {t('مصفوفة المسؤوليات والصلاحيات المؤسسية (RACI Matrix)', 'Enterprise RACI Governance Matrix')}
+                  {t('مصفوفة المسؤوليات والصلاحيات المؤسسية (RACI Matrix) — المكتب الرئيسي في بابل_الحلة', 'Enterprise RACI Governance Matrix — Main Office Babil_Hilla')}
                 </h3>
                 <p className="text-slate-500 text-[11px] mt-0.5">
                   {t('توزيع الأدوار الرقابية والمساءلة الإدارية لمنع تضارب المصالح (Segregation of Duties)', 'Accountability & Responsibility mapping across departments')}
@@ -3539,17 +3561,19 @@ export const Category9RiskComplianceView: React.FC = () => {
                     <th className="p-3 text-center">{t('الموظف', 'Employee')}</th>
                     <th className="p-3 text-center">{t('المشرف المباشر', 'Supervisor')}</th>
                     <th className="p-3 text-center">{t('مدير الفرع', 'Branch Mgr')}</th>
-                    <th className="p-3 text-center">{t('إدارة الموارد البشرية', 'HR Dept')}</th>
-                    <th className="p-3 text-center">{t('المدير المفوض / المجلس', 'Managing Dir')}</th>
+                    <th className="p-3 text-center">{t('مسؤول الموارد البشرية', 'HR Officer')}</th>
+                    <th className="p-3 text-center">{t('المدير المفوض / الإدارة العليا', 'Managing Dir')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-white/5">
                   {[
                     { act: 'طلب وتقديم الإجازات الاعتيادية والمرضية', emp: 'R', sup: 'A', mgr: 'I', hr: 'C', md: 'I' },
-                    { act: 'إعداد واعتماد جدول رواتب الموظفين والبدلات', emp: 'I', sup: 'C', mgr: 'C', hr: 'R', md: 'A' },
+                    { act: 'الاستيراد الجماعي لبيانات الموظفين والفروع والأقسام (Excel Bulk Import)', emp: 'I', sup: 'I', mgr: 'C', hr: 'R', md: 'A' },
+                    { act: 'إعداد واعتماد جدول رواتب الموظفين والبدلات والحوافز', emp: 'I', sup: 'C', mgr: 'C', hr: 'R', md: 'A' },
                     { act: 'إجراء تقييم الأداء السنوي ومراجعة الأهداف', emp: 'R', sup: 'R', mgr: 'A', hr: 'C', md: 'I' },
                     { act: 'توريد اشتراكات الضمان الاجتماعي (قانون 18)', emp: 'I', sup: 'I', mgr: 'I', hr: 'R', md: 'A' },
-                    { act: 'تعديل مصفوفة الصلاحيات الأمنية RBAC', emp: 'I', sup: 'I', mgr: 'C', hr: 'C', md: 'A' },
+                    { act: 'تعديل مصفوفة الصلاحيات الأمنية RBAC ومراجعة سجل التدقيق (WORM Audit)', emp: 'I', sup: 'I', mgr: 'C', hr: 'R', md: 'A' },
+                    { act: 'تفريغ البيانات التشغيلية والمزامنة السحابية الآمنة (Clear Operational Data)', emp: 'I', sup: 'I', mgr: 'I', hr: 'R', md: 'A' },
                     { act: 'استلام براءة الذمة واسترجاع العهد الرقمية', emp: 'R', sup: 'C', mgr: 'A', hr: 'A', md: 'I' }
                   ].map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-500/5 transition-colors">
@@ -3567,7 +3591,7 @@ export const Category9RiskComplianceView: React.FC = () => {
           </div>
 
           {/* SLAs & Performance Control Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className={`p-4 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
               }`}>
               <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 font-bold">
@@ -3596,6 +3620,16 @@ export const Category9RiskComplianceView: React.FC = () => {
               </div>
               <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">قبل يوم 15</p>
               <p className="text-[10px] text-slate-500">{t('سداد حصة الـ 17% لمنصة الضمان الإلكترونية', '17% statutory monthly wire')}</p>
+            </div>
+
+            <div className={`p-4 rounded-2xl border space-y-1.5 ${isDark ? 'bg-[#0a0c10] border-white/10' : 'bg-slate-50 border-slate-200'
+              }`}>
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold">
+                <span className="material-symbols-outlined text-lg">sync</span>
+                <span>{t('المزامنة السحابية والتدقيق', 'Cloud Sync & WORM Audit')}</span>
+              </div>
+              <p className="text-xl font-bold text-indigo-600 dark:text-indigo-400">لحظي (&lt; 3 ثوانٍ)</p>
+              <p className="text-[10px] text-slate-500">{t('مزامنة فورية بين السحابة والمحلي وتوثيق العمليات في Audit Log', 'Instant Cloud↔Local sync & immutable audit logging')}</p>
             </div>
           </div>
         </div>
@@ -5126,7 +5160,7 @@ export const Category9RiskComplianceView: React.FC = () => {
                                       fullNameEn: u.name || fullName,
                                       jobTitle: u.job_title || (u.role && u.role !== 'Employee' ? u.role : '') || 'مسؤول رواتب وحضور',
                                       department: u.department || 'الموارد البشرية والشؤون الإدارية',
-                                      branch: u.branch || 'الإدارة العامة - بغداد',
+                                      branch: u.branch || 'المكتب الرئيسي في بابل_الحلة',
                                       email: u.email || `${u.username.toLowerCase()}@vitasiraq.iq`,
                                       phone: u.phone || '07700000000',
                                       modules: parsedModules,
