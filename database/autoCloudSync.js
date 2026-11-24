@@ -693,7 +693,7 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
 // on Cloud is propagated to Local BEFORE any sync pushes old Local rows back to Cloud
 // (and vice-versa if performed on Local while offline).
 const NEVER_WIPE_TABLES = new Set([
-  'users', 'roles', 'drv_users', 'app_settings', 'attendance_settings',
+  'users', 'roles', 'drv_users', 'audit_logs', 'app_settings', 'attendance_settings',
   'biometric_server_config', 'company_profile', 'normalization_rules',
   'document_categories', 'sync_devices', 'contract_types', 'contract_clauses',
   'contract_template_clauses', 'contract_custom_variables', 'settings_contract_types',

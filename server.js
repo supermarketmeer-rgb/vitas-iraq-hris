@@ -975,7 +975,53 @@ app.get('/api/sync/logs', async (req, res) => {
   }
 });
 
-// --- Security Audit Logs Endpoints ---
+// --- Security Audit Logs Helper & Endpoints ---
+async function recordAuditLog(req, entry = {}) {
+  try {
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    const logId = entry.id || `LOG-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+    const ip = entry.ip_address || (req?.headers?.['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : null) || req?.ip || '127.0.0.1';
+    const ua = entry.user_agent || req?.headers?.['user-agent'] || 'System';
+    const userId = entry.user_id || req?.body?.performed_by_id || req?.headers?.['x-user-id'] || 'USR-ADMIN';
+    const userName = entry.user_name || req?.body?.performed_by || req?.headers?.['x-user-name'] || 'System Admin';
+    const userRole = entry.user_role || req?.body?.performed_by_role || req?.headers?.['x-user-role'] || 'Super Admin';
+    const metadataStr = typeof entry.metadata === 'object' ? JSON.stringify(entry.metadata) : String(entry.metadata || '{}');
+
+    const sql = `INSERT INTO audit_logs (id, user_id, user_name, user_role, action, action_type, severity, module, details, ip_address, user_agent, status, metadata, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
+    const params = [
+      logId,
+      userId,
+      userName,
+      userRole,
+      entry.action || 'عملية تدقيق أمني',
+      entry.action_type || 'SECURITY_AUDIT',
+      entry.severity || 'info',
+      entry.module || 'الأمان والامتثال (cat-9-risk)',
+      entry.details || '',
+      ip,
+      ua,
+      entry.status || 'ناجح',
+      metadataStr
+    ];
+
+    await query(sql, params).catch(e => console.warn('[AUDIT-LOG] Local insert warn:', e.message));
+    if (!isRailway) {
+      await executeCloudQuery(sql, params).catch(e => console.warn('[AUDIT-LOG] Cloud mirror warn:', e.message));
+    }
+    broadcastRealtimeEvent({
+      type: 'DATA_CHANGED',
+      table: 'audit_logs',
+      origin: isRailway ? 'cloud' : 'local',
+      timestamp: new Date().toISOString()
+    });
+    return logId;
+  } catch (e) {
+    console.warn('[AUDIT-LOG] recordAuditLog error:', e.message);
+    return null;
+  }
+}
+
 app.get('/api/audit-logs', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 200;
@@ -2826,6 +2872,16 @@ app.post('/api/employees/batch-import', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
+    await recordAuditLog(req, {
+      action: `استيراد دفعة بيانات الموظفين من Excel (${insertedCount} موظف)`,
+      action_type: 'BATCH_IMPORT_EMPLOYEES',
+      severity: 'success',
+      module: 'الموظفين والإعدادات (Settings & Security)',
+      status: 'ناجح',
+      details: `تم استيراد ${insertedCount} موظف بنجاح خلال ${(elapsed / 1000).toFixed(2)} ثانية وتحديث الفروع والأقسام والمسميات الوظيفية.`,
+      metadata: { count: insertedCount, elapsedMs: elapsed, branchesAdded, deptsAdded, posAdded }
+    });
+
     res.json({
       success: true,
       count: employees.length,
@@ -3011,6 +3067,16 @@ async function executeDeleteAllEmployees(req, res) {
     // Suppress Cloud→Local pull for deleted tables for 90 seconds to prevent resurrection via SSE sync
     suppressCloudPull(['employees', 'branches', 'positions', 'departments', 'settings_offices', 'settings_positions'], 90000);
 
+    await recordAuditLog(req, {
+      action: 'حذف جميع بيانات الموظفين والفروع والأقسام والمسميات (Delete All Employees)',
+      action_type: 'DELETE_ALL_EMPLOYEES',
+      severity: 'critical',
+      module: 'إدارة الموظفين والإعدادات (Settings & Security)',
+      status: 'ناجح',
+      details: `تم تنفيذ عملية حذف شامل لجدول الموظفين والجداول المرتبطة به (${allCleared.length} جدول) مع مزامنة الحذف بين السحابة والمحلي.`,
+      metadata: { scope: 'delete_all_employees', environment: isRailway ? 'cloud' : 'local', clearedTablesCount: allCleared.length }
+    });
+
     res.json({ 
       success: true, 
       message: 'تم حذف جدول الموظفين وتفريغ الفروع والمسميات والأقسام بنجاح' 
@@ -3118,6 +3184,16 @@ app.delete('/api/employees/:id', async (req, res) => {
     triggerRealtimeSync(db, 'employees');
     triggerRealtimeSync(db, 'departments');
     syncLocalToCloud(db).catch(() => {});
+
+    await recordAuditLog(req, {
+      action: `حذف سجل موظف (${targetCode || id})`,
+      action_type: 'DELETE_EMPLOYEE',
+      severity: 'warning',
+      module: 'إدارة الموظفين (Employees)',
+      status: 'ناجح',
+      details: `تم حذف الموظف (${targetCode || id}) وحساب المستخدم المرتبط به بنجاح.`,
+      metadata: { employeeId: targetCode || id, dbId: targetDbId, department: empDept || null }
+    });
 
     res.json({ success: true, message: 'Employee and associated user deleted successfully' });
   } catch (err) {
@@ -7507,10 +7583,11 @@ app.post('/api/reset-data', async (req, res) => {
 
     // 1. Explicit set of tables that MUST BE PRESERVED
     const PRESERVED_TABLES = new Set([
-      // Users & Auth & Roles & Permissions
+      // Users & Auth & Roles & Permissions & Forensic Audit Trail (WORM)
       'users',
       'roles',
       'drv_users',
+      'audit_logs',
 
       // Settings & System Configuration
       'app_settings',
@@ -7645,6 +7722,16 @@ app.post('/api/reset-data', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
+
+    await recordAuditLog(req, {
+      action: 'تفريغ البيانات التشغيلية للنظام (Maintenance - Clear Operational Data)',
+      action_type: 'CLEAR_OPERATIONAL_DATA',
+      severity: 'critical',
+      module: 'الصيانة والأمان (Settings & Security)',
+      status: 'ناجح',
+      details: `تم تفريغ ${clearedTables.length} جدول تشغيلي (الموظفين، الحضور، الإجازات، الرواتب، الفروع، الأقسام، المسميات) مع الحفاظ على المستخدمين والصلاحيات والعقود والسياسات وسجل التدقيق.`,
+      metadata: { scope: 'reset_all', environment: isRailway ? 'cloud' : 'local', clearedTablesCount: clearedTables.length }
+    });
 
     res.json({
       success: true,
