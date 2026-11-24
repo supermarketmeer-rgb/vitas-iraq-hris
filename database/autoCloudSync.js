@@ -216,6 +216,17 @@ export function startCloudRealtimeListener(localPool) {
             if (line.startsWith('data: ')) {
               try {
                 const event = JSON.parse(line.slice(6));
+                if (event.type === 'OPERATIONAL_WIPE') {
+                  console.log(`[REALTIME BRIDGE ⚡] Cloud OPERATIONAL_WIPE received (scope=${event.scope || 'all'}) -> Reconciling Local DB immediately...`);
+                  await reconcileOperationalWipe(localPool).catch(e => console.warn('[WIPE SYNC] SSE reconcile warn:', e.message));
+                  broadcastRealtimeEvent({
+                    type: 'DATA_CHANGED',
+                    table: 'all',
+                    origin: 'cloud_wipe',
+                    timestamp: new Date().toISOString()
+                  });
+                  continue;
+                }
                 if (event.type === 'DATA_CHANGED') {
                   broadcastRealtimeEvent(event);
                   if (event.origin === 'local') {
@@ -677,12 +688,132 @@ async function syncSingleTable(queryLocal, cloudPool, table, deletionsByTable, p
 }
 
 // ─── TARGETED REALTIME HIGH-PRIORITY TABLE SYNC ENGINE ───
+// ─── Operational Wipe Epoch Reconciliation (Cloud ↔ Local) ───
+// Ensures that a bulk "Clear Operational Data" or "Delete All Employees" performed
+// on Cloud is propagated to Local BEFORE any sync pushes old Local rows back to Cloud
+// (and vice-versa if performed on Local while offline).
+const NEVER_WIPE_TABLES = new Set([
+  'users', 'roles', 'drv_users', 'app_settings', 'attendance_settings',
+  'biometric_server_config', 'company_profile', 'normalization_rules',
+  'document_categories', 'sync_devices', 'contract_types', 'contract_clauses',
+  'contract_template_clauses', 'contract_custom_variables', 'settings_contract_types',
+  'status_changes', 'settings_status_changes', 'trainings', 'training_programs',
+  'settings_trainings', 'shift_types', 'company_holidays', 'company_holiday_branches',
+  'holidays', 'tax_brackets', 'tax_calculation_parameters', 'tax_calculation_rules',
+  'tax_calculation_variables', 'tax_rule_versions', 'drv_trip_routes', 'drv_trip_types'
+]);
+
+export async function reconcileOperationalWipe(localPool, existingCloudPool = null) {
+  const cloudPool = existingCloudPool || getCloudPool();
+  if (!cloudPool) return { applied: 'none', clearedCount: 0 };
+
+  const queryLocal = (sql, params = []) => new Promise((resolve, reject) => {
+    localPool.query(sql, params, (err, results) => err ? reject(err) : resolve(results));
+  });
+
+  const parseWipe = (rows) => {
+    try {
+      const val = Array.isArray(rows) && rows[0] ? rows[0].setting_value : null;
+      if (!val) return { ts: 0, scope: '', tables: [] };
+      const parsed = JSON.parse(val);
+      return {
+        ts: Number(parsed.ts) || 0,
+        scope: String(parsed.scope || ''),
+        tables: Array.isArray(parsed.tables) ? parsed.tables : []
+      };
+    } catch {
+      return { ts: 0, scope: '', tables: [] };
+    }
+  };
+
+  try {
+    const localRows = await queryLocal(
+      "SELECT setting_value FROM app_settings WHERE setting_key = 'last_operational_wipe_at' LIMIT 1"
+    ).catch(() => []);
+    const [cloudRows] = await cloudPool.query(
+      "SELECT setting_value FROM app_settings WHERE setting_key = 'last_operational_wipe_at' LIMIT 1"
+    ).catch(() => [[]]);
+
+    const localWipe = parseWipe(localRows);
+    const cloudWipe = parseWipe(cloudRows);
+
+    if (cloudWipe.ts > localWipe.ts) {
+      const tablesToClear = cloudWipe.tables.length > 0
+        ? cloudWipe.tables
+        : ['employees', 'branches', 'positions', 'departments', 'settings_offices', 'settings_positions', 'department_heads'];
+
+      let clearedCount = 0;
+      await queryLocal('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+      for (const tbl of tablesToClear) {
+        if (!tbl || NEVER_WIPE_TABLES.has(String(tbl).toLowerCase())) continue;
+        try {
+          await queryLocal(`TRUNCATE TABLE \`${tbl}\``).catch(() => queryLocal(`DELETE FROM \`${tbl}\``));
+          clearedCount++;
+        } catch (e) {}
+      }
+      await queryLocal('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+
+      const serialized = JSON.stringify(cloudWipe);
+      await queryLocal(
+        `INSERT INTO app_settings (setting_key, setting_value, updated_at)
+         VALUES ('last_operational_wipe_at', ?, NOW())
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()`,
+        [serialized]
+      ).catch(() => {});
+
+      console.log(`[WIPE SYNC ⚡] Applied Cloud operational wipe (ts=${cloudWipe.ts}, scope=${cloudWipe.scope}) to Local DB (${clearedCount} tables cleared).`);
+      broadcastRealtimeEvent({
+        type: 'DATA_CHANGED',
+        table: 'all',
+        origin: 'cloud_wipe',
+        timestamp: new Date().toISOString()
+      });
+      return { applied: 'cloud_to_local', clearedCount };
+    }
+
+    if (localWipe.ts > cloudWipe.ts) {
+      const tablesToClear = localWipe.tables.length > 0
+        ? localWipe.tables
+        : ['employees', 'branches', 'positions', 'departments', 'settings_offices', 'settings_positions', 'department_heads'];
+
+      let clearedCount = 0;
+      await cloudPool.query('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+      for (const tbl of tablesToClear) {
+        if (!tbl || NEVER_WIPE_TABLES.has(String(tbl).toLowerCase())) continue;
+        try {
+          await cloudPool.query(`TRUNCATE TABLE \`${tbl}\``).catch(() => cloudPool.query(`DELETE FROM \`${tbl}\``));
+          clearedCount++;
+        } catch (e) {}
+      }
+      await cloudPool.query('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+
+      const serialized = JSON.stringify(localWipe);
+      await cloudPool.query(
+        `INSERT INTO app_settings (setting_key, setting_value, updated_at)
+         VALUES ('last_operational_wipe_at', ?, NOW())
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()`,
+        [serialized]
+      ).catch(() => {});
+
+      console.log(`[WIPE SYNC ⚡] Applied Local operational wipe (ts=${localWipe.ts}, scope=${localWipe.scope}) to Cloud DB (${clearedCount} tables cleared).`);
+      return { applied: 'local_to_cloud', clearedCount };
+    }
+
+    return { applied: 'none', clearedCount: 0 };
+  } catch (err) {
+    console.warn('[WIPE SYNC] Notice during wipe reconciliation:', err.message);
+    return { applied: 'none', clearedCount: 0 };
+  }
+}
+
 async function syncTargetedTables(localPool, tables, preferCloud = false) {
   const cloudPool = getCloudPool();
   if (!cloudPool) return { success: true, pushed: 0, pulled: 0, deleted: 0 };
 
   const t0 = Date.now();
   try {
+    // Reconcile any Cloud/Local bulk operational wipe BEFORE syncing rows!
+    await reconcileOperationalWipe(localPool, cloudPool).catch(() => {});
     const queryLocal = (sql, params = []) => {
       return new Promise((resolve, reject) => {
         localPool.query(sql, params, (err, results) => {
@@ -787,6 +918,9 @@ export async function syncLocalToCloud(localPool, forceFullSync = false, targetT
 
   const t0 = Date.now();
   try {
+    // 0. Reconcile any Cloud/Local bulk operational wipe BEFORE comparing/pushing rows!
+    await reconcileOperationalWipe(localPool, cloudPool).catch(() => {});
+
     // 1. Discover all tables
     const localTableRows = await queryLocal('SHOW TABLES').catch(() => []);
     const localTables = localTableRows.map(r => Object.values(r)[0]).filter(Boolean);

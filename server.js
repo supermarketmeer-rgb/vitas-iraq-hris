@@ -2966,18 +2966,50 @@ async function executeDeleteAllEmployees(req, res) {
     const allCleared = ['employees', 'branches', 'positions', 'departments', 'settings_offices', 'settings_positions', ...employeeRelatedTables];
     await query('DELETE FROM sync_deleted_records WHERE table_name IN (?)', [allCleared]).catch(() => {});
     if (!isRailway) {
-      executeCloudQuery('DELETE FROM sync_deleted_records WHERE table_name IN (?)', [allCleared]).catch(() => {});
+      await executeCloudQuery('DELETE FROM sync_deleted_records WHERE table_name IN (?)', [allCleared]).catch(() => {});
     }
 
-    // NOTE: Do NOT trigger realtime sync on branches/positions/departments after bulk delete.
-    // Sending triggerRealtimeSync on those tables would cause the Cloud Realtime Bridge
-    // to receive a DATA_CHANGED event and immediately pull the deleted rows back from Cloud → Local,
-    // making departments/positions flash back every 5 seconds.
-    // We only trigger sync for employees so the UI refreshes the empty list.
-    triggerRealtimeSync(db, 'employees');
+    // Record persistent operational wipe epoch marker in app_settings so Cloud ↔ Local sync
+    // propagates this bulk wipe instead of resurrecting deleted rows from the other node!
+    const wipePayload = JSON.stringify({
+      ts: Date.now(),
+      scope: 'delete_all_employees',
+      tables: allCleared
+    });
+    await query(
+      `INSERT INTO app_settings (setting_key, setting_value, updated_at)
+       VALUES ('last_operational_wipe_at', ?, NOW())
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()`,
+      [wipePayload]
+    ).catch(() => {});
+
+    if (!isRailway) {
+      await executeCloudQuery(
+        `INSERT INTO app_settings (setting_key, setting_value, updated_at)
+         VALUES ('last_operational_wipe_at', ?, NOW())
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()`,
+        [wipePayload]
+      ).catch(() => {});
+    } else {
+      // Running on Cloud (Railway): broadcast immediate OPERATIONAL_WIPE event to connected Local PCs
+      broadcastRealtimeEvent({
+        type: 'OPERATIONAL_WIPE',
+        scope: 'delete_all_employees',
+        tables: allCleared,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Broadcast UI refresh without triggering a conflicting sync pull
+    broadcastRealtimeEvent({
+      type: 'DATA_CHANGED',
+      table: 'all',
+      origin: isRailway ? 'cloud' : 'local',
+      timestamp: new Date().toISOString()
+    });
 
     // Suppress Cloud→Local pull for deleted tables for 90 seconds to prevent resurrection via SSE sync
-    suppressCloudPull(['branches', 'positions', 'departments', 'settings_offices', 'settings_positions'], 90000);
+    suppressCloudPull(['employees', 'branches', 'positions', 'departments', 'settings_offices', 'settings_positions'], 90000);
 
     res.json({ 
       success: true, 
@@ -7544,8 +7576,23 @@ app.post('/api/reset-data', async (req, res) => {
     // 4. Re-enable local foreign key checks immediately
     await query('SET FOREIGN_KEY_CHECKS = 1');
 
-    // 5. Truncate / delete operational tables on Cloud DB in background with parallel settling
-    (async () => {
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    const wipePayload = JSON.stringify({
+      ts: Date.now(),
+      scope: 'reset_all',
+      tables: clearedTables
+    });
+
+    // Save persistent operational wipe epoch marker in current DB's app_settings
+    await query(
+      `INSERT INTO app_settings (setting_key, setting_value, updated_at)
+       VALUES ('last_operational_wipe_at', ?, NOW())
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()`,
+      [wipePayload]
+    ).catch(() => {});
+
+    // 5. If running locally, synchronously clear Cloud DB and stamp the same wipe epoch on Cloud
+    if (!isRailway) {
       try {
         const cloudTables = await executeCloudQuery('SHOW TABLES').catch(() => []);
         if (Array.isArray(cloudTables)) {
@@ -7558,14 +7605,46 @@ app.post('/api/reset-data', async (req, res) => {
           await Promise.allSettled(promises);
         }
         await executeCloudQuery('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
-        console.log('[RESET-DATA] Cloud DB operational tables cleared successfully in background');
+        await executeCloudQuery(
+          `INSERT INTO app_settings (setting_key, setting_value, updated_at)
+           VALUES ('last_operational_wipe_at', ?, NOW())
+           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()`,
+          [wipePayload]
+        ).catch(() => {});
+        console.log('[RESET-DATA] Cloud DB operational tables cleared and wipe epoch stamped successfully');
       } catch (err) {
-        console.warn('Background cloud reset warning:', err.message);
+        console.warn('[RESET-DATA] Cloud reset warning (will reconcile on next sync):', err.message);
       }
-    })();
 
-    // 6. Broadcast real-time change event to refresh UI components
-    triggerRealtimeSync(db, 'all');
+      suppressCloudPull(clearedTables, 90000);
+      broadcastRealtimeEvent({
+        type: 'DATA_CHANGED',
+        table: 'all',
+        origin: 'local',
+        timestamp: new Date().toISOString()
+      });
+
+      const cloudUrl = process.env.VITE_CLOUD_API_URL || 'https://vitas-iraq-hris-production.up.railway.app';
+      fetch(`${cloudUrl}/api/sync/notify-change`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: 'all', origin: 'local' })
+      }).catch(() => {});
+    } else {
+      // Running on Cloud (Railway): broadcast immediate OPERATIONAL_WIPE event so connected Local PCs wipe immediately
+      broadcastRealtimeEvent({
+        type: 'OPERATIONAL_WIPE',
+        scope: 'reset_all',
+        tables: clearedTables,
+        timestamp: new Date().toISOString()
+      });
+      broadcastRealtimeEvent({
+        type: 'DATA_CHANGED',
+        table: 'all',
+        origin: 'cloud',
+        timestamp: new Date().toISOString()
+      });
+    }
 
     res.json({
       success: true,
