@@ -4269,25 +4269,7 @@ app.post('/api/documents', async (req, res) => {
 // Notifications
 app.get('/api/notifications', async (req, res) => {
   try {
-    let results = await query('SELECT * FROM system_notifications ORDER BY created_at DESC');
-    if (!results || results.length === 0) {
-      // Seed default persistent notifications into MySQL
-      const defaults = [
-        ['notif-onhold-1', 'تنبيه إيقاف الرواتب (On Hold)', 'نظام حوكمة وإيقاف الرواتب مفعل تلقائياً للموظفين المستقيلين أو الموقوفين يدوياً واستبعادهم من القسائم.', 'warning', 0],
-        ['notif-payroll-2', 'تحديث مسير رواتب الشهر الحالي', 'مسير الرواتب الحاضر نشط ومحدث لكافة الموظفين في كافة فروع ومكاتب فيتاس العراق.', 'success', 0],
-        ['notif-leaves-3', 'نظام إدارة الإجازات والغيابات', 'تم ربط رصيد الإجازات السنوية والمرضية واحتساب استقطاعات أيام الغياب تلقائياً وفق القانون.', 'info', 0],
-        ['notif-db-4', 'تكامل قاعدة البيانات XAMPP MySQL', 'تم التثبت من الربط المباشر مع قاعدة البيانات المحلية vitasiraq_hris_db وحفظ السجلات بنجاح.', 'info', 1]
-      ];
-      for (const [id, title, message, type, is_read] of defaults) {
-        try {
-          await query(
-            'INSERT IGNORE INTO system_notifications (id, title, message, type, is_read, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())',
-            [id, title, message, type, is_read]
-          );
-        } catch (e) {}
-      }
-      results = await query('SELECT * FROM system_notifications ORDER BY created_at DESC');
-    }
+    const results = await query('SELECT * FROM system_notifications ORDER BY created_at DESC');
 
     const mapped = (results || []).map(n => {
       const isRead = Boolean(n.is_read === 1 || n.is_read === true || n.read === true || n.read === 1);
