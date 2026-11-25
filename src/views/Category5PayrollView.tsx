@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { api } from '../api/client';
 import { EmptyState } from '../components/EmptyState';
 import { generatePayrollTemplateExcel, parsePayrollExcel } from '../utils/payrollExcelHelper';
 import {
