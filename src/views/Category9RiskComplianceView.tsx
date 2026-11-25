@@ -549,7 +549,7 @@ export const Category9RiskComplianceView: React.FC = () => {
         const res: any = await (api as any).getAuditLogs?.().catch(() => null);
         if (res?.success && Array.isArray(res.logs) && res.logs.length > 0) {
           const mapped = res.logs.map((l: any) => ({
-            id: l.id || `LOG-${Date.now()}`,
+            id: String(l.id ?? `LOG-${Date.now()}`),
             timestamp: l.timestamp ? new Date(l.timestamp).toLocaleString('ar-EG') : new Date().toLocaleString('ar-EG'),
             userId: l.user_id || 'USR-SYSTEM',
             userName: l.user_name || 'System User',
@@ -581,19 +581,19 @@ export const Category9RiskComplianceView: React.FC = () => {
   const filteredAuditLogs = useMemo(() => {
     return auditLogs.filter(log => {
       if (auditSeverityFilter !== 'all' && log.severity !== auditSeverityFilter) return false;
-      if (auditModuleFilter !== 'all' && !log.module.includes(auditModuleFilter)) return false;
+      if (auditModuleFilter !== 'all' && !String(log.module ?? '').includes(auditModuleFilter)) return false;
       if (auditSearch.trim()) {
         const q = auditSearch.toLowerCase().trim();
         const matches =
-          (log.id && log.id.toLowerCase().includes(q)) ||
-          (log.userName && log.userName.toLowerCase().includes(q)) ||
-          (log.userId && log.userId.toLowerCase().includes(q)) ||
-          (log.userRole && log.userRole.toLowerCase().includes(q)) ||
-          (log.action && log.action.toLowerCase().includes(q)) ||
-          (log.actionType && log.actionType.toLowerCase().includes(q)) ||
-          (log.module && log.module.toLowerCase().includes(q)) ||
-          (log.ipAddress && log.ipAddress.toLowerCase().includes(q)) ||
-          (log.details && log.details.toLowerCase().includes(q));
+          String(log.id ?? '').toLowerCase().includes(q) ||
+          String(log.userName ?? '').toLowerCase().includes(q) ||
+          String(log.userId ?? '').toLowerCase().includes(q) ||
+          String(log.userRole ?? '').toLowerCase().includes(q) ||
+          String(log.action ?? '').toLowerCase().includes(q) ||
+          String(log.actionType ?? '').toLowerCase().includes(q) ||
+          String(log.module ?? '').toLowerCase().includes(q) ||
+          String(log.ipAddress ?? '').toLowerCase().includes(q) ||
+          String(log.details ?? '').toLowerCase().includes(q);
         if (!matches) return false;
       }
       return true;
