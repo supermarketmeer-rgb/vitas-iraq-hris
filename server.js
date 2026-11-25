@@ -2873,6 +2873,15 @@ app.post('/api/employees/batch-import', async (req, res) => {
       metadata: { count: insertedCount, elapsedMs: elapsed, branchesAdded, deptsAdded, posAdded }
     });
 
+    await sendSystemNotification({
+      title: `👥 استيراد بيانات الموظفين (${insertedCount} موظف)`,
+      message: `تم استيراد وتحديث بيانات ${insertedCount} موظف والفروع والأقسام والمسميات الوظيفية بنجاح في النظام.`,
+      type: 'success',
+      priority: 'medium',
+      target_audience: 'الموارد البشرية والإدارة العليا',
+      link_url: 'employees'
+    });
+
     res.json({
       success: true,
       count: employees.length,
@@ -4286,16 +4295,63 @@ app.get('/api/notifications', async (req, res) => {
   }
 });
 
+// Central helper to persist & broadcast real-time cross-department system notifications (Local + Cloud)
+async function sendSystemNotification({
+  id,
+  title,
+  message,
+  type = 'info',
+  priority = 'medium',
+  target_audience = 'all',
+  user_id = null,
+  link_url = null
+}) {
+  try {
+    const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+    const notifId = id || `NTF-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`;
+    const sql = `INSERT INTO system_notifications (id, title, message, type, priority, target_audience, user_id, link_url, is_read, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NOW(), NOW())`;
+    const params = [
+      notifId,
+      String(title || 'تنبيه نظام'),
+      String(message || ''),
+      type || 'info',
+      priority || 'medium',
+      target_audience || 'all',
+      user_id || null,
+      link_url || null
+    ];
+    await query(sql, params).catch(e => console.warn('[NOTIFY] Local insert warn:', e.message));
+    if (!isRailway) {
+      await executeCloudQuery(sql, params).catch(e => console.warn('[NOTIFY] Cloud mirror warn:', e.message));
+    }
+    broadcastRealtimeEvent({
+      type: 'DATA_CHANGED',
+      table: 'system_notifications',
+      origin: isRailway ? 'cloud' : 'local',
+      timestamp: new Date().toISOString()
+    });
+    return notifId;
+  } catch (err) {
+    console.warn('[NOTIFY] sendSystemNotification warn:', err.message);
+    return null;
+  }
+}
+
 app.post('/api/notifications', async (req, res) => {
   try {
-    const data = req.body;
-    const notifId = data.id || `NTF-${Date.now()}`;
-    const sql = `INSERT INTO system_notifications (id, title, message, type, is_read, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`;
+    const data = req.body || {};
+    const notifId = await sendSystemNotification({
+      id: data.id,
+      title: data.title,
+      message: data.message,
+      type: data.type || 'info',
+      priority: data.priority || 'medium',
+      target_audience: data.target_audience || 'all',
+      user_id: data.user_id || null,
+      link_url: data.link_url || null
+    });
     const isRead = Boolean(data.read || data.is_read);
-    const params = [notifId, data.title, data.message, data.type || 'info', isRead ? 1 : 0];
-    await query(sql, params);
-    executeCloudQuery(sql, params).catch(() => {});
-    triggerRealtimeSync(db, 'system_notifications');
     res.json({ id: notifId, ...data, read: isRead, is_read: isRead ? 1 : 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -7438,7 +7494,19 @@ app.post('/api/news', async (req, res) => {
     
     const result = await query(sql, values);
     const insertedNews = await query('SELECT * FROM company_news WHERE id = ?', [result.insertId]);
-    
+
+    if (resolvedStatus === 'published') {
+      const audienceLabel = target_audience === 'all' || !target_audience ? 'جميع الموظفين' : String(target_audience);
+      await sendSystemNotification({
+        title: `📢 إعلان رسمي جديد: ${title_ar || title_en || 'إعلان مؤسسة'}`,
+        message: `${(content_ar || content_en || '').slice(0, 140)} — (موجه إلى: ${audienceLabel})`,
+        type: priority === 'urgent' || priority === 'high' ? 'warning' : 'info',
+        priority: priority === 'urgent' ? 'high' : (priority || 'medium'),
+        target_audience: audienceLabel,
+        link_url: 'company-news'
+      });
+    }
+
     res.json(insertedNews[0]);
   } catch (err) {
     console.error('Error creating news:', err);
@@ -7499,7 +7567,20 @@ app.put('/api/news/:id', async (req, res) => {
     
     await query(sql, values);
     const updatedNews = await query('SELECT * FROM company_news WHERE id = ?', [req.params.id]);
-    
+
+    if (status === 'published' && updatedNews && updatedNews[0]) {
+      const n = updatedNews[0];
+      const audienceLabel = n.target_audience === 'all' || !n.target_audience ? 'جميع الموظفين' : String(n.target_audience);
+      await sendSystemNotification({
+        title: `📢 إعلان رسمي صادر: ${n.title_ar || n.title_en || 'إعلان مؤسسة'}`,
+        message: `${(n.content_ar || n.content_en || '').slice(0, 140)} — (موجه إلى: ${audienceLabel})`,
+        type: n.priority === 'urgent' || n.priority === 'high' ? 'warning' : 'info',
+        priority: n.priority === 'urgent' ? 'high' : (n.priority || 'medium'),
+        target_audience: audienceLabel,
+        link_url: 'company-news'
+      });
+    }
+
     res.json(updatedNews[0]);
   } catch (err) {
     console.error('Error updating news:', err);
@@ -7528,7 +7609,20 @@ app.put('/api/news/:id/status', async (req, res) => {
     }
 
     const updatedNews = await query('SELECT * FROM company_news WHERE id = ?', [req.params.id]);
-    
+
+    if (status === 'published' && updatedNews && updatedNews[0]) {
+      const n = updatedNews[0];
+      const audienceLabel = n.target_audience === 'all' || !n.target_audience ? 'جميع الموظفين' : String(n.target_audience);
+      await sendSystemNotification({
+        title: `📢 إعلان رسمي صادر: ${n.title_ar || n.title_en || 'إعلان مؤسسة'}`,
+        message: `${(n.content_ar || n.content_en || '').slice(0, 140)} — (موجه إلى: ${audienceLabel})`,
+        type: n.priority === 'urgent' || n.priority === 'high' ? 'warning' : 'info',
+        priority: n.priority === 'urgent' ? 'high' : (n.priority || 'medium'),
+        target_audience: audienceLabel,
+        link_url: 'company-news'
+      });
+    }
+
     res.json(updatedNews[0]);
   } catch (err) {
     console.error('Error updating news status:', err);
@@ -7704,6 +7798,15 @@ app.post('/api/reset-data', async (req, res) => {
       status: 'ناجح',
       details: `تم تفريغ ${clearedTables.length} جدول تشغيلي (الموظفين، الحضور، الإجازات، الرواتب، الفروع، الأقسام، المسميات) مع الحفاظ على المستخدمين والصلاحيات والعقود والسياسات وسجل التدقيق.`,
       metadata: { scope: 'reset_all', environment: isRailway ? 'cloud' : 'local', clearedTablesCount: clearedTables.length }
+    });
+
+    await sendSystemNotification({
+      title: '⚠️ تنبيه أمني: تفريغ البيانات التشغيلية للنظام',
+      message: `تم تنفيذ عملية تفريغ البيانات التشغيلية (${clearedTables.length} جدول) ومزامنتها بين السحابة والمحلي مع توثيق العملية في سجل التدقيق الأمني.`,
+      type: 'warning',
+      priority: 'high',
+      target_audience: 'الإدارة العليا ومسؤول الأمان',
+      link_url: 'sec-audit-logs'
     });
 
     res.json({
@@ -8199,6 +8302,20 @@ app.post('/api/routing/resolve-recipients', async (req, res) => {
 app.post('/api/routing/send', async (req, res) => {
   try {
     const result = await sendDocumentThroughRouting(db, req.body);
+    if (result?.success !== false) {
+      const docType = req.body?.document_type || req.body?.documentType || 'عقد / وثيقة';
+      const empName = req.body?.employee_name || req.body?.employeeName || req.body?.recipientName || 'الموظف المعني';
+      const targetDept = req.body?.target_department || req.body?.branch || empName;
+      await sendSystemNotification({
+        title: `📄 إرسال ${docType} إلى ${empName}`,
+        message: `تم توجيه وإرسال (${docType}) رسمياً إلى ${empName} عبر نظام التوجيه الذكي للعقود والوثائق.`,
+        type: 'info',
+        priority: 'medium',
+        target_audience: targetDept,
+        user_id: req.body?.employee_id || req.body?.employeeId || null,
+        link_url: 'contracts'
+      });
+    }
     res.json(result);
   } catch (err) {
     console.error('Error in /api/routing/send:', err);
@@ -8210,6 +8327,17 @@ app.post('/api/routing/send', async (req, res) => {
 app.post('/api/routing/batch-by-office', async (req, res) => {
   try {
     const result = await batchRouteContractsByOffice(db, req.body);
+    if (result?.success !== false) {
+      const count = Array.isArray(req.body?.contracts) ? req.body.contracts.length : (result?.totalSent || result?.count || '');
+      await sendSystemNotification({
+        title: `📦 إرسال دفعة عقود للمكاتب والفروع${count ? ` (${count} عقد)` : ''}`,
+        message: `تم إرسال دفعة عقود مجمّعة حسب الفروع والمكاتب بنجاح وبانتظار الاستلام والتوقيع من مسؤولي المكاتب والموظفين المعنيين.`,
+        type: 'success',
+        priority: 'high',
+        target_audience: 'الفروع والمكاتب والموظفون المعنيون',
+        link_url: 'contracts'
+      });
+    }
     res.json(result);
   } catch (err) {
     console.error('Error in /api/routing/batch-by-office:', err);

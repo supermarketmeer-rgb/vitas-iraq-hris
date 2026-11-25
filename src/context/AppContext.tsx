@@ -1116,11 +1116,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateLeaveStatus = async (id: string, status: 'قيد الانتظار' | 'مقبول' | 'مرفوض') => {
+    const targetLeave = leaveRequests.find(item => item.id === id);
     try {
       await api.updateLeaveStatus(id, status);
       setLeaveRequests(prev =>
         prev.map(item => (item.id === id ? { ...item, status } : item))
       );
+      if (status === 'مقبول' || status === 'مرفوض') {
+        const empName = targetLeave?.employeeName || 'الموظف';
+        addNotification({
+          title: status === 'مقبول' ? `✅ تمت الموافقة على إجازة ${empName}` : `❌ تم رفض طلب إجازة ${empName}`,
+          message: `تم تحديث حالة طلب الإجازة الخاص بالموظف (${empName}) إلى: ${status}.`,
+          type: status === 'مقبول' ? 'success' : 'warning',
+          target_audience: empName
+        } as any);
+      }
     } catch (error) {
       console.error('Error updating leave status:', error);
       // Fallback to local state

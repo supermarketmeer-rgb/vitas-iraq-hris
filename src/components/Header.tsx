@@ -662,6 +662,13 @@ export const Header: React.FC = () => {
                         <p className={`${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                           {localizeNotificationMessage(n.message, language)}
                         </p>
+                        {(n as any).target_audience && (
+                          <div className={`mt-1.5 flex items-center gap-1.5 ${language === 'en' ? 'justify-start' : 'justify-end'}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}>
+                              {t('الجهة المعنية:', 'Target:')} {(n as any).target_audience === 'all' ? t('جميع الموظفين', 'All Employees') : (n as any).target_audience}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   })

@@ -2220,6 +2220,35 @@ export const Category5PayrollView: React.FC = () => {
 
             {/* Actions Toolbar on the same line as Search & Filter */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* Button: Notify Accounting Department for Payroll Audit */}
+              <button
+                onClick={async () => {
+                  try {
+                    await api.addNotification({
+                      title: `💰 مسير رواتب ${selectedMonth}/${selectedYear} جاهز للتدقيق المالي`,
+                      message: `أتمّ قسم الموارد البشرية إعداد مسير رواتب شهر ${selectedMonth}/${selectedYear} لـ (${filteredPayrollRows.length}) موظفاً، وهو الآن بانتظار المراجعة والتدقيق من قسم الحسابات.`,
+                      type: 'warning',
+                      priority: 'high',
+                      target_audience: 'قسم الحسابات (Accounting)',
+                      link_url: 'payroll-register'
+                    });
+                    setActionMessage(
+                      t(
+                        `✅ تم إرسال تنبيه رسمي إلى قسم الحسابات بأن مسير رواتب ${selectedMonth}/${selectedYear} جاهز للتدقيق المالي!`,
+                        `✅ Official notification sent to Accounting Dept for ${selectedMonth}/${selectedYear} payroll audit!`
+                      )
+                    );
+                  } catch (e: any) {
+                    alert(t('تعذر إرسال التنبيه لقسم الحسابات', 'Failed to notify Accounting department'));
+                  }
+                }}
+                title={t('إرسال تنبيه فوري إلى قسم الحسابات بأن مسير الرواتب جاهز للتدقيق المالي', 'Notify Accounting department that payroll is ready for financial audit')}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95"
+              >
+                <span className="material-symbols-outlined text-sm">notifications_active</span>
+                <span>{t('إرسال للحسابات للتدقيق', 'Notify Accounting')}</span>
+              </button>
+
               {/* Button: Export Payroll to Excel (Formerly Excel Template) */}
               <button
                 onClick={handleExportPayrollTemplate}
