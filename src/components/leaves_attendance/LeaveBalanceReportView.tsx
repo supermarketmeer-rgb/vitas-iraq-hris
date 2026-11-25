@@ -4,6 +4,7 @@ import reportRawData from '../../data/leaveBalanceReportData.json';
 import { saveExcelWithSaveDialog } from '../../utils/payrollExcelHelper';
 import { Language } from './types';
 import { isLebanonEmployee } from '../../utils/lebanonHelper';
+import { useApp } from '../../context/AppContext';
 
 export interface LeaveBalanceRow {
   sn: number;
@@ -35,6 +36,8 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
   onNavigate,
 }) => {
   const isAr = lang === 'ar';
+  const { employees } = useApp();
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('ALL');
@@ -45,10 +48,83 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isExporting, setIsExporting] = useState(false);
 
+  // Vitas Iraq EOSB Eligibility Policy:
+  // Paid ONLY upon Employer Termination (استغناء المؤسسة عن خدمات الموظف).
+  // Strictly 0 for Voluntary Resignation (الاستقالة الاختيارية) and Retirement (التقاعد - covered by State Social Security Pension).
+  const isEosbIneligible = (statusStr: string, reasonStr: string): boolean => {
+    const combined = `${statusStr || ''} ${reasonStr || ''}`.toLowerCase();
+    return (
+      combined.includes('resign') ||
+      combined.includes('voluntary') ||
+      combined.includes('استقال') ||
+      combined.includes('retire') ||
+      combined.includes('تقاعد')
+    );
+  };
+
   const initialRows: LeaveBalanceRow[] = useMemo(() => {
-    // Strictly exclude Lebanon employees from Leave Balance Report (Iraq HRIS only)
+    const iraqEmps = (employees || []).filter(e => !isLebanonEmployee(e));
+    if (iraqEmps.length > 0) {
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const daysElapsedThisYear = Math.max(1, Math.floor((now.getTime() - startOfYear.getTime()) / 86400000));
+      let savedStarting: Record<string, number> = {};
+      try {
+        const raw = localStorage.getItem('vitas_emp_starting_leave_balance');
+        if (raw) savedStarting = JSON.parse(raw);
+      } catch {}
+
+      return iraqEmps.map((emp: any, idx: number) => {
+        const basicSalary = Number(emp.basicSalary || emp.basic_salary || emp.salary || 0) || 0;
+        const rawJoin = emp.originalStartDate || emp.original_start_date || emp.contractStartDate || emp.contract_start_date || emp.joinDate || '';
+        const joinDt = rawJoin ? new Date(rawJoin) : null;
+        const exitDt = emp.exitDate || emp.exit_date ? new Date(emp.exitDate || emp.exit_date) : null;
+        const refEndDt = exitDt && !isNaN(exitDt.getTime()) ? exitDt : now;
+        const serviceDays = joinDt && !isNaN(joinDt.getTime()) ? Math.max(0, Math.floor((refEndDt.getTime() - joinDt.getTime()) / 86400000)) : 0;
+        const serviceYears = serviceDays / 365;
+
+        const empStatus = emp.status || 'Active';
+        const termReason = emp.terminationReason || emp.termination_reason || '';
+        const ineligible = isEosbIneligible(empStatus, termReason);
+
+        // EOSB: 0.5 * Basic Salary * (serviceDays / 365) — strictly 0 if Voluntary Resignation or Retirement
+        const monthlyEndOfServiceBonus = ineligible ? 0 : (basicSalary * 0.5 * serviceYears);
+
+        const empCode = String(emp.employeeId || emp.employee_id || emp.badgeNo || emp.badge_no || emp.id || idx + 1);
+        const openingBalance = Number(savedStarting[empCode] || 0);
+        const yearlyDays = serviceYears >= 5 ? (21 + Math.min(9, Math.floor(serviceYears / 5) * 2)) : 21;
+        const totalBalance = openingBalance + yearlyDays;
+        const consumed = 0;
+        const earnedDays = (yearlyDays / 365) * daysElapsedThisYear;
+        const balanceTillToday = Math.max(0, openingBalance + earnedDays - consumed);
+        const balanceTillEndOfYear = Math.max(0, totalBalance - consumed);
+        const monthlyLeaveProvision = (basicSalary / 30) * balanceTillToday;
+
+        return {
+          sn: idx + 1,
+          empId: Number(String(emp.id || idx + 1).replace(/\D/g, '')) || (idx + 1),
+          empStatus,
+          employeeCode: empCode,
+          branch: emp.branch || emp.branchEn || emp.location_en || emp.location_ar || '',
+          fullName: emp.fullNameEn || emp.full_name_en || emp.fullName || emp.fullNameAr || '',
+          joinDate: rawJoin ? String(rawJoin).slice(0, 10) : '-',
+          currentBasicSalary: basicSalary,
+          monthlyLeaveProvision,
+          monthlyEndOfServiceBonus,
+          openingBalance,
+          yearlyDays,
+          totalBalance,
+          consumed,
+          earnedDays,
+          balanceTillToday,
+          balanceTillEndOfYear,
+        };
+      });
+    }
+
+    // Fallback to static snapshot only if live DB has 0 employees
     return ((reportRawData.rows || []) as LeaveBalanceRow[]).filter(r => !isLebanonEmployee(r));
-  }, []);
+  }, [employees]);
 
   // Distinct branches
   const branches = useMemo(() => {
@@ -348,7 +424,7 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
                   CHF - Vitas Iraq
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                  Till: 2026-10-01
+                  Till: {todayStr}
                 </span>
               </div>
               <h1 className="text-xl md:text-2xl font-black text-white mt-1">
@@ -405,6 +481,19 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
                 </button>
               </>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Vitas Iraq End of Service Policy Notice ── */}
+      <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700/40 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-start gap-2.5">
+          <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-lg shrink-0 mt-0.5">gavel</span>
+          <div className="text-amber-950 dark:text-amber-200 leading-relaxed">
+            <strong className="font-bold">{isAr ? 'سياسة استحقاق مكافأة نهاية الخدمة المعتمدة:' : 'End of Service Bonus Eligibility Policy:'}</strong>{' '}
+            {isAr
+              ? 'تُحتسب وتُصرف مكافأة نهاية الخدمة فقط عند استغناء المؤسسة عن خدمات الموظف (نصف راتب أساسي عن كل سنة خدمة). لا تُستحق (0 د.ع) في حالة الاستقالة الاختيارية أو التقاعد (لارتباط الموظف بتقاعد الدولة عبر اشتراكات الضمان الاجتماعي والضريبة).'
+              : 'End of Service Bonus (0.5 × Basic Salary per year of service) is payable ONLY upon Employer Termination. Not eligible (0 IQD) for Voluntary Resignation or Retirement (covered by State Social Security Pension).'}
           </div>
         </div>
       </div>
