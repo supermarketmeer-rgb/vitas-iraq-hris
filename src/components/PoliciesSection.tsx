@@ -57,6 +57,56 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
   // Annual Leave Simulator State
   const [simulatedServiceYears, setSimulatedServiceYears] = useState<string>('7');
 
+  // Auto-calculate current timesheet period based on live system date & configured start/end days
+  const autoTimesheetPeriod = useMemo(() => {
+    const now = new Date();
+    const startDay = Math.min(31, Math.max(1, parseInt(appSettings.timesheet_cycle_start_day || '21', 10) || 21));
+    const endDay = Math.min(31, Math.max(1, parseInt(appSettings.timesheet_cycle_end_day || '20', 10) || 20));
+    const y = now.getFullYear();
+    const m = now.getMonth(); // 0-indexed
+    const d = now.getDate();
+
+    const startMonthOffset = d >= startDay ? 0 : -1;
+    const startDateObj = new Date(y, m + startMonthOffset, startDay);
+    const endDateObj = new Date(startDateObj.getFullYear(), startDateObj.getMonth() + 1, endDay);
+
+    const fmt = (dt: Date) =>
+      `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+
+    return {
+      startDate: fmt(startDateObj),
+      endDate: fmt(endDateObj),
+      startDay,
+      endDay
+    };
+  }, [appSettings.timesheet_cycle_start_day, appSettings.timesheet_cycle_end_day]);
+
+  // Auto-calculate annual appraisal launch date for the current/upcoming year based on system date
+  const annualAppraisalInfo = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const savedDate = appSettings.annual_appraisal_start_date || `${currentYear}-12-01`;
+    const parts = savedDate.split('-');
+    const month = Math.min(12, Math.max(1, parseInt(parts[1] || '12', 10) || 12));
+    const day = Math.min(31, Math.max(1, parseInt(parts[2] || '1', 10) || 1));
+    const durationDays = Math.max(1, parseInt(appSettings.annual_appraisal_duration_days || '30', 10) || 30);
+
+    const thisYearStart = new Date(currentYear, month - 1, day);
+    const thisYearEnd = new Date(thisYearStart.getTime() + durationDays * 86400000);
+    const isActiveNow = now >= thisYearStart && now <= thisYearEnd;
+    const nextLaunchYear = now > thisYearEnd ? currentYear + 1 : currentYear;
+    const nextLaunchDate = `${nextLaunchYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    return {
+      savedDate,
+      month,
+      day,
+      durationDays,
+      isActiveNow,
+      nextLaunchDate
+    };
+  }, [appSettings.annual_appraisal_start_date, appSettings.annual_appraisal_duration_days]);
+
   // Active settings merged
   const appSettings = useMemo(() => ({ ...internalSettings, ...(propAppSettings || {}) }), [internalSettings, propAppSettings]);
   const isSaving = propIsSaving !== undefined ? propIsSaving : internalIsSaving;
@@ -1923,17 +1973,22 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                     />
                   </div>
                   <div>
-                    <span className="block text-[10px] text-gray-500 mb-1">{t('تاريخ البداية (الدورة الحالية):', 'Current Period Start:')}</span>
+                    <span className="block text-[10px] text-gray-500 mb-1">{t('تاريخ البداية (تلقائي حسب النظام):', 'Current Period Start (Auto):')}</span>
                     <input
                       type="date"
-                      value={appSettings.timesheet_start_date || '2026-09-21'}
-                      onChange={(e) => handleSettingChange('timesheet_start_date', e.target.value)}
+                      value={autoTimesheetPeriod.startDate}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleSettingChange('timesheet_start_date', val);
+                        const dayPart = val ? parseInt(val.split('-')[2], 10) : NaN;
+                        if (!isNaN(dayPart)) handleSettingChange('timesheet_cycle_start_day', String(dayPart));
+                      }}
                       className="w-full bg-white border-2 border-gray-300 rounded-xl px-2.5 py-1.5 text-xs text-black font-mono focus:outline-none focus:border-black text-center"
                     />
                   </div>
                 </div>
                 <p className="text-[11px] text-gray-600 font-normal">
-                  {t('يبدأ احتساب دورة التايم شيت من يوم 21 في الشهر الميلادي.', 'Timesheet cycle begins on day 21 of each month.')}
+                  {t(`يتحدث الشهر تلقائياً حسب تاريخ النظام، وتبدأ الدورة من يوم ${autoTimesheetPeriod.startDay} في الشهر الميلادي.`, `Month updates automatically with system date; cycle begins on day ${autoTimesheetPeriod.startDay} of each month.`)}
                 </p>
               </div>
 
@@ -1945,7 +2000,7 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                     <span>{t('تاريخ انتهاء احتساب التايم شيت', 'Timesheet Calculation End Date')}</span>
                   </label>
                   <span className="text-[11px] font-mono text-gray-500 font-bold">
-                    {t('يوم 20 من الشهر التالي', 'Day 20 of next month')}
+                    {t(`يوم ${autoTimesheetPeriod.endDay} من الشهر التالي`, `Day ${autoTimesheetPeriod.endDay} of next month`)}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -1961,17 +2016,22 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                     />
                   </div>
                   <div>
-                    <span className="block text-[10px] text-gray-500 mb-1">{t('تاريخ الانتهاء (الدورة الحالية):', 'Current Period End:')}</span>
+                    <span className="block text-[10px] text-gray-500 mb-1">{t('تاريخ الانتهاء (تلقائي حسب النظام):', 'Current Period End (Auto):')}</span>
                     <input
                       type="date"
-                      value={appSettings.timesheet_end_date || '2026-10-20'}
-                      onChange={(e) => handleSettingChange('timesheet_end_date', e.target.value)}
+                      value={autoTimesheetPeriod.endDate}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleSettingChange('timesheet_end_date', val);
+                        const dayPart = val ? parseInt(val.split('-')[2], 10) : NaN;
+                        if (!isNaN(dayPart)) handleSettingChange('timesheet_cycle_end_day', String(dayPart));
+                      }}
                       className="w-full bg-white border-2 border-gray-300 rounded-xl px-2.5 py-1.5 text-xs text-black font-mono focus:outline-none focus:border-black text-center"
                     />
                   </div>
                 </div>
                 <p className="text-[11px] text-gray-600 font-normal">
-                  {t('ينتهي احتساب دورة التايم شيت في يوم 20 من الشهر التالي.', 'Timesheet cycle closes on day 20 of next month.')}
+                  {t(`يتحدث الشهر تلقائياً حسب تاريخ النظام، وتنتهي الدورة في يوم ${autoTimesheetPeriod.endDay} من الشهر التالي.`, `Month updates automatically with system date; cycle closes on day ${autoTimesheetPeriod.endDay} of next month.`)}
                 </p>
               </div>
             </div>
@@ -1984,6 +2044,76 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
               </div>
               <div className="font-mono font-bold text-teal-950 bg-white px-3 py-1.5 rounded-lg border border-teal-300 shadow-2xs">
                 {t('من يوم', 'From Day')} <span className="text-teal-700 font-black">{appSettings.timesheet_cycle_start_day || '21'}</span> {t('بالشهر إلى يوم', 'to Day')} <span className="text-teal-700 font-black">{appSettings.timesheet_cycle_end_day || '20'}</span> {t('من الشهر التالي', 'of next month')}
+              </div>
+            </div>
+
+            {/* Annual Appraisals Launch Date Setting (Auto-repeats every year, fully editable) */}
+            <div className="mt-4 pt-4 border-t-2 border-dashed border-gray-200 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-indigo-700 text-lg">event_repeat</span>
+                  <div>
+                    <h4 className="text-xs font-bold text-black">
+                      {t('تاريخ شروع التقييمات السنوية (انطلاق تلقائي كل سنة)', 'Annual Appraisals Launch Date (Yearly Auto-Trigger)')}
+                    </h4>
+                    <p className="text-[11px] text-gray-600">
+                      {t('ينطلق موسم التقييم السنوي تلقائياً في نفس اليوم والشهر من كل سنة، ويمكن تعديل التاريخ في أي وقت.', 'Annual appraisal cycle automatically launches on this month & day every year; fully editable anytime.')}
+                    </p>
+                  </div>
+                </div>
+                <span className={`px-3 py-1 rounded-xl text-[11px] font-bold border ${
+                  annualAppraisalInfo.isActiveNow
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                }`}>
+                  {annualAppraisalInfo.isActiveNow
+                    ? t('🟢 دورة التقييم السنوي نشطة حالياً', '🟢 Annual Appraisal Active Now')
+                    : t(`📅 الانطلاق السنوي القادم: ${annualAppraisalInfo.nextLaunchDate}`, `📅 Next Yearly Launch: ${annualAppraisalInfo.nextLaunchDate}`)}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-indigo-50/40 border-2 border-indigo-200 space-y-1.5">
+                  <label className="block text-xs font-bold text-black flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-indigo-700">calendar_month</span>
+                    <span>{t('تاريخ شروع التقييم السنوي (قابل للتعديل):', 'Annual Appraisal Start Date (Editable):')}</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={annualAppraisalInfo.savedDate}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      handleSettingChange('annual_appraisal_start_date', val);
+                      if (val && val.includes('-')) {
+                        const [, mPart, dPart] = val.split('-');
+                        if (mPart) handleSettingChange('annual_appraisal_start_month', String(parseInt(mPart, 10)));
+                        if (dPart) handleSettingChange('annual_appraisal_start_day', String(parseInt(dPart, 10)));
+                      }
+                    }}
+                    className="w-full bg-white border-2 border-indigo-300 rounded-xl px-3 py-2 text-xs text-black font-bold font-mono focus:outline-none focus:border-indigo-700 text-center"
+                  />
+                  <p className="text-[10px] text-gray-600">
+                    {t(`يتكرر سنوياً في يوم (${annualAppraisalInfo.day}) من شهر (${annualAppraisalInfo.month}) تلقائياً.`, `Repeats every year on Day ${annualAppraisalInfo.day} of Month ${annualAppraisalInfo.month}.`)}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-indigo-50/40 border-2 border-indigo-200 space-y-1.5">
+                  <label className="block text-xs font-bold text-black flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-indigo-700">schedule</span>
+                    <span>{t('مدة فترة التقييم السنوي (بالأيام):', 'Annual Appraisal Window (Days):')}</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="180"
+                    value={appSettings.annual_appraisal_duration_days || '30'}
+                    onChange={(e) => handleSettingChange('annual_appraisal_duration_days', e.target.value)}
+                    className="w-full bg-white border-2 border-indigo-300 rounded-xl px-3 py-2 text-xs text-black font-bold font-mono focus:outline-none focus:border-indigo-700 text-center"
+                  />
+                  <p className="text-[10px] text-gray-600">
+                    {t('عدد الأيام المتاحة لاستكمال التقييمات السنوية من تاريخ الشروع.', 'Number of days open to complete annual evaluations from launch date.')}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
