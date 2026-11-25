@@ -29,7 +29,7 @@ import {
 import { isLebanonEmployee, filterIraqEmployees } from '../../utils/lebanonHelper';
 
 const loadSavedCorrections = (): AttendanceCorrectionRequest[] => {
-  if (typeof window === 'undefined') return [...initialCorrectionRequests];
+  if (typeof window === 'undefined') return [];
   try {
     const saved = localStorage.getItem('vitas_attendance_corrections');
     if (saved) {
@@ -39,7 +39,7 @@ const loadSavedCorrections = (): AttendanceCorrectionRequest[] => {
   } catch (e) {
     console.warn('Failed to parse saved corrections', e);
   }
-  return [...initialCorrectionRequests];
+  return [];
 };
 
 const loadSavedLeaves = (): LeaveRequest[] => {
@@ -63,12 +63,12 @@ const loadSavedLeaves = (): LeaveRequest[] => {
 
 let mockUsers = [...userProfiles];
 let mockActiveUser = mockUsers[1]; // Default to Manager
-let mockAttendance = [...initialAttendanceRecords];
+let mockAttendance: AttendanceRecord[] = [];
 let mockBalances: LeaveBalance[] = [];
 let mockLeaves: LeaveRequest[] = loadSavedLeaves();
 let mockCorrections: AttendanceCorrectionRequest[] = loadSavedCorrections();
 let mockSettings = { ...initialBiometricSettings };
-let mockRawLogs = [...initialRawLogs];
+let mockRawLogs: RawAttendanceLog[] = [];
 let mockLeaveTypes = [...initialLeaveTypes];
 
 const persistApprovalsState = () => {
@@ -212,115 +212,9 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
     };
   });
 
-  // Generate Attendance Records for all real employees
-  const isThursday = new Date().getDay() === 4;
-  const officialWorkEnd = isThursday ? '15:00' : workEnd;
-  const officialScheduledMinutes = isThursday ? 420 : 480; // Max 7 hours on Thursday, 8 hours on other days
-
-  // Realistic enterprise attendance cohort distribution based on real biometric logs
-  const absentIndices = new Set([18, 45, 78, 105, 142, 185, 212, 248, 290, 318, 345, 382, 415, 442, 465]);
-  const missingPunchIndices = new Set([9, 39, 69, 99, 139, 179, 219, 259, 299, 339, 379, 419, 459]);
-  const onLeaveIndices = new Set([4, 24, 44, 64, 84, 104, 124, 144, 164, 184, 204, 224, 244, 264, 284, 304, 324, 344, 364, 384, 404, 424, 444, 464]);
-  const lateIndices = new Set([7, 17, 27, 37, 57, 67, 77, 87, 97, 117, 127, 137, 157, 167, 177, 197, 207, 217, 227, 237, 257, 267, 277, 287, 307, 317, 327, 337, 357, 367, 377, 387, 407, 417, 427, 437, 457, 467]);
-  const earlyLeaveIndices = new Set([13, 33, 53, 73, 93, 113, 133, 153, 173, 193, 213, 233, 253, 273, 293, 313, 333, 353, 373, 393, 413, 433]);
-
-  const generatedAttendance: AttendanceRecord[] = mappedEmps.map((emp, index) => {
-    let status: AttendanceStatus = 'present';
-    let checkIn: string | null = `${workStart.split(':')[0]}:55:12`;
-    let checkOut: string | null = `${officialWorkEnd}:05:40`;
-    let workedMinutes = officialScheduledMinutes;
-    let lateMinutes = 0;
-    let earlyLeaveMinutes = 0;
-    let overtimeMinutes = 0;
-
-    if (absentIndices.has(index)) {
-      status = 'absent';
-      checkIn = null;
-      checkOut = null;
-      workedMinutes = 0;
-    } else if (missingPunchIndices.has(index)) {
-      status = 'missing_punch';
-      checkIn = `${workStart.split(':')[0]}:58:30`;
-      checkOut = null;
-      workedMinutes = 0;
-    } else if (onLeaveIndices.has(index)) {
-      status = 'on_leave';
-      checkIn = null;
-      checkOut = null;
-      workedMinutes = 0;
-    } else if (lateIndices.has(index)) {
-      status = 'late';
-      const lateMins = 12 + ((index * 3) % 36); // 12 to 47 mins late
-      checkIn = `08:${String(lateMins).padStart(2, '0')}:15`;
-      lateMinutes = lateMins;
-      workedMinutes = Math.max(0, officialScheduledMinutes - lateMins);
-    } else if (earlyLeaveIndices.has(index)) {
-      status = 'early_leave';
-      const earlyMins = 25 + ((index * 4) % 45); // 25 to 69 mins early
-      earlyLeaveMinutes = earlyMins;
-      const outHour = isThursday ? 14 : 15;
-      const outMin = Math.max(0, 60 - (earlyMins % 60));
-      checkOut = `${String(outHour).padStart(2, '0')}:${String(outMin).padStart(2, '0')}:00`;
-      workedMinutes = Math.max(0, officialScheduledMinutes - earlyMins);
-    } else {
-      status = 'present';
-      const inM = 45 + ((index * 7) % 15);
-      checkIn = `07:${String(inM).padStart(2, '0')}:22`;
-      checkOut = `${officialWorkEnd}:02:45`;
-      workedMinutes = officialScheduledMinutes;
-    }
-
-    const punches = [];
-    if (checkIn) {
-      punches.push({
-        id: index * 2 + 1,
-        punch_time: checkIn,
-        punch_type: 'check_in' as const,
-        source: 'biometric' as const,
-        verify_mode: index % 2 === 0 ? 'fingerprint' : 'face',
-        is_valid: true,
-      });
-    }
-    if (checkOut) {
-      punches.push({
-        id: index * 2 + 2,
-        punch_time: checkOut,
-        punch_type: 'check_out' as const,
-        source: 'biometric' as const,
-        verify_mode: index % 2 === 0 ? 'fingerprint' : 'face',
-        is_valid: true,
-      });
-    }
-
-    return {
-      id: index + 1,
-      employee_id: emp.id,
-      employee_number: emp.employee_number,
-      employee_name_ar: emp.name_ar,
-      employee_name_en: emp.name_en,
-      department_name_ar: emp.department_name_ar,
-      department_name_en: emp.department_name_en,
-      branch_name_ar: emp.branch_name_ar,
-      branch_name_en: emp.branch_name_en,
-      date: today,
-      scheduled_start: `${workStart}:00`,
-      scheduled_end: `${officialWorkEnd}:00`,
-      first_punch: checkIn,
-      last_punch: checkOut,
-      punches,
-      worked_minutes: workedMinutes,
-      // Working hours rule: never exceed 8 hours, and Thursday 7 hours
-      regular_minutes: Math.min(workedMinutes, officialScheduledMinutes),
-      break_minutes: 45,
-      late_minutes: lateMinutes,
-      early_leave_minutes: earlyLeaveMinutes,
-      overtime_minutes: overtimeMinutes,
-      status,
-      is_corrected: false,
-      created_at: `${today} ${workStart}:00`,
-      updated_at: `${today} ${officialWorkEnd}:00`,
-    };
-  });
+  // Clean slate: do NOT generate fake/default attendance records.
+  // Real attendance records will be loaded directly from the Biometric Server via /api/attendance.
+  const generatedAttendance: AttendanceRecord[] = [];
 
   // Generate Leave Balances for all real employees using policy limits from appSettings
   const generatedBalances: LeaveBalance[] = [];
@@ -406,41 +300,9 @@ export const syncWithAppEmployees = (appEmployees: any[], appSettings?: Record<s
     );
   });
 
-  // Generate Raw Biometric Logs for real employees
+  // Clean slate: do NOT generate fake/default raw biometric logs.
+  // Real raw punches will arrive from the Biometric Server sync.
   const generatedRawLogs: RawAttendanceLog[] = [];
-  let rawId = 1;
-  mappedEmps.forEach((emp, index) => {
-    generatedRawLogs.push(
-      {
-        id: rawId++,
-        device_id: index % 2 === 0 ? 'DEV-HQ-MANSOUR-01' : 'DEV-HQ-MANSOUR-02',
-        employee_biometric_id: emp.biometric_id,
-        employee_name_ar: emp.name_ar,
-        employee_name_en: emp.name_en,
-        employee_number: emp.employee_number,
-        punch_datetime: `${today} 07:55:${String(10 + (index % 40)).padStart(2, '0')}`,
-        punch_type: 'check_in',
-        verify_mode: index % 2 === 0 ? 'fingerprint' : 'face',
-        sync_batch_id: `BATCH-${today.replace(/-/g, '')}-01`,
-        is_processed: true,
-        created_at: `${today} 08:00:00`,
-      },
-      {
-        id: rawId++,
-        device_id: index % 2 === 0 ? 'DEV-HQ-MANSOUR-01' : 'DEV-HQ-MANSOUR-02',
-        employee_biometric_id: emp.biometric_id,
-        employee_name_ar: emp.name_ar,
-        employee_name_en: emp.name_en,
-        employee_number: emp.employee_number,
-        punch_datetime: `${today} 16:05:${String(10 + (index % 40)).padStart(2, '0')}`,
-        punch_type: 'check_out',
-        verify_mode: index % 2 === 0 ? 'fingerprint' : 'face',
-        sync_batch_id: `BATCH-${today.replace(/-/g, '')}-01`,
-        is_processed: true,
-        created_at: `${today} 16:10:00`,
-      }
-    );
-  });
 
   // Update in-memory collections
   mockAttendance = generatedAttendance;
@@ -520,7 +382,7 @@ export const api = {
 
     return {
       today_date: new Date().toISOString().split('T')[0],
-      total_employees: mockAttendance.length > 0 ? mockAttendance.length : 49,
+      total_employees: mockUsers.length,
       today_attendance: {
         present: mockAttendance.filter((r) => r.status === 'present').length,
         absent: mockAttendance.filter((r) => r.status === 'absent').length,
@@ -537,19 +399,19 @@ export const api = {
       my_attendance_today: {
         scheduled_start: '08:00',
         scheduled_end: new Date().getDay() === 4 ? '15:00' : '16:00',
-        check_in: '07:55',
-        check_out: new Date().getDay() === 4 ? '15:00' : '16:00',
-        worked_hours: new Date().getDay() === 4 ? '7.00' : '8.00',
-        status: 'present',
+        check_in: null,
+        check_out: null,
+        worked_hours: '0.00',
+        status: 'absent',
       },
       my_leave_balances: myBalances.length > 0 ? myBalances : mockBalances.slice(0, 3),
       manager_stats: {
         pending_leave_approvals: pendingCount,
         pending_correction_approvals: mockCorrections.filter((c) => c.status === 'pending').length,
-        team_total: 7,
-        team_present_today: 5,
+        team_total: mockUsers.length,
+        team_present_today: 0,
         team_absent_today: 0,
-        team_on_leave_today: 1,
+        team_on_leave_today: 0,
       },
     };
   },
@@ -565,7 +427,7 @@ export const api = {
     const data = await safeFetchJson(`/api/attendance?${query.toString()}`);
     const rawList = Array.isArray(data) ? data : (data && Array.isArray(data.records) ? data.records : null);
 
-    if (rawList && rawList.length > 0) {
+    if (rawList !== null) {
       let records: AttendanceRecord[] = rawList.map((r: any) => {
         const dateStr = r.date || (r.attendance_date ? String(r.attendance_date).slice(0, 10) : '');
         const empNum = r.emp_number || r.employee_number || String(r.employee_id || '');
