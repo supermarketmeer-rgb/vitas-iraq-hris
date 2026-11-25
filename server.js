@@ -4351,6 +4351,18 @@ app.post('/api/notifications', async (req, res) => {
       user_id: data.user_id || null,
       link_url: data.link_url || null
     });
+
+    // Automatically record cross-department / official notifications in Security Audit Logs
+    await recordAuditLog(req, {
+      action: data.title || 'إرسال تنبيه رسمي بين الأقسام',
+      action_type: data.link_url === 'payroll-register' ? 'PAYROLL_AUDIT_REQUEST' : 'WORKFLOW_NOTIFICATION',
+      severity: data.type === 'warning' || data.priority === 'high' ? 'warning' : (data.type === 'success' ? 'success' : 'info'),
+      module: data.link_url === 'payroll-register' ? 'الرواتب والتعويضات (Payroll → Accounting)' : 'التنبيهات والتواصل المؤسسي (Notifications)',
+      status: 'ناجح',
+      details: `${data.message || ''} ${data.target_audience ? `[الجهة المعنية: ${data.target_audience}]` : ''}`.trim(),
+      metadata: { notificationId: notifId, target_audience: data.target_audience || 'all', priority: data.priority || 'medium', link_url: data.link_url || null }
+    });
+
     const isRead = Boolean(data.read || data.is_read);
     res.json({ id: notifId, ...data, read: isRead, is_read: isRead ? 1 : 0 });
   } catch (err) {
@@ -7505,6 +7517,15 @@ app.post('/api/news', async (req, res) => {
         target_audience: audienceLabel,
         link_url: 'company-news'
       });
+      await recordAuditLog(req, {
+        action: `نشر إعلان رسمي للمؤسسة: ${title_ar || title_en || 'إعلان'}`,
+        action_type: 'PUBLISH_COMPANY_NEWS',
+        severity: 'info',
+        module: 'أخبار وإعلانات المؤسسة (Company News)',
+        status: 'ناجح',
+        details: `تم نشر إعلان رسمي موجه إلى (${audienceLabel}) وإرسال تنبيه فوري للمعنيين.`,
+        metadata: { newsId: result.insertId, target_audience: audienceLabel, priority }
+      });
     }
 
     res.json(insertedNews[0]);
@@ -8315,6 +8336,15 @@ app.post('/api/routing/send', async (req, res) => {
         user_id: req.body?.employee_id || req.body?.employeeId || null,
         link_url: 'contracts'
       });
+      await recordAuditLog(req, {
+        action: `إرسال ${docType} إلى ${empName}`,
+        action_type: 'CONTRACT_ROUTING_SEND',
+        severity: 'success',
+        module: 'العقود والتوجيه الذكي (Contracts & Routing)',
+        status: 'ناجح',
+        details: `تم توجيه وإرسال (${docType}) إلى ${empName} (${targetDept}).`,
+        metadata: { docType, empName, targetDept }
+      });
     }
     res.json(result);
   } catch (err) {
@@ -8336,6 +8366,15 @@ app.post('/api/routing/batch-by-office', async (req, res) => {
         priority: 'high',
         target_audience: 'الفروع والمكاتب والموظفون المعنيون',
         link_url: 'contracts'
+      });
+      await recordAuditLog(req, {
+        action: `إرسال دفعة عقود للمكاتب والفروع${count ? ` (${count} عقد)` : ''}`,
+        action_type: 'CONTRACT_BATCH_ROUTING',
+        severity: 'success',
+        module: 'العقود والتوجيه الذكي (Contracts & Routing)',
+        status: 'ناجح',
+        details: `تم إرسال دفعة عقود مجمّعة حسب المكاتب والفروع بنجاح.`,
+        metadata: { count: count || 0 }
       });
     }
     res.json(result);
