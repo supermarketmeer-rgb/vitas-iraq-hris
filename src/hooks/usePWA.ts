@@ -136,12 +136,29 @@ export function usePWA() {
     }
   }, []);
 
-  const applyUpdate = useCallback(() => {
-    if (!swRegistration?.waiting) return;
+  const applyUpdate = useCallback(async () => {
     setState(prev => ({ ...prev, isUpdating: true, hasUpdate: false }));
-    swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    // Reload after a short delay to let the new SW take control
-    setTimeout(() => window.location.reload(), 800);
+    try {
+      if (swRegistration?.waiting) {
+        swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+      // Also check live registration in case swRegistration ref was stale
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
+        if (reg?.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      }
+      // Clear old runtime caches so the reloaded page fetches the newest bundle cleanly
+      if ('caches' in window) {
+        const keys = await caches.keys().catch(() => []);
+        await Promise.all(keys.map(k => caches.delete(k).catch(() => {})));
+      }
+    } catch {}
+    // Always reload to activate the new version
+    setTimeout(() => {
+      window.location.reload();
+    }, 300);
   }, []);
 
   const checkForUpdates = useCallback(async () => {
