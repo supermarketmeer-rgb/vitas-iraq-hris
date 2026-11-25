@@ -61,18 +61,16 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
   const appSettings = useMemo(() => ({ ...internalSettings, ...(propAppSettings || {}) }), [internalSettings, propAppSettings]);
   const isSaving = propIsSaving !== undefined ? propIsSaving : internalIsSaving;
 
-  // Auto-calculate current timesheet period based on live system date & configured start/end days
+  // Auto-calculate current payroll timesheet period: Day 21 of previous month -> Day 20 of current month
   const autoTimesheetPeriod = useMemo(() => {
     const now = new Date();
     const startDay = Math.min(31, Math.max(1, parseInt(appSettings.timesheet_cycle_start_day || '21', 10) || 21));
     const endDay = Math.min(31, Math.max(1, parseInt(appSettings.timesheet_cycle_end_day || '20', 10) || 20));
     const y = now.getFullYear();
-    const m = now.getMonth(); // 0-indexed
-    const d = now.getDate();
+    const m = now.getMonth(); // 0-indexed (current month)
 
-    const startMonthOffset = d >= startDay ? 0 : -1;
-    const startDateObj = new Date(y, m + startMonthOffset, startDay);
-    const endDateObj = new Date(startDateObj.getFullYear(), startDateObj.getMonth() + 1, endDay);
+    const startDateObj = new Date(y, m - 1, startDay); // 21st of previous month
+    const endDateObj = new Date(y, m, endDay);         // 20th of current month
 
     const fmt = (dt: Date) =>
       `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
@@ -1957,12 +1955,12 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                     <span>{t('تاريخ بداية احتساب التايم شيت', 'Timesheet Calculation Start Date')}</span>
                   </label>
                   <span className="text-[11px] font-mono text-gray-500 font-bold">
-                    {t('يوم 21 بالشهر', 'Day 21 of month')}
+                    {t(`يوم ${autoTimesheetPeriod.startDay} من الشهر السابق`, `Day ${autoTimesheetPeriod.startDay} of previous month`)}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <span className="block text-[10px] text-gray-500 mb-1">{t('يوم البداية الشهري:', 'Start Day of Month:')}</span>
+                    <span className="block text-[10px] text-gray-500 mb-1">{t('يوم البداية (الشهر السابق):', 'Start Day (Prev Month):')}</span>
                     <input
                       type="number"
                       min="1"
@@ -1988,7 +1986,7 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                   </div>
                 </div>
                 <p className="text-[11px] text-gray-600 font-normal">
-                  {t(`يتحدث الشهر تلقائياً حسب تاريخ النظام، وتبدأ الدورة من يوم ${autoTimesheetPeriod.startDay} في الشهر الميلادي.`, `Month updates automatically with system date; cycle begins on day ${autoTimesheetPeriod.startDay} of each month.`)}
+                  {t(`تبدأ دورة التايم شيت لإصدار راتب الشهر الحالي من يوم ${autoTimesheetPeriod.startDay} من الشهر السابق تلقائياً.`, `Timesheet cycle for current month payroll begins on day ${autoTimesheetPeriod.startDay} of previous month.`)}
                 </p>
               </div>
 
@@ -2000,12 +1998,12 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                     <span>{t('تاريخ انتهاء احتساب التايم شيت', 'Timesheet Calculation End Date')}</span>
                   </label>
                   <span className="text-[11px] font-mono text-gray-500 font-bold">
-                    {t(`يوم ${autoTimesheetPeriod.endDay} من الشهر التالي`, `Day ${autoTimesheetPeriod.endDay} of next month`)}
+                    {t(`يوم ${autoTimesheetPeriod.endDay} من الشهر الحالي`, `Day ${autoTimesheetPeriod.endDay} of current month`)}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <span className="block text-[10px] text-gray-500 mb-1">{t('يوم النهاية الشهري:', 'End Day of Next Month:')}</span>
+                    <span className="block text-[10px] text-gray-500 mb-1">{t('يوم النهاية (الشهر الحالي):', 'End Day (Current Month):')}</span>
                     <input
                       type="number"
                       min="1"
@@ -2031,7 +2029,7 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                   </div>
                 </div>
                 <p className="text-[11px] text-gray-600 font-normal">
-                  {t(`يتحدث الشهر تلقائياً حسب تاريخ النظام، وتنتهي الدورة في يوم ${autoTimesheetPeriod.endDay} من الشهر التالي.`, `Month updates automatically with system date; cycle closes on day ${autoTimesheetPeriod.endDay} of next month.`)}
+                  {t(`تنتهي دورة التايم شيت في يوم ${autoTimesheetPeriod.endDay} من الشهر الحالي لإصدار مسير رواتب الشهر الحالي.`, `Timesheet cycle closes on day ${autoTimesheetPeriod.endDay} of current month for current payroll.`)}
                 </p>
               </div>
             </div>
@@ -2043,7 +2041,7 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                 <span>{t('الصيغة المعتمدة لاحتساب التايم شيت:', 'Configured Timesheet Calculation Period:')}</span>
               </div>
               <div className="font-mono font-bold text-teal-950 bg-white px-3 py-1.5 rounded-lg border border-teal-300 shadow-2xs">
-                {t('من يوم', 'From Day')} <span className="text-teal-700 font-black">{appSettings.timesheet_cycle_start_day || '21'}</span> {t('بالشهر إلى يوم', 'to Day')} <span className="text-teal-700 font-black">{appSettings.timesheet_cycle_end_day || '20'}</span> {t('من الشهر التالي', 'of next month')}
+                {t('من يوم', 'From Day')} <span className="text-teal-700 font-black">{appSettings.timesheet_cycle_start_day || '21'}</span> {t('من الشهر السابق إلى يوم', 'of prev month to Day')} <span className="text-teal-700 font-black">{appSettings.timesheet_cycle_end_day || '20'}</span> {t('من الشهر الحالي', 'of current month')}
               </div>
             </div>
 
