@@ -740,6 +740,7 @@ export const Category3EmployeeView: React.FC = () => {
   // Alignment fields for Reports & System Integration
   const [secondCitizenship, setSecondCitizenship] = useState('');
   const [terminationReason, setTerminationReason] = useState('');
+  const [eosbExceptionAmount, setEosbExceptionAmount] = useState('');
   const [managementTier, setManagementTier] = useState<string>('Non Management');
   const [branchVsMo, setBranchVsMo] = useState<string>('Branch');
   const [perfRating, setPerfRating] = useState<string | number>('');
@@ -1322,7 +1323,26 @@ export const Category3EmployeeView: React.FC = () => {
     }
 
     setSecondCitizenship(clean((emp as any).secondCitizenship || (emp as any).second_citizenship) || '');
-    setTerminationReason(clean((emp as any).terminationReason || (emp as any).termination_reason) || '');
+    const rawTerm = clean((emp as any).terminationReason || (emp as any).termination_reason) || '';
+    if (rawTerm.includes('| مبلغ الاستثناء:')) {
+      const [baseReason, amtPart] = rawTerm.split('| مبلغ الاستثناء:');
+      setTerminationReason(baseReason.trim());
+      setEosbExceptionAmount((amtPart || '').replace(/[^\d.]/g, '').trim());
+    } else {
+      setTerminationReason(rawTerm);
+      setEosbExceptionAmount('');
+    }
+    const rawEmpStatus = String(emp.status || '').trim().toLowerCase();
+    const hasExit = Boolean(clean(emp.exitDate || emp.exit_date));
+    if (hasExit || rawEmpStatus === 'terminated' || rawEmpStatus === 'inactive' || rawEmpStatus === 'resigned' || rawEmpStatus === 'منتهي' || rawEmpStatus === 'مستقيل') {
+      setStatus('Terminated');
+    } else if (rawEmpStatus === 'on leave' || rawEmpStatus === 'on_leave') {
+      setStatus('On Leave');
+    } else if (rawEmpStatus === 'onboarding') {
+      setStatus('Onboarding');
+    } else {
+      setStatus('Active');
+    }
     setManagementTier(clean((emp as any).managementTier || (emp as any).management_tier || (emp as any).tier) || 'Non Management');
     setBranchVsMo(clean((emp as any).branchVsMo || (emp as any).branch_vs_mo || (emp as any).branchVsMO) || 'Branch');
     setPerfRating((emp as any).perfRating || (emp as any).perf_rating || '');
@@ -1435,6 +1455,8 @@ export const Category3EmployeeView: React.FC = () => {
     setWorkScope('Office Job');
     setSecondCitizenship('');
     setTerminationReason('');
+    setEosbExceptionAmount('');
+    setStatus('Active');
     setManagementTier('Non Management');
     setBranchVsMo('Branch');
     setPerfRating('');
@@ -1877,7 +1899,11 @@ export const Category3EmployeeView: React.FC = () => {
       position_level_1: positionLevel1 || null,
       position_level_2: positionLevel2 || null,
       microfin_position: microfinPosition || null,
-      termination_reason: terminationReason || null,
+      termination_reason: exitDate
+        ? (terminationReason === 'إنهاء عمل (+ استثناء)' && eosbExceptionAmount
+            ? `إنهاء عمل (+ استثناء) | مبلغ الاستثناء: ${eosbExceptionAmount}`
+            : (terminationReason || 'استقالة اختيارية'))
+        : null,
       is_ss_tax_exempt: isSsTaxExempt ? 1 : 0,
       ss_tax_exemption_reason: ssTaxExemptionReason || null,
       years_of_employment: yearsOfEmployment,
@@ -1990,8 +2016,16 @@ export const Category3EmployeeView: React.FC = () => {
       microfin_position: microfinPosition,
       secondCitizenship,
       second_citizenship: secondCitizenship,
-      terminationReason,
-      termination_reason: terminationReason,
+      terminationReason: exitDate
+        ? (terminationReason === 'إنهاء عمل (+ استثناء)' && eosbExceptionAmount
+            ? `إنهاء عمل (+ استثناء) | مبلغ الاستثناء: ${eosbExceptionAmount}`
+            : (terminationReason || 'استقالة اختيارية'))
+        : '',
+      termination_reason: exitDate
+        ? (terminationReason === 'إنهاء عمل (+ استثناء)' && eosbExceptionAmount
+            ? `إنهاء عمل (+ استثناء) | مبلغ الاستثناء: ${eosbExceptionAmount}`
+            : (terminationReason || 'استقالة اختيارية'))
+        : '',
       nationality,
       childrenList,
       childrenDetails,
@@ -3408,25 +3442,91 @@ export const Category3EmployeeView: React.FC = () => {
                   </div>
 
                   <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">{t('حالة الموظف الوظيفية', 'Employee Status')}</label>
+                    <select
+                      value={status}
+                      onChange={e => setStatus(e.target.value as 'Active' | 'On Leave' | 'Terminated' | 'Onboarding')}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
+                    >
+                      <option value="Active">{t('نشط (Active)', 'Active')}</option>
+                      <option value="On Leave">{t('في إجازة (On Leave)', 'On Leave')}</option>
+                      <option value="Terminated">{t('منتهي الخدمة / غير نشط (Terminated / Inactive)', 'Terminated / Inactive')}</option>
+                      <option value="Onboarding">{t('تحت التعيين (Onboarding)', 'Onboarding')}</option>
+                    </select>
+                  </div>
+
+                  <div>
                     <label className="block text-black font-semibold text-[11px] mb-1">{t('تاريخ إنهاء الخدمة / المغادرة', 'Exit Date / Service Termination')}</label>
                     <input
                       type="date"
                       value={exitDate}
-                      onChange={e => setExitDate(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setExitDate(val);
+                        if (val) {
+                          setStatus('Terminated');
+                          if (!terminationReason) setTerminationReason('استقالة اختيارية');
+                        } else {
+                          setTerminationReason('');
+    setEosbExceptionAmount('');
+    setStatus('Active');
+                          setEosbExceptionAmount('');
+                          setStatus('Active');
+                        }
+                      }}
                       className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-black font-semibold text-[11px] mb-1">{t('سبب ترك العمل أو الاستقالة', 'Termination / Departure Reason')}</label>
-                    <input
-                      type="text"
-                      value={terminationReason}
-                      onChange={e => setTerminationReason(e.target.value)}
-                      placeholder={t('مثال: استقالة طوعية، انتهاء العقد، نقل...', 'e.g. Voluntary resignation, contract end, transfer')}
-                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500 placeholder:text-slate-500"
-                    />
-                  </div>
+                  {exitDate && (
+                    <div>
+                      <label className="block text-black font-semibold text-[11px] mb-1">{t('سبب إنهاء الخدمة / المغادرة', 'Termination / Departure Reason')}</label>
+                      <select
+                        value={terminationReason || 'استقالة اختيارية'}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setTerminationReason(val);
+                          if (val !== 'إنهاء عمل (+ استثناء)') {
+                            setEosbExceptionAmount('');
+                          }
+                        }}
+                        className="w-full bg-[#0a0c10] border border-teal-500/40 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none focus:border-teal-500"
+                      >
+                        <option value="استقالة اختيارية">{t('استقالة اختيارية (لا يستحق مكافأة)', 'Voluntary Resignation (No Bonus)')}</option>
+                        <option value="إنهاء عمل">{t('إنهاء عمل (لا يستحق مكافأة)', 'Termination of Employment (No Bonus)')}</option>
+                        <option value="إنهاء عمل (+ استثناء)">{t('إنهاء عمل (+ استثناء) — مكافأة محددة من الإدارة', 'Termination (+ Exception) — Management Fixed Bonus')}</option>
+                        <option value="انتفاء حاجة">{t('انتفاء حاجة (يستحق مكافأة نهاية الخدمة)', 'Redundancy / Position Eliminated (Eligible for EOSB)')}</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {exitDate && terminationReason === 'إنهاء عمل (+ استثناء)' && (
+                    <div>
+                      <label className="block text-black font-semibold text-[11px] mb-1">
+                        {t('مبلغ المكافأة الاستثنائية المحدد من الإدارة (د.ع)', 'Management Exception Bonus Amount (IQD)')}
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min="0"
+                          value={eosbExceptionAmount}
+                          onChange={e => setEosbExceptionAmount(e.target.value)}
+                          placeholder={t('أدخل المبلغ المقرر بالدينار العراقي...', 'Enter approved IQD amount...')}
+                          className="w-full bg-[#0a0c10] border border-amber-500/50 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white font-mono focus:outline-none focus:border-amber-400"
+                        />
+                        {basicSalary > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setEosbExceptionAmount(String(basicSalary))}
+                            className="px-2 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold whitespace-nowrap cursor-pointer"
+                            title={t('تعيين راتب أساسي واحد', 'Set 1x Basic Salary')}
+                          >
+                            1×
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-black font-semibold text-[11px] mb-1 flex items-center gap-1.5">

@@ -49,17 +49,44 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
   const [isExporting, setIsExporting] = useState(false);
 
   // Vitas Iraq EOSB Eligibility Policy:
-  // Paid ONLY upon Employer Termination (استغناء المؤسسة عن خدمات الموظف).
-  // Strictly 0 for Voluntary Resignation (الاستقالة الاختيارية) and Retirement (التقاعد - covered by State Social Security Pension).
-  const isEosbIneligible = (statusStr: string, reasonStr: string): boolean => {
-    const combined = `${statusStr || ''} ${reasonStr || ''}`.toLowerCase();
-    return (
+  // 1. انتفاء حاجة (Redundancy) -> Full formula: 0.5 * Basic Salary * (serviceDays / 365)
+  // 2. إنهاء عمل (+ استثناء) -> Custom management-approved amount (مبلغ الاستثناء)
+  // 3. استقالة اختيارية / إنهاء عمل (بدون استثناء) / تقاعد -> Strictly 0 IQD
+  // 4. Active (no exit date) -> Standard accounting provision (0.5 * Basic Salary * serviceYears)
+  const computeEosbAmount = (basicSalary: number, serviceYears: number, statusStr: string, reasonStr: string, hasExitDate: boolean): number => {
+    const rawReason = String(reasonStr || '').trim();
+    const combined = `${statusStr || ''} ${rawReason}`.toLowerCase();
+
+    // Exception: إنهاء عمل (+ استثناء) -> custom amount approved by management
+    if (rawReason.includes('استثناء') || combined.includes('exception')) {
+      const match = rawReason.match(/مبلغ الاستثناء:\s*([\d.]+)/);
+      if (match && !isNaN(Number(match[1]))) {
+        return Number(match[1]);
+      }
+      return basicSalary; // Default fallback to 1x basic salary if no number entered yet
+    }
+
+    // Eligible: انتفاء حاجة (Redundancy)
+    if (rawReason.includes('انتفاء حاجة') || combined.includes('redundancy')) {
+      return basicSalary * 0.5 * serviceYears;
+    }
+
+    // Ineligible: استقالة اختيارية، إنهاء عمل (بدون استثناء)، تقاعد
+    if (
+      rawReason.includes('استقالة') ||
+      rawReason.includes('إنهاء عمل') ||
+      rawReason.includes('انهاء عمل') ||
       combined.includes('resign') ||
       combined.includes('voluntary') ||
-      combined.includes('استقال') ||
       combined.includes('retire') ||
-      combined.includes('تقاعد')
-    );
+      combined.includes('تقاعد') ||
+      hasExitDate
+    ) {
+      return 0;
+    }
+
+    // Active employee accounting provision
+    return basicSalary * 0.5 * serviceYears;
   };
 
   const initialRows: LeaveBalanceRow[] = useMemo(() => {
@@ -85,10 +112,10 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
 
         const empStatus = emp.status || 'Active';
         const termReason = emp.terminationReason || emp.termination_reason || '';
-        const ineligible = isEosbIneligible(empStatus, termReason);
+        const hasExitDate = Boolean(exitDt && !isNaN(exitDt.getTime()));
 
-        // EOSB: 0.5 * Basic Salary * (serviceDays / 365) — strictly 0 if Voluntary Resignation or Retirement
-        const monthlyEndOfServiceBonus = ineligible ? 0 : (basicSalary * 0.5 * serviceYears);
+        // EOSB computed strictly according to Vitas Iraq departure reason policy
+        const monthlyEndOfServiceBonus = computeEosbAmount(basicSalary, serviceYears, empStatus, termReason, hasExitDate);
 
         const empCode = String(emp.employeeId || emp.employee_id || emp.badgeNo || emp.badge_no || emp.id || idx + 1);
         const openingBalance = Number(savedStarting[empCode] || 0);
@@ -492,8 +519,8 @@ export const LeaveBalanceReportView: React.FC<LeaveBalanceReportViewProps> = ({
           <div className="text-amber-950 dark:text-amber-200 leading-relaxed">
             <strong className="font-bold">{isAr ? 'سياسة استحقاق مكافأة نهاية الخدمة المعتمدة:' : 'End of Service Bonus Eligibility Policy:'}</strong>{' '}
             {isAr
-              ? 'تُحتسب وتُصرف مكافأة نهاية الخدمة فقط عند استغناء المؤسسة عن خدمات الموظف (نصف راتب أساسي عن كل سنة خدمة). لا تُستحق (0 د.ع) في حالة الاستقالة الاختيارية أو التقاعد (لارتباط الموظف بتقاعد الدولة عبر اشتراكات الضمان الاجتماعي والضريبة).'
-              : 'End of Service Bonus (0.5 × Basic Salary per year of service) is payable ONLY upon Employer Termination. Not eligible (0 IQD) for Voluntary Resignation or Retirement (covered by State Social Security Pension).'}
+              ? 'انتفاء حاجة: يستحق المكافأة (نصف راتب أساسي × سنوات الخدمة) | إنهاء عمل (+ استثناء): مبلغ محدد من قِبل الإدارة | استقالة اختيارية / إنهاء عمل / تقاعد: لا يستحق مكافأة (0 د.ع).'
+              : 'Redundancy: Eligible (0.5 × Basic Salary × Years) | Termination (+ Exception): Management-approved fixed amount | Voluntary Resignation / Termination / Retirement: Not eligible (0 IQD).'}
           </div>
         </div>
       </div>
