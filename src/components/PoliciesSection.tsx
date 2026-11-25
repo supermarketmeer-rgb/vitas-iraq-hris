@@ -57,6 +57,10 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
   // Annual Leave Simulator State
   const [simulatedServiceYears, setSimulatedServiceYears] = useState<string>('7');
 
+  // Active settings merged
+  const appSettings = useMemo(() => ({ ...internalSettings, ...(propAppSettings || {}) }), [internalSettings, propAppSettings]);
+  const isSaving = propIsSaving !== undefined ? propIsSaving : internalIsSaving;
+
   // Auto-calculate current timesheet period based on live system date & configured start/end days
   const autoTimesheetPeriod = useMemo(() => {
     const now = new Date();
@@ -106,10 +110,6 @@ export const PoliciesSection: React.FC<PoliciesSectionProps> = ({
       nextLaunchDate
     };
   }, [appSettings.annual_appraisal_start_date, appSettings.annual_appraisal_duration_days]);
-
-  // Active settings merged
-  const appSettings = useMemo(() => ({ ...internalSettings, ...(propAppSettings || {}) }), [internalSettings, propAppSettings]);
-  const isSaving = propIsSaving !== undefined ? propIsSaving : internalIsSaving;
 
   // Active Exchange Rate
   const activeFxRate = useMemo(() => {
