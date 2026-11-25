@@ -898,11 +898,12 @@ export const EarnedLeavesView: React.FC<EarnedLeavesViewProps> = ({
                     <td className="p-4 text-center">
                       <button
                         onClick={() => setSelectedRowForModal(row)}
-                        className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-teal-50 dark:hover:bg-teal-500/20 border border-slate-200 dark:border-white/10 hover:border-teal-300 dark:hover:border-teal-500/30 text-slate-700 dark:text-slate-300 hover:text-teal-700 dark:hover:text-teal-300 text-xs font-semibold flex items-center gap-1.5 transition-all mx-auto cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 border border-teal-700 !text-white text-xs font-bold flex items-center gap-1.5 transition-all mx-auto cursor-pointer shadow-sm"
+                        style={{ backgroundColor: '#0d9488', color: '#ffffff' }}
                         title={isAr ? 'معاينة تفاصيل وبيان العملية الحسابية' : 'View calculation statement'}
                       >
-                        <span className="material-symbols-outlined text-sm">visibility</span>
-                        <span>{isAr ? 'البيان' : 'Details'}</span>
+                        <span className="material-symbols-outlined text-sm !text-white" style={{ color: '#ffffff' }}>visibility</span>
+                        <span className="!text-white" style={{ color: '#ffffff' }}>{isAr ? 'البيان' : 'Details'}</span>
                       </button>
                     </td>
                   </tr>
