@@ -290,9 +290,9 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
       </head>
       <body>
         <div class="doc-header">
-          <div class="brand-right">VITAS <span style="font-size:9px;font-weight:600;color:#4b5563;display:block;">IRAQ</span></div>
+          <img src="${window.location.origin}/logos/exit_checklist_image1.jpeg" alt="VITAS Iraq" style="height:36px;object-fit:contain;" />
           <div class="doc-title">استمارة إخلاء الطرف وبراءة الذمة</div>
-          <div class="brand-left">Global Communities<span style="display:block;font-size:8.5px;color:#4b5563;">المجتمعات العالمية</span></div>
+          <img src="${window.location.origin}/logos/exit_checklist_image2.jpeg" alt="Global Communities Iraq" style="height:36px;object-fit:contain;" />
         </div>
         <table class="meta-table">
           <tr>
@@ -416,19 +416,21 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
         <div className="min-w-[860px]">
           {/* Official Top Logos & Title Bar */}
           <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-gray-800">
-            <div className="text-right">
-              <div className="text-base font-black tracking-widest text-teal-700 leading-none">VITAS</div>
-              <div className="text-[10px] font-bold text-gray-500 tracking-wider">IRAQ • فيتاس العراق</div>
-            </div>
+            <img
+              src="/logos/exit_checklist_image1.jpeg"
+              alt="VITAS Iraq"
+              className="h-11 object-contain"
+            />
 
             <h2 className="text-lg font-black text-black text-center">
               استمارة إخلاء الطرف وبراءة الذمة
             </h2>
 
-            <div className="text-left">
-              <div className="text-xs font-extrabold text-sky-700 leading-tight">Global Communities</div>
-              <div className="text-[10px] font-semibold text-gray-500">المجتمعات العالمية</div>
-            </div>
+            <img
+              src="/logos/exit_checklist_image2.jpeg"
+              alt="Global Communities Iraq"
+              className="h-11 object-contain"
+            />
           </div>
 
           {/* Employee Metadata Grid (Exact Original Rows 2-5) */}
