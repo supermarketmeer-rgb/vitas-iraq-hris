@@ -368,12 +368,12 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
           <select
             value={selectedEmployeeId}
             onChange={(e) => handleSelectEmployee(e.target.value)}
-            style={{ backgroundColor: '#1e293b', color: '#ffffff', borderColor: '#334155' }}
-            className="px-3 py-1.5 rounded-xl border text-xs font-bold !text-white focus:outline-none focus:border-teal-400 max-w-[230px] cursor-pointer"
+            style={{ backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#0d9488' }}
+            className="px-3 py-1.5 rounded-xl border-2 text-xs font-bold !bg-white !text-slate-900 focus:outline-none focus:border-teal-600 max-w-[240px] cursor-pointer shadow-xs"
           >
-            <option value="" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>{isAr ? '-- تعبئة تلقائية من موظف --' : '-- Auto-fill from Employee --'}</option>
+            <option value="" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>{isAr ? '-- تعبئة تلقائية من موظف --' : '-- Auto-fill from Employee --'}</option>
             {sortedEmployees.map(emp => (
-              <option key={emp.id || emp.employeeId} value={String(emp.id || emp.employeeId)} style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+              <option key={emp.id || emp.employeeId} value={String(emp.id || emp.employeeId)} style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
                 {emp.fullNameAr || emp.fullName || emp.fullNameEn} ({emp.employeeId || emp.badgeNo || emp.id})
               </option>
             ))}
