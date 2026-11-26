@@ -20,10 +20,10 @@ interface ExitProcedureChecklistTemplateProps {
 
 const INITIAL_CHECKLIST_ITEMS: Omit<ExitChecklistItem, 'applicable' | 'notApplicable' | 'employeeSignDate' | 'deptOfficerSignDate' | 'notes'>[] = [
   { id: 'sup-1', department: 'المشرف المباشر', item: 'تم استلام جميع المهام والمسؤوليات، ونقلها إلى الموظف أو الجهة المختصة، ولا توجد أعمال أو التزامات تشغيلية معلقة بعهدته' },
-  { id: 'dept-head-1', department: 'رئيس قسم الموظف المعني', item: 'مراجعة واعتماد نقل المهام والمسؤوليات وإخلاء الطرف على مستوى القسم' },
+  { id: 'dept-head-1', department: 'رئيس قسم الموظف المعني', item: 'اعتماد استلام جميع المهام والمسؤوليات ونقلها وعدم وجود التزامات تشغيلية معلقة' },
   { id: 'credit-1', department: 'قسم الائتمان', subRole: 'المشرف المباشر (لمسؤولي القروض فقط)', item: 'تم استلام المحفظة الائتمانية وجميع مسؤولياتها، ولا توجد أي عهد أو معاملات أو التزامات تشغيلية معلقة' },
   { id: 'credit-2', department: 'قسم الائتمان', subRole: 'مدير القسم أو النائب', item: 'استكمال نقل المحفظة الائتمانية' },
-  { id: 'credit-3', department: 'قسم الائتمان', item: 'أمور أخرى:' },
+  { id: 'credit-3', department: 'قسم الائتمان', subRole: '', item: 'أمور أخرى:' },
   { id: 'audit-1', department: 'قسم التدقيق الداخلي', item: 'عدم وجود ملاحظات تدقيقية مفتوحة تتطلب متابعة من الموظف' },
   { id: 'hr-1', department: 'قسم الموارد البشرية', item: 'توقيع آخر عقد عمل مع الملحقات' },
   { id: 'hr-2', department: 'قسم الموارد البشرية', item: 'توقيع جميع استمارات الدوام' },
@@ -99,6 +99,17 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
     );
   }, [employees]);
 
+  // Compute department spans & group boundaries so department names never repeat
+  const deptMeta = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const firstIndex: Record<string, number> = {};
+    rows.forEach((r, idx) => {
+      counts[r.department] = (counts[r.department] || 0) + 1;
+      if (firstIndex[r.department] === undefined) firstIndex[r.department] = idx;
+    });
+    return { counts, firstIndex };
+  }, [rows]);
+
   const handleSelectEmployee = (empId: string) => {
     setSelectedEmployeeId(empId);
     if (!empId) return;
@@ -146,64 +157,98 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
         'يوقّع الموظف في الحقل المخصص، وذلك إما للإقرار بالموافقة على تنفيذ الإجراء ذي العلاقة، أو لتأكيد تسليم العهد أو الموجودات الخاصة بالمؤسسة، بحسب مقتضى الحال.',
         '', '', '', '', '', ''
       ],
-      ['القسم', 'الصفة / الفرع', 'المادة', 'منطبق', 'غير منطبق', 'إقرار / توقيع الموظف والتاريخ', 'اسم وتوقيع مسؤول القسم على التنفيذ أو الاستلام والتاريخ', 'الملاحظات'],
-      ...rows.map(r => [
-        r.department,
-        r.subRole || '',
+      ['القسم', '', 'المادة', 'منطبق', 'غير منطبق', 'إقرار / توقيع الموظف والتاريخ', 'اسم وتوقيع مسؤول القسم على التنفيذ أو الاستلام والتاريخ', 'الملاحظات'],
+    ];
+
+    const merges: XLSX.Range[] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Title
+      { s: { r: 4, c: 1 }, e: { r: 4, c: 7 } }, // Instructions
+      { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } }, // Header: القسم spans col 0-1
+    ];
+
+    const startRowIndex = 6;
+    const seen = new Set<string>();
+    rows.forEach((r, idx) => {
+      const excelRow = startRowIndex + idx;
+      const isFirst = !seen.has(r.department);
+      if (isFirst) {
+        seen.add(r.department);
+        const span = deptMeta.counts[r.department];
+        const hasSubCol = r.department === 'قسم الائتمان';
+        if (hasSubCol) {
+          if (span > 1) merges.push({ s: { r: excelRow, c: 0 }, e: { r: excelRow + span - 1, c: 0 } });
+        } else {
+          merges.push({ s: { r: excelRow, c: 0 }, e: { r: excelRow + span - 1, c: 1 } });
+        }
+      }
+      aoa.push([
+        isFirst ? r.department : '',
+        r.department === 'قسم الائتمان' ? (r.subRole || '') : '',
         r.item,
         r.applicable ? '☑' : '☐',
         r.notApplicable ? '☑' : '☐',
         r.employeeSignDate,
         r.deptOfficerSignDate,
         r.notes,
-      ]),
-      ['', '', '', '', '', '', '', ''],
-      [clearanceCompleted ? '☑' : '☐', '', 'تم استكمال إجراءات إخلاء الطرف وبراءة الذمة', '', '', '', '', ''],
-      [hasPendingNotes ? '☑' : '☐', '', 'توجد ملاحظات / ذمم معلقة تمنع الإغلاق النهائي', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', ''],
-      ['توقيع المشرف المباشر:', supervisorSign, '', '', '', '', 'التاريخ:', supervisorDate || '   /   /   '],
-      ['توقيع مدير القسم:', deptManagerSign, '', '', '', '', 'التاريخ:', deptManagerDate || '   /   /   '],
-      ['توقيع مسؤول قسم الموارد البشرية:', hrOfficerSign, '', '', '', '', 'التاريخ:', hrOfficerDate || '   /   /   '],
-    ];
+      ]);
+    });
+
+    aoa.push(['', '', '', '', '', '', '', '']);
+    aoa.push([clearanceCompleted ? '☑' : '☐', '', 'تم استكمال إجراءات إخلاء الطرف وبراءة الذمة', '', '', '', '', '']);
+    aoa.push([hasPendingNotes ? '☑' : '☐', '', 'توجد ملاحظات / ذمم معلقة تمنع الإغلاق النهائي', '', '', '', '', '']);
+    aoa.push(['', '', '', '', '', '', '', '']);
+    aoa.push(['توقيع المشرف المباشر:', supervisorSign, '', '', '', '', 'التاريخ:', supervisorDate || '   /   /   ']);
+    aoa.push(['توقيع مدير القسم:', deptManagerSign, '', '', '', '', 'التاريخ:', deptManagerDate || '   /   /   ']);
+    aoa.push(['توقيع مسؤول قسم الموارد البشرية:', hrOfficerSign, '', '', '', '', 'التاريخ:', hrOfficerDate || '   /   /   ']);
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!merges'] = merges;
     ws['!cols'] = [
-      { wch: 28 },
       { wch: 24 },
-      { wch: 48 },
-      { wch: 10 },
-      { wch: 11 },
-      { wch: 24 },
-      { wch: 28 },
       { wch: 22 },
+      { wch: 46 },
+      { wch: 9 },
+      { wch: 10 },
+      { wch: 22 },
+      { wch: 26 },
+      { wch: 20 },
     ];
     const wb = XLSX.utils.book_new();
+    if (!wb.Workbook) wb.Workbook = {};
+    wb.Workbook.Views = [{ RTL: true }];
     XLSX.utils.book_append_sheet(wb, ws, 'Exit_Procedure_Checklist');
     const safeName = empFullName ? `_${empFullName.replace(/\s+/g, '_')}` : '';
     XLSX.writeFile(wb, `Exit_Procedure_Checklist${safeName}.xlsx`);
   };
 
   const handlePrint = () => {
-    const printWin = window.open('', '_blank', 'width=1100,height=900');
+    const printWin = window.open('', '_blank', 'width=1000,height=900');
     if (!printWin) return;
 
-    // Group rows by department for clean rowSpan in print
-    const deptCounts: Record<string, number> = {};
-    rows.forEach(r => { deptCounts[r.department] = (deptCounts[r.department] || 0) + 1; });
     const seenDepts = new Set<string>();
+    const tableRowsHtml = rows.map((r, idx) => {
+      const isFirst = !seenDepts.has(r.department);
+      if (isFirst) seenDepts.add(r.department);
+      const span = deptMeta.counts[r.department];
+      const isCredit = r.department === 'قسم الائتمان';
+      const topBorderClass = isFirst && idx > 0 ? 'dept-sep' : '';
 
-    const tableRowsHtml = rows.map(r => {
-      let deptCell = '';
-      if (!seenDepts.has(r.department)) {
-        seenDepts.add(r.department);
-        deptCell = `<td rowspan="${deptCounts[r.department]}" style="font-weight:700;background:#f8fafc;vertical-align:middle;text-align:center;">${r.department}</td>`;
+      let deptCells = '';
+      if (isCredit) {
+        if (isFirst) {
+          deptCells += `<td rowspan="${span}" class="dept-cell">${r.department}</td>`;
+        }
+        deptCells += `<td class="sub-cell">${r.subRole || ''}</td>`;
+      } else if (isFirst) {
+        deptCells += `<td rowspan="${span}" colspan="2" class="dept-cell">${r.department}</td>`;
       }
+
       return `
-        <tr>
-          ${deptCell}
-          <td>${r.subRole ? `<div style="font-size:10px;color:#0f766e;font-weight:700;margin-bottom:2px;">${r.subRole}</div>` : ''}${r.item}</td>
-          <td style="text-align:center;font-size:14px;">${r.applicable ? '☑' : '☐'}</td>
-          <td style="text-align:center;font-size:14px;">${r.notApplicable ? '☑' : '☐'}</td>
+        <tr class="${topBorderClass}">
+          ${deptCells}
+          <td class="item-cell">${r.item}</td>
+          <td class="chk-cell">${r.applicable ? '☑' : '☐'}</td>
+          <td class="chk-cell">${r.notApplicable ? '☑' : '☐'}</td>
           <td>${r.employeeSignDate || ''}</td>
           <td>${r.deptOfficerSignDate || ''}</td>
           <td>${r.notes || ''}</td>
@@ -216,24 +261,39 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
       <html dir="rtl" lang="ar">
       <head>
         <meta charset="UTF-8" />
-        <title>استمارة إخلاء الطرف وبراءة الذمة - Exit Procedure Checklist</title>
+        <title>استمارة إخلاء الطرف وبراءة الذمة</title>
         <style>
-          @page { size: A4 portrait; margin: 10mm; }
-          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #000; font-size: 11px; margin: 0; padding: 0; }
-          h1 { text-align: center; font-size: 16px; margin: 0 0 8px 0; padding: 8px; background: #0f766e; color: #fff; border-radius: 6px; }
-          .meta-table, .check-table, .sig-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-          .meta-table td { border: 1px solid #334155; padding: 5px 8px; }
-          .meta-label { font-weight: 700; background: #f1f5f9; width: 18%; }
-          .meta-val { width: 32%; }
-          .instr { border: 1px solid #0f766e; background: #f0fdfa; padding: 6px 10px; margin-bottom: 8px; font-size: 10.5px; line-height: 1.5; }
-          .check-table th { background: #0f766e; color: #fff; border: 1px solid #334155; padding: 5px; font-size: 10.5px; }
-          .check-table td { border: 1px solid #475569; padding: 4px 6px; font-size: 10px; line-height: 1.35; }
-          .decision { border: 1px solid #334155; padding: 7px 10px; margin-bottom: 10px; font-weight: 700; font-size: 11px; }
-          .sig-table td { border: 1px solid #334155; padding: 8px 10px; font-weight: 700; }
+          @page { size: A4 portrait; margin: 8mm; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #111827; font-size: 10px; margin: 0; padding: 0; background: #fff; }
+          .doc-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #111827; padding-bottom: 6px; margin-bottom: 6px; }
+          .brand-right { font-weight: 900; font-size: 13px; color: #0f766e; letter-spacing: 1px; }
+          .brand-left { font-weight: 700; font-size: 10px; color: #0369a1; text-align: left; }
+          .doc-title { font-size: 15px; font-weight: 900; text-align: center; color: #000; }
+          table { width: 100%; border-collapse: collapse; }
+          .meta-table { margin-bottom: 4px; border: 1.5px solid #374151; }
+          .meta-table td { border: 1px solid #9ca3af; padding: 3.5px 6px; font-size: 10px; }
+          .meta-label { font-weight: 700; width: 17%; background: #f9fafb; }
+          .meta-val { width: 33%; }
+          .instr-row td { background: #f9fafb; font-size: 9.5px; line-height: 1.4; }
+          .check-table { border: 1.5px solid #374151; margin-bottom: 6px; }
+          .check-table th { background: #e5e7eb; color: #000; border: 1px solid #9ca3af; padding: 4px 5px; font-size: 9.5px; font-weight: 800; text-align: center; }
+          .check-table td { border: 1px solid #9ca3af; padding: 2.5px 5px; font-size: 9.2px; line-height: 1.3; vertical-align: middle; }
+          .dept-sep td { border-top: 1.5px solid #4b5563 !important; }
+          .dept-cell { font-weight: 800; text-align: center; background: #f9fafb; color: #000; }
+          .sub-cell { font-weight: 700; text-align: center; font-size: 8.5px; color: #1f2937; background: #fcfcfd; }
+          .item-cell { text-align: right; color: #111827; }
+          .chk-cell { text-align: center; font-size: 12px; }
+          .decision { padding: 5px 8px; margin-bottom: 6px; font-weight: 700; font-size: 10px; }
+          .sig-table { border: 1.5px solid #374151; }
+          .sig-table td { border: 1px solid #9ca3af; padding: 5px 8px; font-weight: 700; font-size: 10px; }
         </style>
       </head>
       <body>
-        <h1>استمارة إخلاء الطرف وبراءة الذمة — Exit Procedure Checklist</h1>
+        <div class="doc-header">
+          <div class="brand-right">VITAS <span style="font-size:9px;font-weight:600;color:#4b5563;display:block;">IRAQ</span></div>
+          <div class="doc-title">استمارة إخلاء الطرف وبراءة الذمة</div>
+          <div class="brand-left">Global Communities<span style="display:block;font-size:8.5px;color:#4b5563;">المجتمعات العالمية</span></div>
+        </div>
         <table class="meta-table">
           <tr>
             <td class="meta-label">اسم الموظف الكامل:</td><td class="meta-val">${empFullName || ''}</td>
@@ -247,20 +307,20 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
             <td class="meta-label">الفرع:</td><td class="meta-val">${empBranch || ''}</td>
             <td class="meta-label">رقم هوية المؤسسة:</td><td class="meta-val">${empOrgId || ''}</td>
           </tr>
+          <tr class="instr-row">
+            <td class="meta-label">تعليمات خاصة بتوقيع الموظف:</td>
+            <td colspan="3">يوقّع الموظف في الحقل المخصص، وذلك إما للإقرار بالموافقة على تنفيذ الإجراء ذي العلاقة، أو لتأكيد تسليم العهد أو الموجودات الخاصة بالمؤسسة، بحسب مقتضى الحال.</td>
+          </tr>
         </table>
-        <div class="instr">
-          <strong>تعليمات خاصة بتوقيع الموظف:</strong>
-          يوقّع الموظف في الحقل المخصص، وذلك إما للإقرار بالموافقة على تنفيذ الإجراء ذي العلاقة، أو لتأكيد تسليم العهد أو الموجودات الخاصة بالمؤسسة، بحسب مقتضى الحال.
-        </div>
         <table class="check-table">
           <thead>
             <tr>
-              <th style="width:16%">القسم</th>
-              <th style="width:32%">المادة</th>
-              <th style="width:6%">منطبق</th>
-              <th style="width:7%">غير منطبق</th>
+              <th colspan="2" style="width:19%">القسم</th>
+              <th style="width:31%">المادة</th>
+              <th style="width:5.5%">منطبق</th>
+              <th style="width:6.5%">غير منطبق</th>
               <th style="width:13%">إقرار / توقيع الموظف والتاريخ</th>
-              <th style="width:15%">اسم وتوقيع مسؤول القسم والتاريخ</th>
+              <th style="width:14%">اسم وتوقيع مسؤول القسم على التنفيذ أو الاستلام والتاريخ</th>
               <th style="width:11%">الملاحظات</th>
             </tr>
           </thead>
@@ -268,12 +328,12 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
         </table>
         <div class="decision">
           <div>${clearanceCompleted ? '☑' : '☐'} &nbsp; تم استكمال إجراءات إخلاء الطرف وبراءة الذمة</div>
-          <div style="margin-top:4px;">${hasPendingNotes ? '☑' : '☐'} &nbsp; توجد ملاحظات / ذمم معلقة تمنع الإغلاق النهائي</div>
+          <div style="margin-top:3px;">${hasPendingNotes ? '☑' : '☐'} &nbsp; توجد ملاحظات / ذمم معلقة تمنع الإغلاق النهائي</div>
         </div>
         <table class="sig-table">
           <tr>
-            <td style="width:70%">توقيع المشرف المباشر: ${supervisorSign || ''}</td>
-            <td style="width:30%">التاريخ: ${supervisorDate || '      /      /      '}</td>
+            <td style="width:72%">توقيع المشرف المباشر: ${supervisorSign || ''}</td>
+            <td style="width:28%">التاريخ: ${supervisorDate || '      /      /      '}</td>
           </tr>
           <tr>
             <td>توقيع مدير القسم: ${deptManagerSign || ''}</td>
@@ -291,40 +351,26 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
     printWin.document.close();
   };
 
-  // Precompute department row spans for clean table rendering
-  const deptCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    rows.forEach(r => { counts[r.department] = (counts[r.department] || 0) + 1; });
-    return counts;
-  }, [rows]);
-
   const renderedDepts = new Set<string>();
 
   return (
-    <div className="space-y-5" dir="rtl">
-      {/* Top Action & Employee Auto-Fill Bar */}
-      <div className="p-4 rounded-2xl bg-gradient-to-l from-teal-900 to-slate-900 border border-teal-500/30 text-white flex flex-wrap items-center justify-between gap-3 shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center">
-            <span className="material-symbols-outlined text-teal-300 text-2xl">assignment_turned_in</span>
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-white">
-              {isAr ? 'استمارة إخلاء الطرف وبراءة الذمة (Exit Procedure Checklist)' : 'Exit Procedure Checklist — Clearance Form'}
-            </h3>
-            <p className="text-[11px] text-teal-200/80">
-              {isAr ? 'نموذج رسمي معتمد يشمل 12 قسماً و35 بنداً لإخلاء الطرف وبراءة الذمة — قابل للتعبئة والطباعة والتصدير لإكسل' : 'Official 12-department clearance form — interactive, printable A4, and Excel exportable'}
-            </p>
-          </div>
+    <div className="space-y-4" dir="rtl">
+      {/* Compact Action & Employee Auto-Fill Toolbar */}
+      <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-700 text-white flex flex-wrap items-center justify-between gap-3 shadow-md">
+        <div className="flex items-center gap-2.5">
+          <span className="material-symbols-outlined text-teal-400 text-xl">assignment_turned_in</span>
+          <span className="text-xs font-bold">
+            {isAr ? 'نموذج استمارة إخلاء الطرف وبراءة الذمة (مطابق للملف الأصلي)' : 'Exit Procedure Checklist (Official Original Layout)'}
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={selectedEmployeeId}
             onChange={(e) => handleSelectEmployee(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-slate-800 border border-teal-400/40 text-xs text-white focus:outline-none focus:border-teal-300 max-w-[230px]"
+            className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-xs text-white focus:outline-none focus:border-teal-400 max-w-[230px]"
           >
-            <option value="">{isAr ? '-- اختر موظفاً للتعبئة التلقائية --' : '-- Auto-fill from Employee --'}</option>
+            <option value="">{isAr ? '-- تعبئة تلقائية من موظف --' : '-- Auto-fill from Employee --'}</option>
             {sortedEmployees.map(emp => (
               <option key={emp.id || emp.employeeId} value={String(emp.id || emp.employeeId)}>
                 {emp.fullNameAr || emp.fullName || emp.fullNameEn} ({emp.employeeId || emp.badgeNo || emp.id})
@@ -335,7 +381,7 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
           <button
             type="button"
             onClick={handlePrint}
-            className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+            className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
           >
             <span className="material-symbols-outlined text-sm">print</span>
             <span>{isAr ? 'طباعة / PDF' : 'Print / PDF'}</span>
@@ -344,7 +390,7 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
           <button
             type="button"
             onClick={handleExportExcel}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
           >
             <span className="material-symbols-outlined text-sm">download</span>
             <span>{isAr ? 'تصدير Excel' : 'Export Excel'}</span>
@@ -353,7 +399,7 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
           <button
             type="button"
             onClick={handleReset}
-            className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
           >
             <span className="material-symbols-outlined text-sm">restart_alt</span>
             <span>{isAr ? 'تفريغ' : 'Reset'}</span>
@@ -361,174 +407,246 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
         </div>
       </div>
 
-      {/* Employee Header Metadata Card */}
-      <div className="p-5 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">اسم الموظف الكامل:</label>
-            <input type="text" value={empFullName} onChange={e => setEmpFullName(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white" />
-          </div>
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">العنوان الوظيفي:</label>
-            <input type="text" value={empJobTitle} onChange={e => setEmpJobTitle(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white" />
-          </div>
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">الفرع:</label>
-            <input type="text" value={empBranch} onChange={e => setEmpBranch(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white" />
-          </div>
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">تاريخ بداية العمل:</label>
-            <input type="date" value={empStartDate} onChange={e => setEmpStartDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-mono" />
-          </div>
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">تاريخ آخر يوم للعمل:</label>
-            <input type="date" value={empLastDay} onChange={e => setEmpLastDay(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-mono" />
-          </div>
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">رقم هوية المؤسسة:</label>
-            <input type="text" value={empOrgId} onChange={e => setEmpOrgId(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-mono" />
-          </div>
-        </div>
+      {/* Official A4 Paper Form Container (Matches Original Excel Layout) */}
+      <div className="bg-white text-gray-900 rounded-xl border border-gray-400 shadow-lg p-5 md:p-7 overflow-x-auto">
+        <div className="min-w-[860px]">
+          {/* Official Top Logos & Title Bar */}
+          <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-gray-800">
+            <div className="text-right">
+              <div className="text-base font-black tracking-widest text-teal-700 leading-none">VITAS</div>
+              <div className="text-[10px] font-bold text-gray-500 tracking-wider">IRAQ • فيتاس العراق</div>
+            </div>
 
-        {/* Special Employee Signature Instruction */}
-        <div className="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-500/30 text-xs text-teal-900 dark:text-teal-200 leading-relaxed">
-          <strong className="font-bold">تعليمات خاصة بتوقيع الموظف: </strong>
-          يوقّع الموظف في الحقل المخصص، وذلك إما للإقرار بالموافقة على تنفيذ الإجراء ذي العلاقة، أو لتأكيد تسليم العهد أو الموجودات الخاصة بالمؤسسة، بحسب مقتضى الحال.
-        </div>
-      </div>
+            <h2 className="text-lg font-black text-black text-center">
+              استمارة إخلاء الطرف وبراءة الذمة
+            </h2>
 
-      {/* Main 12-Department Exit Checklist Table */}
-      <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111827] shadow-sm overflow-x-auto">
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="bg-teal-700 text-white text-[11px]">
-              <th className="p-3 border border-teal-600 text-center w-[15%]">القسم</th>
-              <th className="p-3 border border-teal-600 text-right w-[30%]">المادة</th>
-              <th className="p-3 border border-teal-600 text-center w-[6%]">منطبق</th>
-              <th className="p-3 border border-teal-600 text-center w-[7%]">غير منطبق</th>
-              <th className="p-3 border border-teal-600 text-center w-[14%]">إقرار / توقيع الموظف والتاريخ</th>
-              <th className="p-3 border border-teal-600 text-center w-[15%]">اسم وتوقيع مسؤول القسم والتاريخ</th>
-              <th className="p-3 border border-teal-600 text-center w-[13%]">الملاحظات</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => {
-              const showDept = !renderedDepts.has(r.department);
-              if (showDept) renderedDepts.add(r.department);
+            <div className="text-left">
+              <div className="text-xs font-extrabold text-sky-700 leading-tight">Global Communities</div>
+              <div className="text-[10px] font-semibold text-gray-500">المجتمعات العالمية</div>
+            </div>
+          </div>
 
-              return (
-                <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] border-b border-slate-200 dark:border-white/10">
-                  {showDept && (
-                    <td
-                      rowSpan={deptCounts[r.department]}
-                      className="p-2.5 border border-slate-200 dark:border-white/10 font-bold text-center align-middle bg-slate-50 dark:bg-slate-900/70 text-slate-900 dark:text-teal-300"
-                    >
-                      {r.department}
-                    </td>
-                  )}
-                  <td className="p-2.5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200">
-                    {r.subRole && (
-                      <div className="text-[10px] font-bold text-teal-700 dark:text-teal-400 mb-0.5">{r.subRole}</div>
+          {/* Employee Metadata Grid (Exact Original Rows 2-5) */}
+          <table className="w-full border-collapse border border-gray-500 text-xs mb-2">
+            <tbody>
+              <tr>
+                <td className="border border-gray-400 bg-gray-50 font-bold px-2.5 py-1.5 w-[17%] text-gray-900">اسم الموظف الكامل:</td>
+                <td className="border border-gray-400 px-2 py-1 w-[33%]">
+                  <input type="text" value={empFullName} onChange={e => setEmpFullName(e.target.value)} className="w-full bg-transparent text-xs text-gray-900 focus:outline-none focus:bg-teal-50/40 px-1 py-0.5 rounded" />
+                </td>
+                <td className="border border-gray-400 bg-gray-50 font-bold px-2.5 py-1.5 w-[17%] text-gray-900">العنوان الوظيفي:</td>
+                <td className="border border-gray-400 px-2 py-1 w-[33%]">
+                  <input type="text" value={empJobTitle} onChange={e => setEmpJobTitle(e.target.value)} className="w-full bg-transparent text-xs text-gray-900 focus:outline-none focus:bg-teal-50/40 px-1 py-0.5 rounded" />
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-gray-400 bg-gray-50 font-bold px-2.5 py-1.5 text-gray-900">تاريخ بداية العمل:</td>
+                <td className="border border-gray-400 px-2 py-1">
+                  <input type="date" value={empStartDate} onChange={e => setEmpStartDate(e.target.value)} className="w-full bg-transparent text-xs text-gray-900 font-mono focus:outline-none px-1 py-0.5" />
+                </td>
+                <td className="border border-gray-400 bg-gray-50 font-bold px-2.5 py-1.5 text-gray-900">تاريخ آخر يوم للعمل:</td>
+                <td className="border border-gray-400 px-2 py-1">
+                  <input type="date" value={empLastDay} onChange={e => setEmpLastDay(e.target.value)} className="w-full bg-transparent text-xs text-gray-900 font-mono focus:outline-none px-1 py-0.5" />
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-gray-400 bg-gray-50 font-bold px-2.5 py-1.5 text-gray-900">الفرع:</td>
+                <td className="border border-gray-400 px-2 py-1">
+                  <input type="text" value={empBranch} onChange={e => setEmpBranch(e.target.value)} className="w-full bg-transparent text-xs text-gray-900 focus:outline-none focus:bg-teal-50/40 px-1 py-0.5 rounded" />
+                </td>
+                <td className="border border-gray-400 bg-gray-50 font-bold px-2.5 py-1.5 text-gray-900">رقم هوية المؤسسة:</td>
+                <td className="border border-gray-400 px-2 py-1">
+                  <input type="text" value={empOrgId} onChange={e => setEmpOrgId(e.target.value)} className="w-full bg-transparent text-xs text-gray-900 font-mono focus:outline-none focus:bg-teal-50/40 px-1 py-0.5 rounded" />
+                </td>
+              </tr>
+              <tr className="bg-gray-50/80">
+                <td className="border border-gray-400 font-bold px-2.5 py-2 text-gray-900">تعليمات خاصة بتوقيع الموظف:</td>
+                <td colSpan={3} className="border border-gray-400 px-3 py-2 text-[11px] text-gray-800 leading-relaxed">
+                  يوقّع الموظف في الحقل المخصص، وذلك إما للإقرار بالموافقة على تنفيذ الإجراء ذي العلاقة، أو لتأكيد تسليم العهد أو الموجودات الخاصة بالمؤسسة، بحسب مقتضى الحال.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Main Checklist Table (Gray Grid Lines, Non-Repeating Merged Department Cells) */}
+          <table className="w-full border-collapse border border-gray-500 text-[11px]">
+            <thead>
+              <tr className="bg-gray-200 text-black font-extrabold">
+                <th colSpan={2} className="border border-gray-400 px-2 py-2 text-center w-[19%]">القسم</th>
+                <th className="border border-gray-400 px-2 py-2 text-center w-[30%]">المادة</th>
+                <th className="border border-gray-400 px-1.5 py-2 text-center w-[5.5%]">منطبق</th>
+                <th className="border border-gray-400 px-1.5 py-2 text-center w-[6.5%]">غير منطبق</th>
+                <th className="border border-gray-400 px-2 py-2 text-center w-[13%]">إقرار / توقيع الموظف والتاريخ</th>
+                <th className="border border-gray-400 px-2 py-2 text-center w-[15%]">اسم وتوقيع مسؤول القسم على التنفيذ أو الاستلام والتاريخ</th>
+                <th className="border border-gray-400 px-2 py-2 text-center w-[11%]">الملاحظات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, idx) => {
+                const isFirstOfDept = !renderedDepts.has(r.department);
+                if (isFirstOfDept) renderedDepts.add(r.department);
+                const span = deptMeta.counts[r.department];
+                const isCredit = r.department === 'قسم الائتمان';
+                const topDeptBorder = isFirstOfDept && idx > 0 ? 'border-t-2 border-t-gray-500' : '';
+
+                return (
+                  <tr key={r.id} className={`hover:bg-gray-50/70 ${topDeptBorder}`}>
+                    {isCredit ? (
+                      <>
+                        {isFirstOfDept && (
+                          <td
+                            rowSpan={span}
+                            className="border border-gray-400 bg-gray-50 px-2 py-1.5 font-extrabold text-center align-middle text-gray-900 w-[9%]"
+                          >
+                            {r.department}
+                          </td>
+                        )}
+                        <td className="border border-gray-400 bg-gray-50/50 px-1.5 py-1.5 font-bold text-center align-middle text-[10px] text-gray-800 w-[10%]">
+                          {r.subRole || ''}
+                        </td>
+                      </>
+                    ) : (
+                      isFirstOfDept && (
+                        <td
+                          rowSpan={span}
+                          colSpan={2}
+                          className="border border-gray-400 bg-gray-50 px-2 py-1.5 font-extrabold text-center align-middle text-gray-900"
+                        >
+                          {r.department}
+                        </td>
+                      )
                     )}
-                    <span>{r.item}</span>
-                  </td>
-                  <td className="p-2 border border-slate-200 dark:border-white/10 text-center">
-                    <input
-                      type="checkbox"
-                      checked={r.applicable}
-                      onChange={e => updateRow(r.id, { applicable: e.target.checked, notApplicable: e.target.checked ? false : r.notApplicable })}
-                      className="w-4 h-4 accent-teal-600 cursor-pointer"
-                    />
-                  </td>
-                  <td className="p-2 border border-slate-200 dark:border-white/10 text-center">
-                    <input
-                      type="checkbox"
-                      checked={r.notApplicable}
-                      onChange={e => updateRow(r.id, { notApplicable: e.target.checked, applicable: e.target.checked ? false : r.applicable })}
-                      className="w-4 h-4 accent-amber-600 cursor-pointer"
-                    />
-                  </td>
-                  <td className="p-1.5 border border-slate-200 dark:border-white/10">
-                    <input
-                      type="text"
-                      value={r.employeeSignDate}
-                      onChange={e => updateRow(r.id, { employeeSignDate: e.target.value })}
-                      placeholder="التوقيع / التاريخ"
-                      className="w-full px-2 py-1 rounded-lg bg-transparent border border-slate-200 dark:border-white/10 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:border-teal-500"
-                    />
-                  </td>
-                  <td className="p-1.5 border border-slate-200 dark:border-white/10">
-                    <input
-                      type="text"
-                      value={r.deptOfficerSignDate}
-                      onChange={e => updateRow(r.id, { deptOfficerSignDate: e.target.value })}
-                      placeholder="الاسم / التوقيع / التاريخ"
-                      className="w-full px-2 py-1 rounded-lg bg-transparent border border-slate-200 dark:border-white/10 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:border-teal-500"
-                    />
-                  </td>
-                  <td className="p-1.5 border border-slate-200 dark:border-white/10">
-                    <input
-                      type="text"
-                      value={r.notes}
-                      onChange={e => updateRow(r.id, { notes: e.target.value })}
-                      placeholder="ملاحظات..."
-                      className="w-full px-2 py-1 rounded-lg bg-transparent border border-slate-200 dark:border-white/10 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:border-teal-500"
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
 
-      {/* Final Clearance Status & Signatures */}
-      <div className="p-5 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-sm space-y-4 text-xs">
-        <div className="space-y-2 pb-3 border-b border-slate-200 dark:border-white/10">
-          <label className="flex items-center gap-2.5 font-bold text-emerald-700 dark:text-emerald-400 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={clearanceCompleted}
-              onChange={e => {
-                setClearanceCompleted(e.target.checked);
-                if (e.target.checked) setHasPendingNotes(false);
-              }}
-              className="w-4 h-4 accent-emerald-600"
-            />
-            <span>تم استكمال إجراءات إخلاء الطرف وبراءة الذمة</span>
-          </label>
-          <label className="flex items-center gap-2.5 font-bold text-rose-700 dark:text-rose-400 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={hasPendingNotes}
-              onChange={e => {
-                setHasPendingNotes(e.target.checked);
-                if (e.target.checked) setClearanceCompleted(false);
-              }}
-              className="w-4 h-4 accent-rose-600"
-            />
-            <span>توجد ملاحظات / ذمم معلقة تمنع الإغلاق النهائي</span>
-          </label>
-        </div>
+                    <td className="border border-gray-400 px-2.5 py-1.5 text-right text-gray-900 leading-snug">
+                      {r.item}
+                    </td>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 space-y-2">
-            <label className="block font-bold text-slate-800 dark:text-slate-200">توقيع المشرف المباشر:</label>
-            <input type="text" value={supervisorSign} onChange={e => setSupervisorSign(e.target.value)} placeholder="الاسم والتوقيع" className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950 text-slate-900 dark:text-white" />
-            <input type="date" value={supervisorDate} onChange={e => setSupervisorDate(e.target.value)} className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono" />
+                    <td className="border border-gray-400 px-1 py-1 text-center align-middle">
+                      <input
+                        type="checkbox"
+                        checked={r.applicable}
+                        onChange={e => updateRow(r.id, { applicable: e.target.checked, notApplicable: e.target.checked ? false : r.notApplicable })}
+                        className="w-3.5 h-3.5 accent-teal-700 cursor-pointer"
+                      />
+                    </td>
+
+                    <td className="border border-gray-400 px-1 py-1 text-center align-middle">
+                      <input
+                        type="checkbox"
+                        checked={r.notApplicable}
+                        onChange={e => updateRow(r.id, { notApplicable: e.target.checked, applicable: e.target.checked ? false : r.applicable })}
+                        className="w-3.5 h-3.5 accent-gray-700 cursor-pointer"
+                      />
+                    </td>
+
+                    <td className="border border-gray-400 px-1 py-1">
+                      <input
+                        type="text"
+                        value={r.employeeSignDate}
+                        onChange={e => updateRow(r.id, { employeeSignDate: e.target.value })}
+                        className="w-full bg-transparent text-[10.5px] text-gray-900 px-1 py-0.5 focus:outline-none focus:bg-teal-50/50 rounded"
+                      />
+                    </td>
+
+                    <td className="border border-gray-400 px-1 py-1">
+                      <input
+                        type="text"
+                        value={r.deptOfficerSignDate}
+                        onChange={e => updateRow(r.id, { deptOfficerSignDate: e.target.value })}
+                        className="w-full bg-transparent text-[10.5px] text-gray-900 px-1 py-0.5 focus:outline-none focus:bg-teal-50/50 rounded"
+                      />
+                    </td>
+
+                    <td className="border border-gray-400 px-1 py-1">
+                      <input
+                        type="text"
+                        value={r.notes}
+                        onChange={e => updateRow(r.id, { notes: e.target.value })}
+                        className="w-full bg-transparent text-[10.5px] text-gray-900 px-1 py-0.5 focus:outline-none focus:bg-teal-50/50 rounded"
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {/* Final Clearance Decision Checkboxes (Exact Original Rows 43-44) */}
+          <div className="my-3 px-2 space-y-1.5 text-xs font-bold text-gray-900">
+            <label className="flex items-center gap-2 cursor-pointer w-fit">
+              <input
+                type="checkbox"
+                checked={clearanceCompleted}
+                onChange={e => {
+                  setClearanceCompleted(e.target.checked);
+                  if (e.target.checked) setHasPendingNotes(false);
+                }}
+                className="w-4 h-4 accent-teal-700"
+              />
+              <span>تم استكمال إجراءات إخلاء الطرف وبراءة الذمة</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer w-fit">
+              <input
+                type="checkbox"
+                checked={hasPendingNotes}
+                onChange={e => {
+                  setHasPendingNotes(e.target.checked);
+                  if (e.target.checked) setClearanceCompleted(false);
+                }}
+                className="w-4 h-4 accent-rose-700"
+              />
+              <span>توجد ملاحظات / ذمم معلقة تمنع الإغلاق النهائي</span>
+            </label>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 space-y-2">
-            <label className="block font-bold text-slate-800 dark:text-slate-200">توقيع مدير القسم:</label>
-            <input type="text" value={deptManagerSign} onChange={e => setDeptManagerSign(e.target.value)} placeholder="الاسم والتوقيع" className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950 text-slate-900 dark:text-white" />
-            <input type="date" value={deptManagerDate} onChange={e => setDeptManagerDate(e.target.value)} className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono" />
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 space-y-2">
-            <label className="block font-bold text-slate-800 dark:text-slate-200">توقيع مسؤول قسم الموارد البشرية:</label>
-            <input type="text" value={hrOfficerSign} onChange={e => setHrOfficerSign(e.target.value)} placeholder="الاسم والتوقيع" className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950 text-slate-900 dark:text-white" />
-            <input type="date" value={hrOfficerDate} onChange={e => setHrOfficerDate(e.target.value)} className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono" />
-          </div>
+          {/* Final 3-Row Official Signatures Table (Exact Original Rows 46-48) */}
+          <table className="w-full border-collapse border border-gray-500 text-xs font-bold text-gray-900">
+            <tbody>
+              <tr>
+                <td className="border border-gray-400 px-3 py-2 w-[72%]">
+                  <div className="flex items-center gap-2">
+                    <span className="whitespace-nowrap">توقيع المشرف المباشر:</span>
+                    <input type="text" value={supervisorSign} onChange={e => setSupervisorSign(e.target.value)} className="w-full bg-transparent font-normal focus:outline-none focus:bg-teal-50/40 px-1 rounded" />
+                  </div>
+                </td>
+                <td className="border border-gray-400 px-3 py-2 w-[28%]">
+                  <div className="flex items-center gap-2">
+                    <span className="whitespace-nowrap">التاريخ:</span>
+                    <input type="date" value={supervisorDate} onChange={e => setSupervisorDate(e.target.value)} className="w-full bg-transparent font-mono font-normal text-xs focus:outline-none" />
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-gray-400 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="whitespace-nowrap">توقيع مدير القسم:</span>
+                    <input type="text" value={deptManagerSign} onChange={e => setDeptManagerSign(e.target.value)} className="w-full bg-transparent font-normal focus:outline-none focus:bg-teal-50/40 px-1 rounded" />
+                  </div>
+                </td>
+                <td className="border border-gray-400 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="whitespace-nowrap">التاريخ:</span>
+                    <input type="date" value={deptManagerDate} onChange={e => setDeptManagerDate(e.target.value)} className="w-full bg-transparent font-mono font-normal text-xs focus:outline-none" />
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-gray-400 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="whitespace-nowrap">توقيع مسؤول قسم الموارد البشرية:</span>
+                    <input type="text" value={hrOfficerSign} onChange={e => setHrOfficerSign(e.target.value)} className="w-full bg-transparent font-normal focus:outline-none focus:bg-teal-50/40 px-1 rounded" />
+                  </div>
+                </td>
+                <td className="border border-gray-400 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="whitespace-nowrap">التاريخ:</span>
+                    <input type="date" value={hrOfficerDate} onChange={e => setHrOfficerDate(e.target.value)} className="w-full bg-transparent font-mono font-normal text-xs focus:outline-none" />
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
