@@ -120,7 +120,7 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
     setEmpStartDate(String(emp.originalStartDate || emp.original_start_date || emp.contractStartDate || emp.contract_start_date || '').slice(0, 10));
     setEmpLastDay(String(emp.exitDate || emp.exit_date || '').slice(0, 10));
     setEmpBranch(emp.branch || emp.location_ar || emp.location_en || '');
-    setEmpOrgId(String(emp.employeeId || emp.employee_id || emp.badgeNo || emp.badge_no || ''));
+    setEmpOrgId(String(emp.badgeNo || emp.badge_no || emp.employeeId || emp.employee_id || ''));
   };
 
   const updateRow = (id: string, patch: Partial<ExitChecklistItem>) => {
@@ -374,7 +374,7 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
             <option value="" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>{isAr ? '-- تعبئة تلقائية من موظف --' : '-- Auto-fill from Employee --'}</option>
             {sortedEmployees.map(emp => (
               <option key={emp.id || emp.employeeId} value={String(emp.id || emp.employeeId)} style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
-                {emp.fullNameAr || emp.fullName || emp.fullNameEn} ({emp.employeeId || emp.badgeNo || emp.id})
+                {emp.fullNameAr || emp.fullName || emp.fullNameEn} ({emp.badgeNo || emp.badge_no || emp.employeeId || emp.id})
               </option>
             ))}
           </select>
