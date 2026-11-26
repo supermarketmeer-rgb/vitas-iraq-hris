@@ -368,11 +368,12 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
           <select
             value={selectedEmployeeId}
             onChange={(e) => handleSelectEmployee(e.target.value)}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-xs text-white focus:outline-none focus:border-teal-400 max-w-[230px]"
+            style={{ backgroundColor: '#1e293b', color: '#ffffff', borderColor: '#334155' }}
+            className="px-3 py-1.5 rounded-xl border text-xs font-bold !text-white focus:outline-none focus:border-teal-400 max-w-[230px] cursor-pointer"
           >
-            <option value="">{isAr ? '-- تعبئة تلقائية من موظف --' : '-- Auto-fill from Employee --'}</option>
+            <option value="" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>{isAr ? '-- تعبئة تلقائية من موظف --' : '-- Auto-fill from Employee --'}</option>
             {sortedEmployees.map(emp => (
-              <option key={emp.id || emp.employeeId} value={String(emp.id || emp.employeeId)}>
+              <option key={emp.id || emp.employeeId} value={String(emp.id || emp.employeeId)} style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
                 {emp.fullNameAr || emp.fullName || emp.fullNameEn} ({emp.employeeId || emp.badgeNo || emp.id})
               </option>
             ))}
@@ -381,28 +382,31 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
           <button
             type="button"
             onClick={handlePrint}
-            className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+            style={{ backgroundColor: '#0d9488', color: '#ffffff' }}
+            className="px-3.5 py-1.5 rounded-xl hover:opacity-90 !text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
           >
-            <span className="material-symbols-outlined text-sm">print</span>
-            <span>{isAr ? 'طباعة / PDF' : 'Print / PDF'}</span>
+            <span className="material-symbols-outlined text-sm !text-white" style={{ color: '#ffffff' }}>print</span>
+            <span className="!text-white" style={{ color: '#ffffff' }}>{isAr ? 'طباعة / PDF' : 'Print / PDF'}</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportExcel}
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+            style={{ backgroundColor: '#059669', color: '#ffffff' }}
+            className="px-3.5 py-1.5 rounded-xl hover:opacity-90 !text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
           >
-            <span className="material-symbols-outlined text-sm">download</span>
-            <span>{isAr ? 'تصدير Excel' : 'Export Excel'}</span>
+            <span className="material-symbols-outlined text-sm !text-white" style={{ color: '#ffffff' }}>download</span>
+            <span className="!text-white" style={{ color: '#ffffff' }}>{isAr ? 'تصدير Excel' : 'Export Excel'}</span>
           </button>
 
           <button
             type="button"
             onClick={handleReset}
-            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+            style={{ backgroundColor: '#334155', color: '#ffffff' }}
+            className="px-3 py-1.5 rounded-xl hover:opacity-90 !text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
           >
-            <span className="material-symbols-outlined text-sm">restart_alt</span>
-            <span>{isAr ? 'تفريغ' : 'Reset'}</span>
+            <span className="material-symbols-outlined text-sm !text-white" style={{ color: '#ffffff' }}>restart_alt</span>
+            <span className="!text-white" style={{ color: '#ffffff' }}>{isAr ? 'تفريغ' : 'Reset'}</span>
           </button>
         </div>
       </div>
