@@ -225,8 +225,11 @@ export async function resolveRecipients(queryFn, {
       };
     }
 
-    const supName = String(targetEmp.supervisor_name || '').trim();
-    if (!supName) {
+    const techSupName = String(targetEmp.supervisor_name || '').trim();
+    const adminSupName = String(targetEmp.admin_supervisor_name || '').trim();
+    const supNames = Array.from(new Set([techSupName, adminSupName].filter(n => n && n !== 'غير محدد')));
+
+    if (supNames.length === 0) {
       return {
         resolved: false,
         error: `No direct supervisor is assigned for employee "${targetEmp.full_name_ar || targetEmp.full_name_en}".`,
@@ -234,24 +237,33 @@ export async function resolveRecipients(queryFn, {
       };
     }
 
-    // Match supervisor by full_name_ar, full_name_en, or parts
-    const supMatches = employees.filter(e => {
-      const ar = String(e.full_name_ar || '').trim().toLowerCase();
-      const en = String(e.full_name_en || '').trim().toLowerCase();
+    // Match Technical and Administrative Supervisors (deduplicated by employee id)
+    const matchedMap = new Map();
+    for (const supName of supNames) {
       const s = supName.toLowerCase();
-      return ar === s || en === s || ar.includes(s) || s.includes(ar);
-    });
+      const matches = employees.filter(e => {
+        const ar = String(e.full_name_ar || '').trim().toLowerCase();
+        const en = String(e.full_name_en || '').trim().toLowerCase();
+        return ar === s || en === s || ar.includes(s) || s.includes(ar);
+      });
+      if (matches.length >= 1) {
+        for (const m of matches) {
+          if (!matchedMap.has(String(m.id))) matchedMap.set(String(m.id), m);
+        }
+      }
+    }
 
-    if (supMatches.length === 1) {
+    const supMatches = Array.from(matchedMap.values());
+    if (supMatches.length >= 1 && supMatches.length <= supNames.length) {
       return {
         resolved: true,
         recipientType: 'direct_supervisor',
-        recipients: [formatRecipient(supMatches[0])],
+        recipients: supMatches.map(formatRecipient),
         meta: { targetEmployee: formatRecipient(targetEmp) }
       };
     }
 
-    if (supMatches.length > 1) {
+    if (supMatches.length > supNames.length) {
       return {
         resolved: false,
         multiple: true,

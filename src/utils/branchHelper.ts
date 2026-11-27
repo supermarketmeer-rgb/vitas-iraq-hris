@@ -355,6 +355,7 @@ export function isSubordinateOf(emp: any, supervisor?: any): boolean {
   if (isSelfEmployee(emp, supervisor)) return false;
 
   const directSup = String(emp.supervisorName || emp.supervisor_name || '').trim().toLowerCase();
+  const adminSup = String(emp.adminSupervisorName || emp.admin_supervisor_name || '').trim().toLowerCase();
   const directSupId = String(emp.supervisor_employee_id || emp.supervisor_id || '').trim().toLowerCase();
 
   const supId = String(supervisor.id != null ? supervisor.id : '').trim();
@@ -368,10 +369,11 @@ export function isSubordinateOf(emp: any, supervisor?: any): boolean {
     if (supEmpId && (directSupId === supEmpId || directSupId.replace(/[^a-z0-9]/g, '') === supEmpId.replace(/[^a-z0-9]/g, ''))) return true;
   }
 
-  // Match by supervisor Name (with Arabic normalization)
-  if (directSup && directSup.length > 2) {
-    const norm = (s: string) => s.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
-    const normDirect = norm(directSup);
+  // Match by Technical or Administrative Supervisor Name (with Arabic normalization)
+  const norm = (s: string) => s.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+  const supCandidates = [directSup, adminSup].filter(s => s && s.length > 2 && s !== 'غير محدد');
+  for (const candidateSup of supCandidates) {
+    const normDirect = norm(candidateSup);
     if (supName) {
       const normSup = norm(supName);
       if (normDirect === normSup || normDirect.includes(normSup) || normSup.includes(normDirect)) return true;

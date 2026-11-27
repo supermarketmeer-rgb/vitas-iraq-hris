@@ -1126,6 +1126,10 @@ const ensureSettingsSeededAndSynced = async () => {
       name VARCHAR(255) NULL,
       name_en VARCHAR(255) NULL,
       name_ar VARCHAR(255) NULL,
+      governorate_ar VARCHAR(150) NULL,
+      governorate_en VARCHAR(150) NULL,
+      district_ar VARCHAR(150) NULL,
+      district_en VARCHAR(150) NULL,
       address TEXT NULL,
       city VARCHAR(100) NULL,
       country VARCHAR(100) DEFAULT 'Iraq',
@@ -1136,6 +1140,16 @@ const ensureSettingsSeededAndSynced = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`).catch(() => {});
+
+    // Ensure governorate & district columns exist on existing branches tables (Local & Cloud)
+    await query("ALTER TABLE branches ADD COLUMN governorate_ar VARCHAR(150) NULL").catch(() => {});
+    await query("ALTER TABLE branches ADD COLUMN governorate_en VARCHAR(150) NULL").catch(() => {});
+    await query("ALTER TABLE branches ADD COLUMN district_ar VARCHAR(150) NULL").catch(() => {});
+    await query("ALTER TABLE branches ADD COLUMN district_en VARCHAR(150) NULL").catch(() => {});
+    executeCloudQuery("ALTER TABLE branches ADD COLUMN governorate_ar VARCHAR(150) NULL").catch(() => {});
+    executeCloudQuery("ALTER TABLE branches ADD COLUMN governorate_en VARCHAR(150) NULL").catch(() => {});
+    executeCloudQuery("ALTER TABLE branches ADD COLUMN district_ar VARCHAR(150) NULL").catch(() => {});
+    executeCloudQuery("ALTER TABLE branches ADD COLUMN district_en VARCHAR(150) NULL").catch(() => {});
 
     await query(`CREATE TABLE IF NOT EXISTS departments (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1605,6 +1619,10 @@ const loadEmployeeColumns = async () => {
     await query("ALTER TABLE employees ADD COLUMN microfin_position VARCHAR(150) DEFAULT NULL").catch(() => {});
     await query("ALTER TABLE employees ADD COLUMN second_citizenship VARCHAR(100) DEFAULT NULL").catch(() => {});
     await query("ALTER TABLE employees ADD COLUMN termination_reason VARCHAR(255) DEFAULT NULL").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN admin_supervisor_name VARCHAR(255) DEFAULT NULL").catch(() => {});
+    await query("ALTER TABLE employees ADD COLUMN work_location VARCHAR(255) DEFAULT NULL").catch(() => {});
+    executeCloudQuery("ALTER TABLE employees ADD COLUMN admin_supervisor_name VARCHAR(255) DEFAULT NULL").catch(() => {});
+    executeCloudQuery("ALTER TABLE employees ADD COLUMN work_location VARCHAR(255) DEFAULT NULL").catch(() => {});
 
     await query("ALTER TABLE payroll_finalized_rows ADD COLUMN employer_social_security_12 DECIMAL(15,2) DEFAULT 0.00").catch(() => {});
     await query("ALTER TABLE payroll_finalized_rows ADD COLUMN family_allowance DECIMAL(15,2) DEFAULT 0.00").catch(() => {});
@@ -1864,6 +1882,10 @@ const formatEmployeeRow = (row) => {
     branch: row.branch || row.location_ar || 'غير محدد',
     branchEn: row.branch_en || row.location_en || 'N/A',
     supervisorName: row.supervisor_name || 'غير محدد',
+    adminSupervisorName: row.admin_supervisor_name || row.supervisor_name || 'غير محدد',
+    admin_supervisor_name: row.admin_supervisor_name || row.supervisor_name || '',
+    workLocation: row.work_location || '',
+    work_location: row.work_location || '',
     workScope: row.work_scope || 'غير محدد',
     salary: Number(row.salary || 0),
     basicSalary: Number(row.basic_salary || 0),
@@ -2063,6 +2085,8 @@ function buildEmployeeCandidateData(data, sMap = {}) {
   const branch = data.branch || data.location_ar || null;
   const branchEn = data.branchEn || data.location_en || null;
   const supervisorName = data.supervisorName || data.supervisor_name || null;
+  const adminSupervisorName = data.adminSupervisorName || data.admin_supervisor_name || supervisorName || null;
+  const workLocation = data.workLocation || data.work_location || null;
   const workScope = data.workScope || data.work_scope || null;
 
   const salary = parseNum(data.salary);
@@ -2179,6 +2203,8 @@ function buildEmployeeCandidateData(data, sMap = {}) {
     branch: branch || branchEn || null,
     branch_en: branchEn || null,
     supervisor_name: supervisorName,
+    admin_supervisor_name: adminSupervisorName,
+    work_location: workLocation,
     work_scope: workScope,
     salary: salary,
     basic_salary: basicSalary,
@@ -2279,6 +2305,8 @@ app.post('/api/employees', async (req, res) => {
     const branch = data.branch || data.location_ar || null;
     const branchEn = data.branchEn || data.location_en || null;
     const supervisorName = data.supervisorName || data.supervisor_name || null;
+    const adminSupervisorName = data.adminSupervisorName || data.admin_supervisor_name || supervisorName || null;
+    const workLocation = data.workLocation || data.work_location || null;
     const workScope = data.workScope || data.work_scope || null;
 
     const salary = parseNum(data.salary);
@@ -2416,6 +2444,8 @@ app.post('/api/employees', async (req, res) => {
       branch: branch,
       branch_en: branchEn,
       supervisor_name: supervisorName,
+      admin_supervisor_name: adminSupervisorName,
+      work_location: workLocation,
       work_scope: workScope,
       salary: salary,
       basic_salary: basicSalary,
@@ -2910,7 +2940,7 @@ app.post('/api/employees/batch-import', async (req, res) => {
       'employee_id', 'badge_no', 'waid', 'full_name_ar', 'full_name_en', 'email', 'personal_email',
       'phone', 'emergency_phone', 'dob', 'years_of_employment', 'years_in_position', 'exit_date',
       'gender', 'marital_status', 'nationality', 'department', 'position_ar', 'position_en',
-      'branch', 'branch_en', 'supervisor_name', 'work_scope', 'salary', 'basic_salary',
+      'branch', 'branch_en', 'supervisor_name', 'admin_supervisor_name', 'work_location', 'work_scope', 'salary', 'basic_salary',
       'transportation_fixed', 'fixed_bonus', 'phone_allowance', 'certificate_allowance',
       'written_basic_salary_ar', 'bank_name', 'iban', 'national_id', 'passport_no', 'passport_expiry',
       'spouse_name', 'spouse_employed_here', 'children_details', 'original_start_date',
@@ -4705,18 +4735,30 @@ app.get(['/api/branches', '/api/settings/branches', '/api/offices'], async (req,
 // Settings - Branches POST / CREATE
 app.post(['/api/settings/branches', '/api/branches', '/api/offices'], async (req, res) => {
   try {
-    const { name, name_ar, name_en, address, city, phone, email, status, sort_order, department_id } = req.body;
+    const {
+      name, name_ar, name_en,
+      governorate_ar, governorate_en, district_ar, district_en,
+      address, city, phone, email, status, sort_order, department_id
+    } = req.body;
     const finalNameAr = (name_ar || name || name_en || '').trim();
     const finalNameEn = (name_en || name || name_ar || '').trim();
+    const finalGovAr = (governorate_ar || city || '').trim() || null;
+    const finalGovEn = (governorate_en || '').trim() || null;
+    const finalDistAr = (district_ar || '').trim() || null;
+    const finalDistEn = (district_en || '').trim() || null;
     const finalId = req.body.id ? String(req.body.id).trim() : `BR${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
     const sql = `
-      INSERT INTO branches (id, name, name_ar, name_en, address, city, country, phone, email, status, sort_order, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'Iraq', ?, ?, ?, ?, NOW())
+      INSERT INTO branches (id, name, name_ar, name_en, governorate_ar, governorate_en, district_ar, district_en, address, city, country, phone, email, status, sort_order, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Iraq', ?, ?, ?, ?, NOW())
       ON DUPLICATE KEY UPDATE
         name = VALUES(name),
         name_ar = VALUES(name_ar),
         name_en = VALUES(name_en),
+        governorate_ar = VALUES(governorate_ar),
+        governorate_en = VALUES(governorate_en),
+        district_ar = VALUES(district_ar),
+        district_en = VALUES(district_en),
         address = VALUES(address),
         city = VALUES(city),
         phone = VALUES(phone),
@@ -4730,8 +4772,12 @@ app.post(['/api/settings/branches', '/api/branches', '/api/offices'], async (req
       finalNameAr,
       finalNameAr,
       finalNameEn,
+      finalGovAr,
+      finalGovEn,
+      finalDistAr,
+      finalDistEn,
       address ? String(address).trim() : null,
-      city ? String(city).trim() : null,
+      finalGovAr || (city ? String(city).trim() : null),
       phone ? String(phone).trim() : null,
       email ? String(email).trim() : null,
       status || 'Active',
@@ -4752,8 +4798,12 @@ app.post(['/api/settings/branches', '/api/branches', '/api/offices'], async (req
       name: finalNameAr,
       name_ar: finalNameAr,
       name_en: finalNameEn,
+      governorate_ar: finalGovAr,
+      governorate_en: finalGovEn,
+      district_ar: finalDistAr,
+      district_en: finalDistEn,
       address,
-      city,
+      city: finalGovAr || city,
       phone,
       email,
       status: status || 'Active'
@@ -4769,9 +4819,17 @@ app.post(['/api/settings/branches', '/api/branches', '/api/offices'], async (req
 app.put(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id', '/api/settings/branches', '/api/branches', '/api/offices'], async (req, res) => {
   try {
     let id = (req.params && req.params.id) || (req.body && req.body.id);
-    const { name, name_ar, name_en, address, city, phone, email, status, sort_order, department_id } = req.body;
+    const {
+      name, name_ar, name_en,
+      governorate_ar, governorate_en, district_ar, district_en,
+      address, city, phone, email, status, sort_order, department_id
+    } = req.body;
     const finalNameAr = (name_ar || name || name_en || '').trim();
     const finalNameEn = (name_en || name || name_ar || '').trim();
+    const finalGovAr = governorate_ar !== undefined ? (String(governorate_ar).trim() || null) : (city !== undefined ? (String(city).trim() || null) : null);
+    const finalGovEn = governorate_en !== undefined ? (String(governorate_en).trim() || null) : null;
+    const finalDistAr = district_ar !== undefined ? (String(district_ar).trim() || null) : null;
+    const finalDistEn = district_en !== undefined ? (String(district_en).trim() || null) : null;
 
     if (!id && finalNameAr) {
       const match = await query('SELECT id FROM branches WHERE name = ? OR name_ar = ? OR name_en = ? LIMIT 1', [finalNameAr, finalNameAr, finalNameAr]).catch(() => []);
@@ -4794,6 +4852,10 @@ app.put(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id', 
         name = ?,
         name_ar = ?,
         name_en = ?,
+        governorate_ar = ?,
+        governorate_en = ?,
+        district_ar = ?,
+        district_en = ?,
         address = ?,
         city = ?,
         phone = ?,
@@ -4807,8 +4869,12 @@ app.put(['/api/settings/branches/:id', '/api/branches/:id', '/api/offices/:id', 
       finalNameAr,
       finalNameAr,
       finalNameEn,
+      finalGovAr,
+      finalGovEn,
+      finalDistAr,
+      finalDistEn,
       address !== undefined ? (address ? String(address).trim() : null) : null,
-      city !== undefined ? (city ? String(city).trim() : null) : null,
+      finalGovAr || (city !== undefined ? (city ? String(city).trim() : null) : null),
       phone !== undefined ? (phone ? String(phone).trim() : null) : null,
       email !== undefined ? (email ? String(email).trim() : null) : null,
       status || 'Active',

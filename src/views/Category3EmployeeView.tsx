@@ -14,6 +14,7 @@ import { StatusChangeTable } from '../components/StatusChangeTable';
 import { TrainingTable } from '../components/TrainingTable';
 import { WarningTable } from '../components/WarningTable';
 import { getBranchName } from '../utils/branchHelper';
+import { IRAQ_GOVERNORATES, inferGovernorateFromBranchName } from '../data/iraqLocations';
 import { getDepartmentName, getJobTitleName, DICT_EN, isArabicText } from '../utils/orgDictionary';
 import { transliterateArabicNameToEnglish } from '../utils/nameHelper';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
@@ -272,7 +273,15 @@ export const Category3EmployeeView: React.FC = () => {
   const [branchLocations, setBranchLocations] = useState<any[]>([]);
   const [showBranchModal, setShowBranchModal] = useState(false);
   const [editingBranch, setEditingBranch] = useState<any>(null);
-  const [branchFormData, setBranchFormData] = useState({ name: '', name_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
+  const [branchFormData, setBranchFormData] = useState({
+    name: '',
+    name_en: '',
+    governorate_ar: '',
+    governorate_en: '',
+    district_ar: '',
+    district_en: '',
+    status: 'Active'
+  });
   const [branchDeleteConfirm, setBranchDeleteConfirm] = useState<{ show: boolean; id: string | number; name: string }>({
     show: false,
     id: '',
@@ -725,6 +734,8 @@ export const Category3EmployeeView: React.FC = () => {
   const [branchEn, setBranchEn] = useState('');
   const [positionStartDate, setPositionStartDate] = useState(originalStartDate);
   const [supervisorName, setSupervisorName] = useState('');
+  const [adminSupervisorName, setAdminSupervisorName] = useState('');
+  const [workLocation, setWorkLocation] = useState('');
   const [lebanonSupervisors, setLebanonSupervisors] = useState<any[]>([]);
 
   useEffect(() => {
@@ -1310,7 +1321,15 @@ export const Category3EmployeeView: React.FC = () => {
     const resolvedBranchEn = getBranchName(rawBranchEn || rawBranch, null, 'en') || rawBranchEn;
     setBranch(resolvedBranchAr);
     setBranchEn(resolvedBranchEn);
-    setSupervisorName(clean(emp.supervisorName || emp.supervisor_name));
+    const rawSup = clean(emp.supervisorName || emp.supervisor_name);
+    const rawAdminSup = clean(emp.adminSupervisorName || emp.admin_supervisor_name) || rawSup;
+    setSupervisorName(rawSup);
+    setAdminSupervisorName(rawAdminSup);
+    const matchedBranchObj = locations.find((b: any) =>
+      (b.name_ar && b.name_ar === rawBranch) || (b.name && b.name === rawBranch) || (b.name_en && b.name_en === rawBranch)
+    );
+    const defaultGov = matchedBranchObj?.governorate_ar || matchedBranchObj?.city || inferGovernorateFromBranchName(rawBranch)?.ar || '';
+    setWorkLocation(clean(emp.workLocation || emp.work_location) || defaultGov);
     
     // Normalize work scope to Office Job / Field Job
     const rawScope = clean(emp.workScope || emp.work_scope) || '';
@@ -1450,6 +1469,8 @@ export const Category3EmployeeView: React.FC = () => {
     setBranch('');
     setBranchEn('');
     setSupervisorName('');
+    setAdminSupervisorName('');
+    setWorkLocation('');
     setGrade('');
     setTermOfContract('');
     setWorkScope('Office Job');
@@ -1502,7 +1523,7 @@ export const Category3EmployeeView: React.FC = () => {
   // Branch & Location Management Functions
   const handleAddBranch = () => {
     setEditingBranch(null);
-    setBranchFormData({ name: '', name_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
+    setBranchFormData({ name: '', name_en: '', governorate_ar: '', governorate_en: '', district_ar: '', district_en: '', status: 'Active' });
     setShowBranchModal(true);
   };
 
@@ -1511,10 +1532,10 @@ export const Category3EmployeeView: React.FC = () => {
     setBranchFormData({
       name: branch.name_ar || branch.name || branch.name_en || '',
       name_en: branch.name_en || branch.name || branch.name_ar || '',
-      address: branch.address || '',
-      city: branch.city || '',
-      phone: branch.phone || '',
-      email: branch.email || '',
+      governorate_ar: branch.governorate_ar || branch.city || '',
+      governorate_en: branch.governorate_en || '',
+      district_ar: branch.district_ar || '',
+      district_en: branch.district_en || '',
       status: branch.status || 'Active'
     });
     setShowBranchModal(true);
@@ -1690,10 +1711,11 @@ export const Category3EmployeeView: React.FC = () => {
         name: branchFormData.name,
         name_ar: branchFormData.name,
         name_en: branchFormData.name_en,
-        address: branchFormData.address,
-        city: branchFormData.city,
-        phone: branchFormData.phone,
-        email: branchFormData.email,
+        governorate_ar: branchFormData.governorate_ar,
+        governorate_en: branchFormData.governorate_en,
+        district_ar: branchFormData.district_ar,
+        district_en: branchFormData.district_en,
+        city: branchFormData.governorate_ar,
         status: branchFormData.status
       };
 
@@ -1758,7 +1780,7 @@ export const Category3EmployeeView: React.FC = () => {
 
       setShowBranchModal(false);
       setEditingBranch(null);
-      setBranchFormData({ name: '', name_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
+      setBranchFormData({ name: '', name_en: '', governorate_ar: '', governorate_en: '', district_ar: '', district_en: '', status: 'Active' });
       alert(language === 'ar' ? (editingBranch ? 'تم تحديث بيانات الفرع بنجاح' : 'تمت إضافة الفرع بنجاح') : (editingBranch ? 'Branch updated successfully' : 'Branch added successfully'));
     } catch (error) {
       console.error('Error saving branch:', error);
@@ -1891,6 +1913,8 @@ export const Category3EmployeeView: React.FC = () => {
       nationality,
       second_citizenship: secondCitizenship || null,
       supervisor_name: supervisorName,
+      admin_supervisor_name: adminSupervisorName || supervisorName,
+      work_location: workLocation,
       work_scope: workScope,
       management_tier: managementTier || 'Non Management',
       branch_vs_mo: branchVsMo || 'Branch',
@@ -1994,6 +2018,10 @@ export const Category3EmployeeView: React.FC = () => {
       grade,
       supervisorName,
       supervisor_name: supervisorName,
+      adminSupervisorName: adminSupervisorName || supervisorName,
+      admin_supervisor_name: adminSupervisorName || supervisorName,
+      workLocation,
+      work_location: workLocation,
       workScope,
       work_scope: workScope,
       managementTier,
@@ -2402,6 +2430,9 @@ export const Category3EmployeeView: React.FC = () => {
                     <th className="py-3 px-4 font-bold whitespace-nowrap">{t('المسمى الوظيفي', 'Job Title')}</th>
                     <th className="py-3 px-4 font-bold whitespace-nowrap">{t('القسم / الإدارة', 'Department')}</th>
                     <th className="py-3 px-4 font-bold whitespace-nowrap">{t('الفرع والموقع', 'Branch Location')}</th>
+                    <th className="py-3 px-4 font-bold whitespace-nowrap">{t('مكان العمل', 'Work Location')}</th>
+                    <th className="py-3 px-4 font-bold whitespace-nowrap">{t('المشرف التقني', 'Tech Supervisor')}</th>
+                    <th className="py-3 px-4 font-bold whitespace-nowrap">{t('المشرف الإداري', 'Admin Supervisor')}</th>
                     <th className="py-3 px-4 font-bold whitespace-nowrap">{t('البريد الإلكتروني', 'Email')}</th>
                     <th className="py-3 px-4 font-bold text-center whitespace-nowrap">{t('الإجراءات', 'Actions')}</th>
                   </tr>
@@ -2511,6 +2542,29 @@ export const Category3EmployeeView: React.FC = () => {
                               {getEmpBranch(emp)}
                             </span>
                           </div>
+                        </td>
+
+                        {/* Work Location */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className={`font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                            {emp.workLocation || emp.work_location || inferGovernorateFromBranchName(emp.branch || emp.location_ar || '')?.ar || '-'}
+                          </span>
+                        </td>
+
+                        {/* Technical Supervisor */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className={`font-medium text-xs ${theme === 'dark' ? 'text-teal-300' : 'text-teal-800'}`}>
+                            {(emp.supervisorName && emp.supervisorName !== 'غير محدد') ? emp.supervisorName : '-'}
+                          </span>
+                        </td>
+
+                        {/* Administrative Supervisor */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className={`font-medium text-xs ${theme === 'dark' ? 'text-indigo-300' : 'text-indigo-800'}`}>
+                            {((emp.adminSupervisorName || emp.admin_supervisor_name || emp.supervisorName) && (emp.adminSupervisorName || emp.admin_supervisor_name || emp.supervisorName) !== 'غير محدد')
+                              ? (emp.adminSupervisorName || emp.admin_supervisor_name || emp.supervisorName)
+                              : '-'}
+                          </span>
                         </td>
 
                         {/* Email */}
@@ -3679,11 +3733,17 @@ export const Category3EmployeeView: React.FC = () => {
                       options={locations}
                       value={branch}
                       onChange={(value, option) => {
+                        const prevBranchObj = locations.find((b: any) => b.name_ar === branch || b.name === branch);
+                        const prevDefaultGov = prevBranchObj?.governorate_ar || prevBranchObj?.city || inferGovernorateFromBranchName(branch)?.ar || '';
                         setBranch(value);
                         const opt = option || locations.find((b: any) => b.name_ar === value || b.name === value);
                         const en = opt?.name_en || getBranchName(value, null, 'en');
                         if (en) {
                           setBranchEn(en);
+                        }
+                        const nextDefaultGov = opt?.governorate_ar || opt?.city || inferGovernorateFromBranchName(value)?.ar || '';
+                        if (nextDefaultGov && (!workLocation || workLocation === prevDefaultGov)) {
+                          setWorkLocation(nextDefaultGov);
                         }
                       }}
                       placeholder={t('اختر الفرع (بالعربية)', 'Select branch (Arabic)')}
@@ -3697,11 +3757,17 @@ export const Category3EmployeeView: React.FC = () => {
                       options={locations}
                       value={branchEn}
                       onChange={(value, option) => {
+                        const prevBranchObj = locations.find((b: any) => b.name_ar === branch || b.name === branch);
+                        const prevDefaultGov = prevBranchObj?.governorate_ar || prevBranchObj?.city || inferGovernorateFromBranchName(branch)?.ar || '';
                         setBranchEn(value);
                         const opt = option || locations.find((b: any) => b.name_en === value || b.name === value);
                         const ar = opt?.name_ar || getBranchName(value, null, 'ar');
                         if (ar) {
                           setBranch(ar);
+                        }
+                        const nextDefaultGov = opt?.governorate_ar || opt?.city || inferGovernorateFromBranchName(ar || value)?.ar || '';
+                        if (nextDefaultGov && (!workLocation || workLocation === prevDefaultGov)) {
+                          setWorkLocation(nextDefaultGov);
                         }
                       }}
                       placeholder={t('اختر الفرع (بالإنجليزية)', 'Select branch (English)')}
@@ -3709,21 +3775,70 @@ export const Category3EmployeeView: React.FC = () => {
                     />
                   </div>
 
-                  <div className="sm:col-span-1 lg:col-span-2">
+                  <div>
                     <label className="block text-black font-semibold text-[11px] mb-1">
-                      {t('اسم المشرف المباشر (مرتبط بجدول المشرفين المباشرين)', 'Direct Supervisor (Linked to Direct Supervisors Table)')}
+                      {t('المشرف التقني (Technical Supervisor)', 'Technical Supervisor')}
                     </label>
                     <SupervisorCombobox
                       value={supervisorName}
-                      onChange={(val) => setSupervisorName(val)}
-                      placeholder={t('اختر أو ابحث عن المشرف المباشر من جدول المشرفين...', 'Select or search supervisor from Direct Supervisors Table...')}
+                      onChange={(val) => {
+                        const prevSup = supervisorName;
+                        setSupervisorName(val);
+                        // Default administrative supervisor to match technical supervisor unless independently customized
+                        if (!adminSupervisorName || adminSupervisorName === prevSup) {
+                          setAdminSupervisorName(val);
+                        }
+                      }}
+                      placeholder={t('اختر المشرف التقني...', 'Select technical supervisor...')}
                       isDark={isDark}
                       language={language}
                       employeesList={employees}
                     />
                   </div>
 
-                  <div className="sm:col-span-1 lg:col-span-2">
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">
+                      {t('المشرف الإداري (Administrative Supervisor)', 'Administrative Supervisor')}
+                    </label>
+                    <SupervisorCombobox
+                      value={adminSupervisorName}
+                      onChange={(val) => setAdminSupervisorName(val)}
+                      placeholder={t('اختر المشرف الإداري (افتراضياً مطابق للتقني)...', 'Select administrative supervisor (defaults to technical)...')}
+                      isDark={isDark}
+                      language={language}
+                      employeesList={employees}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-black font-semibold text-[11px] mb-1">
+                      {t('مكان عمل الموظف (المحافظة / القضاء)', 'Employee Work Location (Governorate / District)')}
+                    </label>
+                    <select
+                      value={workLocation}
+                      onChange={e => setWorkLocation(e.target.value)}
+                      className="w-full bg-[#0a0c10] border border-white/10 rounded-lg px-3 py-1.5 sm:py-2 text-xs text-white focus:outline-none"
+                    >
+                      <option value="">{t('-- اختر المحافظة أو القضاء --', '-- Select Governorate or District --')}</option>
+                      {workLocation && !IRAQ_GOVERNORATES.some(g => g.ar === workLocation || g.districts.some(d => `${g.ar} - ${d.ar}` === workLocation)) && (
+                        <option value={workLocation}>{workLocation}</option>
+                      )}
+                      {IRAQ_GOVERNORATES.map(gov => (
+                        <optgroup key={gov.en} label={language === 'en' ? gov.en : gov.ar}>
+                          <option value={gov.ar}>
+                            {language === 'en' ? `${gov.en} (Governorate)` : `${gov.ar} (المحافظة)`}
+                          </option>
+                          {gov.districts.map(dist => (
+                            <option key={`${gov.en}-${dist.en}`} value={`${gov.ar} - ${dist.ar}`}>
+                              {language === 'en' ? `${gov.en} - ${dist.en}` : `${gov.ar} - ${dist.ar}`}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
                     <label className="block text-black font-semibold text-[11px] mb-1">{t('نطاق وطبيعة العمل (Work Scope)', 'Work Scope (Office vs Field Job)')}</label>
                     <select
                       value={workScope}
@@ -5620,10 +5735,9 @@ export const Category3EmployeeView: React.FC = () => {
                 }`}>
                   <tr>
                     <th className="py-3 px-3 text-center w-12 font-bold">#</th>
-                    <th className="py-3 px-4 font-bold">{t('الفرع / المركز', 'Branch / Location')}</th>
-                    <th className="py-3 px-4 font-bold">{t('المدينة', 'City')}</th>
-                    <th className="py-3 px-4 font-bold">{t('العنوان التفصيلي', 'Address')}</th>
-                    <th className="py-3 px-4 font-bold">{t('رقم الهاتف', 'Phone')}</th>
+                    <th className="py-3 px-4 font-bold">{t('اسم المكتب (عربي / إنكليزي)', 'Office Name (AR / EN)')}</th>
+                    <th className="py-3 px-4 font-bold">{t('المحافظة (عربي / إنكليزي)', 'Governorate (AR / EN)')}</th>
+                    <th className="py-3 px-4 font-bold">{t('القضاء (عربي / إنكليزي)', 'District (AR / EN)')}</th>
                     <th className="py-3 px-3 font-bold text-center">{t('الموظفين المعينين', 'Assigned Employees')}</th>
                     <th className="py-3 px-3 font-bold text-center">{t('الحالة', 'Status')}</th>
                     {canWrite() && (
@@ -5668,21 +5782,29 @@ export const Category3EmployeeView: React.FC = () => {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center gap-1.5 font-semibold text-xs" style={{ color: isDark ? '#e2e8f0' : '#000000' }}>
-                            <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">location_city</span>
-                            <span>{branch.city || '-'}</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 font-semibold text-xs" style={{ color: isDark ? '#e2e8f0' : '#000000' }}>
+                              <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">location_city</span>
+                              <span>{branch.governorate_ar || branch.city || '-'}</span>
+                            </div>
+                            {branch.governorate_en && (
+                              <div className="text-[11px] text-slate-500 mt-0.5" dir="ltr">
+                                {branch.governorate_en}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center gap-1.5 text-xs max-w-xs truncate" title={branch.address || ''} style={{ color: isDark ? '#e2e8f0' : '#000000' }}>
-                            <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400 shrink-0">home_pin</span>
-                            <span className="truncate">{branch.address || '-'}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 font-mono text-xs" dir="ltr">
-                          <div className="flex items-center gap-1.5" style={{ color: isDark ? '#e2e8f0' : '#000000' }}>
-                            <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">call</span>
-                            <span>{branch.phone || '-'}</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 font-semibold text-xs" style={{ color: isDark ? '#e2e8f0' : '#000000' }}>
+                              <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400 shrink-0">map</span>
+                              <span>{branch.district_ar || '-'}</span>
+                            </div>
+                            {branch.district_en && (
+                              <div className="text-[11px] text-slate-500 mt-0.5" dir="ltr">
+                                {branch.district_en}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="py-3 px-3 text-center">
@@ -6223,7 +6345,7 @@ export const Category3EmployeeView: React.FC = () => {
                 onClick={() => {
                   setShowBranchModal(false);
                   setEditingBranch(null);
-                  setBranchFormData({ name: '', name_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
+                  setBranchFormData({ name: '', name_en: '', governorate_ar: '', governorate_en: '', district_ar: '', district_en: '', status: 'Active' });
                 }}
                 className={`p-2 rounded-xl border transition-all cursor-pointer ${
                   isDark
@@ -6274,97 +6396,101 @@ export const Category3EmployeeView: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
-                  {t('العنوان', 'Address')}
-                </label>
-                <input
-                  type="text"
-                  value={branchFormData.address}
-                  onChange={(e) => setBranchFormData({ ...branchFormData, address: e.target.value })}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
-                    isDark
-                      ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
-                      : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
-                  }`}
-                  style={{ color: isDark ? '#ffffff' : '#000000' }}
-                  placeholder={t('العنوان الكامل', 'Full address')}
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
-                  {t('المدينة', 'City')}
-                </label>
-                <input
-                  type="text"
-                  value={branchFormData.city}
-                  onChange={(e) => setBranchFormData({ ...branchFormData, city: e.target.value })}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
-                    isDark
-                      ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
-                      : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
-                  }`}
-                  style={{ color: isDark ? '#ffffff' : '#000000' }}
-                  placeholder={t('مثال: بغداد', 'e.g., Baghdad')}
-                />
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
-                    {t('رقم الهاتف', 'Phone Number')}
+                    {t('المحافظة (عربي)', 'Governorate (Arabic)')}
                   </label>
                   <input
                     type="text"
-                    value={branchFormData.phone}
-                    onChange={(e) => setBranchFormData({ ...branchFormData, phone: e.target.value })}
+                    dir="rtl"
+                    value={branchFormData.governorate_ar}
+                    onChange={(e) => setBranchFormData({ ...branchFormData, governorate_ar: e.target.value })}
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
                       isDark
                         ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
                         : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
                     }`}
                     style={{ color: isDark ? '#ffffff' : '#000000' }}
-                    placeholder={t('مثال: 07700000000', 'e.g., 07700000000')}
+                    placeholder={t('مثال: بابل', 'e.g., بابل')}
                   />
                 </div>
-
                 <div>
                   <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
-                    {t('الحالة', 'Status')}
+                    {t('المحافظة (إنجليزي)', 'Governorate (English)')}
                   </label>
-                  <select
-                    value={branchFormData.status}
-                    onChange={(e) => setBranchFormData({ ...branchFormData, status: e.target.value })}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all cursor-pointer ${
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={branchFormData.governorate_en}
+                    onChange={(e) => setBranchFormData({ ...branchFormData, governorate_en: e.target.value })}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
                       isDark
-                        ? 'bg-[#0a0c10] border-slate-700 text-white focus:border-teal-500'
-                        : 'bg-white border-slate-300 text-black focus:border-teal-600 shadow-2xs'
+                        ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
+                        : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
                     }`}
                     style={{ color: isDark ? '#ffffff' : '#000000' }}
-                  >
-                    <option value="Active">{t('نشط', 'Active')}</option>
-                    <option value="Inactive">{t('غير نشط', 'Inactive')}</option>
-                  </select>
+                    placeholder="e.g., Babil"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
+                    {t('القضاء (عربي)', 'District (Arabic)')}
+                  </label>
+                  <input
+                    type="text"
+                    dir="rtl"
+                    value={branchFormData.district_ar}
+                    onChange={(e) => setBranchFormData({ ...branchFormData, district_ar: e.target.value })}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                      isDark
+                        ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
+                        : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
+                    }`}
+                    style={{ color: isDark ? '#ffffff' : '#000000' }}
+                    placeholder={t('مثال: الحلة', 'e.g., الحلة')}
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
+                    {t('القضاء (إنجليزي)', 'District (English)')}
+                  </label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={branchFormData.district_en}
+                    onChange={(e) => setBranchFormData({ ...branchFormData, district_en: e.target.value })}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                      isDark
+                        ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
+                        : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
+                    }`}
+                    style={{ color: isDark ? '#ffffff' : '#000000' }}
+                    placeholder="e.g., Al-Hillah"
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="block font-bold mb-1 text-xs" style={{ color: isDark ? '#cbd5e1' : '#000000' }}>
-                  {t('البريد الإلكتروني', 'Email')}
+                  {t('الحالة', 'Status')}
                 </label>
-                <input
-                  type="email"
-                  value={branchFormData.email}
-                  onChange={(e) => setBranchFormData({ ...branchFormData, email: e.target.value })}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                <select
+                  value={branchFormData.status}
+                  onChange={(e) => setBranchFormData({ ...branchFormData, status: e.target.value })}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all cursor-pointer ${
                     isDark
-                      ? 'bg-[#0a0c10] border-slate-700 text-white placeholder-slate-500 focus:border-teal-500'
-                      : 'bg-white border-slate-300 text-black placeholder-slate-400 focus:border-teal-600 shadow-2xs'
+                      ? 'bg-[#0a0c10] border-slate-700 text-white focus:border-teal-500'
+                      : 'bg-white border-slate-300 text-black focus:border-teal-600 shadow-2xs'
                   }`}
                   style={{ color: isDark ? '#ffffff' : '#000000' }}
-                  placeholder="branch@vitasiraq.iq"
-                />
+                >
+                  <option value="Active">{t('نشط', 'Active')}</option>
+                  <option value="Inactive">{t('غير نشط', 'Inactive')}</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-white/10">
@@ -6373,7 +6499,7 @@ export const Category3EmployeeView: React.FC = () => {
                   onClick={() => {
                     setShowBranchModal(false);
                     setEditingBranch(null);
-                    setBranchFormData({ name: '', name_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
+                    setBranchFormData({ name: '', name_en: '', governorate_ar: '', governorate_en: '', district_ar: '', district_en: '', status: 'Active' });
                   }}
                   className={`px-4 py-2.5 rounded-xl border font-bold text-xs cursor-pointer transition-all ${
                     isDark

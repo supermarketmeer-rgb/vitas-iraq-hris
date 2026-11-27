@@ -17,6 +17,7 @@ import { PWASettingsView } from '../components/pwa/PWASettingsView';
 import { numberToArabicWords } from '../utils/numberToArabicWords';
 import { PerformanceAppraisalExcelSheet } from '../components/performance_appraisal/PerformanceAppraisalExcelSheet';
 import { ExitProcedureChecklistTemplate } from '../components/templates/ExitProcedureChecklistTemplate';
+import { inferGovernorateFromBranchName } from '../data/iraqLocations';
 
 interface TabConfig {
   id: string;
@@ -31,6 +32,10 @@ interface DataItem {
   name_ar?: string;
   name?: string; // For server compatibility - might be used instead of name_ar
   sort_order: number;
+  governorate_ar?: string;
+  governorate_en?: string;
+  district_ar?: string;
+  district_en?: string;
   address?: string;
   city?: string;
   phone?: string;
@@ -138,7 +143,20 @@ export const SettingsSecurityView: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingItem, setEditingItem] = useState<DataItem | null>(null);
-  const [formData, setFormData] = useState({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' });
+  const [formData, setFormData] = useState({
+    name_en: '',
+    name_ar: '',
+    sort_order: 0,
+    governorate_ar: '',
+    governorate_en: '',
+    district_ar: '',
+    district_en: '',
+    address: '',
+    city: '',
+    phone: '',
+    email: '',
+    status: 'Active'
+  });
   
   // High-speed Excel import states
   const [isImporting, setIsImporting] = useState<boolean>(false);
@@ -495,11 +513,13 @@ export const SettingsSecurityView: React.FC = () => {
         case 'locations':
           result = await api.addBranch({
             name: formData.name_ar,
+            name_ar: formData.name_ar,
             name_en: formData.name_en,
-            address: formData.address,
-            city: formData.city,
-            phone: formData.phone,
-            email: formData.email,
+            governorate_ar: formData.governorate_ar,
+            governorate_en: formData.governorate_en,
+            district_ar: formData.district_ar,
+            district_en: formData.district_en,
+            city: formData.governorate_ar || formData.city,
             status: formData.status
           });
           break;
@@ -522,7 +542,7 @@ export const SettingsSecurityView: React.FC = () => {
 
       // Reload data from API after adding
       await loadData();
-      setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' });
+      setFormData({ name_en: '', name_ar: '', sort_order: 0, governorate_ar: '', governorate_en: '', district_ar: '', district_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
       setShowAddModal(false);
       modalTargetTab.current = null;
     } catch (error) {
@@ -550,11 +570,13 @@ export const SettingsSecurityView: React.FC = () => {
           // Map name_ar to name for server compatibility
           await api.updateBranch(editingItem.id.toString(), {
             name: formData.name_ar,
+            name_ar: formData.name_ar,
             name_en: formData.name_en,
-            address: formData.address,
-            city: formData.city,
-            phone: formData.phone,
-            email: formData.email,
+            governorate_ar: formData.governorate_ar,
+            governorate_en: formData.governorate_en,
+            district_ar: formData.district_ar,
+            district_en: formData.district_en,
+            city: formData.governorate_ar || formData.city,
             status: formData.status
           });
           break;
@@ -577,7 +599,7 @@ export const SettingsSecurityView: React.FC = () => {
 
       // Reload data from API after editing
       await loadData();
-      setFormData({ name_en: '', name_ar: '', sort_order: 0, address: '', city: '', phone: '', email: '', status: 'Active' });
+      setFormData({ name_en: '', name_ar: '', sort_order: 0, governorate_ar: '', governorate_en: '', district_ar: '', district_en: '', address: '', city: '', phone: '', email: '', status: 'Active' });
       setShowEditModal(false);
       setEditingItem(null);
     } catch (error) {
@@ -700,6 +722,10 @@ export const SettingsSecurityView: React.FC = () => {
       name_en: item.name_en,
       name_ar: item.name_ar || item.name || '', // Use name as fallback for name_ar
       sort_order: item.sort_order,
+      governorate_ar: item.governorate_ar || item.city || '',
+      governorate_en: item.governorate_en || '',
+      district_ar: item.district_ar || '',
+      district_en: item.district_en || '',
       address: item.address || '',
       city: item.city || '',
       phone: item.phone || '',
@@ -1254,7 +1280,9 @@ export const SettingsSecurityView: React.FC = () => {
           'القسم / الإدارة (إنجليزي)': sanitizeCellText(emp.departmentEn || emp.department_en || emp.department || ''),
           'الفرع (عربي)': sanitizeCellText(emp.branch || emp.location_ar || ''),
           'الفرع (إنجليزي)': sanitizeCellText(emp.branchEn || emp.location_en || emp.branch_en || ''),
-          'اسم المشرف المباشر': sanitizeCellText(emp.supervisorName || emp.supervisor_name || ''),
+          'مكان عمل الموظف': sanitizeCellText(emp.workLocation || emp.work_location || inferGovernorateFromBranchName(emp.branch || emp.location_ar || '')?.ar || ''),
+          'المشرف التقني': sanitizeCellText(emp.supervisorName || emp.supervisor_name || ''),
+          'المشرف الإداري': sanitizeCellText(emp.adminSupervisorName || emp.admin_supervisor_name || emp.supervisorName || emp.supervisor_name || ''),
           'نطاق العمل': sanitizeCellText(emp.workScope || emp.work_scope || ''),
           'الراتب الاسمي': Number(emp.basicSalary || emp.basic_salary) || 0,
           'الراتب الاسمي كتابة': sanitizeCellText(emp.writtenBasicSalaryAr || emp.written_basic_salary_ar || ''),
@@ -2280,8 +2308,16 @@ export const SettingsSecurityView: React.FC = () => {
             ]);
 
             const supervisorName = getVal(row, [
-              'Supervisor Name', 'supervisorName', 'supervisor_name', 'اسم المشرف المباشر', 'اسم المشرف', 'المشرف', 'المدير المباشر', 'Supervisor'
+              'Technical Supervisor', 'Supervisor Name', 'supervisorName', 'supervisor_name', 'المشرف التقني', 'اسم المشرف التقني', 'اسم المشرف المباشر', 'اسم المشرف', 'المشرف', 'المدير المباشر', 'Supervisor'
             ]);
+
+            const adminSupervisorName = getVal(row, [
+              'Administrative Supervisor', 'Admin Supervisor', 'adminSupervisorName', 'admin_supervisor_name', 'المشرف الإداري', 'المشرف الاداري', 'اسم المشرف الإداري', 'اسم المشرف الاداري'
+            ]) || supervisorName;
+
+            const workLocation = getVal(row, [
+              'Work Location', 'workLocation', 'work_location', 'مكان عمل الموظف', 'مكان العمل', 'قضاء العمل', 'محافظة العمل'
+            ]) || inferGovernorateFromBranchName(branch || branchEn || '')?.ar || '';
 
             // SANITY CHECKS: Department, Position, and Branch must NEVER be an employee or supervisor name!
             const isPersonName = (val: string) => {
@@ -2470,6 +2506,10 @@ export const SettingsSecurityView: React.FC = () => {
               branch,
               branchEn,
               supervisorName,
+              adminSupervisorName,
+              admin_supervisor_name: adminSupervisorName,
+              workLocation,
+              work_location: workLocation,
               workScope,
               work_scope: workScope,
               managementTier,
@@ -3310,72 +3350,78 @@ const Modal: React.FC<ModalProps> = ({ title, onClose, onSave, formData, setForm
 
           {isLocationsTab && (
             <>
-              <div>
-                <label className={`block text-xs mb-1 ${
-                  theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                }`}>{language === 'ar' ? 'العنوان' : 'Address'}</label>
-                <input
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 ${
-                    theme === 'dark'
-                      ? 'bg-white/5 border-white/10 text-[#e2e8f0]'
-                      : 'bg-gray-50 border-gray-300 text-gray-800'
-                  }`}
-                  placeholder={language === 'ar' ? 'العنوان الكامل' : 'Full address'}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={`block text-xs mb-1 ${
+                    theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                  }`}>{language === 'ar' ? 'المحافظة (عربي)' : 'Governorate (Arabic)'}</label>
+                  <input
+                    type="text"
+                    dir="rtl"
+                    value={formData.governorate_ar || ''}
+                    onChange={(e) => setFormData({ ...formData, governorate_ar: e.target.value })}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 ${
+                      theme === 'dark'
+                        ? 'bg-white/5 border-white/10 text-[#e2e8f0]'
+                        : 'bg-gray-50 border-gray-300 text-gray-800'
+                    }`}
+                    placeholder={language === 'ar' ? 'مثال: بابل' : 'e.g., بابل'}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-xs mb-1 ${
+                    theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                  }`}>{language === 'ar' ? 'المحافظة (إنكليزي)' : 'Governorate (English)'}</label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={formData.governorate_en || ''}
+                    onChange={(e) => setFormData({ ...formData, governorate_en: e.target.value })}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 ${
+                      theme === 'dark'
+                        ? 'bg-white/5 border-white/10 text-[#e2e8f0]'
+                        : 'bg-gray-50 border-gray-300 text-gray-800'
+                    }`}
+                    placeholder="e.g., Babil"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className={`block text-xs mb-1 ${
-                  theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                }`}>{language === 'ar' ? 'المدينة' : 'City'}</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 ${
-                    theme === 'dark'
-                      ? 'bg-white/5 border-white/10 text-[#e2e8f0]'
-                      : 'bg-gray-50 border-gray-300 text-gray-800'
-                  }`}
-                  placeholder={language === 'ar' ? 'مثال: بغداد' : 'e.g., Baghdad'}
-                />
-              </div>
-
-              <div>
-                <label className={`block text-xs mb-1 ${
-                  theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                }`}>{language === 'ar' ? 'رقم الهاتف' : 'Phone Number'}</label>
-                <input
-                  type="text"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 ${
-                    theme === 'dark'
-                      ? 'bg-white/5 border-white/10 text-[#e2e8f0]'
-                      : 'bg-gray-50 border-gray-300 text-gray-800'
-                  }`}
-                  placeholder={language === 'ar' ? 'مثال: 07700000000' : 'e.g., 07700000000'}
-                />
-              </div>
-
-              <div>
-                <label className={`block text-xs mb-1 ${
-                  theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                }`}>{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 ${
-                    theme === 'dark'
-                      ? 'bg-white/5 border-white/10 text-[#e2e8f0]'
-                      : 'bg-gray-50 border-gray-300 text-gray-800'
-                  }`}
-                  placeholder="branch@vitas.iq"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={`block text-xs mb-1 ${
+                    theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                  }`}>{language === 'ar' ? 'القضاء (عربي)' : 'District (Arabic)'}</label>
+                  <input
+                    type="text"
+                    dir="rtl"
+                    value={formData.district_ar || ''}
+                    onChange={(e) => setFormData({ ...formData, district_ar: e.target.value })}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 ${
+                      theme === 'dark'
+                        ? 'bg-white/5 border-white/10 text-[#e2e8f0]'
+                        : 'bg-gray-50 border-gray-300 text-gray-800'
+                    }`}
+                    placeholder={language === 'ar' ? 'مثال: الحلة' : 'e.g., الحلة'}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-xs mb-1 ${
+                    theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                  }`}>{language === 'ar' ? 'القضاء (إنكليزي)' : 'District (English)'}</label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={formData.district_en || ''}
+                    onChange={(e) => setFormData({ ...formData, district_en: e.target.value })}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 ${
+                      theme === 'dark'
+                        ? 'bg-white/5 border-white/10 text-[#e2e8f0]'
+                        : 'bg-gray-50 border-gray-300 text-gray-800'
+                    }`}
+                    placeholder="e.g., Al-Hillah"
+                  />
+                </div>
               </div>
             </>
           )}

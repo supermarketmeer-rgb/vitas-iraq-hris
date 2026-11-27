@@ -139,6 +139,10 @@ export interface Employee {
   grade?: string;
   supervisorName?: string;
   supervisor_name?: string;
+  adminSupervisorName?: string;
+  admin_supervisor_name?: string;
+  workLocation?: string;
+  work_location?: string;
   workScope?: 'Field Job' | 'Office Job' | 'Field & Admin' | 'Field' | 'Admin' | string;
   work_scope?: string;
   managementTier?: 'Non Management' | 'Middle Management' | 'Senior Management' | string;
