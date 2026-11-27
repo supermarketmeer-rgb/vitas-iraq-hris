@@ -743,12 +743,6 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
             .contract-page-wrapper {
               margin: 0 !important;
               padding: 0 !important;
-              page-break-after: always !important;
-              break-after: page !important;
-            }
-            .contract-page-wrapper:last-child {
-              page-break-after: avoid !important;
-              break-after: avoid !important;
             }
             .page-number-indicator, .no-print {
               display: none !important;
@@ -759,22 +753,25 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
               page-break-inside: avoid !important;
               break-inside: avoid !important;
               width: 210mm !important;
-              min-height: 295mm !important;
-              max-height: 296.5mm !important;
+              min-height: 296mm !important;
               display: flex !important;
               flex-direction: column !important;
-              justify-content: space-between !important;
+              justify-content: flex-start !important;
               box-sizing: border-box !important;
-              padding: 10mm 16mm 10mm 16mm !important;
-              margin: 0 !important;
+              padding: 12mm 16mm 12mm 16mm !important;
+              margin: 0 auto !important;
               border: none !important;
               box-shadow: none !important;
               background: #ffffff !important;
-              overflow: hidden !important;
+              overflow: visible !important;
+            }
+            .contract-page-body {
+              flex: 1 1 auto !important;
+              font-size: 10.5pt !important;
+              line-height: 1.55 !important;
             }
             .contract-page.last-page,
             .contract-page-last,
-            .contract-page:last-child,
             .contract-page-wrapper:last-child .contract-page {
               page-break-after: avoid !important;
               break-after: auto !important;
@@ -1228,8 +1225,8 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
 
                     {/* Single Contract Page Box */}
                     <div 
-                      className={`contract-page bg-white text-slate-900 p-8 sm:p-12 rounded-xl shadow-xl border border-slate-200 flex flex-col justify-between font-['Cairo',sans-serif] ${page.isLastPage ? 'contract-page-last last-page' : ''}`}
-                      style={{ minHeight: '1020px' }}
+                      className={`contract-page bg-white text-slate-900 rounded-xl shadow-xl border border-slate-200 flex flex-col justify-start font-['Cairo',sans-serif] mx-auto ${page.isLastPage ? 'contract-page-last last-page' : ''}`}
+                      style={{ width: '210mm', maxWidth: '100%', minHeight: '296mm', padding: '12mm 16mm' }}
                     >
                       {/* Official VITAS & Global Communities Logos Header (Appears on EVERY page) */}
                       <div className="contract-page-header text-center mb-4">
@@ -1346,8 +1343,8 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
 
                     {/* Single Annex Page Box matching Contract Page Styling & Cairo Font */}
                     <div 
-                      className="contract-page bg-white text-slate-900 p-8 sm:p-12 rounded-xl shadow-xl border border-slate-200 flex flex-col justify-between font-['Cairo',sans-serif]"
-                      style={{ minHeight: '1020px' }}
+                      className="contract-page bg-white text-slate-900 rounded-xl shadow-xl border border-slate-200 flex flex-col justify-start font-['Cairo',sans-serif] mx-auto"
+                      style={{ width: '210mm', maxWidth: '100%', minHeight: '296mm', padding: '12mm 16mm' }}
                     >
                       {/* Official VITAS & Global Communities Logos Header (Appears on EVERY page) */}
                       <div className="contract-page-header text-center mb-3">
