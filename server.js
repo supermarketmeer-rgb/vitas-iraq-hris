@@ -1651,6 +1651,117 @@ app.post('/api/employees/:id/photo', upload.single('photo'), async (req, res) =>
   }
 });
 
+// Secure Self-Service Employee Profile Photo Upload (strictly scoped to photo_url only)
+const selfPhotoRateMap = new Map();
+app.post('/api/employee/self-photo', async (req, res) => {
+  try {
+    const { id, employeeId, badgeNo, photoDataUrl } = req.body || {};
+
+    if (!photoDataUrl || typeof photoDataUrl !== 'string') {
+      return res.status(400).json({ error: 'Invalid photo payload' });
+    }
+
+    // 1. Strict data URL allowlist (JPEG, PNG, WEBP only — no SVG/HTML/scripts)
+    const match = photoDataUrl.match(/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) {
+      return res.status(400).json({ error: 'Only JPEG, PNG, or WEBP images are allowed' });
+    }
+
+    const mimeSubtype = match[1].toLowerCase();
+    const base64Body = match[2];
+    const buffer = Buffer.from(base64Body, 'base64');
+
+    // 2. Enforce strict binary size limit (max 1.5 MB)
+    if (!buffer.length || buffer.length > 1.5 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Image size must be 1.5MB or smaller' });
+    }
+
+    // 3. Verify file magic bytes to prevent MIME spoofing
+    const isJpeg = buffer.length >= 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+    const isPng = buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+    const isWebp = buffer.length >= 12 && buffer.slice(0, 4).toString('ascii') === 'RIFF' && buffer.slice(8, 12).toString('ascii') === 'WEBP';
+
+    if ((mimeSubtype === 'jpeg' || mimeSubtype === 'jpg') && !isJpeg) {
+      return res.status(400).json({ error: 'Corrupted or spoofed JPEG image' });
+    }
+    if (mimeSubtype === 'png' && !isPng) {
+      return res.status(400).json({ error: 'Corrupted or spoofed PNG image' });
+    }
+    if (mimeSubtype === 'webp' && !isWebp) {
+      return res.status(400).json({ error: 'Corrupted or spoofed WEBP image' });
+    }
+
+    // 4. Verify employee identity strictly (must match existing employee record)
+    const idStr = id ? String(id).trim() : '';
+    const empIdStr = employeeId ? String(employeeId).trim() : '';
+    const badgeStr = badgeNo ? String(badgeNo).trim() : '';
+
+    if (!idStr && !empIdStr && !badgeStr) {
+      return res.status(401).json({ error: 'Employee identity is required' });
+    }
+
+    let empRows = [];
+    if (idStr && (badgeStr || empIdStr)) {
+      empRows = await query(
+        'SELECT id, employee_id, badge_no, full_name_ar FROM employees WHERE id = ? AND (LOWER(badge_no) = LOWER(?) OR LOWER(employee_id) = LOWER(?)) LIMIT 1',
+        [idStr, badgeStr || empIdStr, empIdStr || badgeStr]
+      );
+    } else if (badgeStr && empIdStr) {
+      empRows = await query(
+        'SELECT id, employee_id, badge_no, full_name_ar FROM employees WHERE LOWER(badge_no) = LOWER(?) AND LOWER(employee_id) = LOWER(?) LIMIT 1',
+        [badgeStr, empIdStr]
+      );
+    } else {
+      const single = idStr || empIdStr || badgeStr;
+      empRows = await query(
+        'SELECT id, employee_id, badge_no, full_name_ar FROM employees WHERE id = ? OR LOWER(employee_id) = LOWER(?) OR LOWER(badge_no) = LOWER(?) LIMIT 1',
+        [single, single, single]
+      );
+    }
+
+    if (!empRows || empRows.length === 0) {
+      return res.status(404).json({ error: 'Employee record not found or identity mismatch' });
+    }
+
+    const targetEmp = empRows[0];
+
+    // 5. Per-employee rate limiting (max 6 uploads per 5 minutes)
+    const now = Date.now();
+    const rateKey = String(targetEmp.id);
+    const recent = (selfPhotoRateMap.get(rateKey) || []).filter(ts => now - ts < 5 * 60 * 1000);
+    if (recent.length >= 6) {
+      return res.status(429).json({ error: 'Too many photo updates. Please try again in a few minutes.' });
+    }
+    recent.push(now);
+    selfPhotoRateMap.set(rateKey, recent);
+
+    // 6. Update ONLY photo_url (and clear stale photo blob) for this specific employee
+    await query('UPDATE employees SET photo_url = ?, photo = NULL WHERE id = ?', [photoDataUrl, targetEmp.id]);
+
+    if (typeof recordAuditLog === 'function') {
+      recordAuditLog({
+        userName: targetEmp.full_name_ar || targetEmp.employee_id || `EMP-${targetEmp.id}`,
+        userRole: 'Employee Self-Service',
+        action: 'UPDATE',
+        module: 'Employee Profile',
+        details: `Updated personal profile photo (${targetEmp.badge_no || targetEmp.employee_id})`,
+        status: 'success'
+      }).catch(() => {});
+    }
+
+    broadcastRealtimeEvent({
+      type: 'DATA_CHANGED',
+      table: 'employees',
+      timestamp: new Date().toISOString()
+    });
+
+    res.json({ success: true, photoUrl: photoDataUrl });
+  } catch (err) {
+    console.error('Error in self-service photo upload:', err);
+    res.status(500).json({ error: 'Failed to update profile photo' });
+  }
+});
+
 // Delete employee photo
 app.delete('/api/employees/:id/photo', async (req, res) => {
   try {

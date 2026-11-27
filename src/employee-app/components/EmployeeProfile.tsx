@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { Camera, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useEmployeeContext } from '../context/EmployeeContext';
 import { api } from '../../api/client';
 
@@ -26,6 +27,12 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // Secure self-service profile photo upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoLoadError, setPhotoLoadError] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   React.useEffect(() => {
     if (refreshEmployee) refreshEmployee();
   }, []);
@@ -41,6 +48,129 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
                         editedEmployee?.avatar || 
                         editedEmployee?.photo || 
                         null;
+
+  React.useEffect(() => {
+    setPhotoLoadError(false);
+  }, [employeePhoto]);
+
+  const reencodeImageToJpeg = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error(isEn ? 'Failed to read image file' : 'فشل قراءة ملف الصورة'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error(isEn ? 'Invalid or corrupted image file' : 'ملف الصورة غير صالح أو تالف'));
+        img.onload = () => {
+          const maxDim = 512;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width >= height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error(isEn ? 'Image processor unavailable' : 'معالج الصور غير متاح'));
+            return;
+          }
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          resolve(dataUrl);
+        };
+        img.src = String(reader.result || '');
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setPhotoStatus(null);
+
+    const allowedTypes = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+    if (!allowedTypes.has((file.type || '').toLowerCase())) {
+      setPhotoStatus({
+        type: 'error',
+        text: isEn ? 'Only JPG, PNG, or WEBP images are allowed.' : 'يُسمح فقط بصور JPG أو PNG أو WEBP.'
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoStatus({
+        type: 'error',
+        text: isEn ? 'Image must be smaller than 5MB.' : 'يجب أن يكون حجم الصورة أقل من 5 ميجابايت.'
+      });
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      const cleanDataUrl = await reencodeImageToJpeg(file);
+      const res = await fetch('/api/employee/self-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentEmp?.id,
+          employeeId: currentEmp?.employeeId || currentEmp?.employee_id,
+          badgeNo: currentEmp?.badgeNo || currentEmp?.badge_no,
+          photoDataUrl: cleanDataUrl
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || (isEn ? 'Failed to upload photo' : 'فشل تحديث الصورة الشخصية'));
+      }
+
+      const finalPhoto = data.photoUrl || cleanDataUrl;
+      const updatedEmp = {
+        ...editedEmployee,
+        photoUrl: finalPhoto,
+        photo_url: finalPhoto,
+        avatar: finalPhoto,
+        photo: finalPhoto
+      };
+
+      setEditedEmployee(updatedEmp);
+      setPhotoLoadError(false);
+      if (setEmployee) setEmployee(updatedEmp);
+
+      try {
+        const savedAuth = localStorage.getItem('employee_auth');
+        if (savedAuth) {
+          const authData = JSON.parse(savedAuth);
+          authData.employee = { ...(authData.employee || {}), ...updatedEmp };
+          localStorage.setItem('employee_auth', JSON.stringify(authData));
+        }
+      } catch {}
+
+      setPhotoStatus({
+        type: 'success',
+        text: isEn ? 'Profile photo updated successfully!' : 'تم تحديث الصورة الشخصية بنجاح!'
+      });
+      setTimeout(() => setPhotoStatus(null), 3500);
+    } catch (err: any) {
+      setPhotoStatus({
+        type: 'error',
+        text: err?.message || (isEn ? 'Could not update profile photo' : 'تعذر تحديث الصورة الشخصية')
+      });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const displayJoinDate = editedEmployee?.joinDate || 
                           editedEmployee?.originalStartDate || 
@@ -165,21 +295,56 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
       }`}>
         <div className="flex items-center gap-3.5">
           <div className="relative shrink-0">
-            {employeePhoto ? (
-              <div className="w-20 h-26 rounded-2xl bg-white dark:bg-slate-800 border-2 border-teal-500/60 shadow-lg p-0.5 overflow-hidden flex items-center justify-center">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handlePhotoSelect}
+            />
+            {employeePhoto && !photoLoadError ? (
+              <div
+                onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}
+                className="w-20 h-26 rounded-2xl bg-white dark:bg-slate-800 border-2 border-teal-500/60 shadow-lg p-0.5 overflow-hidden flex items-center justify-center cursor-pointer"
+                title={isEn ? 'Change profile photo' : 'تغيير الصورة الشخصية'}
+              >
                 <img 
+                  key={employeePhoto}
                   src={employeePhoto} 
                   alt={displayName} 
                   className="w-full h-full object-contain rounded-xl"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
+                  onError={() => setPhotoLoadError(true)}
                 />
               </div>
-            ) : null}
-            <div className={`w-20 h-26 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-white font-black text-2xl items-center justify-center shadow-md ${employeePhoto ? 'hidden' : 'flex'}`}>
-              {displayName.charAt(0)}
-            </div>
+            ) : (
+              <div
+                onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}
+                className="w-20 h-26 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-white font-black text-2xl flex items-center justify-center shadow-md cursor-pointer"
+                title={isEn ? 'Upload profile photo' : 'رفع صورة شخصية'}
+              >
+                {displayName.charAt(0)}
+              </div>
+            )}
+
+            {/* Self-Service Photo Upload Icon Button */}
+            <button
+              type="button"
+              disabled={isUploadingPhoto}
+              onClick={() => fileInputRef.current?.click()}
+              title={isEn ? 'Update Profile Photo' : 'تحديث الصورة الشخصية'}
+              aria-label={isEn ? 'Update Profile Photo' : 'تحديث الصورة الشخصية'}
+              className={`absolute -bottom-1.5 -end-1.5 w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 transition-all active:scale-95 cursor-pointer ${
+                isDark
+                  ? 'bg-teal-600 hover:bg-teal-500 text-white border-[#131b2e]'
+                  : 'bg-teal-600 hover:bg-teal-700 text-white border-white'
+              } ${isUploadingPhoto ? 'opacity-80 cursor-wait' : ''}`}
+            >
+              {isUploadingPhoto ? (
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+              ) : (
+                <Camera className="w-4 h-4 text-white" />
+              )}
+            </button>
           </div>
 
           <div className="flex-1 min-w-0">
@@ -197,6 +362,21 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee }) =>
             </p>
           </div>
         </div>
+
+        {photoStatus && (
+          <div className={`mt-3 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center gap-2 ${
+            photoStatus.type === 'success'
+              ? (isDark ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200')
+              : (isDark ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30' : 'bg-rose-50 text-rose-700 border border-rose-200')
+          }`}>
+            {photoStatus.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0" />
+            )}
+            <span>{photoStatus.text}</span>
+          </div>
+        )}
 
         {/* Quick Stats Grid */}
         <div className={`grid grid-cols-3 gap-2 mt-4 pt-3 border-t text-center text-xs ${

@@ -45,16 +45,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ employee: 
         }
       })
       .catch(() => {
-        // Fallback default announcement
-        setLatestNews({
-          title_ar: 'تعميم إداري: إطلاق نظام الموارد البشرية وبوابة الموظف المحدثة',
-          title_en: 'Official Circular: Launch of Updated ESS Employee Mobile Portal',
-          content_ar: 'ترحب إدارة مؤسسة فيتاس العراق بجميع الموظفين في بوابة الخدمات الذاتية المحدثة للرواتب والإجازات وكشوفات الدوام.',
-          content_en: 'VITAS Iraq administration welcomes all staff to the upgraded ESS portal for payroll, leaves, and attendance.',
-          publish_date: '2026-08-15',
-          priority: 'urgent',
-          category: 'circular'
-        });
+        setLatestNews(null);
       });
   }, []);
 
