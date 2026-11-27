@@ -8324,26 +8324,19 @@ app.post('/api/routing/send', async (req, res) => {
   try {
     const result = await sendDocumentThroughRouting(db, req.body);
     if (result?.success !== false) {
-      const docType = req.body?.document_type || req.body?.documentType || 'عقد / وثيقة';
-      const empName = req.body?.employee_name || req.body?.employeeName || req.body?.recipientName || 'الموظف المعني';
-      const targetDept = req.body?.target_department || req.body?.branch || empName;
-      await sendSystemNotification({
-        title: `📄 إرسال ${docType} إلى ${empName}`,
-        message: `تم توجيه وإرسال (${docType}) رسمياً إلى ${empName} عبر نظام التوجيه الذكي للعقود والوثائق.`,
-        type: 'info',
-        priority: 'medium',
-        target_audience: targetDept,
-        user_id: req.body?.employee_id || req.body?.employeeId || null,
-        link_url: 'contracts'
-      });
+      const firstRes = Array.isArray(result?.results) && result.results[0] ? result.results[0] : null;
+      const firstRecip = Array.isArray(req.body?.recipients) && req.body.recipients[0] ? req.body.recipients[0] : null;
+      const docTitle = req.body?.documentTitle || req.body?.document_title || req.body?.documentType || req.body?.document_type || 'عقد / وثيقة';
+      const empName = firstRes?.recipientName || firstRecip?.name || req.body?.employee_name || req.body?.employeeName || 'الموظف المعني';
+      const targetDept = firstRecip?.branch || req.body?.target_department || req.body?.branch || empName;
       await recordAuditLog(req, {
-        action: `إرسال ${docType} إلى ${empName}`,
+        action: `إرسال ${docTitle} إلى ${empName}`,
         action_type: 'CONTRACT_ROUTING_SEND',
         severity: 'success',
         module: 'العقود والتوجيه الذكي (Contracts & Routing)',
         status: 'ناجح',
-        details: `تم توجيه وإرسال (${docType}) إلى ${empName} (${targetDept}).`,
-        metadata: { docType, empName, targetDept }
+        details: `تم توجيه وإرسال (${docTitle}) إلى ${empName} (${targetDept}) عبر قناة (${req.body?.channel || firstRes?.channelRequested || 'app'}).`,
+        metadata: { docTitle, empName, targetDept, deliveryId: firstRes?.deliveryId || null }
       });
     }
     res.json(result);
@@ -8472,15 +8465,15 @@ app.post('/api/routing/documents/:deliveryId/access', async (req, res) => {
 // 11. Get Employee Routed Documents & Notifications (with RBAC Scopes: own, subordinates, branch_wet_signature)
 app.get('/api/routing/employee/:employeeId/notifications', async (req, res) => {
   try {
-    const empId = req.params.employeeId;
+    const empId = String(req.params.employeeId || '').trim();
     const scope = req.query.scope || 'own'; // 'own' | 'subordinates' | 'branch_wet_signature'
 
-    // Look up current employee profile
+    // Look up current employee profile (by id, badge_no, employee_id, or email)
     const empRows = await query(
-      `SELECT id, employee_id, badge_no, full_name_ar, full_name_en, branch, location_ar, position, position_ar 
-       FROM employees 
-       WHERE id = ? OR badge_no = ? OR employee_id = ? LIMIT 1`,
-      [empId, empId, empId]
+      `SELECT id, employee_id, badge_no, full_name_ar, full_name_en, email, branch, location_ar, position, position_ar
+       FROM employees
+       WHERE CAST(id AS CHAR) = ? OR badge_no = ? OR employee_id = ? OR LOWER(email) = LOWER(?) LIMIT 1`,
+      [empId, empId, empId, empId]
     ).catch(() => []);
     const emp = empRows && empRows.length > 0 ? empRows[0] : null;
 
@@ -8492,52 +8485,72 @@ app.get('/api/routing/employee/:employeeId/notifications', async (req, res) => {
         const arName = emp.full_name_ar ? emp.full_name_ar.trim() : '';
         const enName = emp.full_name_en ? emp.full_name_en.trim() : '';
         deliveries = await query(
-          `SELECT d.*, 
-                  (SELECT COUNT(*) FROM document_access_logs l WHERE l.delivery_id = d.id) as access_count
-           FROM document_deliveries d
+          `SELECT * FROM document_deliveries
            WHERE (
-             d.supervisor_employee_id = ? 
-             OR d.supervisor_name = ? 
-             OR d.supervisor_name = ?
-             OR d.supervisor_name LIKE ?
+             supervisor_employee_id = ?
+             OR supervisor_name = ?
+             OR supervisor_name = ?
+             OR (? != '' AND supervisor_name LIKE ?)
            )
-             AND (d.channel_requested IN ('app', 'both'))
-           ORDER BY d.created_at DESC LIMIT 50`,
-          [String(emp.id), arName, enName, `%${arName}%`]
-        ).catch(() => []);
+             AND channel_requested IN ('app', 'both')
+           ORDER BY created_at DESC LIMIT 50`,
+          [String(emp.id), arName, enName, arName, `%${arName}%`]
+        ).catch(err => { console.warn('[ROUTING] subordinates query warn:', err.message); return []; });
       }
     } else if (scope === 'branch_wet_signature') {
       // Branch Manager View: Only documents in this branch that REQUIRE LIVE WET SIGNATURE
-      // Electronic copies are strictly excluded from branch manager view!
       if (emp) {
         const branchName = emp.branch || emp.location_ar || '';
         deliveries = await query(
-          `SELECT d.*, 
-                  (SELECT COUNT(*) FROM document_access_logs l WHERE l.delivery_id = d.id) as access_count
-           FROM document_deliveries d
-           WHERE (d.branch_name = ? OR d.branch_name LIKE ?)
-             AND (d.signature_mode = 'wet_signature')
-             AND (d.channel_requested IN ('app', 'both'))
-           ORDER BY d.created_at DESC LIMIT 50`,
-          [branchName, `%${branchName}%`]
-        ).catch(() => []);
+          `SELECT * FROM document_deliveries
+           WHERE (branch_name = ? OR (? != '' AND branch_name LIKE ?))
+             AND signature_mode = 'wet_signature'
+             AND channel_requested IN ('app', 'both')
+           ORDER BY created_at DESC LIMIT 50`,
+          [branchName, branchName, `%${branchName}%`]
+        ).catch(err => { console.warn('[ROUTING] branch_wet_signature query warn:', err.message); return []; });
       }
     } else {
-      // Default: Employee's own documents
+      // Default: Employee's own documents — match cleanly in JS-resolved IDs, email, or exact name (avoids MySQL collation/subquery errors!)
+      const candidateIds = Array.from(new Set([
+        empId,
+        emp?.id != null ? String(emp.id) : null,
+        emp?.employee_id ? String(emp.employee_id).trim() : null,
+        emp?.badge_no ? String(emp.badge_no).trim() : null
+      ].filter(Boolean)));
+      const empEmail = emp?.email ? String(emp.email).trim().toLowerCase() : '';
+      const empNameAr = emp?.full_name_ar ? String(emp.full_name_ar).trim() : '';
+      const empNameEn = emp?.full_name_en ? String(emp.full_name_en).trim() : '';
+
+      const idPlaceholders = candidateIds.map(() => '?').join(', ');
       deliveries = await query(
-        `SELECT d.*, 
-                (SELECT COUNT(*) FROM document_access_logs l WHERE l.delivery_id = d.id) as access_count
-         FROM document_deliveries d
+        `SELECT * FROM document_deliveries
          WHERE (
-           d.recipient_employee_id = ? 
-           OR d.recipient_employee_id = (SELECT CAST(id AS CHAR) FROM employees WHERE badge_no = ? OR employee_id = ? LIMIT 1)
-           OR d.recipient_employee_id = (SELECT employee_id FROM employees WHERE id = ? OR badge_no = ? LIMIT 1)
-           OR d.recipient_employee_id = (SELECT badge_no FROM employees WHERE id = ? OR employee_id = ? LIMIT 1)
+           recipient_employee_id IN (${idPlaceholders})
+           OR (? != '' AND LOWER(recipient_email) = ?)
+           OR (? != '' AND recipient_name = ?)
+           OR (? != '' AND recipient_name = ?)
          )
-           AND (d.channel_requested IN ('app', 'both'))
-         ORDER BY d.created_at DESC LIMIT 50`,
-        [empId, empId, empId, empId, empId, empId, empId]
-      ).catch(() => []);
+           AND channel_requested IN ('app', 'both')
+         ORDER BY created_at DESC LIMIT 50`,
+        [...candidateIds, empEmail, empEmail, empNameAr, empNameAr, empNameEn, empNameEn]
+      ).catch(err => { console.warn('[ROUTING] own deliveries query warn:', err.message); return []; });
+    }
+
+    // Safely enrich with access_count without failing the main query if document_access_logs differs
+    if (Array.isArray(deliveries) && deliveries.length > 0) {
+      const delIds = deliveries.map(d => d.id).filter(Boolean);
+      const countMap = new Map();
+      if (delIds.length > 0) {
+        const logCounts = await query(
+          `SELECT delivery_id, COUNT(*) as cnt FROM document_access_logs WHERE delivery_id IN (?) GROUP BY delivery_id`,
+          [delIds]
+        ).catch(() => []);
+        for (const lc of (logCounts || [])) {
+          countMap.set(lc.delivery_id, Number(lc.cnt) || 0);
+        }
+      }
+      deliveries = deliveries.map(d => ({ ...d, access_count: countMap.get(d.id) || 0 }));
     }
 
     res.json(deliveries);
