@@ -614,16 +614,12 @@ export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelS
 
         {/* ROWS 3-8: LOGOS & EMPLOYEE DETAILS TABLE */}
         <div className="grid grid-cols-12 gap-3 items-center mb-3">
-          {/* Left Logo (Col 0-1) */}
+          {/* Right Logo in RTL (Col 0-1) */}
           <div className="col-span-12 sm:col-span-2 flex items-center justify-center p-2 border border-slate-300 rounded bg-slate-50/50 min-h-[140px]">
             <img 
-              src="/assets/pa_logo_left.jpg" 
-              alt="Vitas Logo Left" 
+              src="/logos/exit_checklist_image1.jpeg" 
+              alt="VITAS Iraq Logo" 
               className="max-h-24 max-w-full object-contain"
-              onError={(e) => {
-                // fallback to public/assets/vitas_iraq_logo.png
-                (e.target as HTMLImageElement).src = '/assets/vitas_iraq_logo.png';
-              }}
             />
           </div>
 
@@ -723,15 +719,12 @@ export const PerformanceAppraisalExcelSheet: React.FC<PerformanceAppraisalExcelS
             </table>
           </div>
 
-          {/* Right Logo (Col 7-8) */}
+          {/* Left Logo in RTL (Col 7-8) */}
           <div className="col-span-12 sm:col-span-2 flex items-center justify-center p-2 border border-slate-300 rounded bg-slate-50/50 min-h-[140px]">
             <img 
-              src="/assets/pa_logo_right.jpg" 
-              alt="Vitas Logo Right" 
+              src="/logos/exit_checklist_image2.jpeg" 
+              alt="Global Communities Iraq Logo" 
               className="max-h-24 max-w-full object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/assets/chf_iraq_logo.png';
-              }}
             />
           </div>
         </div>

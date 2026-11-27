@@ -342,16 +342,16 @@ export const ContractArchiveModal: React.FC<ContractArchiveModalProps> = ({
       <body>
         <table class="header-table">
           <tr>
-            <td style="width: 20%;">
-              <img src="${CHF_IRAQ_LOGO_BASE64}" class="logo" alt="CHF / Vitas" />
+            <td style="width: 22%;">
+              <img src="${window.location.origin}/logos/exit_checklist_image1.jpeg" class="logo" alt="VITAS Iraq" style="height: 44px; object-fit: contain;" />
             </td>
-            <td style="text-align: center; width: 60%;">
-              <h1 class="title">مؤسسة الإسكان التعاونية (CHF) - العراق</h1>
+            <td style="text-align: center; width: 56%;">
+              <h1 class="title">شركة فيتاس العراق للتمويل الأصغر (VITAS Iraq)</h1>
               <div class="subtitle">كشف الأرشيف والسجل التعاقدي للموظف (Contracts Archive Statement)</div>
+              <div style="font-size: 10px; color: #64748b; margin-top: 2px;">تاريخ الطباعة: <strong>${new Date().toLocaleDateString('ar-IQ')}</strong></div>
             </td>
-            <td style="text-align: ${isAr ? 'left' : 'right'}; width: 20%; font-size: 11px; color: #64748b;">
-              تاريخ الطباعة:<br/>
-              <strong>${new Date().toLocaleDateString('ar-IQ')}</strong>
+            <td style="text-align: left; width: 22%;">
+              <img src="${window.location.origin}/logos/exit_checklist_image2.jpeg" class="logo" alt="Global Communities Iraq" style="height: 44px; object-fit: contain;" />
             </td>
           </tr>
         </table>

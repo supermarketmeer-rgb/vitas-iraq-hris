@@ -1223,13 +1223,20 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                       className={`contract-page bg-white text-slate-900 p-8 sm:p-12 rounded-xl shadow-xl border border-slate-200 flex flex-col justify-between font-['Cairo',sans-serif] ${page.isLastPage ? 'contract-page-last last-page' : ''}`}
                       style={{ minHeight: '1020px' }}
                     >
-                      {/* Official CHF Iraq Logo Header (Appears on EVERY page) */}
+                      {/* Official VITAS & Global Communities Logos Header (Appears on EVERY page) */}
                       <div className="contract-page-header text-center mb-4">
-                        <img 
-                          src={CHF_IRAQ_LOGO_BASE64} 
-                          alt="CHF Iraq Logo" 
-                          className="contract-header-logo h-14 sm:h-18 mx-auto object-contain mb-2"
-                        />
+                        <div className="flex items-center justify-between px-2 mb-2">
+                          <img 
+                            src="/logos/exit_checklist_image1.jpeg" 
+                            alt="VITAS Iraq Logo" 
+                            className="contract-header-logo h-12 sm:h-14 object-contain"
+                          />
+                          <img 
+                            src="/logos/exit_checklist_image2.jpeg" 
+                            alt="Global Communities Iraq Logo" 
+                            className="contract-header-logo h-12 sm:h-14 object-contain"
+                          />
+                        </div>
                         {page.isFirstPage && (
                           <h1 className="contract-main-title text-xl sm:text-2xl font-bold text-slate-900 m-0 my-2">
                             عقد عمل
@@ -1332,13 +1339,20 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                       className="contract-page bg-white text-slate-900 p-8 sm:p-12 rounded-xl shadow-xl border border-slate-200 flex flex-col justify-between font-['Cairo',sans-serif]"
                       style={{ minHeight: '1020px' }}
                     >
-                      {/* Official CHF Iraq Logo Header (Appears on EVERY page) */}
+                      {/* Official VITAS & Global Communities Logos Header (Appears on EVERY page) */}
                       <div className="contract-page-header text-center mb-3">
-                        <img 
-                          src={CHF_IRAQ_LOGO_BASE64} 
-                          alt="CHF Iraq Logo" 
-                          className="contract-header-logo h-14 sm:h-16 mx-auto object-contain mb-1"
-                        />
+                        <div className="flex items-center justify-between px-2 mb-1">
+                          <img 
+                            src="/logos/exit_checklist_image1.jpeg" 
+                            alt="VITAS Iraq Logo" 
+                            className="contract-header-logo h-11 sm:h-13 object-contain"
+                          />
+                          <img 
+                            src="/logos/exit_checklist_image2.jpeg" 
+                            alt="Global Communities Iraq Logo" 
+                            className="contract-header-logo h-11 sm:h-13 object-contain"
+                          />
+                        </div>
                       </div>
 
                       {/* Annex Page Body */}
