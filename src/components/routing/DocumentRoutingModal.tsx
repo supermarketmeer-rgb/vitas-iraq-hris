@@ -209,6 +209,7 @@ export const DocumentRoutingModal: React.FC = () => {
         subject,
         message,
         attachments,
+        documentHtml: routingOptions.documentHtml || null,
         idempotencyKey,
         currentUser: {
           id: currentUser?.id || 'admin',

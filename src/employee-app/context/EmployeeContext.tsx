@@ -229,16 +229,18 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
   };
 
   const markNotificationAsRead = (id: string) => {
+    const cleanId = String(id || '').replace(/^routed-/, '');
     setNotifications(prev => prev.map(n => {
-      if (n.id === id || n.deliveryId === id) {
-        if (n.deliveryId && employee) {
-          fetch(`/api/routing/documents/${n.deliveryId}/access`, {
+      if (String(n.id) === cleanId || String(n.deliveryId) === cleanId || String(n.id) === String(id)) {
+        const delId = n.deliveryId || cleanId;
+        if (delId && employee) {
+          fetch(`/api/routing/deliveries/${encodeURIComponent(delId)}/access`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              employeeId: employee.id || employee.badgeNo || 'EMP',
+              employeeId: employee.id || employee.employeeId || employee.badgeNo || 'EMP',
               documentId: n.documentId,
-              action: 'view'
+              action: 'read_confirm'
             })
           }).catch(() => {});
         }

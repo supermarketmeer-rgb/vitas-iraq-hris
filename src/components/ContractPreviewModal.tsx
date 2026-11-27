@@ -22,6 +22,8 @@ interface ContractPreviewModalProps {
   contractTypes: any[];
   language?: string;
   companyProfile?: any;
+  isEmployeeReadOnly?: boolean;
+  allowPrint?: boolean;
 }
 
 export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
@@ -30,7 +32,9 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
   employee,
   contractTypes = [],
   language = 'ar',
-  companyProfile
+  companyProfile,
+  isEmployeeReadOnly = false,
+  allowPrint = true
 }) => {
   const { openDocumentRouting } = useDocumentRouting();
   const { isBranchManager } = useApp();
@@ -691,26 +695,19 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
   };
 
   // Print function
-  const handlePrint = () => {
+  const buildContractDocumentHtml = (includeAutoPrint: boolean, docTitle: string = ''): string | null => {
     const printContent = document.getElementById('printableContractArea');
-    if (!printContent) return;
+    if (!printContent) return null;
 
-    const printWindow = window.open('', '_blank', 'width=900,height=1100');
-    if (!printWindow) {
-      alert('يرجى السماح بالنوافذ المنبثقة للطباعة');
-      return;
-    }
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const innerHtml = printContent.innerHTML.replace(/src="\/logos\//g, `src="${origin}/logos/`);
 
-    try {
-      printWindow.document.title = "";
-    } catch (e) {}
-
-    const htmlContent = `
+    return `
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
         <head>
           <meta charset="utf-8" />
-          <title></title>
+          <title>${docTitle}</title>
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
           <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -921,10 +918,10 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
           </style>
         </head>
         <body>
-          ${printContent.innerHTML}
-          <script>
+          ${innerHtml}
+          ${includeAutoPrint ? `<script>
             window.onload = function() {
-              try { document.title = ""; } catch (e) {}
+              try { document.title = "${docTitle}"; } catch (e) {}
               if (document.fonts && document.fonts.ready) {
                 document.fonts.ready.then(function() {
                   setTimeout(function() {
@@ -939,10 +936,29 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                 }, 250);
               }
             };
-          </script>
+          </script>` : ''}
         </body>
       </html>
     `;
+  };
+
+  const handlePrint = () => {
+    if (!allowPrint) {
+      alert('سياسة الأمان والامتثال: الطباعة محظورة تماماً لهذه النسخة الإلكترونية المعتمدة.');
+      return;
+    }
+    const htmlContent = buildContractDocumentHtml(true, '');
+    if (!htmlContent) return;
+
+    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    if (!printWindow) {
+      alert('يرجى السماح بالنوافذ المنبثقة للطباعة');
+      return;
+    }
+
+    try {
+      printWindow.document.title = "";
+    } catch (e) {}
 
     printWindow.document.open();
     printWindow.document.write(htmlContent);
@@ -1000,62 +1016,74 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Optional Summary Table Toggle */}
-            <button
-              type="button"
-              onClick={() => setShowMetaTable(!showMetaTable)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
-                showMetaTable
-                  ? 'bg-blue-600 text-white border-blue-600 shadow'
-                  : 'bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
-              }`}
-              title="إظهار أو إخفاء جدول ملخص بيانات الموظف والراتب"
-            >
-              <span className="material-symbols-outlined text-sm">table_rows</span>
-              <span>{showMetaTable ? 'إخفاء جدول البيانات' : 'إظهار جدول البيانات'}</span>
-            </button>
-
-            {/* Template Selector Dropdown with clause count */}
-            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-white/10">
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                القالب:
-              </span>
-              <select
-                value={selectedTypeId || ''}
-                onChange={(e) => setSelectedTypeId(Number(e.target.value) || e.target.value)}
-                className="text-xs font-bold py-1.5 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1a202c] text-slate-800 dark:text-slate-200 outline-none cursor-pointer shadow-2xs"
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Optional Summary Table Toggle (Admin only) */}
+            {!isEmployeeReadOnly && (
+              <button
+                type="button"
+                onClick={() => setShowMetaTable(!showMetaTable)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  showMetaTable
+                    ? 'bg-blue-600 text-white border-blue-600 shadow'
+                    : 'bg-white dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                }`}
+                title="إظهار أو إخفاء جدول ملخص بيانات الموظف والراتب"
               >
-                {sortedContractTypes.map((ct: any) => {
-                  const count = getCachedClauseCount(ct.id);
-                  const isCurrent = (ct.id === Number(selectedTypeId) || ct.id === selectedTypeId);
-                  const activeCount = isCurrent ? clauses.length : count;
-                  const countLabel = activeCount > 0 ? ` (${activeCount} ${activeCount === 1 ? 'بند' : 'بنود'})` : '';
-                  return (
-                    <option key={ct.id} value={ct.id}>
-                      {ct.name_ar || ct.name_en || ct.name}{countLabel}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+                <span className="material-symbols-outlined text-sm">table_rows</span>
+                <span>{showMetaTable ? 'إخفاء جدول البيانات' : 'إظهار جدول البيانات'}</span>
+              </button>
+            )}
 
-            {/* Print Button */}
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-teal-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
-              title="طباعة وثيقة العقد والمستندات الملحقة كاملة (14 صفحة)"
-            >
-              <span className="material-symbols-outlined text-base">print</span>
-              <span>طباعة العقد والمستندات ({totalPagesCount} صفحة)</span>
-            </button>
+            {/* Template Selector Dropdown with clause count (Admin only) */}
+            {!isEmployeeReadOnly && (
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-white/10">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                  القالب:
+                </span>
+                <select
+                  value={selectedTypeId || ''}
+                  onChange={(e) => setSelectedTypeId(Number(e.target.value) || e.target.value)}
+                  className="text-xs font-bold py-1.5 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1a202c] text-slate-800 dark:text-slate-200 outline-none cursor-pointer shadow-2xs"
+                >
+                  {sortedContractTypes.map((ct: any) => {
+                    const count = getCachedClauseCount(ct.id);
+                    const isCurrent = (ct.id === Number(selectedTypeId) || ct.id === selectedTypeId);
+                    const activeCount = isCurrent ? clauses.length : count;
+                    const countLabel = activeCount > 0 ? ` (${activeCount} ${activeCount === 1 ? 'بند' : 'بنود'})` : '';
+                    return (
+                      <option key={ct.id} value={ct.id}>
+                        {ct.name_ar || ct.name_en || ct.name}{countLabel}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
 
-            {/* Document Routing & Delivery Button - Restricted for Branch Manager */}
-            {!isBranchManager && (
+            {/* Print / Save PDF Button */}
+            {allowPrint ? (
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-teal-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                title="طباعة أو حفظ بصيغة PDF لوثيقة العقد والمستندات الملحقة كاملة"
+              >
+                <span className="material-symbols-outlined text-base">print</span>
+                <span>{isEmployeeReadOnly ? `طباعة / حفظ PDF (${totalPagesCount} صفحة)` : `طباعة العقد والمستندات (${totalPagesCount} صفحة)`}</span>
+              </button>
+            ) : (
+              <div className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold flex items-center gap-1.5 select-none">
+                <span className="material-symbols-outlined text-sm text-rose-400">lock</span>
+                <span>الطباعة مقفلة (نسخة إلكترونية)</span>
+              </div>
+            )}
+
+            {/* Document Routing & Delivery Button - Restricted for Branch Manager & Employee */}
+            {!isBranchManager && !isEmployeeReadOnly && (
               <button
                 type="button"
                 onClick={() => {
+                  const capturedHtml = buildContractDocumentHtml(false, `عقد عمل - ${empFullName}`);
                   openDocumentRouting({
                     documentType: 'employment_contract',
                     documentId: contractNumber,
@@ -1074,6 +1102,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                     suggestedRecipient: 'specific_employee',
                     fileName: `${contractNumber}.pdf`,
                     fileType: 'application/pdf',
+                    documentHtml: capturedHtml || undefined,
                     metadata: {
                       contractType: currentContractType?.name_ar,
                       salary: employee.basicSalary || employee.salary,
@@ -1094,8 +1123,8 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
               </button>
             )}
 
-            {/* Direct Microsoft 365 Outlook Send Button - Restricted for Branch Manager */}
-            {!isBranchManager && (
+            {/* Direct Microsoft 365 Outlook Send Button - Restricted for Branch Manager & Employee */}
+            {!isBranchManager && !isEmployeeReadOnly && (
               <button
                 type="button"
                 onClick={() => setIsM365DialogOpen(true)}

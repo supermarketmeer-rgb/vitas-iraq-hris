@@ -14,6 +14,7 @@ export interface DocumentRoutingOptions {
   fileData?: string; // base64 or file URL
   fileName?: string;
   fileType?: string;
+  documentHtml?: string; // full rendered printable HTML of the official document
   metadata?: Record<string, any>;
   onSuccess?: (deliveryResult: any) => void;
 }

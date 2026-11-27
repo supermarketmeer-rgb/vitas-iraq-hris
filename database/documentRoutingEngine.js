@@ -122,6 +122,9 @@ export async function initDocumentRoutingTables(pool) {
       if (!colMap.has('supervisor_employee_id')) {
         await query(`ALTER TABLE document_deliveries ADD COLUMN supervisor_employee_id VARCHAR(50) NULL`).catch(() => {});
       }
+      if (!colMap.has('document_html')) {
+        await query(`ALTER TABLE document_deliveries ADD COLUMN document_html LONGTEXT NULL`).catch(() => {});
+      }
 
       // Ensure access logs action supports print and edit
       await query(`ALTER TABLE document_access_logs MODIFY COLUMN action VARCHAR(50) NOT NULL DEFAULT 'view'`).catch(() => {});
@@ -566,7 +569,8 @@ export async function sendDocumentThroughRouting(pool, {
   currentUser = null,
   signatureMode = 'wet_signature', // 'wet_signature' | 'electronic_copy'
   isEditable = 0,
-  formData = null
+  formData = null,
+  documentHtml = null
 }) {
   const query = (sql, params = []) => new Promise((resolve, reject) => {
     pool.query(sql, params, (err, res) => (err ? reject(err) : resolve(res)));
@@ -774,7 +778,7 @@ export async function sendDocumentThroughRouting(pool, {
          app_status, app_notification_id, app_error, app_delivered_at, overall_status,
          subject, message, attachments_meta, approval_workflow_id, idempotency_key,
          signature_mode, is_editable, form_data, branch_name, supervisor_name, supervisor_employee_id,
-         created_at, updated_at)
+         document_html, created_at, updated_at)
        VALUES
         (?, ?, ?, ?, ?, ?, ?,
          ?, ?, ?, ?, ?,
@@ -782,7 +786,7 @@ export async function sendDocumentThroughRouting(pool, {
          ?, ?, ?, ?, ?,
          ?, ?, ?, ?, ?,
          ?, ?, ?, ?, ?, ?,
-         NOW(), NOW())`,
+         ?, NOW(), NOW())`,
       [
         deliveryId, documentType, documentId, documentTitle, sourceModule, senderId, senderName,
         recipientEmpId, recipientName, recipientEmail, recipientType, channelRequested,
@@ -790,7 +794,8 @@ export async function sendDocumentThroughRouting(pool, {
         appStatus, appNotificationId, appError, appDeliveredAt, overallStatus,
         subject, message, metaJson, approvalWorkflowId, idempotencyKey,
         signatureMode || 'wet_signature', isEditable ? 1 : 0, initialFormData,
-        recipientBranch, recipientSupervisor, recipientSupervisorId
+        recipientBranch, recipientSupervisor, recipientSupervisorId,
+        documentHtml || null
       ]
     );
 
@@ -912,11 +917,21 @@ export async function recordDocumentAccess(pool, {
   ).catch(() => []);
   const reqUser = userRows && userRows.length > 0 ? userRows[0] : null;
 
-  // Check 1: Is Recipient (Employee accessing their own document)
-  const isRecipient = String(delivery.recipient_employee_id) === String(employeeId) ||
-                      (reqUser && (String(delivery.recipient_employee_id) === String(reqUser.id) || 
-                                   String(delivery.recipient_employee_id) === String(reqUser.badge_no) ||
-                                   String(delivery.recipient_employee_id) === String(reqUser.employee_id)));
+  // Check 1: Is Recipient (Employee accessing their own document — case-insensitive across id/badge_no/employee_id)
+  const norm = (v) => String(v || '').trim().toLowerCase();
+  const recipIdNorm = norm(delivery.recipient_employee_id);
+  const empIdNorm = norm(employeeId);
+  const isRecipient = Boolean(
+    (recipIdNorm && recipIdNorm === empIdNorm) ||
+    (reqUser && (
+      (recipIdNorm && (
+        recipIdNorm === norm(reqUser.id) ||
+        recipIdNorm === norm(reqUser.badge_no) ||
+        recipIdNorm === norm(reqUser.employee_id)
+      )) ||
+      (norm(delivery.recipient_name) && norm(delivery.recipient_name) === norm(reqUser.full_name_ar))
+    ))
+  );
 
   // Check 2: Is Sender (HR/Initiator)
   const isSender = String(delivery.sender_id) === String(employeeId);
