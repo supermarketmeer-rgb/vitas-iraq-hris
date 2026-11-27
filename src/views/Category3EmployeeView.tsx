@@ -14,7 +14,7 @@ import { StatusChangeTable } from '../components/StatusChangeTable';
 import { TrainingTable } from '../components/TrainingTable';
 import { WarningTable } from '../components/WarningTable';
 import { getBranchName } from '../utils/branchHelper';
-import { IRAQ_GOVERNORATES, inferGovernorateFromBranchName } from '../data/iraqLocations';
+import { IRAQ_GOVERNORATES, inferGovernorateFromBranchName, formatWorkLocation, formatDistrictName } from '../data/iraqLocations';
 import { getDepartmentName, getJobTitleName, DICT_EN, isArabicText } from '../utils/orgDictionary';
 import { transliterateArabicNameToEnglish } from '../utils/nameHelper';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
@@ -2547,23 +2547,50 @@ export const Category3EmployeeView: React.FC = () => {
                         {/* Work Location */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span className={`font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
-                            {emp.workLocation || emp.work_location || inferGovernorateFromBranchName(emp.branch || emp.location_ar || '')?.ar || '-'}
+                            {(() => {
+                              const rawLoc = emp.workLocation || emp.work_location || inferGovernorateFromBranchName(emp.branch || emp.location_ar || '')?.ar || '';
+                              return formatWorkLocation(rawLoc, language) || '-';
+                            })()}
                           </span>
                         </td>
 
                         {/* Technical Supervisor */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span className={`font-medium text-xs ${theme === 'dark' ? 'text-teal-300' : 'text-teal-800'}`}>
-                            {(emp.supervisorName && emp.supervisorName !== 'غير محدد') ? emp.supervisorName : '-'}
+                            {(() => {
+                              const rawSup = emp.supervisorName || emp.supervisor_name || '';
+                              if (!rawSup || rawSup === 'غير محدد' || rawSup === 'N/A') return '-';
+                              const foundSup = employees.find(e =>
+                                String(e.fullName || e.full_name_ar || '').trim().toLowerCase() === rawSup.trim().toLowerCase() ||
+                                String(e.fullNameEn || e.full_name_en || '').trim().toLowerCase() === rawSup.trim().toLowerCase()
+                              );
+                              if (language === 'en') {
+                                return (foundSup?.fullNameEn && foundSup.fullNameEn !== 'N/A')
+                                  ? foundSup.fullNameEn
+                                  : (isArabicText(rawSup) ? transliterateArabicNameToEnglish(rawSup) : rawSup);
+                              }
+                              return (foundSup?.fullName && foundSup.fullName !== 'غير محدد') ? foundSup.fullName : rawSup;
+                            })()}
                           </span>
                         </td>
 
                         {/* Administrative Supervisor */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span className={`font-medium text-xs ${theme === 'dark' ? 'text-indigo-300' : 'text-indigo-800'}`}>
-                            {((emp.adminSupervisorName || emp.admin_supervisor_name || emp.supervisorName) && (emp.adminSupervisorName || emp.admin_supervisor_name || emp.supervisorName) !== 'غير محدد')
-                              ? (emp.adminSupervisorName || emp.admin_supervisor_name || emp.supervisorName)
-                              : '-'}
+                            {(() => {
+                              const rawAdminSup = emp.adminSupervisorName || emp.admin_supervisor_name || emp.supervisorName || emp.supervisor_name || '';
+                              if (!rawAdminSup || rawAdminSup === 'غير محدد' || rawAdminSup === 'N/A') return '-';
+                              const foundSup = employees.find(e =>
+                                String(e.fullName || e.full_name_ar || '').trim().toLowerCase() === rawAdminSup.trim().toLowerCase() ||
+                                String(e.fullNameEn || e.full_name_en || '').trim().toLowerCase() === rawAdminSup.trim().toLowerCase()
+                              );
+                              if (language === 'en') {
+                                return (foundSup?.fullNameEn && foundSup.fullNameEn !== 'N/A')
+                                  ? foundSup.fullNameEn
+                                  : (isArabicText(rawAdminSup) ? transliterateArabicNameToEnglish(rawAdminSup) : rawAdminSup);
+                              }
+                              return (foundSup?.fullName && foundSup.fullName !== 'غير محدد') ? foundSup.fullName : rawAdminSup;
+                            })()}
                           </span>
                         </td>
 
@@ -5785,11 +5812,15 @@ export const Category3EmployeeView: React.FC = () => {
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 font-semibold text-xs" style={{ color: isDark ? '#e2e8f0' : '#000000' }}>
                               <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">location_city</span>
-                              <span>{branch.governorate_ar || branch.city || '-'}</span>
+                              <span>
+                                {language === 'en'
+                                  ? (branch.governorate_en || formatWorkLocation(branch.governorate_ar || branch.city, 'en') || '-')
+                                  : (branch.governorate_ar || branch.city || formatWorkLocation(branch.governorate_en, 'ar') || '-')}
+                              </span>
                             </div>
-                            {branch.governorate_en && (
-                              <div className="text-[11px] text-slate-500 mt-0.5" dir="ltr">
-                                {branch.governorate_en}
+                            {(language === 'ar' ? branch.governorate_en : (branch.governorate_ar || branch.city)) && (
+                              <div className="text-[11px] text-slate-500 mt-0.5" dir={language === 'ar' ? 'ltr' : 'rtl'}>
+                                {language === 'ar' ? branch.governorate_en : (branch.governorate_ar || branch.city)}
                               </div>
                             )}
                           </div>
@@ -5798,11 +5829,15 @@ export const Category3EmployeeView: React.FC = () => {
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 font-semibold text-xs" style={{ color: isDark ? '#e2e8f0' : '#000000' }}>
                               <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400 shrink-0">map</span>
-                              <span>{branch.district_ar || '-'}</span>
+                              <span>
+                                {language === 'en'
+                                  ? (branch.district_en || formatDistrictName(branch.district_ar, 'en') || '-')
+                                  : (branch.district_ar || formatDistrictName(branch.district_en, 'ar') || '-')}
+                              </span>
                             </div>
-                            {branch.district_en && (
-                              <div className="text-[11px] text-slate-500 mt-0.5" dir="ltr">
-                                {branch.district_en}
+                            {(language === 'ar' ? branch.district_en : branch.district_ar) && (
+                              <div className="text-[11px] text-slate-500 mt-0.5" dir={language === 'ar' ? 'ltr' : 'rtl'}>
+                                {language === 'ar' ? branch.district_en : branch.district_ar}
                               </div>
                             )}
                           </div>

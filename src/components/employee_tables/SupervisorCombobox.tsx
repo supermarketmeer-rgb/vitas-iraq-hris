@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, ChevronDown, Check, X, UserCheck, Shield, Sparkles } from 'lucide-react';
+import { transliterateArabicNameToEnglish } from '../../utils/nameHelper';
+import { getJobTitleName, isArabicText } from '../../utils/orgDictionary';
 
 export interface DirectSupervisor {
   id?: number | string;
@@ -35,6 +37,52 @@ export const SupervisorCombobox: React.FC<SupervisorComboboxProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const t = (ar: string, en: string) => (language === 'ar' ? ar : en);
+
+  const getLocalizedSupDisplay = (rawName: string, badgeNo?: string, rawPos?: string) => {
+    const cleanName = String(rawName || '').trim();
+    const cleanBadge = String(badgeNo || '').trim().toLowerCase();
+    const matchedEmp = (employeesList || []).find((e: any) => {
+      const eBadge = String(e.badgeNo || e.badge_no || '').trim().toLowerCase();
+      const eAr = String(e.fullName || e.full_name_ar || e.name || '').trim().toLowerCase();
+      const eEn = String(e.fullNameEn || e.full_name_en || '').trim().toLowerCase();
+      return (cleanBadge && eBadge && eBadge === cleanBadge) ||
+        (cleanName && (eAr === cleanName.toLowerCase() || eEn === cleanName.toLowerCase()));
+    });
+
+    let displayName = cleanName;
+    if (language === 'en') {
+      const enName = matchedEmp?.fullNameEn || matchedEmp?.full_name_en || '';
+      if (enName && enName !== 'N/A') {
+        displayName = enName;
+      } else if (cleanName && isArabicText(cleanName)) {
+        displayName = transliterateArabicNameToEnglish(cleanName);
+      }
+    } else {
+      const arName = matchedEmp?.fullName || matchedEmp?.full_name_ar || '';
+      if (arName && arName !== 'غير محدد') {
+        displayName = arName;
+      }
+    }
+
+    let displayPos = String(rawPos || '').trim();
+    if (language === 'en') {
+      const enPos = matchedEmp?.jobTitleEn || matchedEmp?.position_en || '';
+      if (enPos && enPos !== 'N/A') {
+        displayPos = enPos;
+      } else if (displayPos) {
+        displayPos = getJobTitleName(displayPos, 'en');
+      }
+    } else {
+      const arPos = matchedEmp?.jobTitle || matchedEmp?.position_ar || '';
+      if (arPos && arPos !== 'غير محدد') {
+        displayPos = arPos;
+      } else if (displayPos) {
+        displayPos = getJobTitleName(displayPos, 'ar');
+      }
+    }
+
+    return { displayName, displayPos };
+  };
 
   // Load supervisors from API with fallback
   const loadSupervisors = async () => {
@@ -86,16 +134,21 @@ export const SupervisorCombobox: React.FC<SupervisorComboboxProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filtered list
+  // Filtered list (searches both Arabic & English localized names/positions + badge)
   const filteredSupervisors = useMemo(() => {
     if (!searchTerm.trim()) return supervisors;
     const q = searchTerm.toLowerCase().trim();
-    return supervisors.filter(s =>
-      (s.supervisor_name || '').toLowerCase().includes(q) ||
-      (s.supervisor_position || '').toLowerCase().includes(q) ||
-      (s.badge_no || '').toLowerCase().includes(q)
-    );
-  }, [supervisors, searchTerm]);
+    return supervisors.filter(s => {
+      const loc = getLocalizedSupDisplay(s.supervisor_name, s.badge_no, s.supervisor_position);
+      return (
+        (s.supervisor_name || '').toLowerCase().includes(q) ||
+        (loc.displayName || '').toLowerCase().includes(q) ||
+        (s.supervisor_position || '').toLowerCase().includes(q) ||
+        (loc.displayPos || '').toLowerCase().includes(q) ||
+        (s.badge_no || '').toLowerCase().includes(q)
+      );
+    });
+  }, [supervisors, searchTerm, language, employeesList]);
 
   const handleSelect = (sup: DirectSupervisor) => {
     onChange(sup.supervisor_name, sup);
@@ -133,18 +186,19 @@ export const SupervisorCombobox: React.FC<SupervisorComboboxProps> = ({
         <div className="flex-1 min-w-0">
           {value ? (
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-xs sm:text-sm truncate">{value}</span>
-              {/* Show matching supervisor badge if found */}
               {(() => {
-                const matched = supervisors.find(s => s.supervisor_name.trim() === value.trim());
-                if (matched?.badge_no) {
-                  return (
-                    <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-teal-500/15 text-teal-400 border border-teal-500/30">
-                      {matched.badge_no}
-                    </span>
-                  );
-                }
-                return null;
+                const matched = supervisors.find(s => s.supervisor_name.trim().toLowerCase() === value.trim().toLowerCase());
+                const loc = getLocalizedSupDisplay(value, matched?.badge_no, matched?.supervisor_position);
+                return (
+                  <>
+                    <span className="font-semibold text-xs sm:text-sm truncate">{loc.displayName || value}</span>
+                    {matched?.badge_no && (
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-teal-500/15 text-teal-400 border border-teal-500/30">
+                        {matched.badge_no}
+                      </span>
+                    )}
+                  </>
+                );
               })()}
             </div>
           ) : (
@@ -236,6 +290,7 @@ export const SupervisorCombobox: React.FC<SupervisorComboboxProps> = ({
             ) : (
               filteredSupervisors.map(sup => {
                 const isSelected = value?.trim().toLowerCase() === sup.supervisor_name.trim().toLowerCase();
+                const loc = getLocalizedSupDisplay(sup.supervisor_name, sup.badge_no, sup.supervisor_position);
                 return (
                   <div
                     key={sup.id || sup.badge_no + sup.supervisor_name}
@@ -257,14 +312,14 @@ export const SupervisorCombobox: React.FC<SupervisorComboboxProps> = ({
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-xs sm:text-sm font-semibold truncate">
-                            {sup.supervisor_name}
+                            {loc.displayName}
                           </p>
                           <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold bg-slate-800 text-teal-400 border border-slate-700">
                             {sup.badge_no}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                          {sup.supervisor_position || t('غير محدد', 'Not specified')}
+                          {loc.displayPos || t('غير محدد', 'Not specified')}
                         </p>
                       </div>
                     </div>

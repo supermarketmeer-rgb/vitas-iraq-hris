@@ -309,6 +309,57 @@ export function inferGovernorateFromBranchName(branchName: string): { ar: string
 }
 
 /**
+ * Translate/format a stored Governorate or "Governorate - District" string into Arabic or English
+ */
+export function formatWorkLocation(value: string | null | undefined, lang: 'ar' | 'en' = 'ar'): string {
+  const raw = String(value || '').trim();
+  if (!raw || raw === '-' || raw === 'غير محدد' || raw === 'N/A') return '';
+  const norm = raw.toLowerCase();
+
+  for (const gov of IRAQ_GOVERNORATES) {
+    if (norm === gov.ar.toLowerCase() || norm === gov.en.toLowerCase()) {
+      return lang === 'en' ? gov.en : gov.ar;
+    }
+    for (const dist of gov.districts) {
+      const arFull = `${gov.ar} - ${dist.ar}`;
+      const enFull = `${gov.en} - ${dist.en}`;
+      if (
+        norm === arFull.toLowerCase() ||
+        norm === enFull.toLowerCase() ||
+        norm === dist.ar.toLowerCase() ||
+        norm === dist.en.toLowerCase()
+      ) {
+        return lang === 'en' ? enFull : arFull;
+      }
+    }
+  }
+
+  // Fallback: try inferring governorate if it's a branch/city alias
+  const inferred = inferGovernorateFromBranchName(raw);
+  if (inferred && raw.length <= 30 && !raw.includes(' - ')) {
+    return lang === 'en' ? inferred.en : inferred.ar;
+  }
+  return raw;
+}
+
+/**
+ * Translate a standalone district name into Arabic or English if known
+ */
+export function formatDistrictName(value: string | null | undefined, lang: 'ar' | 'en' = 'ar'): string {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const norm = raw.toLowerCase();
+  for (const gov of IRAQ_GOVERNORATES) {
+    for (const dist of gov.districts) {
+      if (norm === dist.ar.toLowerCase() || norm === dist.en.toLowerCase()) {
+        return lang === 'en' ? dist.en : dist.ar;
+      }
+    }
+  }
+  return raw;
+}
+
+/**
  * Flat list of all work location options (Governorate + Governorate - District)
  */
 export function getAllIraqWorkLocations(lang: 'ar' | 'en' = 'ar'): Array<{ value: string; label: string; group: string }> {
