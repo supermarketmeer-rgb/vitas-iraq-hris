@@ -783,11 +783,19 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
               text-align: center;
               margin-bottom: 6px;
             }
+            .contract-logos-row {
+              display: flex !important;
+              align-items: center !important;
+              justify-content: space-between !important;
+              width: 100% !important;
+              direction: rtl;
+              margin-bottom: 4px;
+            }
             .contract-header-logo {
-              display: block;
-              margin: 0 auto;
-              height: 54px;
-              max-width: 230px;
+              display: inline-block;
+              margin: 0 !important;
+              height: 48px;
+              max-width: 190px;
               object-fit: contain;
             }
             .contract-main-title {
@@ -1225,16 +1233,18 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                     >
                       {/* Official VITAS & Global Communities Logos Header (Appears on EVERY page) */}
                       <div className="contract-page-header text-center mb-4">
-                        <div className="flex items-center justify-between px-2 mb-2">
+                        <div className="contract-logos-row flex items-center justify-between px-2 mb-2" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                           <img 
                             src="/logos/exit_checklist_image1.jpeg" 
                             alt="VITAS Iraq Logo" 
                             className="contract-header-logo h-12 sm:h-14 object-contain"
+                            style={{ margin: 0 }}
                           />
                           <img 
                             src="/logos/exit_checklist_image2.jpeg" 
                             alt="Global Communities Iraq Logo" 
                             className="contract-header-logo h-12 sm:h-14 object-contain"
+                            style={{ margin: 0 }}
                           />
                         </div>
                         {page.isFirstPage && (
@@ -1341,16 +1351,18 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                     >
                       {/* Official VITAS & Global Communities Logos Header (Appears on EVERY page) */}
                       <div className="contract-page-header text-center mb-3">
-                        <div className="flex items-center justify-between px-2 mb-1">
+                        <div className="contract-logos-row flex items-center justify-between px-2 mb-1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                           <img 
                             src="/logos/exit_checklist_image1.jpeg" 
                             alt="VITAS Iraq Logo" 
                             className="contract-header-logo h-11 sm:h-13 object-contain"
+                            style={{ margin: 0 }}
                           />
                           <img 
                             src="/logos/exit_checklist_image2.jpeg" 
                             alt="Global Communities Iraq Logo" 
                             className="contract-header-logo h-11 sm:h-13 object-contain"
+                            style={{ margin: 0 }}
                           />
                         </div>
                       </div>
