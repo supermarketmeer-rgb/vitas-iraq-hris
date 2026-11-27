@@ -157,10 +157,18 @@ export const getAnnexPages = (_employee?: any): AnnexPageItem[] => {
             </p>
           </div>
 
-          <div className="pt-3 border-t border-dashed border-slate-400 mt-auto flex justify-between items-center text-[11px] text-slate-600">
-            <div>المتعهد: ................................................</div>
-            <div>التوقيع: ................................................</div>
-            <div className="stamp-box border border-dashed border-slate-500 rounded px-2 py-0.5 font-bold">ختم المؤسسة</div>
+          <div
+            className="pt-2 border-t border-dashed border-slate-400 mt-2 flex justify-between items-center text-[11px] text-slate-700"
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '12px', paddingTop: '8px', marginTop: '8px', borderTop: '1px dashed #94a3b8' }}
+          >
+            <div style={{ whiteSpace: 'nowrap' }}>المتعهد: ..................................</div>
+            <div style={{ whiteSpace: 'nowrap' }}>التوقيع: ..................................</div>
+            <div
+              className="stamp-box border border-dashed border-slate-500 rounded px-3 py-1 font-bold"
+              style={{ border: '1px dashed #64748b', borderRadius: '6px', padding: '3px 12px', fontWeight: 700, whiteSpace: 'nowrap', textAlign: 'center' }}
+            >
+              ختم المؤسسة
+            </div>
           </div>
         </div>
       )
