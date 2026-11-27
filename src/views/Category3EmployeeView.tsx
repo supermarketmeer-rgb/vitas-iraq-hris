@@ -2982,7 +2982,7 @@ export const Category3EmployeeView: React.FC = () => {
 
       {/* 7-TABS ADD/EDIT EMPLOYEE FORM */}
       {(activeModuleId === 'emp-add' || activeModuleId === 'emp-edit') && (
-        <div className="max-w-7xl mx-auto space-y-1.5 animate-in fade-in duration-300">
+        <div className="w-full space-y-1.5 animate-in fade-in duration-300">
           {/* THE LARGE FORM WINDOW (Exact layout and aesthetics as The Large Profile Window) */}
           <div className={`p-3.5 sm:p-4 rounded-2xl ${profileColors.cardBg} border ${profileColors.cardBorder} ${profileColors.shadow} relative overflow-hidden ${profileColors.text}`}>
             {/* Background decorative soft ambient light */}
@@ -4847,7 +4847,7 @@ export const Category3EmployeeView: React.FC = () => {
 
       {/* Employee Full 7-Tabs Profile View (HR Employees Profiles) */}
       {activeModuleId === 'emp-profile' && (
-        <div className="max-w-7xl mx-auto space-y-2.5">
+        <div className="w-full space-y-2.5">
           {/* Top Dynamic Search & Selector Bar on ONE row */}
           <div className={`${profileColors.background} px-3.5 py-2 rounded-2xl border ${profileColors.border} ${profileColors.shadow}`}>
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
