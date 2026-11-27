@@ -1705,6 +1705,84 @@ html.dark textarea:not(.employee-app-light *):not(.employee-app-light) {
   color: #ffffff !important;
 }
 
+/* =========================================================================
+   EMPLOYEE APP DARK MODE ONLY (.employee-app-dark) — High-Contrast Text Fix
+   Preserves paper-white cards (.bg-white) while ensuring all dark-surface
+   text, labels, muted captions, badges, and inputs are crisp and readable.
+   ========================================================================= */
+.employee-app-dark .text-black:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-slate-900:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-slate-800:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-gray-900:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-gray-800:not(.bg-white):not(.bg-white *) {
+  color: #f8fafc !important;
+}
+
+.employee-app-dark .text-slate-700:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-slate-600:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-gray-700:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-gray-600:not(.bg-white):not(.bg-white *) {
+  color: #e2e8f0 !important;
+}
+
+.employee-app-dark .text-slate-500:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-gray-500:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-slate-400:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-gray-400:not(.bg-white):not(.bg-white *) {
+  color: #cbd5e1 !important;
+}
+
+.employee-app-dark .text-teal-900:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-teal-800:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-teal-700:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-teal-600:not(.bg-white):not(.bg-white *) {
+  color: #2dd4bf !important;
+}
+
+.employee-app-dark .text-emerald-900:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-emerald-800:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-emerald-700:not(.bg-white):not(.bg-white *) {
+  color: #34d399 !important;
+}
+
+.employee-app-dark .text-amber-900:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-amber-800:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-amber-700:not(.bg-white):not(.bg-white *) {
+  color: #fbbf24 !important;
+}
+
+.employee-app-dark .text-rose-900:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-rose-800:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-rose-700:not(.bg-white):not(.bg-white *) {
+  color: #fb7185 !important;
+}
+
+.employee-app-dark .text-blue-900:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-blue-800:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-blue-700:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-indigo-800:not(.bg-white):not(.bg-white *),
+.employee-app-dark .text-indigo-700:not(.bg-white):not(.bg-white *) {
+  color: #60a5fa !important;
+}
+
+.employee-app-dark input:not([type="checkbox"]):not([type="radio"]):not(.bg-white):not(.bg-white *),
+.employee-app-dark select:not(.bg-white):not(.bg-white *),
+.employee-app-dark textarea:not(.bg-white):not(.bg-white *) {
+  color: #f8fafc !important;
+  background-color: #111827 !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+.employee-app-dark input::placeholder,
+.employee-app-dark textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.employee-app-dark select option {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+}
+
 /* Dark Mode Table Rows & Headers */
 html.dark table thead th,
 html.dark table thead tr th {
