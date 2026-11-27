@@ -263,29 +263,30 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
         <meta charset="UTF-8" />
         <title>استمارة إخلاء الطرف وبراءة الذمة</title>
         <style>
-          @page { size: A4 portrait; margin: 8mm; }
-          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #111827; font-size: 10px; margin: 0; padding: 0; background: #fff; }
-          .doc-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #111827; padding-bottom: 6px; margin-bottom: 6px; }
+          @page { size: A4 portrait; margin: 6mm; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #111827; font-size: 9.5px; margin: 0; padding: 0; background: #fff; }
+          .doc-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #111827; padding-bottom: 4px; margin-bottom: 5px; }
           .brand-right { font-weight: 900; font-size: 13px; color: #0f766e; letter-spacing: 1px; }
           .brand-left { font-weight: 700; font-size: 10px; color: #0369a1; text-align: left; }
-          .doc-title { font-size: 15px; font-weight: 900; text-align: center; color: #000; }
+          .doc-title { font-size: 14px; font-weight: 900; text-align: center; color: #000; }
           table { width: 100%; border-collapse: collapse; }
           .meta-table { margin-bottom: 4px; border: 1.5px solid #374151; }
-          .meta-table td { border: 1px solid #9ca3af; padding: 3.5px 6px; font-size: 10px; }
+          .meta-table td { border: 1px solid #9ca3af; padding: 2.5px 5px; font-size: 9.5px; }
           .meta-label { font-weight: 700; width: 17%; background: #f9fafb; }
           .meta-val { width: 33%; }
-          .instr-row td { background: #f9fafb; font-size: 9.5px; line-height: 1.4; }
-          .check-table { border: 1.5px solid #374151; margin-bottom: 6px; }
-          .check-table th { background: #e5e7eb; color: #000; border: 1px solid #9ca3af; padding: 4px 5px; font-size: 9.5px; font-weight: 800; text-align: center; }
-          .check-table td { border: 1px solid #9ca3af; padding: 2.5px 5px; font-size: 9.2px; line-height: 1.3; vertical-align: middle; }
+          .instr-row td { background: #f9fafb; font-size: 9px; line-height: 1.3; }
+          .check-table { border: 1.5px solid #374151; margin-bottom: 4px; }
+          .check-table th { background: #e5e7eb; color: #000; border: 1px solid #9ca3af; padding: 3px 4px; font-size: 9px; font-weight: 800; text-align: center; }
+          .check-table td { border: 1px solid #9ca3af; padding: 2px 4px; font-size: 8.8px; line-height: 1.22; vertical-align: middle; }
           .dept-sep td { border-top: 1.5px solid #4b5563 !important; }
           .dept-cell { font-weight: 800; text-align: center; background: #f9fafb; color: #000; }
-          .sub-cell { font-weight: 700; text-align: center; font-size: 8.5px; color: #1f2937; background: #fcfcfd; }
+          .sub-cell { font-weight: 700; text-align: center; font-size: 8px; color: #1f2937; background: #fcfcfd; }
           .item-cell { text-align: right; color: #111827; }
-          .chk-cell { text-align: center; font-size: 12px; }
-          .decision { padding: 5px 8px; margin-bottom: 6px; font-weight: 700; font-size: 10px; }
+          .chk-cell { text-align: center; font-size: 11px; }
+          .decision { padding: 3px 6px; margin-bottom: 4px; font-weight: 700; font-size: 9.5px; display: flex; justify-content: space-between; gap: 12px; }
           .sig-table { border: 1.5px solid #374151; }
-          .sig-table td { border: 1px solid #9ca3af; padding: 5px 8px; font-weight: 700; font-size: 10px; }
+          .sig-table td { border: 1px solid #9ca3af; padding: 5px 7px; font-weight: 700; font-size: 9.2px; width: 33.33%; vertical-align: top; }
+          .sig-date { margin-top: 6px; font-weight: 600; color: #374151; }
         </style>
       </head>
       <body>
@@ -328,20 +329,22 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
         </table>
         <div class="decision">
           <div>${clearanceCompleted ? '☑' : '☐'} &nbsp; تم استكمال إجراءات إخلاء الطرف وبراءة الذمة</div>
-          <div style="margin-top:3px;">${hasPendingNotes ? '☑' : '☐'} &nbsp; توجد ملاحظات / ذمم معلقة تمنع الإغلاق النهائي</div>
+          <div>${hasPendingNotes ? '☑' : '☐'} &nbsp; توجد ملاحظات / ذمم معلقة تمنع الإغلاق النهائي</div>
         </div>
         <table class="sig-table">
           <tr>
-            <td style="width:72%">توقيع المشرف المباشر: ${supervisorSign || ''}</td>
-            <td style="width:28%">التاريخ: ${supervisorDate || '      /      /      '}</td>
-          </tr>
-          <tr>
-            <td>توقيع مدير القسم: ${deptManagerSign || ''}</td>
-            <td>التاريخ: ${deptManagerDate || '      /      /      '}</td>
-          </tr>
-          <tr>
-            <td>توقيع مسؤول قسم الموارد البشرية: ${hrOfficerSign || ''}</td>
-            <td>التاريخ: ${hrOfficerDate || '      /      /      '}</td>
+            <td>
+              <div>توقيع المشرف المباشر: ${supervisorSign || ''}</div>
+              <div class="sig-date">التاريخ: ${supervisorDate || '    /    /    '}</div>
+            </td>
+            <td>
+              <div>توقيع مدير القسم: ${deptManagerSign || ''}</div>
+              <div class="sig-date">التاريخ: ${deptManagerDate || '    /    /    '}</div>
+            </td>
+            <td>
+              <div>توقيع مسؤول قسم الموارد البشرية: ${hrOfficerSign || ''}</div>
+              <div class="sig-date">التاريخ: ${hrOfficerDate || '    /    /    '}</div>
+            </td>
           </tr>
         </table>
         <script>window.onload = () => { window.print(); };</script>
@@ -606,48 +609,44 @@ export const ExitProcedureChecklistTemplate: React.FC<ExitProcedureChecklistTemp
             </label>
           </div>
 
-          {/* Final 3-Row Official Signatures Table (Exact Original Rows 46-48) */}
+          {/* Final 3 Signatures Arranged in a Single Horizontal Row */}
           <table className="w-full border-collapse border border-gray-500 text-xs font-bold text-gray-900">
             <tbody>
               <tr>
-                <td className="border border-gray-400 px-3 py-2 w-[72%]">
-                  <div className="flex items-center gap-2">
-                    <span className="whitespace-nowrap">توقيع المشرف المباشر:</span>
-                    <input type="text" value={supervisorSign} onChange={e => setSupervisorSign(e.target.value)} className="w-full bg-transparent font-normal focus:outline-none focus:bg-teal-50/40 px-1 rounded" />
+                <td className="border border-gray-400 px-3 py-2.5 w-1/3 align-top">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="whitespace-nowrap">توقيع المشرف المباشر:</span>
+                      <input type="text" value={supervisorSign} onChange={e => setSupervisorSign(e.target.value)} className="w-full bg-transparent font-normal focus:outline-none focus:bg-teal-50/40 px-1 rounded border-b border-gray-300" />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="whitespace-nowrap text-[11px] text-gray-700">التاريخ:</span>
+                      <input type="date" value={supervisorDate} onChange={e => setSupervisorDate(e.target.value)} className="w-full bg-transparent font-mono font-normal text-[11px] focus:outline-none" />
+                    </div>
                   </div>
                 </td>
-                <td className="border border-gray-400 px-3 py-2 w-[28%]">
-                  <div className="flex items-center gap-2">
-                    <span className="whitespace-nowrap">التاريخ:</span>
-                    <input type="date" value={supervisorDate} onChange={e => setSupervisorDate(e.target.value)} className="w-full bg-transparent font-mono font-normal text-xs focus:outline-none" />
+                <td className="border border-gray-400 px-3 py-2.5 w-1/3 align-top">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="whitespace-nowrap">توقيع مدير القسم:</span>
+                      <input type="text" value={deptManagerSign} onChange={e => setDeptManagerSign(e.target.value)} className="w-full bg-transparent font-normal focus:outline-none focus:bg-teal-50/40 px-1 rounded border-b border-gray-300" />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="whitespace-nowrap text-[11px] text-gray-700">التاريخ:</span>
+                      <input type="date" value={deptManagerDate} onChange={e => setDeptManagerDate(e.target.value)} className="w-full bg-transparent font-mono font-normal text-[11px] focus:outline-none" />
+                    </div>
                   </div>
                 </td>
-              </tr>
-              <tr>
-                <td className="border border-gray-400 px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className="whitespace-nowrap">توقيع مدير القسم:</span>
-                    <input type="text" value={deptManagerSign} onChange={e => setDeptManagerSign(e.target.value)} className="w-full bg-transparent font-normal focus:outline-none focus:bg-teal-50/40 px-1 rounded" />
-                  </div>
-                </td>
-                <td className="border border-gray-400 px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className="whitespace-nowrap">التاريخ:</span>
-                    <input type="date" value={deptManagerDate} onChange={e => setDeptManagerDate(e.target.value)} className="w-full bg-transparent font-mono font-normal text-xs focus:outline-none" />
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td className="border border-gray-400 px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className="whitespace-nowrap">توقيع مسؤول قسم الموارد البشرية:</span>
-                    <input type="text" value={hrOfficerSign} onChange={e => setHrOfficerSign(e.target.value)} className="w-full bg-transparent font-normal focus:outline-none focus:bg-teal-50/40 px-1 rounded" />
-                  </div>
-                </td>
-                <td className="border border-gray-400 px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className="whitespace-nowrap">التاريخ:</span>
-                    <input type="date" value={hrOfficerDate} onChange={e => setHrOfficerDate(e.target.value)} className="w-full bg-transparent font-mono font-normal text-xs focus:outline-none" />
+                <td className="border border-gray-400 px-3 py-2.5 w-1/3 align-top">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="whitespace-nowrap">توقيع مسؤول الموارد البشرية:</span>
+                      <input type="text" value={hrOfficerSign} onChange={e => setHrOfficerSign(e.target.value)} className="w-full bg-transparent font-normal focus:outline-none focus:bg-teal-50/40 px-1 rounded border-b border-gray-300" />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="whitespace-nowrap text-[11px] text-gray-700">التاريخ:</span>
+                      <input type="date" value={hrOfficerDate} onChange={e => setHrOfficerDate(e.target.value)} className="w-full bg-transparent font-mono font-normal text-[11px] focus:outline-none" />
+                    </div>
                   </div>
                 </td>
               </tr>
