@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { jsPDF } from 'jspdf';
+import { toJpeg } from 'html-to-image';
 import { api } from '../api/client';
 import { CHF_IRAQ_LOGO_BASE64 } from '../data/contractHeaderLogo';
 import { formatIraqiPhoneNumber } from '../utils/phoneHelper';
@@ -43,6 +45,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
   const [clauses, setClauses] = useState<ContractClause[]>([]);
   const [showMetaTable, setShowMetaTable] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
   const [activeDocFilter, setActiveDocFilter] = useState<string>('all');
 
   // Helper to get clauses from localStorage synchronously
@@ -171,9 +174,32 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
 
     const fetchFromApi = async () => {
       try {
-        const res: any = await api.getContractClauses(selectedTypeId.toString());
+        let res: any = await api.getContractClauses(selectedTypeId.toString());
         clearTimeout(timeoutId);
-        if (!isCancelled && Array.isArray(res)) {
+
+        // If this contract_type_id returned 0 clauses, check sibling types with the same name
+        if (Array.isArray(res) && res.length === 0) {
+          const currentCt = contractTypes.find((c: any) => c.id === Number(selectedTypeId) || c.id === selectedTypeId);
+          if (currentCt?.name_ar || currentCt?.name_en) {
+            const siblings = contractTypes.filter(
+              (other: any) =>
+                other.id !== selectedTypeId &&
+                ((currentCt.name_ar && other.name_ar === currentCt.name_ar) ||
+                  (currentCt.name_en && other.name_en === currentCt.name_en))
+            );
+            for (const sib of siblings) {
+              try {
+                const sibRes: any = await api.getContractClauses(String(sib.id));
+                if (Array.isArray(sibRes) && sibRes.length > 0) {
+                  res = sibRes;
+                  break;
+                }
+              } catch {}
+            }
+          }
+        }
+
+        if (!isCancelled && Array.isArray(res) && res.length > 0) {
           setClauses(res);
           try {
             localStorage.setItem(`vitas_contract_clauses_${selectedTypeId}`, JSON.stringify(res));
@@ -965,6 +991,48 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
     printWindow.document.close();
   };
 
+  const handleDownloadPdf = async () => {
+    if (!allowPrint) {
+      alert('سياسة الأمان والامتثال: التحميل والطباعة محظورة تماماً لهذه النسخة الإلكترونية المعتمدة.');
+      return;
+    }
+    const container = document.getElementById('printableContractArea');
+    if (!container) return;
+
+    const pageNodes = Array.from(container.querySelectorAll('.contract-page')) as HTMLElement[];
+    if (pageNodes.length === 0) {
+      handlePrint();
+      return;
+    }
+
+    setIsGeneratingPdf(true);
+    try {
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      for (let i = 0; i < pageNodes.length; i++) {
+        const pageEl = pageNodes[i];
+        const imgData = await toJpeg(pageEl, {
+          quality: 0.92,
+          pixelRatio: 1.5,
+          backgroundColor: '#ffffff',
+          cacheBust: true,
+          filter: (node) => {
+            if (node instanceof HTMLElement && node.classList?.contains('no-print')) return false;
+            return true;
+          }
+        });
+        if (i > 0) pdf.addPage('a4', 'portrait');
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      }
+      const safeFileName = `عقد_عمل_${empFullName.replace(/[^\u0600-\u06FFa-zA-Z0-9_-]+/g, '_')}_${contractNumber}.pdf`;
+      pdf.save(safeFileName);
+    } catch (err) {
+      console.error('PDF generation failed, falling back to print dialog:', err);
+      handlePrint();
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   if (!isOpen || !employee) return null;
 
   const empFullName = employee.fullName || employee.full_name_ar || employee.name_ar || employee.name || 'الموظف';
@@ -1060,17 +1128,29 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
               </div>
             )}
 
-            {/* Print / Save PDF Button */}
+            {/* Print & Real PDF Download Buttons */}
             {allowPrint ? (
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-teal-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
-                title="طباعة أو حفظ بصيغة PDF لوثيقة العقد والمستندات الملحقة كاملة"
-              >
-                <span className="material-symbols-outlined text-base">print</span>
-                <span>{isEmployeeReadOnly ? `طباعة / حفظ PDF (${totalPagesCount} صفحة)` : `طباعة العقد والمستندات (${totalPagesCount} صفحة)`}</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-teal-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                  title="طباعة وثيقة العقد والمستندات الملحقة كاملة"
+                >
+                  <span className="material-symbols-outlined text-base">print</span>
+                  <span>{isEmployeeReadOnly ? `طباعة (${totalPagesCount})` : `طباعة العقد والمستندات (${totalPagesCount} صفحة)`}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isGeneratingPdf}
+                  onClick={handleDownloadPdf}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                  title="تحميل ملف PDF حقيقي لكافة صفحات العقد"
+                >
+                  <span className="material-symbols-outlined text-base">{isGeneratingPdf ? 'hourglass_top' : 'download'}</span>
+                  <span>{isGeneratingPdf ? 'جاري تجهيز PDF...' : 'تحميل PDF'}</span>
+                </button>
+              </>
             ) : (
               <div className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold flex items-center gap-1.5 select-none">
                 <span className="material-symbols-outlined text-sm text-rose-400">lock</span>
@@ -1149,9 +1229,9 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
         </div>
 
         {/* Document Quick Switcher Tabs */}
-        <div className="px-5 py-2.5 border-b border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-slate-900 no-print">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="doc-tab-label text-xs font-black flex items-center gap-1 pl-1">
+        <div className="px-4 py-2 border-b border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-slate-900 no-print">
+          <div className={`flex items-center gap-2 ${isEmployeeReadOnly ? 'flex-nowrap overflow-x-auto pb-1 no-scrollbar' : 'flex-wrap'}`}>
+            <span className="doc-tab-label text-xs font-black flex items-center gap-1 pl-1 shrink-0">
               <span className="material-symbols-outlined text-base text-teal-700">filter_list</span>
               <span>المستندات:</span>
             </span>
@@ -1162,7 +1242,7 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveDocFilter(tab.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border shadow-2xs ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border shadow-2xs shrink-0 whitespace-nowrap ${
                     isActive ? 'doc-tab-selected ring-2 ring-teal-500/20' : 'doc-tab-unselected'
                   }`}
                 >

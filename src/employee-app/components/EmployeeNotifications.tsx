@@ -366,9 +366,9 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
       }).catch(() => { });
     }
 
-    // If this is a routed employment contract without saved documentHtml, open the REAL ContractPreviewModal
+    // For routed employment contracts, ALWAYS open the real ContractPreviewModal (with Print + Real PDF Download)
     const isContractDoc = att.documentType === 'employment_contract' || String(att.refNo || '').startsWith('CON-');
-    if (isContractDoc && !att.documentHtml) {
+    if (isContractDoc) {
       openRealContractViewer(att);
       return;
     }
@@ -490,8 +490,8 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
     const baseName = (isEn ? (att.nameEn || att.name) : att.name).replace(/\.(pdf|html|xlsx|csv)$/i, '');
     const isContractDoc = att.documentType === 'employment_contract' || String(att.refNo || '').startsWith('CON-');
 
-    // 1. Legacy routed employment contract without saved documentHtml -> open real 14-page contract viewer
-    if (isContractDoc && !att.documentHtml) {
+    // 1. Routed employment contract -> open real 14-page contract viewer with genuine multi-page PDF download
+    if (isContractDoc) {
       openRealContractViewer(att);
       return;
     }

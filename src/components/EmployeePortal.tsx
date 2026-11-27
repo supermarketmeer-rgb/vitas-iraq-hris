@@ -408,17 +408,40 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({ embedded = false
   };
 
   const handleDownloadAttachment = (attachment: PortalAttachment) => {
-    let mimeType = 'application/pdf';
-    if (attachment.type === 'excel') mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    else if (attachment.type === 'word') mimeType = 'application/msword';
-    else if (attachment.type === 'image') mimeType = 'image/png';
+    const baseName = (attachment.name || 'document').replace(/\.(pdf|html|xlsx|csv|doc|docx)$/i, '');
+    const docTitle = attachment.docTitle || baseName;
+    const issuer = attachment.issuer || 'قسم الموارد البشرية - فيتاس العراق';
+    const bodyContent = attachment.contentSnippet || 'مستند رسمي معتمد من نظام الموارد البشرية - فيتاس العراق.';
 
-    const content = `=== VITAS IRAQ OFFICIAL HR DOCUMENT ===\nDocument: ${attachment.name}\nRef: ${attachment.refNo || 'VITAS/HR/2026'}\nDate: ${new Date().toLocaleDateString('ar-IQ')}\nTitle: ${attachment.docTitle || attachment.name}\nIssuer: ${attachment.issuer || 'VITAS IRAQ HR'}\n\n${attachment.contentSnippet || 'Verified by VITAS Iraq HRMS Portal.'}`;
-    const blob = new Blob([content], { type: mimeType });
+    const htmlDoc = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <title>${docTitle}</title>
+  <style>
+    body { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; padding: 32px; color: #0f172a; line-height: 1.9; max-width: 820px; margin: 0 auto; background: #fff; }
+    h1 { font-size: 20px; color: #0f766e; border-bottom: 2px solid #0d9488; padding-bottom: 10px; margin-bottom: 16px; }
+    .meta { font-size: 13px; color: #475569; margin-bottom: 20px; background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .body { white-space: pre-line; font-size: 14px; }
+    @media print { body { padding: 12mm; } }
+  </style>
+</head>
+<body>
+  <h1>${docTitle}</h1>
+  <div class="meta">
+    <div><strong>الرقم المرجعي:</strong> ${attachment.refNo || 'VITAS/HR/2026'}</div>
+    <div><strong>التاريخ:</strong> ${attachment.docDate || new Date().toISOString().split('T')[0]}</div>
+    <div><strong>الجهة المصدرة:</strong> ${issuer}</div>
+  </div>
+  <div class="body">${bodyContent}</div>
+</body>
+</html>`;
+
+    const blob = new Blob(['\uFEFF' + htmlDoc], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = attachment.name;
+    a.download = `${baseName}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

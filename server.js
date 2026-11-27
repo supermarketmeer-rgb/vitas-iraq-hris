@@ -5450,7 +5450,12 @@ app.delete(['/api/settings/positions/:id', '/api/positions/:id', '/api/job-posit
 // Settings - Contract Types CRUD
 app.get('/api/settings/contract-types', async (req, res) => {
   try {
-    const results = await query('SELECT * FROM contract_types ORDER BY sort_order ASC, id DESC');
+    const results = await query(`
+      SELECT ct.*,
+             (SELECT COUNT(*) FROM contract_clauses cc WHERE cc.contract_type_id = ct.id) AS clause_count
+      FROM contract_types ct
+      ORDER BY clause_count DESC, ct.sort_order ASC, ct.id DESC
+    `);
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -5546,10 +5551,35 @@ app.delete('/api/settings/contract-types/:id', async (req, res) => {
 app.get('/api/settings/contract-clauses/:contractTypeId', async (req, res) => {
   try {
     const { contractTypeId } = req.params;
-    const results = await query(
+    let results = await query(
       'SELECT * FROM contract_clauses WHERE contract_type_id = ? ORDER BY clause_number ASC, id ASC',
       [contractTypeId]
     );
+
+    // Fallback: if this duplicate contract_type_id has 0 clauses, resolve clauses from the populated sibling with the same name
+    if (!results || results.length === 0) {
+      const typeRows = await query('SELECT name_ar, name_en FROM contract_types WHERE id = ? LIMIT 1', [contractTypeId]).catch(() => []);
+      if (typeRows && typeRows.length > 0) {
+        const { name_ar, name_en } = typeRows[0];
+        const siblingRows = await query(
+          `SELECT ct.id, COUNT(cc.id) AS cnt
+           FROM contract_types ct
+           INNER JOIN contract_clauses cc ON cc.contract_type_id = ct.id
+           WHERE (ct.name_ar = ? OR (? IS NOT NULL AND ? <> '' AND ct.name_en = ?))
+           GROUP BY ct.id
+           ORDER BY cnt DESC, ct.id DESC
+           LIMIT 1`,
+          [name_ar || '', name_en || '', name_en || '', name_en || '']
+        ).catch(() => []);
+        if (siblingRows && siblingRows.length > 0 && siblingRows[0].id) {
+          results = await query(
+            'SELECT * FROM contract_clauses WHERE contract_type_id = ? ORDER BY clause_number ASC, id ASC',
+            [siblingRows[0].id]
+          );
+        }
+      }
+    }
+
     res.json(results || []);
   } catch (err) {
     res.status(500).json({ error: err.message });
