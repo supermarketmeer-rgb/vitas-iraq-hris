@@ -332,7 +332,7 @@ export const Category2DashboardView: React.FC = () => {
 
           {/* Right Section: Notifications */}
           <div
-            className={`dash-overview-canvas-window p-6 rounded-3xl space-y-4 transition-all ${isDark
+            className={`dash-overview-canvas-window live-notifications-card p-6 rounded-3xl space-y-4 transition-all ${isDark
               ? 'bg-[#0a0c10] shadow-xl text-white'
               : 'bg-[#eef2f6] shadow-sm text-slate-900'
             }`}
