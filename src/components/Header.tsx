@@ -638,7 +638,7 @@ export const Header: React.FC = () => {
                     return (
                       <div
                         key={n.id}
-                        dir={language === 'en' ? 'ltr' : 'rtl'}
+                        dir="rtl"
                         onClick={() => {
                           if (!isRead) markNotificationRead(n.id);
                         }}
@@ -651,21 +651,21 @@ export const Header: React.FC = () => {
                         <div className="flex items-center justify-between font-normal mb-1">
                           <div className="flex items-center gap-1.5">
                             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block animate-pulse"></span>}
-                            <span className={`font-bold ${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                              {localizeNotificationTitle(n.title, language)}
+                            <span className={`font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                              {localizeNotificationTitle(n.title, 'ar')}
                             </span>
                           </div>
                           <span className={`text-[10px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            {localizeTimestamp(n.timestamp, language)}
+                            {localizeTimestamp(n.timestamp, 'ar')}
                           </span>
                         </div>
-                        <p className={`${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
-                          {localizeNotificationMessage(n.message, language)}
+                        <p className={`text-right ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
+                          {localizeNotificationMessage(n.message, 'ar')}
                         </p>
                         {(n as any).target_audience && (
-                          <div className={`mt-1.5 flex items-center gap-1.5 ${language === 'en' ? 'justify-start' : 'justify-end'}`}>
+                          <div className="mt-1.5 flex items-center gap-1.5 justify-end">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}>
-                              {t('الجهة المعنية:', 'Target:')} {(n as any).target_audience === 'all' ? t('جميع الموظفين', 'All Employees') : (n as any).target_audience}
+                              الجهة المعنية: {(n as any).target_audience === 'all' ? 'جميع الموظفين' : (n as any).target_audience}
                             </span>
                           </div>
                         )}

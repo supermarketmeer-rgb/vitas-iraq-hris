@@ -331,10 +331,13 @@ export const Category2DashboardView: React.FC = () => {
           </div>
 
           {/* Right Section: Notifications */}
-          <div className={`dash-overview-canvas-window p-6 rounded-3xl border space-y-4 transition-all ${isDark
-              ? 'bg-[#0a0c10] border-white/10 shadow-xl text-white'
-              : 'bg-[#eef2f6] border-slate-300/80 shadow-sm text-slate-900'
-            }`}>
+          <div
+            className={`dash-overview-canvas-window p-6 rounded-3xl space-y-4 transition-all ${isDark
+              ? 'bg-[#0a0c10] shadow-xl text-white'
+              : 'bg-[#eef2f6] shadow-sm text-slate-900'
+            }`}
+            style={{ border: '2pt solid #0d9488' }}
+          >
             <div className={`flex items-center justify-between border-b pb-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
               <h2 className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 <span className={`material-symbols-outlined ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>notifications_active</span>
@@ -360,7 +363,7 @@ export const Category2DashboardView: React.FC = () => {
                 {activeNotifications.map(n => (
                   <div
                     key={n.id}
-                    dir={language === 'en' ? 'ltr' : 'rtl'}
+                    dir="rtl"
                     className={`dash-inner-card p-3 rounded-2xl border space-y-1 transition-all shadow-2xs ${isDark
                         ? 'bg-[#06080d] border-white/10 text-slate-200 hover:border-teal-500/40'
                         : 'bg-[#eef2f6] border-slate-300 text-slate-900 hover:bg-[#e2e8f0]'
@@ -369,14 +372,14 @@ export const Category2DashboardView: React.FC = () => {
                     <div className="flex items-center justify-between font-bold text-xs">
                       <span className={`flex items-center gap-1.5 ${isDark ? 'text-teal-400' : 'text-teal-800'}`}>
                         <span className="material-symbols-outlined text-base">notifications</span>
-                        <span>{localizeNotificationTitle(n.title, language)}</span>
+                        <span>{localizeNotificationTitle(n.title, 'ar')}</span>
                       </span>
                       <span className={`text-[10px] font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                        {localizeTimestamp(n.timestamp, language)}
+                        {localizeTimestamp(n.timestamp, 'ar')}
                       </span>
                     </div>
-                    <p className={`text-xs font-normal ${language === 'en' ? 'text-left' : 'text-right'} ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      {localizeNotificationMessage(n.message, language)}
+                    <p className={`text-xs font-normal text-right ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      {localizeNotificationMessage(n.message, 'ar')}
                     </p>
                   </div>
                 ))}

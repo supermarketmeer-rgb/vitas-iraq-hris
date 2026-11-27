@@ -698,15 +698,16 @@ export const EmployeeNotifications: React.FC<EmployeeNotificationsProps> = ({ em
           </div>
         ) : (
           filteredNotifications.map((notif) => {
-            const notifTitle = isEn ? (notif.titleEn || notif.title) : notif.title;
-            const notifMessage = isEn ? (notif.messageEn || notif.message) : notif.message;
-            const notifCategory = isEn ? notif.categoryLabelEn : notif.categoryLabelAr;
-            const notifSender = isEn ? (notif.senderEn || notif.sender) : notif.sender;
-            const notifTime = isEn ? (notif.timeEn || notif.time) : notif.time;
+            const notifTitle = notif.title;
+            const notifMessage = notif.message;
+            const notifCategory = notif.categoryLabelAr;
+            const notifSender = notif.sender;
+            const notifTime = notif.time;
 
             return (
               <div
                 key={notif.id}
+                dir="rtl"
                 className={`p-4 rounded-2xl border transition-all ${!notif.read
                     ? isDark
                       ? 'bg-gradient-to-r from-teal-950/40 via-slate-900 to-slate-900 border-teal-500/40 shadow-lg shadow-teal-950/20'

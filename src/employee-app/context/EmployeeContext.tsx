@@ -174,15 +174,13 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
         if (Array.isArray(deliveries)) {
           const formatted = deliveries.map((del: any) => ({
             id: del.id,
-            title: language === 'en' ? `[Official Document] ${del.document_title}` : `[مستند رسمي] ${del.document_title}`,
-            message: del.message || (language === 'en' 
-              ? `Official document (${del.document_title}) was routed to you with ref ${del.document_id}.`
-              : `تم توجيه مستند رسمي (${del.document_title}) إليك برقم مرجعي ${del.document_id}.`),
+            title: `[مستند رسمي] ${del.document_title}`,
+            message: del.message || `تم توجيه مستند رسمي (${del.document_title}) إليك برقم مرجعي ${del.document_id}.`,
             type: del.document_type === 'employment_contract' ? 'success' : 'info',
             timestamp: del.created_at,
             read: del.app_status === 'read',
             important: true,
-            action: language === 'en' ? 'Preview Document' : 'معاينة المستند',
+            action: 'معاينة المستند',
             deliveryId: del.id,
             documentType: del.document_type,
             documentId: del.document_id,
@@ -193,11 +191,9 @@ export const EmployeeContextProvider: React.FC<{ children: ReactNode }> = ({ chi
                 size: '1.2 MB',
                 type: 'pdf',
                 refNo: del.document_id,
-                issuer: del.sender_name || (language === 'en' ? 'VITAS Iraq' : 'فيتاس العراق'),
+                issuer: del.sender_name || 'فيتاس العراق',
                 deliveryId: del.id,
-                content: language === 'en'
-                  ? `Official verified document: ${del.document_title}\nReference No: ${del.document_id}\nSender: ${del.sender_name}\nDelivery Date: ${new Date(del.created_at).toLocaleDateString('en-US')}`
-                  : `مستند معتمد رسمياً: ${del.document_title}\nرقم المرجع: ${del.document_id}\nالمرسل: ${del.sender_name}\nتاريخ التسليم: ${new Date(del.created_at).toLocaleDateString('ar-IQ')}`
+                content: `مستند معتمد رسمياً: ${del.document_title}\nرقم المرجع: ${del.document_id}\nالمرسل: ${del.sender_name}\nتاريخ التسليم: ${new Date(del.created_at).toLocaleDateString('ar-IQ')}`
               }
             ]
           }));
