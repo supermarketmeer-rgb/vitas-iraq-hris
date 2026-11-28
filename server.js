@@ -6542,6 +6542,386 @@ app.all([
   '/api/attendance/cloud_sync'
 ], handleCloudAttendanceSync);
 
+// Ensure attendance_corrections table exists (Supervisor-approved attendance corrections)
+const ensureAttendanceCorrectionsTable = async () => {
+  await query(`
+    CREATE TABLE IF NOT EXISTS attendance_corrections (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      employee_id VARCHAR(100) NOT NULL,
+      employee_name VARCHAR(255) NULL,
+      attendance_date DATE NOT NULL,
+      correction_type VARCHAR(50) DEFAULT 'missing_punch',
+      requested_check_in TIME NULL,
+      requested_check_out TIME NULL,
+      reason TEXT NULL,
+      supervisor_name VARCHAR(255) NULL,
+      status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+      reviewed_by VARCHAR(255) NULL,
+      reviewed_at DATETIME NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_corr_emp_date (employee_id, attendance_date),
+      INDEX idx_corr_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `).catch(() => {});
+};
+
+// Submit attendance correction request (from Direct Supervisor or Employee)
+app.post('/api/attendance/correction/submit', async (req, res) => {
+  try {
+    await ensureAttendanceCorrectionsTable();
+    const {
+      employee_id,
+      employee_number,
+      employee_name,
+      date,
+      attendance_date,
+      correction_type = 'missing_punch',
+      requested_check_in,
+      requested_check_out,
+      requested_time,
+      reason = '',
+      supervisor_name = '',
+      submitted_by_supervisor = false,
+      reviewed_by = ''
+    } = req.body || {};
+
+    const empKey = String(employee_number || employee_id || '').trim();
+    const attDate = String(attendance_date || date || '').slice(0, 10);
+    if (!empKey || !attDate) {
+      return res.status(400).json({ success: false, error: 'employee_id and attendance_date are required' });
+    }
+
+    const reqIn = requested_check_in || (correction_type === 'missing_check_in' ? requested_time : null) || '08:00:00';
+    const reqOut = requested_check_out || (correction_type === 'missing_check_out' ? requested_time : null) || '16:00:00';
+    const initialStatus = submitted_by_supervisor ? 'approved' : 'pending';
+
+    const insertRes = await query(
+      `INSERT INTO attendance_corrections
+        (employee_id, employee_name, attendance_date, correction_type, requested_check_in, requested_check_out, reason, supervisor_name, status, reviewed_by, reviewed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        empKey,
+        employee_name || null,
+        attDate,
+        correction_type,
+        reqIn,
+        reqOut,
+        reason,
+        supervisor_name || null,
+        initialStatus,
+        submitted_by_supervisor ? (reviewed_by || supervisor_name || 'Direct Supervisor') : null,
+        submitted_by_supervisor ? new Date() : null
+      ]
+    );
+
+    if (initialStatus === 'approved') {
+      const numericCode = parseInt(empKey.replace(/\D/g, ''), 10);
+      if (Number.isFinite(numericCode) && numericCode > 0 && numericCode <= 2147483647) {
+        const dow = new Date(attDate).getDay() + 1;
+        await query(
+          `INSERT INTO attendance (employee_id, attendance_date, day_of_week, check_in, check_out, work_hours, status, notes, sync_id, updated_at)
+           VALUES (?, ?, ?, ?, ?, 8.00, 'present', ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE
+             check_in = COALESCE(check_in, VALUES(check_in)),
+             check_out = COALESCE(check_out, VALUES(check_out)),
+             status = 'present',
+             notes = CONCAT(COALESCE(notes, ''), ' | مصحّح بموافقة المشرف'),
+             updated_at = NOW()`,
+          [numericCode, attDate, dow, reqIn, reqOut, `طلب تصحيح معتمد من المشرف: ${reason || ''}`, `CORR_${numericCode}_${attDate}`]
+        ).catch(() => {});
+      }
+    }
+
+    res.json({ success: true, id: insertRes?.insertId, status: initialStatus });
+  } catch (err) {
+    console.error('Error submitting attendance correction:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// List attendance correction requests
+app.get('/api/attendance/corrections', async (req, res) => {
+  try {
+    await ensureAttendanceCorrectionsTable();
+    const { status, employee_id, start_date, end_date } = req.query;
+    let sql = 'SELECT * FROM attendance_corrections WHERE 1=1';
+    const params = [];
+    if (status) { sql += ' AND status = ?'; params.push(status); }
+    if (employee_id) { sql += ' AND employee_id = ?'; params.push(String(employee_id)); }
+    if (start_date) { sql += ' AND attendance_date >= ?'; params.push(start_date); }
+    if (end_date) { sql += ' AND attendance_date <= ?'; params.push(end_date); }
+    sql += ' ORDER BY created_at DESC LIMIT 500';
+    const rows = await query(sql, params);
+    res.json(rows || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Approve or Reject attendance correction request (Direct Supervisor / HR)
+app.post('/api/attendance/correction/:id/decision', async (req, res) => {
+  try {
+    await ensureAttendanceCorrectionsTable();
+    const { id } = req.params;
+    const { decision, reviewed_by = 'Direct Supervisor' } = req.body || {};
+    const finalStatus = decision === 'approve' || decision === 'approved' ? 'approved' : 'rejected';
+
+    const rows = await query('SELECT * FROM attendance_corrections WHERE id = ? LIMIT 1', [id]);
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Correction request not found' });
+    }
+    const corr = rows[0];
+
+    await query(
+      'UPDATE attendance_corrections SET status = ?, reviewed_by = ?, reviewed_at = NOW(), updated_at = NOW() WHERE id = ?',
+      [finalStatus, reviewed_by, id]
+    );
+
+    if (finalStatus === 'approved') {
+      const attDate = String(corr.attendance_date instanceof Date ? corr.attendance_date.toISOString().slice(0, 10) : corr.attendance_date).slice(0, 10);
+      const numericCode = parseInt(String(corr.employee_id || '').replace(/\D/g, ''), 10);
+      if (Number.isFinite(numericCode) && numericCode > 0 && numericCode <= 2147483647) {
+        const dow = new Date(attDate).getDay() + 1;
+        await query(
+          `INSERT INTO attendance (employee_id, attendance_date, day_of_week, check_in, check_out, work_hours, status, notes, sync_id, updated_at)
+           VALUES (?, ?, ?, ?, ?, 8.00, 'present', ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE
+             check_in = COALESCE(check_in, VALUES(check_in)),
+             check_out = COALESCE(check_out, VALUES(check_out)),
+             status = 'present',
+             notes = CONCAT(COALESCE(notes, ''), ' | مصحّح بموافقة المشرف'),
+             updated_at = NOW()`,
+          [numericCode, attDate, dow, corr.requested_check_in || '08:00:00', corr.requested_check_out || '16:00:00', `طلب تصحيح معتمد من المشرف (${reviewed_by})`, `CORR_${numericCode}_${attDate}`]
+        ).catch(() => {});
+      }
+    }
+
+    broadcastRealtimeEvent({ type: 'DATA_CHANGED', table: 'attendance', timestamp: new Date().toISOString() });
+    res.json({ success: true, id, status: finalStatus });
+  } catch (err) {
+    console.error('Error deciding attendance correction:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Payroll Attendance Absence Summary Endpoint (Day 21 prev month -> Day 20 payroll month)
+// Rule: Missing BOTH check-in & check-out (or missing either punch) on a working day = ABSENT,
+// UNLESS excused by: (1) Approved supervisor correction, (2) Approved leave, (3) Weekend/Holiday, or (4) Biometric Exemption.
+app.get('/api/payroll/attendance-summary', async (req, res) => {
+  try {
+    await ensureAttendanceCorrectionsTable();
+    const now = new Date();
+    const year = parseInt(req.query.year, 10) || now.getFullYear();
+    const month = parseInt(req.query.month, 10) || (now.getMonth() + 1);
+
+    // Read payroll timesheet cycle days from app_settings (default 21 -> 20)
+    const settingRows = await query(
+      "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('timesheet_cycle_start_day', 'timesheet_cycle_end_day')"
+    ).catch(() => []);
+    const sMap = {};
+    (settingRows || []).forEach(r => { sMap[r.setting_key] = r.setting_value; });
+    const startDay = Math.min(31, Math.max(1, parseInt(sMap.timesheet_cycle_start_day || '21', 10) || 21));
+    const endDay = Math.min(31, Math.max(1, parseInt(sMap.timesheet_cycle_end_day || '20', 10) || 20));
+
+    const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const cycleStartObj = new Date(year, month - 2, startDay);
+    const cycleEndObj = new Date(year, month - 1, endDay);
+    const cycleStart = fmtDate(cycleStartObj);
+    const cycleEnd = fmtDate(cycleEndObj);
+
+    const todayStr = fmtDate(now);
+    const minBiometricSyncDate = '2026-09-21';
+    const effectiveStart = cycleStart < minBiometricSyncDate ? minBiometricSyncDate : cycleStart;
+    const effectiveEnd = cycleEnd > todayStr ? todayStr : cycleEnd;
+
+    // If entire cycle is before biometric sync start or in the future, return empty summary
+    if (effectiveStart > effectiveEnd) {
+      return res.json({
+        year, month, cycleStart, cycleEnd, effectiveStart, effectiveEnd,
+        workingDaysCount: 0,
+        summary: {}
+      });
+    }
+
+    // Fetch all required datasets in parallel
+    const [emps, attRows, leaveRows, corrRows, holidayRows, excRows] = await Promise.all([
+      query('SELECT id, employee_id, badge_no, full_name_ar, full_name_en, original_start_date, contract_start_date, exit_date, status FROM employees').catch(() => []),
+      query(
+        "SELECT employee_id, DATE_FORMAT(attendance_date, '%Y-%m-%d') AS att_date, check_in, check_out, status FROM attendance WHERE attendance_date >= ? AND attendance_date <= ?",
+        [effectiveStart, effectiveEnd]
+      ).catch(() => []),
+      query(
+        "SELECT employee_id, employee_name, DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date, status FROM leave_requests WHERE LOWER(status) IN ('approved', 'موافق عليها', 'مقبول', 'معتمدة') AND end_date >= ? AND start_date <= ?",
+        [effectiveStart, effectiveEnd]
+      ).catch(() => []),
+      query(
+        "SELECT employee_id, DATE_FORMAT(attendance_date, '%Y-%m-%d') AS att_date FROM attendance_corrections WHERE status = 'approved' AND attendance_date >= ? AND attendance_date <= ?",
+        [effectiveStart, effectiveEnd]
+      ).catch(() => []),
+      query(
+        "SELECT DATE_FORMAT(holiday_date, '%Y-%m-%d') AS h_date FROM company_holidays WHERE holiday_date >= ? AND holiday_date <= ?",
+        [effectiveStart, effectiveEnd]
+      ).catch(() => []),
+      query('SELECT employee_id, badge_no FROM attendance_exceptions').catch(() => [])
+    ]);
+
+    // Build holiday set
+    const holidaySet = new Set((holidayRows || []).map(h => h.h_date).filter(Boolean));
+
+    // Build biometric-exempt employee set
+    const exemptSet = new Set();
+    (excRows || []).forEach(ex => {
+      if (ex.employee_id) exemptSet.add(String(ex.employee_id).trim().toLowerCase());
+      if (ex.badge_no) exemptSet.add(String(ex.badge_no).trim().toLowerCase());
+    });
+
+    // Build working days list (Sun-Thu, excluding Fri=5, Sat=6, and company_holidays)
+    // Also only count days that have at least 1 biometric punch globally OR are <= latest synced date (so unsynced future days aren't falsely marked absent)
+    const syncedDates = (attRows || []).map(a => a.att_date).filter(Boolean).sort();
+    const latestSyncedDate = syncedDates.length > 0 ? syncedDates[syncedDates.length - 1] : null;
+    if (!latestSyncedDate) {
+      return res.json({
+        year, month, cycleStart, cycleEnd, effectiveStart, effectiveEnd,
+        workingDaysCount: 0,
+        summary: {}
+      });
+    }
+    const cappedEnd = effectiveEnd > latestSyncedDate ? latestSyncedDate : effectiveEnd;
+
+    const workingDays = [];
+    const cur = new Date(`${effectiveStart}T00:00:00`);
+    const endD = new Date(`${cappedEnd}T00:00:00`);
+    while (cur <= endD) {
+      const dow = cur.getDay(); // 0=Sun..4=Thu, 5=Fri, 6=Sat
+      const dStr = fmtDate(cur);
+      if (dow !== 5 && dow !== 6 && !holidaySet.has(dStr)) {
+        workingDays.push(dStr);
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    // Index attendance by `${employee_id}_${att_date}`
+    const attMap = new Map();
+    const biometricEmpIds = new Set();
+    (attRows || []).forEach(a => {
+      const eid = String(a.employee_id || '').trim();
+      if (!eid || !a.att_date) return;
+      biometricEmpIds.add(eid);
+      attMap.set(`${eid}_${a.att_date}`, a);
+    });
+
+    // Index approved corrections by `${employee_id}_${att_date}`
+    const corrSet = new Set();
+    (corrRows || []).forEach(c => {
+      const eid = String(c.employee_id || '').trim().toLowerCase();
+      if (eid && c.att_date) corrSet.add(`${eid}_${c.att_date}`);
+    });
+
+    // Index approved leaves by employee identifier
+    const leaveRangesByKey = new Map();
+    const addLeaveRange = (key, start, end) => {
+      const k = String(key || '').trim().toLowerCase();
+      if (!k) return;
+      if (!leaveRangesByKey.has(k)) leaveRangesByKey.set(k, []);
+      leaveRangesByKey.get(k).push({ start, end });
+    };
+    (leaveRows || []).forEach(lv => {
+      if (lv.employee_id) addLeaveRange(lv.employee_id, lv.start_date, lv.end_date);
+      if (lv.employee_name) addLeaveRange(lv.employee_name, lv.start_date, lv.end_date);
+    });
+
+    const hasApprovedLeaveOnDate = (emp, dStr) => {
+      const keys = [emp.id, emp.employee_id, emp.badge_no, emp.full_name_ar, emp.full_name_en]
+        .filter(Boolean)
+        .map(v => String(v).trim().toLowerCase());
+      for (const k of keys) {
+        const ranges = leaveRangesByKey.get(k);
+        if (!ranges) continue;
+        if (ranges.some(r => dStr >= r.start && dStr <= r.end)) return true;
+      }
+      return false;
+    };
+
+    const hasApprovedCorrectionOnDate = (emp, dStr) => {
+      const keys = [emp.employee_id, emp.id, emp.badge_no]
+        .filter(Boolean)
+        .map(v => String(v).trim().toLowerCase());
+      return keys.some(k => corrSet.has(`${k}_${dStr}`));
+    };
+
+    const summary = {};
+    for (const emp of (emps || [])) {
+      const empIdStr = String(emp.employee_id || '').trim();
+      const dbIdStr = String(emp.id || '').trim();
+      const badgeStr = String(emp.badge_no || '').trim();
+
+      // Skip if exempt from biometric OR not linked to a biometric employee_id
+      const isExempt = exemptSet.has(dbIdStr.toLowerCase()) ||
+        exemptSet.has(empIdStr.toLowerCase()) ||
+        exemptSet.has(badgeStr.toLowerCase());
+
+      if (isExempt || !empIdStr || !biometricEmpIds.has(empIdStr)) {
+        continue;
+      }
+
+      const hireDate = emp.original_start_date ? fmtDate(new Date(emp.original_start_date)) : (emp.contract_start_date ? fmtDate(new Date(emp.contract_start_date)) : null);
+      const exitDate = emp.exit_date ? fmtDate(new Date(emp.exit_date)) : null;
+
+      let presentDays = 0;
+      let leaveDays = 0;
+      let correctedDays = 0;
+      let absenceDays = 0;
+      const absentDates = [];
+
+      for (const dStr of workingDays) {
+        if (hireDate && dStr < hireDate) continue;
+        if (exitDate && dStr > exitDate) continue;
+
+        if (hasApprovedLeaveOnDate(emp, dStr)) {
+          leaveDays++;
+          continue;
+        }
+
+        if (hasApprovedCorrectionOnDate(emp, dStr)) {
+          correctedDays++;
+          continue;
+        }
+
+        const rec = attMap.get(`${empIdStr}_${dStr}`);
+        const hasCheckIn = Boolean(rec && rec.check_in && String(rec.check_in).trim() !== '' && String(rec.check_in).trim() !== '00:00:00');
+        const hasCheckOut = Boolean(rec && rec.check_out && String(rec.check_out).trim() !== '' && String(rec.check_out).trim() !== '00:00:00' && String(rec.check_out) !== String(rec.check_in));
+
+        if (hasCheckIn && hasCheckOut) {
+          presentDays++;
+        } else {
+          absenceDays++;
+          absentDates.push(hasCheckIn || hasCheckOut ? `${dStr} (بصمة ناقصة)` : `${dStr} (بدون بصمة)`);
+        }
+      }
+
+      const entry = { absenceDays, presentDays, leaveDays, correctedDays, absentDates };
+      summary[dbIdStr] = entry;
+      if (empIdStr) summary[empIdStr] = entry;
+      if (badgeStr) summary[badgeStr] = entry;
+    }
+
+    res.json({
+      year,
+      month,
+      cycleStart,
+      cycleEnd,
+      effectiveStart,
+      effectiveEnd: cappedEnd,
+      workingDaysCount: workingDays.length,
+      summary
+    });
+  } catch (err) {
+    console.error('Error computing payroll attendance summary:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/attendance/:id', async (req, res) => {
   try {
     const results = await query('SELECT * FROM attendance WHERE id = ?', [req.params.id]);

@@ -308,26 +308,47 @@ export const Category5PayrollView: React.FC = () => {
       const saved = localStorage.getItem('vitas_payroll_manual_adjustments');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Object.keys(parsed).length > 0) {
-          // Ensure sample employee has 1 absence day demonstration if not explicitly cleared
-          if (!parsed['2'] && !parsed['10000091']) {
-            parsed['2'] = { absenceDays: 1 };
-            parsed['10000091'] = { absenceDays: 1 };
-          }
-          return parsed;
-        }
+        if (parsed && typeof parsed === 'object') return parsed;
       }
-      return {
-        '2': { absenceDays: 1 },
-        '10000091': { absenceDays: 1 }
-      };
+      return {};
     } catch {
-      return {
-        '2': { absenceDays: 1 },
-        '10000091': { absenceDays: 1 }
-      };
+      return {};
     }
   });
+
+  // Live Biometric Attendance Absence Summary (linked from synced `attendance` table: Day 21 -> Day 20)
+  const [attendanceSummary, setAttendanceSummary] = useState<Record<string, {
+    absenceDays: number;
+    presentDays: number;
+    leaveDays: number;
+    correctedDays: number;
+    absentDates: string[];
+  }>>({});
+  const [attendanceCycleMeta, setAttendanceCycleMeta] = useState<{
+    cycleStart?: string;
+    cycleEnd?: string;
+    effectiveEnd?: string;
+    workingDaysCount?: number;
+  }>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/payroll/attendance-summary?year=${selectedYear}&month=${selectedMonth}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (!cancelled && data && data.summary) {
+          setAttendanceSummary(data.summary);
+          setAttendanceCycleMeta({
+            cycleStart: data.cycleStart,
+            cycleEnd: data.cycleEnd,
+            effectiveEnd: data.effectiveEnd,
+            workingDaysCount: data.workingDaysCount
+          });
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedYear, selectedMonth]);
 
   // Listen for real-time updates from Incentives Module
   useEffect(() => {
@@ -689,8 +710,14 @@ export const Category5PayrollView: React.FC = () => {
       // SS/Tax exemption flag (from DB column is_ss_tax_exempt)
       const isExemptFromSsTax = Number(emp.isSsTaxExempt ?? emp.is_ss_tax_exempt ?? 0) === 1;
       
-      // XAMPP Field: absence_days (1. absence)
-      const absence_days = adj.absenceDays !== undefined ? adj.absenceDays : 0;
+      // Live biometric attendance absence (missing check-in or check-out, excluding approved leaves & supervisor corrections)
+      const autoAtt = attendanceSummary[String(emp.id)] ||
+        (emp.employeeId ? attendanceSummary[String(emp.employeeId)] : undefined) ||
+        (emp.employee_id ? attendanceSummary[String(emp.employee_id)] : undefined) ||
+        (emp.badgeNo ? attendanceSummary[String(emp.badgeNo)] : undefined);
+
+      // XAMPP Field: absence_days (1. absence) — Manual HR override takes priority, otherwise auto from biometric attendance
+      const absence_days = adj.absenceDays !== undefined ? adj.absenceDays : (autoAtt ? autoAtt.absenceDays : 0);
       const calculatedAbsence = Math.round(absence_days * (basic_salary / 30));
       const absenceDeduction = adj.absenceDays !== undefined
         ? calculatedAbsence
@@ -1139,7 +1166,7 @@ export const Category5PayrollView: React.FC = () => {
         release_note: (emp as any).release_note || null
       };
     });
-  }, [employees, adjustments, onHoldOverrides, selectedYear, selectedMonth, appSettings]);
+  }, [employees, adjustments, onHoldOverrides, selectedYear, selectedMonth, appSettings, attendanceSummary]);
 
   // On Hold employees list
   const onHoldEmployees = useMemo(() => {
