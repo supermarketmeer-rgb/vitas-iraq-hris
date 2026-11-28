@@ -6235,16 +6235,16 @@ app.get('/api/attendance', async (req, res) => {
       SELECT 
         a.id,
         a.employee_id,
-        COALESCE(e.employee_id, CAST(a.employee_id AS CHAR)) AS employee_number,
-        COALESCE(e.employee_id, CAST(a.employee_id AS CHAR)) AS emp_number,
-        COALESCE(e.full_name_ar, CONCAT('موظف ', a.employee_id)) AS employee_name_ar,
-        COALESCE(e.full_name_en, CONCAT('Employee ', a.employee_id)) AS employee_name_en,
-        COALESCE(e.full_name_ar, CONCAT('موظف ', a.employee_id)) AS full_name_ar,
-        COALESCE(e.full_name_en, CONCAT('Employee ', a.employee_id)) AS full_name_en,
-        COALESCE(e.department, 'العمليات') AS department_name_ar,
-        COALESCE(e.department, 'Operations') AS department_name_en,
-        COALESCE(e.branch, 'المقر الرئيسي') AS branch_name_ar,
-        COALESCE(e.branch, 'Headquarters') AS branch_name_en,
+        CAST(a.employee_id AS CHAR) AS employee_number,
+        CAST(a.employee_id AS CHAR) AS emp_number,
+        COALESCE(e.full_name_ar, NULLIF(TRIM(REPLACE(a.notes, 'ZKTeco: ', '')), ''), CONCAT('موظف ', a.employee_id)) AS employee_name_ar,
+        COALESCE(e.full_name_en, NULLIF(TRIM(REPLACE(a.notes, 'ZKTeco: ', '')), ''), CONCAT('Employee ', a.employee_id)) AS employee_name_en,
+        COALESCE(e.full_name_ar, NULLIF(TRIM(REPLACE(a.notes, 'ZKTeco: ', '')), ''), CONCAT('موظف ', a.employee_id)) AS full_name_ar,
+        COALESCE(e.full_name_en, NULLIF(TRIM(REPLACE(a.notes, 'ZKTeco: ', '')), ''), CONCAT('Employee ', a.employee_id)) AS full_name_en,
+        COALESCE(e.department, 'غير مرتبط') AS department_name_ar,
+        COALESCE(e.department, 'Unlinked') AS department_name_en,
+        COALESCE(e.branch, '-') AS branch_name_ar,
+        COALESCE(e.branch, '-') AS branch_name_en,
         DATE_FORMAT(a.attendance_date, '%Y-%m-%d') AS date,
         a.attendance_date,
         a.day_of_week,
@@ -6261,14 +6261,14 @@ app.get('/api/attendance', async (req, res) => {
         a.sync_id,
         a.updated_at
       FROM attendance a 
-      LEFT JOIN employees e ON a.employee_id = e.id
+      LEFT JOIN employees e ON CAST(a.employee_id AS CHAR) COLLATE utf8mb4_unicode_ci = e.employee_id COLLATE utf8mb4_unicode_ci
       WHERE 1=1
     `;
     const params = [];
 
     if (employee_id) {
-      sql += ' AND (a.employee_id = ? OR e.id = ? OR e.employee_id = ? OR e.badge_no = ?)';
-      params.push(employee_id, employee_id, employee_id, employee_id);
+      sql += ' AND (CAST(a.employee_id AS CHAR) COLLATE utf8mb4_unicode_ci = ? OR e.employee_id COLLATE utf8mb4_unicode_ci = ? OR e.badge_no COLLATE utf8mb4_unicode_ci = ?)';
+      params.push(String(employee_id), String(employee_id), String(employee_id));
     }
     if (start_date) {
       sql += ' AND a.attendance_date >= ?';
@@ -6416,6 +6416,11 @@ const handleCloudAttendanceSync = async (req, res) => {
       });
     }
 
+    if (action === 'clear_attendance') {
+      await query('TRUNCATE TABLE attendance').catch(() => query('DELETE FROM attendance'));
+      return res.json({ success: true, message: 'تم تفريغ جدول الحضور بنجاح.' });
+    }
+
     if (action === 'upload_attendance') {
       const records = req.body?.records || [];
       const minDate = (req.body?.minDate && /^\d{4}-\d{2}-\d{2}$/.test(req.body.minDate))
@@ -6423,104 +6428,26 @@ const handleCloudAttendanceSync = async (req, res) => {
         : '2026-09-21';
 
       if (!Array.isArray(records) || records.length === 0) {
-        return res.json({ success: true, message: 'لا توجد حركات للمزامنة', data: { processed: 0, matched: 0 } });
+        return res.json({ success: true, message: 'لا توجد حركات للمزامنة', data: { processed: 0 } });
       }
 
-      // Pre-fetch employees for fast matching by id, employee_id, badge_no, waid, and normalized English/Arabic name
-      const emps = await query('SELECT id, employee_id, badge_no, waid, full_name_ar, full_name_en FROM employees').catch(() => []);
-      const normName = (s) => String(s || '')
-        .toLowerCase()
-        .replace(/[أإآ]/g, 'ا')
-        .replace(/ة/g, 'ه')
-        .replace(/ى/g, 'ي')
-        .replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      const empByCode = new Map();
-      const empByExactName = new Map();
-      const empByTwoTokens = new Map();
-      const empList = [];
-
-      emps.forEach(e => {
-        const numericId = Number(e.id);
-        if (!Number.isFinite(numericId) || numericId <= 0) return;
-
-        const addCode = (val) => {
-          const clean = String(val || '').toLowerCase().trim();
-          if (!clean) return;
-          empByCode.set(clean, numericId);
-          const digits = clean.replace(/\D/g, '');
-          if (digits) empByCode.set(digits, numericId);
-        };
-
-        addCode(e.id);
-        addCode(e.employee_id);
-        addCode(e.badge_no);
-        addCode(e.waid);
-
-        const nEn = normName(e.full_name_en);
-        const nAr = normName(e.full_name_ar);
-        if (nEn) {
-          empByExactName.set(nEn, numericId);
-          const toks = nEn.split(' ').filter(Boolean);
-          if (toks.length >= 2) {
-            const key2 = `${toks[0]} ${toks[1]}`;
-            if (!empByTwoTokens.has(key2)) empByTwoTokens.set(key2, numericId);
-            else empByTwoTokens.set(key2, -1); // ambiguous
-          }
-        }
-        if (nAr) {
-          empByExactName.set(nAr, numericId);
-        }
-        empList.push({ id: numericId, nEn, nAr });
-      });
-
-      const resolveEmpId = (rec) => {
-        const rawCode = String(rec.employee_number || '').toLowerCase().trim();
-        const digits = rawCode.replace(/\D/g, '');
-        if (rawCode && empByCode.has(rawCode)) return empByCode.get(rawCode);
-        if (digits && empByCode.has(digits)) return empByCode.get(digits);
-
-        const rawName = normName(rec.employee_name || rec.full_name || '');
-        if (rawName) {
-          if (empByExactName.has(rawName)) return empByExactName.get(rawName);
-          // Try prefix / substring match for 3+ word names
-          const toks = rawName.split(' ').filter(Boolean);
-          if (toks.length >= 3) {
-            const first3 = `${toks[0]} ${toks[1]} ${toks[2]}`;
-            const hit = empList.find(e => (e.nEn && (e.nEn.startsWith(first3) || first3.startsWith(e.nEn))) || (e.nAr && e.nAr.startsWith(first3)));
-            if (hit) return hit.id;
-          }
-          if (toks.length >= 2) {
-            const key2 = `${toks[0]} ${toks[1]}`;
-            const hit2 = empByTwoTokens.get(key2);
-            if (hit2 && hit2 > 0) return hit2;
-          }
-        }
-        return null;
-      };
-
-      // Deduplicate by (empId, attendance_date) and enforce minDate >= 2026-09-21
+      // Store ALL attendance records AS-IS using the exact ZKTeco fingerprint employee_number (no dependency on employees table)
       const dedupMap = new Map();
       let skippedOld = 0;
-      let unmatched = 0;
 
       for (const rec of records) {
-        if (!rec.attendance_date) continue;
+        if (!rec.employee_number || !rec.attendance_date) continue;
         const attDate = String(rec.attendance_date).slice(0, 10);
         if (attDate < minDate) {
           skippedOld++;
           continue;
         }
 
-        const empId = resolveEmpId(rec);
-        if (!empId) {
-          unmatched++;
-          continue;
-        }
+        const rawCode = String(rec.employee_number).trim();
+        const numericCode = parseInt(rawCode.replace(/\D/g, ''), 10);
+        if (!Number.isFinite(numericCode) || numericCode <= 0 || numericCode > 2147483647) continue;
 
-        const key = `${empId}_${attDate}`;
+        const key = `${numericCode}_${attDate}`;
         const dayOfWeek = rec.day_of_week || (new Date(attDate).getDay() + 1);
         const checkIn = rec.check_in || null;
         const checkOut = rec.check_out || null;
@@ -6528,11 +6455,12 @@ const handleCloudAttendanceSync = async (req, res) => {
         const lateMins = Number(rec.late_minutes || 0);
         const otMins = Number(rec.overtime_minutes || 0);
         const status = rec.status || 'present';
-        const notes = rec.notes || 'سجل بصمة محلي ZKTeco';
-        const syncId = `LOC_${empId}_${attDate}`;
+        const zkName = String(rec.employee_name || rec.full_name || '').trim();
+        const notes = zkName ? `ZKTeco: ${zkName}` : (rec.notes || 'سجل بصمة محلي ZKTeco');
+        const syncId = `LOC_${numericCode}_${attDate}`;
         const updatedAt = rec.updated_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-        dedupMap.set(key, [empId, attDate, dayOfWeek, checkIn, checkOut, workHours, lateMins, otMins, status, notes, syncId, updatedAt]);
+        dedupMap.set(key, [numericCode, attDate, dayOfWeek, checkIn, checkOut, workHours, lateMins, otMins, status, notes, syncId, updatedAt]);
       }
 
       const rowsToInsert = Array.from(dedupMap.values());
@@ -6582,8 +6510,6 @@ const handleCloudAttendanceSync = async (req, res) => {
         data: {
           received: records.length,
           processed: insertedCount,
-          matched: insertedCount,
-          unmatched,
           skippedOld
         }
       });
