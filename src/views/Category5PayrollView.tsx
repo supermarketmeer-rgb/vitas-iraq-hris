@@ -1873,7 +1873,7 @@ export const Category5PayrollView: React.FC = () => {
           isPeriodLocked
             ? 'cursor-default'
             : 'cursor-pointer hover:bg-teal-500/10 hover:ring-1 hover:ring-teal-400/50'
-        } ${colorClasses}`}
+        } ${isDeduction || isAbsenceDays ? 'payroll-deduction-cell' : ''} ${colorClasses}`}
       >
         {/* Excel-style Red Triangle Corner Indicator for Notes */}
         {hasComment && (
@@ -2505,41 +2505,41 @@ export const Category5PayrollView: React.FC = () => {
 
                           {/* 19. Social Security */}
                           {Number(row.is_ss_tax_exempt) === 1 ? (
-                            <td className={`p-3 border-r whitespace-nowrap font-mono ${
-                              isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800'
+                            <td className={`p-3 border-r whitespace-nowrap font-mono payroll-deduction-cell ${
+                              isDark ? 'border-white/5 text-red-400' : 'border-slate-200 text-red-600'
                             }`}>
-                              <span className="text-amber-400 font-bold text-[11px]">0 (معفى)</span>
+                              <span className="font-bold text-[11px]">0 (معفى)</span>
                             </td>
                           ) : (
-                            renderEditableCell(row, 'social_security', 'Social Security', 'الضمان الاجتماعي', row.social_security || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)
+                            renderEditableCell(row, 'social_security', 'Social Security', 'الضمان الاجتماعي', row.social_security || 0, isDark ? 'border-white/5 text-red-400' : 'border-slate-200 text-red-600', true)
                           )}
 
                           {/* 20. Income Tax */}
                           {Number(row.is_ss_tax_exempt) === 1 ? (
-                            <td className={`p-3 border-r whitespace-nowrap font-mono ${
-                              isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800'
+                            <td className={`p-3 border-r whitespace-nowrap font-mono payroll-deduction-cell ${
+                              isDark ? 'border-white/5 text-red-400' : 'border-slate-200 text-red-600'
                             }`}>
-                              <span className="text-amber-400 font-bold text-[11px]">0 (معفى)</span>
+                              <span className="font-bold text-[11px]">0 (معفى)</span>
                             </td>
                           ) : (
-                            renderEditableCell(row, 'income_tax', 'Income Tax', 'ضريبة الدخل', row.income_tax || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)
+                            renderEditableCell(row, 'income_tax', 'Income Tax', 'ضريبة الدخل', row.income_tax || 0, isDark ? 'border-white/5 text-red-400' : 'border-slate-200 text-red-600', true)
                           )}
 
                           {/* 21. Insurance Deduction */}
-                          {renderEditableCell(row, 'insurance', 'Insurance Deduction', 'استقطاع التأمين', row.insurance || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)}
+                          {renderEditableCell(row, 'insurance', 'Insurance Deduction', 'استقطاع التأمين', row.insurance || 0, isDark ? 'border-white/5 text-red-400' : 'border-slate-200 text-red-600', true)}
 
                           {/* 22. Loan Payment */}
-                          {renderEditableCell(row, 'loan_payment', 'Loan Payment', 'تسديد القروض', row.loan_payment || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)}
+                          {renderEditableCell(row, 'loan_payment', 'Loan Payment', 'تسديد القروض', row.loan_payment || 0, isDark ? 'border-white/5 text-red-400' : 'border-slate-200 text-red-600', true)}
 
                           {/* 23. Absence (Days) */}
-                          {renderEditableCell(row, 'absence_days', 'Absence Days', 'أيام الغياب', row.absence_days || 0, isDark ? 'border-white/5 text-amber-300' : 'border-slate-200 text-amber-800', false, '')}
+                          {renderEditableCell(row, 'absence_days', 'Absence Days', 'أيام الغياب', row.absence_days || 0, isDark ? 'border-white/5 text-red-400' : 'border-slate-200 text-red-600', false, '')}
 
                           {/* 24. Other Deductions */}
-                          {renderEditableCell(row, 'other_deductions', 'Other Deductions', 'استقطاعات أخرى', row.other_deductions || 0, isDark ? 'border-white/5 text-rose-300' : 'border-slate-200 text-rose-800', true)}
+                          {renderEditableCell(row, 'other_deductions', 'Other Deductions', 'استقطاعات أخرى', row.other_deductions || 0, isDark ? 'border-white/5 text-red-400' : 'border-slate-200 text-red-600', true)}
 
                           {/* 25. Total Deduction */}
-                          <td className={`p-3 border-r whitespace-nowrap font-mono font-bold ${
-                            isDark ? 'border-white/5 text-rose-400' : 'border-slate-200 text-rose-800'
+                          <td className={`p-3 border-r whitespace-nowrap font-mono font-bold payroll-deduction-cell ${
+                            isDark ? 'border-white/5 text-red-400' : 'border-slate-200 text-red-600'
                           }`}>
                             {formatDeduction(row.total_deductions || 0)}
                           </td>
