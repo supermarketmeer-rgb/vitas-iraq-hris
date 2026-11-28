@@ -1152,15 +1152,15 @@ html:not(.dark) .btn-payroll-release span {
   color: #ffffff !important;
 }
 
-/* LIGHT MODE: TABLE DATA & CELL TEXT FOR REGULAR DATA CELLS (EXCLUDING ACTION BUTTONS) */
-html.light table td:not(:has(button)),
-html:not(.dark) table td:not(:has(button)) {
+/* LIGHT MODE: TABLE DATA & CELL TEXT FOR REGULAR DATA CELLS (EXCLUDING ACTION BUTTONS & PAYROLL DEDUCTIONS) */
+html.light table td:not(:has(button)):not(.payroll-deduction-cell),
+html:not(.dark) table td:not(:has(button)):not(.payroll-deduction-cell) {
   color: #0f172a !important;
   font-weight: 400 !important;
 }
 
-html.light table td:not(:has(button)) > *:not(button):not(.text-white):not(.text-white *):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-rose"]):not([class*="bg-slate"]):not(.badge-white-text),
-html:not(.dark) table td:not(:has(button)) > *:not(button):not(.text-white):not(.text-white *):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-rose"]):not([class*="bg-slate"]):not(.badge-white-text) {
+html.light table td:not(:has(button)):not(.payroll-deduction-cell) > *:not(button):not(.text-white):not(.text-white *):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-rose"]):not([class*="bg-slate"]):not(.badge-white-text),
+html:not(.dark) table td:not(:has(button)):not(.payroll-deduction-cell) > *:not(button):not(.text-white):not(.text-white *):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-rose"]):not([class*="bg-slate"]):not(.badge-white-text) {
   color: #0f172a !important;
   font-weight: 400 !important;
 }
@@ -3363,6 +3363,7 @@ html.light td.payroll-deduction-cell *,
 td.payroll-deduction-cell,
 td.payroll-deduction-cell * {
   color: #dc2626 !important;
+  -webkit-text-fill-color: #dc2626 !important;
 }
 
 html.dark table tbody tr td.payroll-deduction-cell,
@@ -3372,4 +3373,5 @@ html.dark table tfoot tr td.payroll-deduction-cell *,
 html.dark td.payroll-deduction-cell,
 html.dark td.payroll-deduction-cell * {
   color: #f87171 !important;
+  -webkit-text-fill-color: #f87171 !important;
 }
