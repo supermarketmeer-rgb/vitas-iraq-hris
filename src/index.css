@@ -3353,9 +3353,11 @@ html.dark .live-notifications-card,
   border-color: #0d9488 !important;
 }
 
-/* Payroll Deduction Cells — Always Red in Light & Dark Modes */
+/* Payroll Deduction Cells — Always Red in Light & Dark Modes (Body & Totals Footer) */
 html.light table tbody tr td.payroll-deduction-cell,
 html.light table tbody tr td.payroll-deduction-cell *,
+html.light table tfoot tr td.payroll-deduction-cell,
+html.light table tfoot tr td.payroll-deduction-cell *,
 html.light td.payroll-deduction-cell,
 html.light td.payroll-deduction-cell *,
 td.payroll-deduction-cell,
@@ -3365,6 +3367,8 @@ td.payroll-deduction-cell * {
 
 html.dark table tbody tr td.payroll-deduction-cell,
 html.dark table tbody tr td.payroll-deduction-cell *,
+html.dark table tfoot tr td.payroll-deduction-cell,
+html.dark table tfoot tr td.payroll-deduction-cell *,
 html.dark td.payroll-deduction-cell,
 html.dark td.payroll-deduction-cell * {
   color: #f87171 !important;
