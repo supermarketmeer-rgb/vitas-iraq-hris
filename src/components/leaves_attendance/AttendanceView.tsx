@@ -68,27 +68,45 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   // Strictly exclude Lebanon records from Biometric Attendance Registry
   const validRecords = useMemo(() => records.filter(r => !isLebanonEmployee(r)), [records]);
 
-  const filteredRecords = validRecords.filter((r) => {
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      const matchName =
-        r.employee_name_ar.toLowerCase().includes(q) ||
-        r.employee_name_en.toLowerCase().includes(q);
-      const matchNumber = r.employee_number.toLowerCase().includes(q);
-      const matchDept =
-        r.department_name_ar.toLowerCase().includes(q) ||
-        r.department_name_en.toLowerCase().includes(q);
-      if (!matchName && !matchNumber && !matchDept) return false;
-    }
-    if (selectedStatus !== 'all' && r.status !== selectedStatus) return false;
-    if (lateOnly && r.late_minutes === 0 && r.status !== 'late') return false;
-    if (earlyOnly && r.early_leave_minutes === 0 && r.status !== 'early_leave') return false;
-    if (missingOnly && r.status !== 'missing_punch') return false;
-    if (overtimeOnly && r.overtime_minutes === 0) return false;
-    if (dateFrom && r.date < dateFrom) return false;
-    if (dateTo && r.date > dateTo) return false;
-    return true;
-  });
+  const normalizeSearch = (val?: string) =>
+    String(val || '')
+      .toLowerCase()
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const filteredRecords = useMemo(() => {
+    const q = normalizeSearch(searchTerm);
+    return validRecords.filter((r) => {
+      if (q) {
+        const matchName =
+          normalizeSearch(r.employee_name_ar).includes(q) ||
+          normalizeSearch(r.employee_name_en).includes(q) ||
+          normalizeSearch(r.notes).includes(q);
+        const matchNumber = normalizeSearch(r.employee_number).includes(q) || String(r.employee_id || '').includes(q);
+        const matchDept =
+          normalizeSearch(r.department_name_ar).includes(q) ||
+          normalizeSearch(r.department_name_en).includes(q) ||
+          normalizeSearch(r.branch_name_ar).includes(q) ||
+          normalizeSearch(r.branch_name_en).includes(q);
+        if (!matchName && !matchNumber && !matchDept) return false;
+      }
+      if (selectedStatus !== 'all' && r.status !== selectedStatus) return false;
+      if (lateOnly && r.late_minutes === 0 && r.status !== 'late') return false;
+      if (earlyOnly && r.early_leave_minutes === 0 && r.status !== 'early_leave') return false;
+      if (missingOnly && r.status !== 'missing_punch') return false;
+      if (overtimeOnly && r.overtime_minutes === 0) return false;
+      if (dateFrom && r.date < dateFrom) return false;
+      if (dateTo && r.date > dateTo) return false;
+      return true;
+    });
+  }, [validRecords, searchTerm, selectedStatus, lateOnly, earlyOnly, missingOnly, overtimeOnly, dateFrom, dateTo]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedStatus, lateOnly, earlyOnly, missingOnly, overtimeOnly, dateFrom, dateTo]);
 
   const totalCount = validRecords.length;
   const presentCount = validRecords.filter(

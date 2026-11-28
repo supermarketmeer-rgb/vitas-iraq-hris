@@ -6230,7 +6230,7 @@ app.post('/api/calendar/holidays/:holidayId/branches/remove', async (req, res) =
 // Attendance System endpoints
 app.get('/api/attendance', async (req, res) => {
   try {
-    const { employee_id, start_date, end_date, status, limit: reqLimit } = req.query;
+    const { employee_id, start_date, end_date, status, search, limit: reqLimit } = req.query;
     let sql = `
       SELECT 
         a.id,
@@ -6282,8 +6282,21 @@ app.get('/api/attendance', async (req, res) => {
       sql += ' AND a.status = ?';
       params.push(status);
     }
+    if (search && String(search).trim()) {
+      const like = `%${String(search).trim()}%`;
+      sql += ` AND (
+        CAST(a.employee_id AS CHAR) COLLATE utf8mb4_unicode_ci LIKE ?
+        OR e.employee_id COLLATE utf8mb4_unicode_ci LIKE ?
+        OR e.badge_no COLLATE utf8mb4_unicode_ci LIKE ?
+        OR e.full_name_ar COLLATE utf8mb4_unicode_ci LIKE ?
+        OR e.full_name_en COLLATE utf8mb4_unicode_ci LIKE ?
+        OR a.notes COLLATE utf8mb4_unicode_ci LIKE ?
+        OR e.department COLLATE utf8mb4_unicode_ci LIKE ?
+      )`;
+      params.push(like, like, like, like, like, like, like);
+    }
 
-    const limit = parseInt(reqLimit, 10) || 2000;
+    const limit = parseInt(reqLimit, 10) || 15000;
     sql += ' ORDER BY a.attendance_date DESC, a.check_in DESC, a.employee_id ASC LIMIT ' + limit;
 
     const results = await query(sql, params);
