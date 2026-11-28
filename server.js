@@ -6320,6 +6320,102 @@ const handleCloudAttendanceSync = async (req, res) => {
       });
     }
 
+    if (action === 'sync_employee_codes') {
+      const zkList = req.body?.employees || [];
+      if (!Array.isArray(zkList) || zkList.length === 0) {
+        return res.json({ success: true, message: 'لا توجد سجلات موظفين للمطابقة', data: { updated: 0 } });
+      }
+
+      const emps = await query('SELECT id, employee_id, national_id, badge_no, full_name_ar, full_name_en FROM employees').catch(() => []);
+      const normName = (s) => String(s || '')
+        .toLowerCase()
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي')
+        .replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const zkExact = new Map();
+      const zkTwo = new Map();
+      const zkArr = [];
+
+      for (const z of zkList) {
+        const code = String(z.emp_code || z.employee_number || '').trim();
+        const name = normName(z.employee_name || z.first_name || z.full_name || '');
+        if (!code || !name) continue;
+        zkExact.set(name, code);
+        const toks = name.split(' ').filter(Boolean);
+        if (toks.length >= 2) {
+          const k2 = `${toks[0]} ${toks[1]}`;
+          if (!zkTwo.has(k2)) zkTwo.set(k2, code);
+          else zkTwo.set(k2, null);
+        }
+        zkArr.push({ code, name });
+      }
+
+      const usedCodes = new Set();
+      let updatedCount = 0;
+      const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+
+      for (const emp of emps) {
+        const nEn = normName(emp.full_name_en);
+        const nAr = normName(emp.full_name_ar);
+        let matchedCode = null;
+
+        for (const candidate of [nEn, nAr]) {
+          if (!candidate) continue;
+          if (zkExact.has(candidate)) {
+            matchedCode = zkExact.get(candidate);
+            break;
+          }
+          const toks = candidate.split(' ').filter(Boolean);
+          if (toks.length >= 3) {
+            const f3 = `${toks[0]} ${toks[1]} ${toks[2]}`;
+            const hit = zkArr.find(z => z.name.startsWith(f3) || f3.startsWith(z.name));
+            if (hit) { matchedCode = hit.code; break; }
+          }
+          if (toks.length >= 2) {
+            const k2 = `${toks[0]} ${toks[1]}`;
+            if (zkTwo.get(k2)) { matchedCode = zkTwo.get(k2); break; }
+          }
+        }
+
+        if (!matchedCode || usedCodes.has(matchedCode)) continue;
+        usedCodes.add(matchedCode);
+
+        // Preserve old 12-digit employee_id as national_id if national_id was blank
+        const curEmpId = String(emp.employee_id || '').trim();
+        const curNatId = String(emp.national_id || '').trim();
+        const nextNatId = curNatId || (/^\d{10,14}$/.test(curEmpId) ? curEmpId : null);
+
+        if (curEmpId !== matchedCode) {
+          const updSql = 'UPDATE employees SET employee_id = ?, national_id = COALESCE(NULLIF(national_id, ""), ?), updated_at = NOW() WHERE id = ?';
+          await query(updSql, [matchedCode, nextNatId, emp.id]).catch(err => {
+            console.warn('[sync_employee_codes] skip emp', emp.id, err.message);
+          });
+          if (!isRailway && typeof executeCloudQuery === 'function') {
+            executeCloudQuery(updSql, [matchedCode, nextNatId, emp.id]).catch(() => {});
+          }
+          updatedCount++;
+        }
+      }
+
+      if (updatedCount > 0) {
+        broadcastRealtimeEvent({
+          type: 'DATA_CHANGED',
+          table: 'employees',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: `تم تحديث Employee ID لـ ${updatedCount} موظف ليطابق رقم البصمة في السيرفر.`,
+        data: { updated: updatedCount, totalEmployees: emps.length }
+      });
+    }
+
     if (action === 'upload_attendance') {
       const records = req.body?.records || [];
       const minDate = (req.body?.minDate && /^\d{4}-\d{2}-\d{2}$/.test(req.body.minDate))
