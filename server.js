@@ -6705,6 +6705,188 @@ app.post('/api/attendance/correction/:id/decision', async (req, res) => {
   }
 });
 
+// Missing Check-Out Alerts & Subordinate Missing Check-Outs for Employee Mobile App
+app.get('/api/attendance/missing-checkouts', async (req, res) => {
+  try {
+    await ensureAttendanceCorrectionsTable();
+    const empParam = String(req.query.employee_id || '').trim();
+    const monthParam = String(req.query.month || '').trim(); // YYYY-MM
+
+    const now = new Date();
+    let startDate = '2026-09-21';
+    let endDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    if (/^\d{4}-\d{2}$/.test(monthParam)) {
+      const [yStr, mStr] = monthParam.split('-');
+      const y = parseInt(yStr, 10);
+      const m = parseInt(mStr, 10);
+      const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const cStart = fmt(new Date(y, m - 2, 21));
+      const cEnd = fmt(new Date(y, m - 1, 20));
+      startDate = cStart < '2026-09-21' ? '2026-09-21' : cStart;
+      endDate = cEnd;
+    }
+
+    const [emps, attRows, corrRows] = await Promise.all([
+      query('SELECT id, employee_id, badge_no, full_name_ar, full_name_en, department, branch, supervisor_name, admin_supervisor_name, position_ar, position_en FROM employees').catch(() => []),
+      query(
+        `SELECT id, employee_id, DATE_FORMAT(attendance_date, '%Y-%m-%d') AS att_date, check_in, check_out, status, notes
+         FROM attendance
+         WHERE attendance_date >= ? AND attendance_date <= ?
+           AND check_in IS NOT NULL AND check_in <> '' AND check_in <> '00:00:00'
+           AND (check_out IS NULL OR check_out = '' OR check_out = '00:00:00' OR check_out = check_in)
+         ORDER BY attendance_date DESC`,
+        [startDate, endDate]
+      ).catch(() => []),
+      query(
+        `SELECT id, employee_id, employee_name, DATE_FORMAT(attendance_date, '%Y-%m-%d') AS att_date,
+                requested_check_in, requested_check_out, reason, status, reviewed_by, created_at
+         FROM attendance_corrections
+         WHERE attendance_date >= ? AND attendance_date <= ?
+         ORDER BY id DESC`,
+        [startDate, endDate]
+      ).catch(() => [])
+    ]);
+
+    const norm = (s) => String(s || '')
+      .toLowerCase()
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Find current employee
+    const empParamNorm = norm(empParam);
+    const currentEmp = (emps || []).find(e =>
+      norm(e.id) === empParamNorm ||
+      norm(e.employee_id) === empParamNorm ||
+      norm(e.badge_no) === empParamNorm
+    ) || null;
+
+    // Index latest correction by `${empKey}_${att_date}`
+    const corrMap = new Map();
+    (corrRows || []).forEach(c => {
+      const k = `${norm(c.employee_id)}_${c.att_date}`;
+      if (!corrMap.has(k)) corrMap.set(k, c);
+    });
+
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Helper: has 1 hour passed after official departure without check-out?
+    // Official departure: 15:00 on Thursday (dow=4), 16:00 Sun-Wed -> +1 hour = 16:00 Thu / 17:00 Sun-Wed
+    const isOverdueByOneHour = (attDateStr) => {
+      if (attDateStr < todayStr) return true;
+      if (attDateStr > todayStr) return false;
+      const d = new Date(`${attDateStr}T00:00:00`);
+      const isThu = d.getDay() === 4;
+      const deadlineMins = isThu ? (16 * 60) : (17 * 60); // 1 hour after 15:00 Thu / 16:00 Sun-Wed
+      return nowMinutes >= deadlineMins;
+    };
+
+    const empByCode = new Map();
+    (emps || []).forEach(e => {
+      if (e.employee_id) empByCode.set(norm(e.employee_id), e);
+      if (e.id) empByCode.set(norm(e.id), e);
+    });
+
+    // 1. Current employee's own missing check-outs
+    const myKeys = new Set(
+      [empParam, currentEmp?.employee_id, currentEmp?.id, currentEmp?.badge_no]
+        .filter(Boolean)
+        .map(norm)
+    );
+
+    const myMissing = [];
+    for (const a of (attRows || [])) {
+      const aKey = norm(a.employee_id);
+      if (!myKeys.has(aKey)) continue;
+      const corr = corrMap.get(`${aKey}_${a.att_date}`) || null;
+      if (corr && corr.status === 'approved') continue;
+      myMissing.push({
+        id: a.id,
+        employee_id: String(a.employee_id),
+        date: a.att_date,
+        check_in: a.check_in,
+        isOverdue: isOverdueByOneHour(a.att_date),
+        correction: corr ? {
+          id: corr.id,
+          status: corr.status,
+          reason: corr.reason,
+          requested_check_out: corr.requested_check_out
+        } : null
+      });
+    }
+
+    // 2. Subordinate missing check-outs (if current employee is a Technical or Administrative Supervisor)
+    const curNameAr = norm(currentEmp?.full_name_ar);
+    const curNameEn = norm(currentEmp?.full_name_en);
+    const subordinateEmps = currentEmp ? (emps || []).filter(e => {
+      if (String(e.id) === String(currentEmp.id)) return false;
+      const tSup = norm(e.supervisor_name);
+      const aSup = norm(e.admin_supervisor_name);
+      return [tSup, aSup].some(sup =>
+        sup && sup.length > 2 && (
+          (curNameAr && (sup === curNameAr || sup.includes(curNameAr) || curNameAr.includes(sup))) ||
+          (curNameEn && (sup === curNameEn || sup.includes(curNameEn) || curNameEn.includes(sup)))
+        )
+      );
+    }) : [];
+
+    const subMap = new Map();
+    subordinateEmps.forEach(s => {
+      if (s.employee_id) subMap.set(norm(s.employee_id), s);
+      if (s.id) subMap.set(norm(s.id), s);
+    });
+
+    const subordinateMissing = [];
+    if (subordinateEmps.length > 0) {
+      for (const a of (attRows || [])) {
+        const aKey = norm(a.employee_id);
+        const subEmp = subMap.get(aKey);
+        if (!subEmp) continue;
+        const corr = corrMap.get(`${aKey}_${a.att_date}`) || null;
+        if (corr && corr.status === 'approved') continue;
+        subordinateMissing.push({
+          id: a.id,
+          employee_id: String(a.employee_id),
+          badge_no: subEmp.badge_no || '',
+          employee_name_ar: subEmp.full_name_ar || '',
+          employee_name_en: subEmp.full_name_en || '',
+          department: subEmp.department || '',
+          branch: subEmp.branch || '',
+          date: a.att_date,
+          check_in: a.check_in,
+          isOverdue: isOverdueByOneHour(a.att_date),
+          correction: corr ? {
+            id: corr.id,
+            status: corr.status,
+            reason: corr.reason,
+            requested_check_out: corr.requested_check_out
+          } : null
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      cycleStart: startDate,
+      cycleEnd: endDate,
+      supervisorName: currentEmp?.supervisor_name || currentEmp?.admin_supervisor_name || '',
+      isSupervisor: subordinateEmps.length > 0,
+      subordinateCount: subordinateEmps.length,
+      myMissing,
+      subordinateMissing,
+      shouldBlink: myMissing.some(m => m.isOverdue && (!m.correction || m.correction.status === 'rejected')) ||
+                   subordinateMissing.some(m => m.isOverdue)
+    });
+  } catch (err) {
+    console.error('Error in /api/attendance/missing-checkouts:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Payroll Attendance Absence Summary Endpoint (Day 21 prev month -> Day 20 payroll month)
 // Rule: Missing BOTH check-in & check-out (or missing either punch) on a working day = ABSENT,
 // UNLESS excused by: (1) Approved supervisor correction, (2) Approved leave, (3) Weekend/Holiday, or (4) Biometric Exemption.
