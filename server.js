@@ -6262,16 +6262,17 @@ app.get('/api/attendance', async (req, res) => {
         a.updated_at
       FROM attendance a 
       LEFT JOIN employees e ON (
-        a.employee_id = e.employee_id 
-        OR a.employee_id = e.badge_no
+        a.employee_id = e.id
+        OR CAST(a.employee_id AS CHAR) = e.employee_id 
+        OR CAST(a.employee_id AS CHAR) = e.badge_no
       )
       WHERE 1=1
     `;
     const params = [];
 
     if (employee_id) {
-      sql += ' AND (a.employee_id = ? OR e.employee_id = ? OR e.badge_no = ?)';
-      params.push(employee_id, employee_id, employee_id);
+      sql += ' AND (CAST(a.employee_id AS CHAR) = ? OR e.id = ? OR e.employee_id = ? OR e.badge_no = ?)';
+      params.push(String(employee_id), employee_id, employee_id, employee_id);
     }
     if (start_date) {
       sql += ' AND a.attendance_date >= ?';
@@ -6286,7 +6287,7 @@ app.get('/api/attendance', async (req, res) => {
       params.push(status);
     }
 
-    const limit = parseInt(reqLimit, 10) || 500;
+    const limit = parseInt(reqLimit, 10) || 2000;
     sql += ' ORDER BY a.attendance_date DESC, a.check_in DESC, a.employee_id ASC LIMIT ' + limit;
 
     const results = await query(sql, params);
@@ -6325,49 +6326,137 @@ const handleCloudAttendanceSync = async (req, res) => {
 
     if (action === 'upload_attendance') {
       const records = req.body?.records || [];
+      const minDate = (req.body?.minDate && /^\d{4}-\d{2}-\d{2}$/.test(req.body.minDate))
+        ? req.body.minDate
+        : '2026-09-21';
+
       if (!Array.isArray(records) || records.length === 0) {
-        return res.json({ success: true, message: 'لا توجد حركات للمزامنة', data: { processed: 0 } });
+        return res.json({ success: true, message: 'لا توجد حركات للمزامنة', data: { processed: 0, matched: 0 } });
       }
 
-      // Pre-fetch employees for fast matching by badge_no, employee_id, id
-      const emps = await query('SELECT id, employee_id, badge_no FROM employees').catch(() => []);
-      const empMap = new Map();
+      // Pre-fetch employees for fast matching by id, employee_id, badge_no, waid, and normalized English/Arabic name
+      const emps = await query('SELECT id, employee_id, badge_no, waid, full_name_ar, full_name_en FROM employees').catch(() => []);
+      const normName = (s) => String(s || '')
+        .toLowerCase()
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي')
+        .replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const empByCode = new Map();
+      const empByExactName = new Map();
+      const empByTwoTokens = new Map();
+      const empList = [];
+
       emps.forEach(e => {
-        if (e.employee_id) empMap.set(String(e.employee_id).toLowerCase().trim(), e.id);
-        if (e.badge_no) empMap.set(String(e.badge_no).toLowerCase().trim(), e.id);
-        empMap.set(String(e.id).toLowerCase().trim(), e.id);
-        if (e.employee_id) {
-          const numOnly = String(e.employee_id).replace(/\D/g, '');
-          if (numOnly) empMap.set(numOnly, e.id);
+        const numericId = Number(e.id);
+        if (!Number.isFinite(numericId) || numericId <= 0) return;
+
+        const addCode = (val) => {
+          const clean = String(val || '').toLowerCase().trim();
+          if (!clean) return;
+          empByCode.set(clean, numericId);
+          const digits = clean.replace(/\D/g, '');
+          if (digits) empByCode.set(digits, numericId);
+        };
+
+        addCode(e.id);
+        addCode(e.employee_id);
+        addCode(e.badge_no);
+        addCode(e.waid);
+
+        const nEn = normName(e.full_name_en);
+        const nAr = normName(e.full_name_ar);
+        if (nEn) {
+          empByExactName.set(nEn, numericId);
+          const toks = nEn.split(' ').filter(Boolean);
+          if (toks.length >= 2) {
+            const key2 = `${toks[0]} ${toks[1]}`;
+            if (!empByTwoTokens.has(key2)) empByTwoTokens.set(key2, numericId);
+            else empByTwoTokens.set(key2, -1); // ambiguous
+          }
         }
+        if (nAr) {
+          empByExactName.set(nAr, numericId);
+        }
+        empList.push({ id: numericId, nEn, nAr });
       });
 
-      let insertedCount = 0;
-      const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+      const resolveEmpId = (rec) => {
+        const rawCode = String(rec.employee_number || '').toLowerCase().trim();
+        const digits = rawCode.replace(/\D/g, '');
+        if (rawCode && empByCode.has(rawCode)) return empByCode.get(rawCode);
+        if (digits && empByCode.has(digits)) return empByCode.get(digits);
+
+        const rawName = normName(rec.employee_name || rec.full_name || '');
+        if (rawName) {
+          if (empByExactName.has(rawName)) return empByExactName.get(rawName);
+          // Try prefix / substring match for 3+ word names
+          const toks = rawName.split(' ').filter(Boolean);
+          if (toks.length >= 3) {
+            const first3 = `${toks[0]} ${toks[1]} ${toks[2]}`;
+            const hit = empList.find(e => (e.nEn && (e.nEn.startsWith(first3) || first3.startsWith(e.nEn))) || (e.nAr && e.nAr.startsWith(first3)));
+            if (hit) return hit.id;
+          }
+          if (toks.length >= 2) {
+            const key2 = `${toks[0]} ${toks[1]}`;
+            const hit2 = empByTwoTokens.get(key2);
+            if (hit2 && hit2 > 0) return hit2;
+          }
+        }
+        return null;
+      };
+
+      // Deduplicate by (empId, attendance_date) and enforce minDate >= 2026-09-21
+      const dedupMap = new Map();
+      let skippedOld = 0;
+      let unmatched = 0;
 
       for (const rec of records) {
-        if (!rec.employee_number || !rec.attendance_date) continue;
-        const rawCode = String(rec.employee_number).toLowerCase().trim();
-        const numOnly = rawCode.replace(/\D/g, '');
-        const empId = empMap.get(rawCode) || empMap.get(numOnly) || (numOnly ? parseInt(numOnly, 10) : null);
-        if (!empId) continue;
+        if (!rec.attendance_date) continue;
+        const attDate = String(rec.attendance_date).slice(0, 10);
+        if (attDate < minDate) {
+          skippedOld++;
+          continue;
+        }
 
-        const dayOfWeek = rec.day_of_week || (new Date(rec.attendance_date).getDay() + 1);
+        const empId = resolveEmpId(rec);
+        if (!empId) {
+          unmatched++;
+          continue;
+        }
+
+        const key = `${empId}_${attDate}`;
+        const dayOfWeek = rec.day_of_week || (new Date(attDate).getDay() + 1);
         const checkIn = rec.check_in || null;
         const checkOut = rec.check_out || null;
-        const workHours = rec.work_hours !== null && rec.work_hours !== undefined ? rec.work_hours : null;
-        const lateMins = rec.late_minutes || 0;
-        const otMins = rec.overtime_minutes || 0;
+        const workHours = rec.work_hours !== null && rec.work_hours !== undefined ? Number(rec.work_hours) : null;
+        const lateMins = Number(rec.late_minutes || 0);
+        const otMins = Number(rec.overtime_minutes || 0);
         const status = rec.status || 'present';
         const notes = rec.notes || 'سجل بصمة محلي ZKTeco';
-        const syncId = rec.sync_id || `LOC_${rawCode}_${rec.attendance_date}`;
+        const syncId = `LOC_${empId}_${attDate}`;
         const updatedAt = rec.updated_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
 
+        dedupMap.set(key, [empId, attDate, dayOfWeek, checkIn, checkOut, workHours, lateMins, otMins, status, notes, syncId, updatedAt]);
+      }
+
+      const rowsToInsert = Array.from(dedupMap.values());
+      const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.MYSQLHOST);
+      let insertedCount = 0;
+      const BATCH_SIZE = 200;
+
+      for (let i = 0; i < rowsToInsert.length; i += BATCH_SIZE) {
+        const chunk = rowsToInsert.slice(i, i + BATCH_SIZE);
+        const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+        const flatParams = chunk.flat();
+
         const sql = `
-          INSERT INTO attendance 
+          INSERT INTO attendance
             (employee_id, attendance_date, day_of_week, check_in, check_out, work_hours, late_minutes, overtime_minutes, status, notes, sync_id, updated_at)
-          VALUES 
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES ${placeholders}
           ON DUPLICATE KEY UPDATE
             check_in = VALUES(check_in),
             check_out = VALUES(check_out),
@@ -6379,23 +6468,31 @@ const handleCloudAttendanceSync = async (req, res) => {
             sync_id = VALUES(sync_id),
             updated_at = VALUES(updated_at)
         `;
-        const params = [empId, rec.attendance_date, dayOfWeek, checkIn, checkOut, workHours, lateMins, otMins, status, notes, syncId, updatedAt];
-        
-        await query(sql, params).catch(e => console.error('Error inserting attendance record:', e.message));
 
+        await query(sql, flatParams);
         if (!isRailway && typeof executeCloudQuery === 'function') {
-          executeCloudQuery(sql, params).catch(() => {});
+          executeCloudQuery(sql, flatParams).catch(() => {});
         }
+        insertedCount += chunk.length;
+      }
 
-        insertedCount++;
+      if (insertedCount > 0) {
+        broadcastRealtimeEvent({
+          type: 'DATA_CHANGED',
+          table: 'attendance',
+          timestamp: new Date().toISOString()
+        });
       }
 
       return res.json({
         success: true,
-        message: `تمت معالجة ومزامنة ${insertedCount} سجل حضور بنجاح.`,
+        message: `تمت معالجة ومزامنة ${insertedCount} سجل حضور بنجاح (من ${minDate} فما فوق).`,
         data: {
           received: records.length,
-          processed: insertedCount
+          processed: insertedCount,
+          matched: insertedCount,
+          unmatched,
+          skippedOld
         }
       });
     }
