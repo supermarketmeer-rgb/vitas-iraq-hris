@@ -6261,18 +6261,14 @@ app.get('/api/attendance', async (req, res) => {
         a.sync_id,
         a.updated_at
       FROM attendance a 
-      LEFT JOIN employees e ON (
-        a.employee_id = e.id
-        OR CAST(a.employee_id AS CHAR) = e.employee_id 
-        OR CAST(a.employee_id AS CHAR) = e.badge_no
-      )
+      LEFT JOIN employees e ON a.employee_id = e.id
       WHERE 1=1
     `;
     const params = [];
 
     if (employee_id) {
-      sql += ' AND (CAST(a.employee_id AS CHAR) = ? OR e.id = ? OR e.employee_id = ? OR e.badge_no = ?)';
-      params.push(String(employee_id), employee_id, employee_id, employee_id);
+      sql += ' AND (a.employee_id = ? OR e.id = ? OR e.employee_id = ? OR e.badge_no = ?)';
+      params.push(employee_id, employee_id, employee_id, employee_id);
     }
     if (start_date) {
       sql += ' AND a.attendance_date >= ?';
