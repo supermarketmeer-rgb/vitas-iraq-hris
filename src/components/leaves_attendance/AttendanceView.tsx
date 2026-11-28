@@ -49,9 +49,24 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   onExportExcel,
   onExportPdf,
 }) => {
-  const { theme } = useApp();
+  const { theme, appSettings } = useApp();
   const isDark = theme === 'dark';
   const t = translations[lang];
+
+  const getDefaultPayrollCycle = () => {
+    const now = new Date();
+    const startDay = Math.min(31, Math.max(1, parseInt(appSettings?.timesheet_cycle_start_day || '21', 10) || 21));
+    const endDay = Math.min(31, Math.max(1, parseInt(appSettings?.timesheet_cycle_end_day || '20', 10) || 20));
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const startObj = new Date(y, m - 1, startDay);
+    const endObj = new Date(y, m, endDay);
+    const fmt = (dt: Date) =>
+      `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    return { from: fmt(startObj), to: fmt(endObj) };
+  };
+
+  const defaultCycle = useMemo(() => getDefaultPayrollCycle(), [appSettings?.timesheet_cycle_start_day, appSettings?.timesheet_cycle_end_day]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -59,8 +74,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [earlyOnly, setEarlyOnly] = useState(false);
   const [missingOnly, setMissingOnly] = useState(false);
   const [overtimeOnly, setOvertimeOnly] = useState(false);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(defaultCycle.from);
+  const [dateTo, setDateTo] = useState(defaultCycle.to);
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
